@@ -1,4 +1,0 @@
-#!/bin/sh
-cd ./build/
-cmake -DGTA_DIRECTORY=./b -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i486-mingw32-toolchain.cmake ../ 
-
