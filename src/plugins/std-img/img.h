@@ -1,0 +1,131 @@
+/* 
+ * std-img -- Standard IMG Loader Plugin for San Andreas Mod Loader
+ * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
+ * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * 
+ *  std-img main header file
+ * 
+ */
+#ifndef IMG_H
+#define	IMG_H
+
+#include <windows.h>
+
+#include "modloader.hpp"
+#include "modloader_util.hpp"
+#include <string>
+#include <map>
+#include <list>
+
+using namespace modloader;
+
+
+/* Gets the file size from filename */
+inline __int64 GetFileSize(const char* filename)
+{
+    WIN32_FILE_ATTRIBUTE_DATA fad; LARGE_INTEGER size;
+
+    if(!GetFileAttributesExA(filename, GetFileExInfoStandard, &fad))
+            return 0;
+
+    size.HighPart = fad.nFileSizeHigh;
+    size.LowPart = fad.nFileSizeLow;
+    return size.QuadPart;
+}
+
+class CThePlugin : public modloader::CPlugin
+{
+    public:
+        static const int default_priority = 52;
+        
+        struct FileInfo
+        {
+            std::string name;
+            std::string path;
+            size_t fileSize, fileSizeBlocks;    /* fileSize (normal) and fileSize in 2KiB blocks */
+            bool bProcessed;
+            
+            FileInfo() : bProcessed(false)
+            {}
+            
+            /* Eats the file path and outputs file information into myself */
+            void Process()
+            {
+                this->bProcessed = true;
+                
+                this->fileSize = GetFileSize(this->path.c_str());
+                /* aligned fileSize in 2KiB blocks */
+                this->fileSizeBlocks = ((fileSize % 2048) == 0? fileSize / 2048 : (fileSize / 2048) + 1);
+                
+                
+            }
+            
+            size_t GetSizeInBlocks()
+            {
+                if(!this->bProcessed) this->Process();
+                return fileSizeBlocks;
+            }
+        };
+        
+        struct ImgInfo
+        {
+            /* This structure will represent an img file from the user */
+            
+            typedef std::map<std::string, FileInfo> imgFiles_t;
+            
+            bool isPlayerContent;           /* is player.img equivalent content? */
+            bool isMainContent;             /* is our custom files? */
+            bool isReady;                   /* Tells if the ImgInfo is ready to be used */
+
+            std::string pathMod;            /* img file path relative to mod dir */
+            std::string path;               /* the full img file path (relative to game dir) */
+            
+            /* map<InsideImgFileName, InComputerPath> */
+            imgFiles_t imgFiles;   
+
+            ImgInfo(int i = 0)
+            {
+                isReady = true;
+                isMainContent   = (i & 1) != 0;
+                isPlayerContent = (i & 2) != 0;
+            }
+            
+            void Process()
+            {
+                /* TODO */
+            }
+            
+        };
+        
+        ImgInfo mainContent, playerContent;             /* main contents */
+        std::list<ImgInfo> imgFiles;                    /* list of img files to import */
+        std::map<unsigned short, FileInfo*> importList; /* map of objects (model/ifp/col/etc) index and it's respective file pointer */
+
+        CThePlugin() : mainContent(1), playerContent(2)
+        { }
+        
+        /* Plugin Callbacks */
+        const char* GetName();
+        const char* GetAuthor();
+        const char* GetVersion();
+        int OnStartup();
+        int OnShutdown();
+        int CheckFile(const modloader::ModLoaderFile& file);
+        int ProcessFile(const modloader::ModLoaderFile& file);
+        int PosProcess();
+        const char** GetExtensionTable(size_t& outTableLength);
+        
+        
+        /* <--> */
+        bool ProcessImgFolder(const modloader::ModLoaderFile& file);
+        bool ProcessImgFile(const modloader::ModLoaderFile& file);
+        void AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const char* filename2 = 0);
+        
+ 
+};
+
+extern CThePlugin* imgPlugin;
+extern void ApplyPatches();
+
+#endif
+

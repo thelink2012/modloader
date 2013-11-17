@@ -1,0 +1,95 @@
+modloader folder structure
+
+[index]
+The following constants will be used in the documentation to represent a list of files:
+
+	@models_basic_files =	(effects.fxp, effectsPC.txd, fonts.txd, fronten_pc.txd, fronten1.txd,
+				 fronten2.txd, fronten3.txd, hud.txd, misc.txd, particle.txd, pcbtns.txd)
+	@data_basic_files   =	(animgrp.dat, animviewer.dat, ar_stats.dat, carcols.dat, cargrp.dat, carmods.dat, clothes.dat
+				 default.dat, default.ide, fonts.dat, furnitur.dat, gridref.dat, gta.dat, gta_quick.dat,
+				 handling.cfg, info.zon, map.zon, melee.dat, numplate.dat, object.dat, ped.dat, pedgrp.dat,
+				 peds.ide, pedstats.dat, plants.dat, polydensity.dat, popcycle.dat, procobj.dat,  shopping.dat,
+				 statdisp.dat, surface.dat, surfaud.dat, surfinfo.dat, timecyc.dat, timecycp.dat, txdcut.ide,
+				 vehicles.ide, water.dat)
+
+The following topics will be described:
+	[mods-folder]		= Describes the structure of the mods\ folder
+	[modloader-cache] 	= Describes the cache system
+	[modloader-plugins] 	= Describes the plugin system
+	[contents]		= Describes the default files modloader can handle.
+	[contribs]		= "How can I contribe to modloader?"
+	[TODO]			= Things to do to improve modloader.
+
+[mods-folder]
+modloader\
+	.cache\
+		see [modloader-cache]
+	.plugins\
+		see [modloader-plugins]
+	mod_name1\
+		see [content]
+	mod_name2\
+		see [content]
+	mod_name3\
+		see [content]
+
+
+[modloader-cache]
+<TODO>
+
+[modloader-plugins]
+<TODO>
+
+[contribs]
+<TODO>
+
+
+[TODO]
+	[*] Audio handling.     (audio\)
+	[*] Decisions handling.	(data\decision\)
+	[*] Cutscene handling (*.cut)
+
+----------------> DEV CONTENT
+
+[plugins]
+	ordered by priority to implement
+	[*] std-img.dll			= Standard IMG loader
+	[*] std-rws.dll			= RenderWare Streams Loader
+	[*] std-data.dll		= Data Files Loader
+	[*] std-txd.dll			= $TXD Loader
+	[*] std-maps.dll		= Maps Loader
+	[*] std-movies.dll		= Movies Replacer
+	[*] std-gxt.dll			= GXT Replacer
+	[*] std-scm.dll			= SCM Replacer
+	[*] std-paths1.dll		= Paths Replacer
+	[*] std-fx.dll			= TXD/FX Replacer
+	[*] std-grass.dll		= Grass Replacer
+	[*] hacky-cleo.dll		= Hacky CLEO Loader
+	
+[content]
+DEL DEL DEL
+
+*.asi								= The ASI will be loaded but it is not recommended to place ASIs here, use a ASI Loader instead.
+*.dff, *.txd, *.col, *.ifp			= Overrides gta3.img files
+*.gxt								= Overrides gxt files
+*.img, *.ipl, *.ide					= Overrides the file with the same name or loads it.
+main.scm							= Overrides the data\script\main.scm
+GTAtitles.mpg, Logo.mpg				= Overrides movies
+ROADBLOX.DAT,spath0.dat,
+tracks.dat,tracks1.dat,tracks2.dat,
+tracks4.dat 						= Overrides the similar files at "data\paths"
+@models_basic_files					= See [data_loading] topic, those files are handled in a special way
+@data_basic_files                   = ~~~ See [data_loading topic, those files are handled in a special way
+
+There is also specials folder, that start with $, see below:
+ $img_<IMGNAME>\					= Anything at this folder will override <IMGNAME> files, if <IMGNAME> does not exist it will be created!
+ $maps								= Any *.ipl or *.ide at this folder will be loaded instantly, without checking if there is a similar file already loaded.
+ $txd\								= Simulates .txd files on "models\txd" folder
+ $grass\							= Overrides "models\grass" files
+	grass([0-3])_([1-4]).dff, plant1.dff, plant1.txd
+
+
+Any other file extension will be ignored.
+We can not handle CLEO related stuff (*.cs, *.cleo, *.fxt)
+
+

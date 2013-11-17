@@ -1,0 +1,14 @@
+typedef struct
+{
+    
+
+} modloader_t;
+
+typedef struct
+{
+    char pluginName[32];
+    
+    void* OnInit(
+    
+    
+} modloader_plugin_t;

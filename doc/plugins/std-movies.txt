@@ -1,0 +1,16 @@
+*************************************************************************
+	Name: std-movies --- (Standard Movies Replacer Plugin)
+	Version: 1.0
+	Author: LINK/2012 <dma_2012@hotmail.com)
+	Default Priority: 50
+*************************************************************************
+
+Description:
+	The standard movies replacer is the standard plugin to handle movies files (mpg) in modloader.
+	It replaces¹ the files GTAtitles.mpg / Logo.mpg
+	
+	¹ It does not replace in the sense of replacing on your filesystem, it replaces it on-the-fly.
+
+Usage:
+	Just place your GTAtitles.mpg or Logo.mpg into a mod folder, that simple.
+

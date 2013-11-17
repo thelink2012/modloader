@@ -1,0 +1,6 @@
+clean:
+    rmdir build
+    mkdir build
+
+all:
+    cd build; make

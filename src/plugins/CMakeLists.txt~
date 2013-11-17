@@ -1,0 +1,4 @@
+# Standard Plugins
+add_subdirectory(std-movies)
+#add_subdirectory(std-img)
+add_subdirectory(std-img2)

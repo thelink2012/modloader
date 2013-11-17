@@ -1,0 +1,6 @@
+#!/bin/sh
+echo "set(SOURCE_FILES" > source_files.cmake 
+ls *.cpp -1 >> source_files.cmake
+echo ) >> source_files.cmake 
+
+

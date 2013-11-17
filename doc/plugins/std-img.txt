@@ -1,0 +1,20 @@
+*************************************************************************
+	Name: std-img --- (Standard IMG Loader Plugin)
+	Version: In-Dev
+	Author: LINK/2012 <dma_2012@hotmail.com)
+	Default Priority: 52
+*************************************************************************
+
+Description:
+	The standard IMG loader is the standard plugin for loading IMG files data in modloader.
+	It can load all formats a normal IMG can, that is: dff, txd, col, ipl, dat, ifp, rrr, scm.
+	It can also handle a img folder, that is, everything inside an "folder.img" folder will be handled as img files.
+
+Usage:
+	First way:  Just place your files (see list of supported formats) in the mod folder.
+	Second way: Optionally you can create a folder with the extension img (example: "folder.img") and place your files inside it.
+	
+	By using the first way, other plugins can handle the file too, providing extensibility.
+	By using the second way, only this plugin will handle the files inside the folder.
+	The first way is recommended.
+
