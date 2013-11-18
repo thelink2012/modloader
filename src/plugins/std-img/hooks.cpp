@@ -5,21 +5,18 @@
  * 
  */
 
-/*
- *  TODO
- *    ** Needs testing on RRR and SCM replacement to see if it is working well
- */
-
+#include <cstdio>
 #include "img.h"
 #include "Injector.h"
 #include <SImgGTAItemInfo.h>
-#include <cstdio>
+#include <CImgDescriptor.h>
 
 extern "C"      /* The content must have C name mangling, so our ASM code can access it easily! */
 {
     
 typedef int CExternalScripts;
   
+
 /* The following are hooks implemented in hooks.s file */
 void HOOK_AllocateOrFindExternalScript();
 int  HOOK_AllocateOrFindPath(const char*);
@@ -29,12 +26,31 @@ void HOOK_RegisterNextModelRead();
 void HOOK_RequestClothes();
 void HOOK_NewFile();
 void HOOK_RemFile();
+void HOOK_SetImgDscName();
+void HOOK_SetStreamName();
+void HOOK_ReadImgContent_Base();
 void* pBeginStreamReadCoolReturn;
 
+
+/* Those will point to game functions */
 void* CStreaming__RequestObject;
 void (*ReadImgContent)(void* imgEntry, int imgId) = memory_pointer_a(0x5B6170);
-
 uint32_t (*crc32FromUpcaseString)(const char*);
+int (*CStreaming__OpenImgFile)(const char* filename, char notPlayerImg);
+
+static void(*readImgFileFromDat)(const char* path);
+static int (*addPath)(const char* name);
+
+static int (__fastcall *CExternalScripts__Allocate)(CExternalScripts* self, int dummy, const char* name);
+static int (__fastcall *CExternalScripts__FindByName)(CExternalScripts* self, int dummy, const char* name);
+static int (__fastcall *CDirectory__CDirectory)(void* pDirectory, int dummy, size_t count, void* pEntries);
+static int (__fastcall *CDirectory__ReadImgEntries)(void* pDirectory, int dummy, const char* file);
+
+/* Those will store pointer to game data */
+void* imgDescriptors;   /* CImgDescriptor* */
+char* StreamNames;      /* char[32][64] */
+
+int *gta3ImgDescriptorNum, *gtaIntImgDescriptorNum;
 
 DWORD* pStreamCreateFlags;          /* Pointer to games async file handle flags (for CreateFile) */
 SImgGTAItemInfo* ms_aInfoForModel;  /* Pointer to array of game model info */
@@ -42,17 +58,9 @@ void* CStreaming__ReadImgContents;  /* Pointer to the function that reads img he
 void* playerImgDirectory;           /* files offsets, name, etc, from player.img */
 void* playerImgEntries;
 
-/* Those will point to game functions */
-static int (__cdecl *addPath)(const char* name);
-static int (__fastcall *CExternalScripts__Allocate)(CExternalScripts* self, int dummy, const char* name);
-static int (__fastcall *CExternalScripts__FindByName)(CExternalScripts* self, int dummy, const char* name);
-static int (__fastcall *CDirectory__CDirectory)(void* pDirectory, int dummy, size_t count, void* pEntries);
-static int (__fastcall *CDirectory__ReadImgEntries)(void* pDirectory, int dummy, const char* file);
-
-/* Those (again) will store pointer to game data */
+static char* playerImgPath;
 static int* paths;
 static int* pathCount;
-
 
 
 /*
@@ -61,7 +69,6 @@ static int* pathCount;
  *      that does a (exist? existingIndex : allocIndex).
  * 
  */
-
 
 /*
  *  AllocateOrFindExternalScript
@@ -118,11 +125,60 @@ int HOOK_AllocateOrFindPath(const char* name)
  */
 void ReadPlayerImgEntries()
 {
+    playerImgPath = ReadMemory<char*>(0x5A69F7 + 1, true);
     CDirectory__CDirectory(playerImgDirectory, 0, 550, playerImgEntries);
-    CDirectory__ReadImgEntries(playerImgDirectory, 0, "MODELS\\PLAYER.IMG");
+    CDirectory__ReadImgEntries(playerImgDirectory, 0, playerImgPath);
 }
 
 
+/*
+ *      This hook adds the possibility to hook img loads that are loaded on default.dat and gta.dat
+ *      It is good for TC's (but other situations too) that replaces the files loaded from gta.dat
+ *      This will try to find a similar file in the mods folder and load it instead
+ */
+void HOOK_ReadImgFileFromDat(const char* path)
+{
+    imgPlugin->Log("HOOK_ReadImgFileFromDat(\"%s\")", path);
+    
+    std::string normalizedPath = DoPathNormalization(path);
+    uint32_t hash = crc32FromUpcaseString(normalizedPath.c_str());
+    
+    auto it = std::find_if(imgPlugin->imgFiles.begin(), imgPlugin->imgFiles.end(),
+        [&hash, &normalizedPath](const CThePlugin::ImgInfo& info)
+        {
+            /* If .img file found around the mods folders and was not registered as replacement to original img... */
+            if(info.isCustomContent && !info.isOriginal)
+            {
+                /* check if paths are equal... */
+                if(info.pathModHash == hash && info.pathMod == normalizedPath) 
+                    return true;
+            }
+            return false;
+        });
+        
+    /* If found replacement for this load, replace the 'path' pointer */
+    if(it != imgPlugin->imgFiles.end())
+    {
+        path = it->path.data();
+        imgPlugin->Log("Replacement img for dat img: %s", path);
+    }
+
+    /* ...continue the gta.dat img file loading */
+    return readImgFileFromDat(path);
+}
+
+/*
+ *  Allocates a string buffer with the lifetime of the program
+ */
+const char* AllocBufferForString(const char* inBuf)
+{
+    imgPlugin->Log("Allocating static buffer for string \"%s\"", inBuf);
+    
+    static std::list<std::string> bufList;
+    std::string& buf = AddNewItemToContainer(bufList);
+    buf = inBuf;
+    return buf.data();
+}
 
 
 /*
@@ -179,21 +235,33 @@ void ApplyPatches()
     /* Read some pointers */
     {
         ms_aInfoForModel = ReadMemory<SImgGTAItemInfo*>(0x408835 + 2, true);
+        pStreamCreateFlags = ReadMemory<DWORD*>(0x406BE5+1, true);
+        
+        StreamNames    = ReadMemory<char*>(0x406880 + 2, true);
+        imgDescriptors = ReadMemory<void*>(0x407638 + 2, true);
+        
+        gta3ImgDescriptorNum    = ReadMemory<int*>(0x408402 + 2, true);
+        gtaIntImgDescriptorNum  = ReadMemory<int*>(0x408423 + 1, true);
+
         playerImgDirectory = ReadMemory<void*>(0x5A69ED + 1, true);
         playerImgEntries = ReadMemory<void*>(0x5A69E3 + 1, true);
+        
         paths = ReadMemory<int*>(0x45A001 + 1, true);
         pathCount = ReadMemory<int*>(0x459FF0 + 2, true);
-        CExternalScripts__FindByName = memory_pointer_a(0x4706F0);
-        crc32FromUpcaseString = memory_pointer_a(ReadRelativeOffset(0x471ADD + 1).p); 
-        CDirectory__CDirectory = memory_pointer_a(ReadRelativeOffset(0x5A69F2 + 1).p);
-        CDirectory__ReadImgEntries = memory_pointer_a(ReadRelativeOffset(0x5A6A01 + 1).p);
 
-        /* for CreateFile flags... */
-        pStreamCreateFlags = ReadMemory<DWORD*>(0x406BE5+1, true);
+        ReadImgContent = memory_pointer_a(0x5B6170);
+        crc32FromUpcaseString = memory_pointer_a(0x53CF30); 
+        CExternalScripts__FindByName = memory_pointer_a(0x4706F0);
+        CDirectory__CDirectory = memory_pointer_a(0x5322F0);
+        CDirectory__ReadImgEntries = memory_pointer_a(0x532350);
+        CStreaming__OpenImgFile = memory_pointer_a(0x407610);
     }
    
     /* Apply hooks */
     {
+        /* Checks the path of the img files being loaded from gta.dat to see if any replacement, etc */
+        readImgFileFromDat = memory_pointer_a(MakeCALL(0x5B915B, (void*) HOOK_ReadImgFileFromDat).p);
+        
         /* Replace calls to find/get entity index from img file name */
         addPath = memory_pointer_a(MakeCALL(0x5B63E8, (void*)(HOOK_AllocateOrFindPath)).p);
         CExternalScripts__Allocate = memory_pointer_a(MakeCALL(0x5B6419, (void*)(HOOK_AllocateOrFindExternalScript)).p);
@@ -243,13 +311,64 @@ void ApplyPatches()
         MakeNOP(0x4065FE + 5, 1);
     }
     
+    /*
+     *  We need to hook some game code where imgDescriptor[x].name and SteamNames[x][y] is set because they have a limit in filename size,
+     *  and we do not want that limit.
+     * 
+     *  This is a real dirty solution, but well...
+     *  
+     *  How does it work?
+     *      First of all, we hook the StreamNames string copying to copy our dummy string "?\0"
+     *                    this is simple and not dirty, the game never accesses this string again,
+     *                    only to check if there's a string there (and if there is that means the stream is open)
+     *  
+     *      Then comes the dirty trick:
+     *          We need to hook the img descriptors (CImgDescriptor array) string copying too,
+     *          but we need to do more than that, because this string is still used in CStreaming::ReadImgContent
+     *          to open the file and read the header.
+     * 
+     *          So what we did? The first field in CImgDescriptor is a char[40] array to store the name, so, we turned this field into an:
+     *              union {
+     *                  char name[40];
+     *                  
+     *                  struct {
+     *                      char dummy[2];      // Will container the dummy string "?\0" (0x003F)
+     *                      char pad[2];        // Just padding okay?
+     *                      char* customName;   // Pointer to a static buffer containing the new file name
+     *                  };
+     *              };
+     * 
+     *          Then we hook CStreaming::ReadImgContents to give the pointer customName instead of &name to CFileMgr::Open
+     *          Very dirty, isn't it?
+     * 
+     *          One problem is that the customName will be a buffer allocated for the entire program lifetime,
+     *          but I don't think it's a problem because the imgDescripts are initialized only once.
+     * 
+     */
+    if(true) // TODO enable/disable by ini
+    {
+        addr = isHoodlum? 0x1564B90 : 0x406886;         // streamNames hook
+        MakeNOP(addr, 10);
+        MakeCALL(addr, (void*) HOOK_SetStreamName);
+        
+        addr = isHoodlum? 0x01567BC2 : 0x407642;        // imgDescriptor hook
+        MakeNOP(addr, 10);
+        MakeCALL(addr, (void*) HOOK_SetImgDscName);
+        
+        addr = 0x5B6170;                                // hook to read new field at imgDescriptor
+        MakeCALL(addr, (void*) HOOK_ReadImgContent_Base);
+        MakeNOP(addr + 5, 2);
+    }
+    
+    
     /* 
      * HACK HACK
      * We're not supporting stream reads called at function 0x4076C0
-     * and analyzing it's xref, it seems like this is never ever called, so we're safe... or not?
+     * and analyzing it's xref, it seems like this is never ever called, only when some stream fail to open, so we're safe... or not?
      * Anyway it looks to be safe, and if someone relates the code reaching there, I think it's easily fixed.
      * 
      */
+#if 1 || !defined(NDEBUG)
     static void (*trouble_4076C0)() = []()
     {
         imgPlugin->Log("FATAL ERROR: THIS IS A BUG! [0x4076C0 called]. Please report this bug!");
@@ -257,6 +376,7 @@ void ApplyPatches()
         *((int*)(0x26)) = 0;
     };
     MakeCALL(0x4076C0, (void*) trouble_4076C0);
+#endif
 }
 
 

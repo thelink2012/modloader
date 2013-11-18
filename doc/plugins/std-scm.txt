@@ -1,0 +1,15 @@
+*************************************************************************
+	Name: std-scm
+	Version: Release Candidate 1
+	Author: LINK/2012 <dma_2012@hotmail.com)
+	Default Priority: 50
+*************************************************************************
+
+Description:
+	The standard main.scm loader is the standard plugin to handle the main.scm file
+
+Usage:
+	Place the main.scm file into a mod folder/data/script
+	For example "GTA San Andreas Directory/modloader/mymod/data/script/main.scm"
+	This plugin do not handle script.img, this is handled by the img plugin.
+

@@ -23,6 +23,8 @@
 
 namespace modloader
 {
+    static const char cNormalizedSlash = '\\';
+    std::string DoPathNormalization(std::string path);
     
     /* Get length of null terminated array
      */
@@ -41,6 +43,15 @@ namespace modloader
         { dir.push_back('\\'); }
         
         return dir;
+    }
+    
+    inline std::string& TrimString(std::string& s, bool trimLeft = true, bool trimRight = true)
+    {
+        if(trimLeft)
+            s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+        if(trimRight)
+            s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+        return s;
     }
     
     template<class C>
@@ -115,6 +126,7 @@ namespace modloader
         // Opens the search
         if((hSearch = FindFirstFileA((dir + mask).c_str(), &fd)) == INVALID_HANDLE_VALUE)
             return true;
+        
 
         // Iterate on all files on this directory
         do
@@ -141,7 +153,7 @@ namespace modloader
      
                 // Call cb() and go recursive if asked to...
                 if(!cb(mf)
-                ||(mf.recursion && !ForeachFile(dir + mf.filepath, mask, bRecursive, cb)))
+                ||(mf.recursion && !ForeachFile(dir + mf.filename, mask, bRecursive, cb)))
                 {
                     FindClose(hSearch);
                     return false;
@@ -226,19 +238,14 @@ namespace modloader
      */
     inline bool IsFileInsideFolder(std::string file, bool bJust, std::string folder)
     {
-        // Replace all '\\' with '/', and tolower the strings (because Windows paths are case insensitive)
-        tolower(ReplaceChar(file, '\\', '/'));
-        tolower(ReplaceChar(folder, '\\', '/'));
-        
-        // We don't want a slash at the end of the folder path
-        PopLastCharIf(file, '/');
-        PopLastCharIf(folder, '/');
+        file = DoPathNormalization(file);
+        folder= DoPathNormalization(folder);
         
         if(bJust)
         {
             //
-            size_t last = file.find_last_of('/');
-            if(last >= folder.length())
+            size_t last = file.find_last_of(cNormalizedSlash);
+            if(last != file.npos && last >= folder.length())
             {
                 // Find pos to start the comparation and number chars to compare
                 size_t pos = last - folder.length();
@@ -277,20 +284,27 @@ namespace modloader
      */
     inline bool IsFileExtension(const char* str_ext, const char* ext)
     {
-        // For windows case insensitive paths
-        
-        /*
-        // Get length to compare, normally it would be the same as the length of str_ext,
-        // but if it is a directory, we must not compare the last '\\'
-        size_t l = strlen(str_ext);
-        const char* p = &str_ext[l - 1];
-        while(l != 0 && *p == '\\' || *p == '/') --l, --p;
-         * 
-         */ 
-        // Compare
         return (!strcmp(str_ext, ext, false));
     }
     
+    
+    /*
+     *  DoPathNormalization
+     *      Normalizates a path string, so for example:
+     *          "somefolder/something" will output "SOMEFOLDER\\SOMETHING"
+     *          "SOMEfoldER/something/" will output "SOMEFOLDER\\SOMETHING"
+     *          "somefolder\\something" will output "SOMEFOLDER\\SOMETHING"
+     *          etc
+     */
+    inline std::string DoPathNormalization(std::string path)
+    {
+        // Replace all '/' with '\\', and toupper the strings (because Windows paths are case insensitive)
+        toupper(ReplaceChar(path, '/', '\\'));
+        // We don't want a slash at the end of the folder path
+        PopLastCharIf(path, '\\');
+        TrimString(path);
+        return path;
+    }
     
     
     /*

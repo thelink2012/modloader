@@ -5,7 +5,6 @@
  *  std-movies -- Standard Movies Plugin for San Andreas Mod Loader
  *      Replaces "GTAtitles.mpg" and "Logo.mpg" strings on the executable
  * 
- *  TODO compatible with more exe versions
  * 
  */
 #include <modloader.hpp>
@@ -64,7 +63,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "1.0";
+    return "RC1";
 }
 
 const char** CThePlugin::GetExtensionTable(size_t& len)
@@ -88,8 +87,8 @@ int CThePlugin::OnStartup()
 int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     if( !file.is_dir && IsFileExtension(file.filext, "mpg") &&
-        (  this->SetTitle("Logo.mpg", this->Logo, file)                                                
-        || this->SetTitle("GTAtitles.mpg", this->GTAtitles, file))
+        (  !strcmp(file.filename, "Logo.mpg",  false)                                                
+        || !strcmp(file.filename, "GTAtitles.mpg", false))
       )
         return MODLOADER_YES;
     return MODLOADER_NO;
@@ -100,6 +99,10 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
  */
 int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
+    if(!this->SetTitle("Logo.mpg", this->Logo, file)
+    && !this->SetTitle("GTAtitles.mpg", this->Logo, file))
+        return false;
+    
     // Replace Logo.mpg
     if(*this->Logo)
     {

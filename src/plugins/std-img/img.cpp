@@ -3,17 +3,18 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  std-img -- Standard IMG Loader Plugin for San Andreas Mod Loader
- *      Creates cached img with all "modloader/*" compatible files and load it on the game, before gta3 and gta_int
- *      Also loads "modloader/*.img" (before gta3 and gta_int too)
+ *      Loads all compatible files with imgs (on game request),
+ *      it loads directly from disk not by creating a cache or virtual img.
  * 
- *  TODO compatible with more exe versions
  * 
+ *  TODO loading .txd folders with images inside (.png, .jpg, .bmp, etc)
  */
 #include "img.h"
+#include "Injector.h"
 #include <modloader_util.hpp>
 using namespace modloader;
 
-
+extern const char* noImgName;
 
 /*
  *  The plugin object
@@ -49,7 +50,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.3";
+    return "0.5";
 }
 
 const char** CThePlugin::GetExtensionTable(size_t& len)
@@ -176,8 +177,6 @@ void CThePlugin::AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const cha
  */
 bool CThePlugin::ProcessImgFolder(const modloader::ModLoaderFile& file)
 {
-    //auto& img = AddNewItemToContainer(this->imgFiles);
-    //img.path = file.filepath;
     auto& img = this->mainContent;
     
     /* Recursivelly iterate on this img folder adding all files into the img list */
@@ -193,22 +192,112 @@ bool CThePlugin::ProcessImgFolder(const modloader::ModLoaderFile& file)
     return true;
 }
 
+extern "C" {
+    extern int* gta3ImgDescriptorNum;
+    extern int* gtaIntImgDescriptorNum;
+    extern int (*CStreaming__OpenImgFile)(const char* filename, char notPlayerImg);
+};
+
 /*
  *  Takes care of .img files placed in the mod folder
  */
 bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
 {
     /*
-     *  TODO  loading .img files
-     *      The implementation of this function shall:
-     *          Replace the img string at the game executable if the filepath is folder example "/models/gta3.img"
-     *          In any other case, the file should be ignored, needing gta.dat registering
-     *          Well, maybe storing this filepath and looking for it on gta.dat read may be a good idea?
+     *  Registers the img path at buf, if buf is not empty (already has a path), return false and log the error.
      */
+    static auto RegisterImgPath = [](std::string& buf, const char* path)
+    {
+        if(!buf.empty())
+        {
+            imgPlugin->Log
+               ("Failed to replace again one of the main img files because you've already replaced it!\n"
+                "\tPath: %s", buf.c_str());
+            return false;
+        }
+        else
+        {
+            imgPlugin->Log("Pushed img file to imgFiles: %s", path);
+            buf = path;
+            return true;
+        }
+    };
     
+    /* Replace an pointer at mem with pointer to buf data */
+    static auto ReplaceAddr = [](memory_pointer mem, const std::string& buf)
+    {
+        WriteMemory<const char*>(mem, buf.data(), true);
+    };
+
+    /* Push new img item into container and setup it */
+    auto& img = AddNewItemToContainer(this->imgFiles);
+    img.Setup(file);
+    
+    /* Bufs */
+    static std::string gta3, gta_int, player, cuts;
+
+    // We need to do this hook to not hook too much code
+    MakeNOP(0x4083E4 + 5, 4);
+    MakeJMP(0x4083E4, (void*)((void (*)(void))([]()  // mid replacement for CStreaming::OpenGtaImg
+    {
+        char* gta3Path   = ReadMemory<char*>(0x40844C + 1, true);
+        char* gtaIntPath = ReadMemory<char*>(0x40848C + 1, true);;
+        
+        imgPlugin->Log("gta3.img path: %s\ngta_int.img path: %s", gta3Path, gtaIntPath);
+        
+        *gta3ImgDescriptorNum = CStreaming__OpenImgFile(gta3Path, true);
+        *gtaIntImgDescriptorNum = CStreaming__OpenImgFile(gtaIntPath, true);
+    })));
+
+    /*
+     *  If any of the original img files (loaded from game code strings), replace the strings
+     *  Note we'll set isOriginal flag from 'img' only if it's path could be registered
+     *          (that's, replaced game code strings with it's path string)
+     * 
+     */
     if(IsFileInsideFolder(file.filepath, true, "models"))
     {
+        if(!strcmp(file.filename, "gta3.img", false))
+        {
+            if(!RegisterImgPath(gta3, GetFilePath(file).c_str())) return false;
+
+            img.isOriginal = true;
+            ReplaceAddr(0x408430 + 1, gta3);
+            ReplaceAddr(0x406C2A + 1, gta3);
+            ReplaceAddr(0x40844C + 1, gta3);
+        }
+        else if(!strcmp(file.filename, "gta_int.img", false))
+        {
+            if(!RegisterImgPath(gta_int, GetFilePath(file).c_str())) return false;
+            
+            img.isOriginal = true;
+            ReplaceAddr(0x40846E + 1, gta_int);
+            ReplaceAddr(0x40848C + 1, gta_int);
+        }
+        else if(!strcmp(file.filename, "player.img", false))
+        {
+            if(!RegisterImgPath(player, GetFilePath(file).c_str())) return false;
+            
+            img.isOriginal = true;
+            ReplaceAddr(0x5A41A4 + 1, player);
+            ReplaceAddr(0x5A69F7 + 1, player);
+            ReplaceAddr(0x5A80F9 + 1, player);
+        }
     }
-    
-    return false;
+    else if(IsFileInsideFolder(file.filepath, true, "anim"))
+    { 
+        if(!strcmp(file.filename, "cuts.img", false))
+        {
+            if(!RegisterImgPath(cuts, GetFilePath(file).c_str())) return false;
+            
+            img.isOriginal = true;
+            ReplaceAddr(0x4D5EB9 + 1, cuts);
+            ReplaceAddr(0x5AFBCB + 1, cuts);
+            ReplaceAddr(0x5AFC98 + 1, cuts);
+            ReplaceAddr(0x5B07DA + 1, cuts);
+            ReplaceAddr(0x5B1423 + 1, cuts);
+        }
+    }
+             
+    return true;
 }

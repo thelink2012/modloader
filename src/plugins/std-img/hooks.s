@@ -11,9 +11,6 @@
 .globl  _HOOK_ReadImgContents
 .globl  _HOOK_RegisterModelIndex
 
-.globl  _HOOK_OpenMainCacheImg
-.globl  _CALL_OpenMainCacheImg
-
 .globl  _HOOK_RegisterNextModelRead
 .globl  _CALL_RegisterNextModelRead
 
@@ -25,6 +22,9 @@
 
 .globl _HOOK_RequestClothes
 
+.globl _HOOK_SetStreamName
+.globl _HOOK_SetImgDscName
+.globl _HOOK_ReadImgContent_Base
 
 /* vars */
 .globl  _ms_aInfoForModel
@@ -38,9 +38,11 @@
 .globl _ImportImgContents
 .globl _CALL_RegisterModelIndex
 .globl _OnClothesRequest
-
+.globl _FixSetImgName
+.globl _AllocBufferForString
 
 .text
+
 
 
 /*
@@ -53,6 +55,10 @@ _HOOK_AllocateOrFindExternalScript:
         call _AllocateOrFindExternalScript
         add esp, 8
         ret 4
+
+
+
+
 
 /*
     void _cdecl HOOK_ReadImgContents()
@@ -107,6 +113,10 @@ _HOOK_RequestClothes:
     _IsNotClothes:
         jmp dword ptr [_CStreaming__RequestObject]
 
+
+
+
+
 /*
     HANDLE _cdecl HOOK_NewFile(eax = hOriginalFile, esi = blockOffset)
         Returns the file handle to the file that will get read to get an object data
@@ -143,5 +153,60 @@ _HOOK_RemFile:
         cmp byte ptr [esi+0xD], 0
         ret
 
+
+
+
+
+/*
+    void HOOK_SetStreamName(eax = szImgTempStr, edx = p2)
+        StreamName copying hook
+*/
+_HOOK_SetStreamName:
+        mov dword ptr [eax+edx], 0x0000003F  # StreamName[x] = "?\0\0\0"
+        ret
+
+/*
+    void HOOK_SetImgDscName(eax = szImgTempStr, edx = p2)
+        imgDescriptor.name copying hook.
+        Added new fields into imgDescriptor, see the explanation at hooks.cpp
+*/
+_HOOK_SetImgDscName:
+        push ebx
+        lea ebx, [eax+edx]  # ebx = img.name
+
+        push eax
+        call _AllocBufferForString
+        add esp, 4
+        # eax = szImgNameBuffer
+
+        mov dword ptr [ebx+0], 0x3F   # strncpy(CImgDescriptor.dummy, "?", 4)
+        mov dword ptr [ebx+4], eax    # CImgDescriptor.customName = eax
+
+        pop ebx
+        ret
+
+/*
+    const char* ReadImgContent_Base(arg0 = retPointer, arg4 = upperRetPointer, arg8 = imgDescriptor, arg12 = imgId)
+        We should return (in eax ofcourse) the pointer into the imgDescriptor name
+        See hooks.cpp and HOOK_SetImgDscName
+*/
+_HOOK_ReadImgContent_Base:
+        # First let's do the operations that we've replaced
+        pop edx                     # Remove our return pointer, so we'll be at the caller scope
+        mov eax, dword ptr [esp+4]  # eax = imgDescriptor   [restoring replaced code]
+        sub esp, 0x3C               #                       [restoring replaced code]
+        push edx                    # Restore our return pointer
+
+        # Test if valid imgDescriptor (we have a hook that sends a null imgDescriptor...)
+        test eax, eax
+        jz _NotCustomName
+
+        # If custom name, return pointer to custom name
+        cmp word ptr [eax], 0x003F  # cmp(imgDescriptor.dummy, "?\0")
+        jnz _NotCustomName
+        mov eax, dword ptr [eax+4]  # We have a custom pointer at CImgDescriptor+4
+
+    _NotCustomName:
+        ret
 
 .att_syntax prefix

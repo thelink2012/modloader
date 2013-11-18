@@ -1,6 +1,6 @@
 *************************************************************************
 	Name: std-img --- (Standard IMG Loader Plugin)
-	Version: In-Dev
+	Version: 0.5
 	Author: LINK/2012 <dma_2012@hotmail.com)
 	Default Priority: 52
 *************************************************************************
@@ -17,8 +17,15 @@ Usage:
 	By using the first way, other plugins can handle the file too, providing extensibility.
 	By using the second way, only this plugin will handle the files inside the folder.
 	The first way is recommended.
+	
+	Additionally it replaces the standard img files if they're placed in their respective equivalent folders.
+	So, for example, to replace "models/gta3.img" you should have "modloader/mymod/models/gta3.img"
+	
+	It also has integration with img files loaded from gta.dat/default.dat files ("IMG" command).
+	If you place any .img file in the mod folder (example: "modloader/mymod/data/script/script.img")
+	that has a loading line in the .dat files (yes, script.img does), your file will be loaded instead.
 
-TODO:
-	[*] Loading pure .img files (e.g. a new gta3.img)
+NEEDS:
 	[*] Testing, mainly with RRR and SCM files 
+	
 

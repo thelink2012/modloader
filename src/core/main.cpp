@@ -22,7 +22,7 @@
 #include "Injector.h"
 #include "GameInfo.h"
 
-#if false && !defined(NDEBUG) && defined(__MINGW32__)
+#if 0 && !defined(NDEBUG)
 #define LOGFILE_AS_STDOUT
 #endif
 

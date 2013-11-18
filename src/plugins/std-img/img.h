@@ -84,21 +84,27 @@ class CThePlugin : public modloader::CPlugin
             
             bool isPlayerContent;           /* is player.img equivalent content? */
             bool isMainContent;             /* is our custom files? */
+            bool isCustomContent;           /* is neither player or main content */
+            bool isOriginal;                /* is one of the original game files */
             bool isReady;                   /* Tells if the ImgInfo is ready to be used */
 
             std::string pathMod;            /* img file path relative to mod dir */
             std::string path;               /* the full img file path (relative to game dir) */
+            size_t pathModHash, pathHash;   /* hashes for fast compare */
             
             /* map<InsideImgFileName, InComputerPath> */
             imgFiles_t imgFiles;
+            
             /* Sorted files */
             std::map<uint32_t, FileInfo*> imgFilesSorted;
 
             ImgInfo(int i = 0)
             {
-                isReady = true;
+                isReady         = true;
                 isMainContent   = (i & 1) != 0;
                 isPlayerContent = (i & 2) != 0;
+                isCustomContent = !isMainContent && !isPlayerContent;
+                isOriginal      = false;
             }
             
             void Process()
@@ -113,6 +119,14 @@ class CThePlugin : public modloader::CPlugin
                             imgFilesSorted[x.second.fileHash] = &x.second;
                     }
                 }
+            }
+            
+            void Setup(const modloader::ModLoaderFile& file)
+            {
+                this->path        = DoPathNormalization(GetFilePath(file));
+                this->pathMod     = DoPathNormalization(file.filepath);
+                this->pathHash    = crc32FromUpcaseString(this->path.c_str());
+                this->pathModHash = crc32FromUpcaseString(this->pathMod.c_str());
             }
             
         };

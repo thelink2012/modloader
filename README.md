@@ -30,6 +30,9 @@ Then, in a terminal *(cmd.exe on Windows)* go into the base source directory and
     cd build
     cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ../ && make
     
+On **Linux**, using MinGW for cross-compiling you might replace the last line with:
+    cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i486-mingw32-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ../ && make
+    
 This will build the mod loader, if everything went fine, there will be a folder /bin at the source base directory with the binaries.
 To install those binaries (and other stuff) run the commands:
     
@@ -43,7 +46,7 @@ To install those binaries (and other stuff) run the commands:
 
 To install your modifications will probably just need to extract the modifications content into a new folder inside *modloader/* directory
 
-** TODO, Mod Loader is still in development **
+**Mod Loader is still in development**
 
 
 ### License
