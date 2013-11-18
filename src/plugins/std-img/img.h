@@ -16,9 +16,11 @@
 #include <string>
 #include <map>
 #include <list>
+#include <vector>
 
 using namespace modloader;
 
+extern "C" uint32_t (*crc32FromUpcaseString)(const char*);
 
 /* Gets the file size from filename */
 inline __int64 GetFileSize(const char* filename)
@@ -42,22 +44,27 @@ class CThePlugin : public modloader::CPlugin
         {
             std::string name;
             std::string path;
+            uint32_t fileHash;
             size_t fileSize, fileSizeBlocks;    /* fileSize (normal) and fileSize in 2KiB blocks */
             bool bProcessed;
+            bool bIsPlayerFile;
+            bool bImported;
             
-            FileInfo() : bProcessed(false)
+            
+            FileInfo() :
+                bProcessed(false), bIsPlayerFile(false), bImported(false)
             {}
             
             /* Eats the file path and outputs file information into myself */
             void Process()
             {
                 this->bProcessed = true;
-                
+
                 this->fileSize = GetFileSize(this->path.c_str());
                 /* aligned fileSize in 2KiB blocks */
                 this->fileSizeBlocks = ((fileSize % 2048) == 0? fileSize / 2048 : (fileSize / 2048) + 1);
                 
-                
+                this->fileHash = crc32FromUpcaseString(name.c_str());
             }
             
             size_t GetSizeInBlocks()
@@ -65,6 +72,8 @@ class CThePlugin : public modloader::CPlugin
                 if(!this->bProcessed) this->Process();
                 return fileSizeBlocks;
             }
+            
+    
         };
         
         struct ImgInfo
@@ -81,7 +90,9 @@ class CThePlugin : public modloader::CPlugin
             std::string path;               /* the full img file path (relative to game dir) */
             
             /* map<InsideImgFileName, InComputerPath> */
-            imgFiles_t imgFiles;   
+            imgFiles_t imgFiles;
+            /* Sorted files */
+            std::map<uint32_t, FileInfo*> imgFilesSorted;
 
             ImgInfo(int i = 0)
             {
@@ -92,17 +103,33 @@ class CThePlugin : public modloader::CPlugin
             
             void Process()
             {
-                /* TODO */
+                /* Lets build the list of files sorted in hashing order. */
+                {
+                    /* Process files and push them into sorted list... */
+                    for(auto& x : imgFiles)
+                    {
+                        x.second.Process();
+                        if(x.second.fileHash && x.second.fileHash != -1)
+                            imgFilesSorted[x.second.fileHash] = &x.second;
+                    }
+                }
             }
             
         };
         
-        ImgInfo mainContent, playerContent;             /* main contents */
-        std::list<ImgInfo> imgFiles;                    /* list of img files to import */
-        std::map<unsigned short, FileInfo*> importList; /* map of objects (model/ifp/col/etc) index and it's respective file pointer */
-
-        CThePlugin() : mainContent(1), playerContent(2)
+        ImgInfo mainContent;                             /* main contents */
+        std::list<ImgInfo> imgFiles;                     /* list of img files to import */
+        
+        std::map<unsigned short, FileInfo*> importList;  /* map of objects (model/ifp/col/etc) index
+                                                          * and it's respective file pointer */
+        
+        std::map<unsigned long,  FileInfo*> playerFiles; /* map of the offset of a certain file in the game player.img
+                                                          * and it's equivalent file pointer in our mods folder */
+        
+        
+        CThePlugin() : mainContent(1)
         { }
+        
         
         /* Plugin Callbacks */
         const char* GetName();

@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <cctype>
 
-/* TODO push to linb */
 
 namespace modloader
 {
@@ -223,7 +222,7 @@ namespace modloader
      *      @bJust  Returns true only if just right inside the folder
      *      @folder Folder path
      * 
-     *      TODO this func can be better optimized
+     *      XXX this func can be better optimized
      */
     inline bool IsFileInsideFolder(std::string file, bool bJust, std::string folder)
     {

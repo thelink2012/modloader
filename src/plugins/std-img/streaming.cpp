@@ -10,14 +10,23 @@
 #include "Injector.h"
 #include <GTA_STREAM.h>
 #include <SImgGTAItemInfo.h>
+#include <CDirectory.h>
+#include <CDirectoryEntry.h>
 #include <vector>
 
+
+int iLoadingObjectIndex = -1;
+
+extern "C" CDirectory* playerImgDirectory;
+extern "C" void ReadPlayerImgEntries();
+extern "C" void BuildPlayerFilesList(CDirectoryEntry* entries, size_t numEntries);
 extern "C" void* CStreaming__ReadImgContents;
 extern "C" SImgGTAItemInfo* ms_aInfoForModel;
 extern "C" DWORD* pStreamCreateFlags;
 extern "C" void HOOK_RegisterModelIndex();
 extern "C" void (*ReadImgContent)(void* imgEntry, int imgId);
-int iLoadingObjectIndex = -1;
+
+
 
 /* Critical Section object wrapper for RAII
  * We could use C++11 thread facilities, but hey, use it just for this simple task?
@@ -96,7 +105,6 @@ static std::vector<HANDLE> openFileList;    /* list of open files */
 static CThePlugin::ImgInfo::imgFiles_t::iterator ImportImgContents_it;
 
 
-
 /*
  *  ImportImgContents
  *      Injects all our handled files into game data structures (ms_aInfoForModel)
@@ -104,6 +112,11 @@ static CThePlugin::ImgInfo::imgFiles_t::iterator ImportImgContents_it;
  */
 extern "C" void ImportImgContents()
 {
+    /* Before anything, build our player.img files list */
+    ReadPlayerImgEntries();
+    BuildPlayerFilesList((CDirectoryEntry*)(playerImgDirectory->m_pEntries),
+                         playerImgDirectory->m_dwCount);
+    
     typedef int (*fRead_t)(void* dummy, void* buf, size_t sz);
     imgPlugin->Log("\nImportImgContents()");
     
@@ -136,8 +149,7 @@ extern "C" void ImportImgContents()
     static fRead_t ReadCount = [](void*, void* buf, size_t sz)
     {
         if(sz != 4) { return 0; }
-        *((int*)(buf)) = imgInfo->imgFiles.size();
-        imgPlugin->Log("Returning fake-entries count: %d", *((int*)(buf)));
+        *((int*)(buf)) = imgPlugin->mainContent.imgFiles.size() - imgPlugin->playerFiles.size();    /* don't read player entries */
         return 4;
     };
     
@@ -149,13 +161,14 @@ extern "C" void ImportImgContents()
         char* bBuf = (char*)buf;
         if(sz != 0x20) { return 0; }
         
+        /* Don't read player entries */
+        while(it->second.bIsPlayerFile) ++it;
+        
         /* Build entry buffer to return to the game code */
         memset(&bBuf[0], 0, 8);
         *((unsigned short*)&bBuf[4]) = it->second.GetSizeInBlocks();
         strncpy(&bBuf[8], it->first.c_str(), 24);
-        
-        imgPlugin->Log("Returning fake-entry '%s'; Size in 2KiB blocks: '%d';", &bBuf[8], *((unsigned short*)&bBuf[4]));
-        
+
         /* Get current iterator then advance the iterator */
         ImportImgContents_it = it++;
         return 0x20;
@@ -180,23 +193,32 @@ extern "C" void ImportImgContents()
     ReadImgContent(0, 0);
     
     /* Undo replaced calls and return */
-    imgPlugin->Log("Restoring ReadImgContent calls...");
+    imgPlugin->Log("Restoring ReadImgContent calls...\n");
     WriteMemory<char>(0x5B6468, c5B6468, true);
     return;
 }
-
+/*
+ * Imports the replacement for an object (object means: model, texture, animation, etc)
+ */
 extern "C" void ImportObject(int index, CThePlugin::FileInfo& file)
 {
     auto& InfoForModel = ms_aInfoForModel[index];
-    imgPlugin->Log("Registering imported object index %d at \"%s\"", index, file.path.c_str());
     imgPlugin->importList[index] = &file;
     
-    if(InfoForModel.uiLoadFlag == 1)
-        imgPlugin->Log("warning: Importing object data (model/anim/etc) while it is still loaded!");
-
+    /* Setup new file offsets */
     InfoForModel.iBlockOffset = 0;
     InfoForModel.iBlockCount = file.GetSizeInBlocks();
-    //InfoForModel.ucImgId = ;
+    
+    /* If importing for the first time, log it */
+    if(!file.bImported)
+    {
+        imgPlugin->Log("Registering imported object index %d at \"%s\"", index, file.path.c_str());
+        file.bImported = true;
+    }
+    
+    if(InfoForModel.uiLoadFlag == 1)
+        imgPlugin->Log("warning: Importing object data %d [\"%s\"] while it is still loaded!",
+                       index, file.path.c_str());
 }
 
 /* Called from above, See HOOK_RegisterModelIndex too */
@@ -208,12 +230,65 @@ extern "C" void CALL_RegisterModelIndex(SImgGTAItemInfo* item, char imgId)
 }
 
 /*
+ *  Builds a list with the pointer to all files in the mods directory that have similar names to the files in player.img
+ */
+extern "C" void BuildPlayerFilesList(CDirectoryEntry* entries, size_t numEntries)
+{
+    auto& playerFiles = imgPlugin->playerFiles;
+    auto& files = imgPlugin->mainContent.imgFilesSorted;
+        
+    playerFiles.clear();
+    
+    /* Iterate on the img entries */
+    for(size_t i = 0; i < numEntries; ++i)
+    {
+        CDirectoryEntry& entry = entries[i];
+        uint32_t entryHash = crc32FromUpcaseString((char*)entry.filename);
+
+        // Find in our files by the hash
+        auto it = files.find(entryHash);
+        if(it != files.end())
+        {
+            // Register it
+            playerFiles[entry.fileOffset] = it->second;
+            it->second->bIsPlayerFile = true;
+            imgPlugin->Log("Adding to playerFiles: name: %s, fileOffset: %d;", entry.filename, entry.fileOffset);
+        }
+    }
+}
+
+/*
+ *  This is called clothes get requested, so we can find a replacement 
+ */
+extern "C" void OnClothesRequest(CDirectory* imgData, int index)
+{
+#if false && !defined(NDEBUG)
+    imgPlugin->Log("OnClothesRequest(%p, %d)", imgData, index);
+#endif
+    
+    /* Is some texture or  is body model index? */
+    if(index >= 20000 || (index >= 384 && index < 394))
+    {
+        /* Check if the requested clothes has a replacement... */
+        auto& InfoForModel = ms_aInfoForModel[index];
+        auto it = imgPlugin->playerFiles.find(InfoForModel.iBlockOffset);
+        if(it != imgPlugin->playerFiles.end())
+        {
+            /* We have a replacement over here! */
+            ImportObject(index, *((*it).second));
+        }
+    }
+    else
+        imgPlugin->Log("OnClothesRequest failed on index range");
+}
+
+/*
  * This is called to get a file handle to read from in the streaming thread
  */
 extern "C" HANDLE CALL_NewFile(HANDLE hOriginal, void* from)
 {
-#ifndef NDEBUG
-    imgPlugin->Log("CALL_NewFile from %p with original handle %p", from, hOriginal);
+#if false && !defined(NDEBUG)
+    imgPlugin->Log("CALL_NewFile from %p with original handle %p -- (modelIndex %d)", from, hOriginal, iLoadingObjectIndex);
 #endif
     
     CriticalLock lock(cs);  /* We're in main thread, lock access from streaming thread */
@@ -233,6 +308,10 @@ extern "C" HANDLE CALL_NewFile(HANDLE hOriginal, void* from)
         it->second->Process();
         ImportObject(it->first, *it->second);
     }
+    
+#if false && !defined(NDEBUG)
+    imgPlugin->Log("\t...going on this call.", from, hOriginal, iLoadingObjectIndex);
+#endif
     
     /* Open our custom file */
     HANDLE hResult = CreateFileA(filepath, GENERIC_READ, FILE_SHARE_READ, NULL,
@@ -259,7 +338,7 @@ extern "C" void CALL_RemFile(GTA_STREAM* stream)
 {
     CriticalLock lock(cs);  /* We're in the streaming thread, lock any access to our data from main thread */
     
-#ifndef NDEBUG    
+#if false && !defined(NDEBUG) 
     imgPlugin->Log("CALL_RemFile");
 #endif
     

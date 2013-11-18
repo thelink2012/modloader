@@ -49,13 +49,15 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "In-Dev";
+    return "0.3";
 }
 
 const char** CThePlugin::GetExtensionTable(size_t& len)
 {
-    /* Put the extensions  this plugin handles on @table */
-    static const char* table[] = { "img", "dff", "txd", "col", "ipl", "dat", "ifp", "rrr", "scm", 0 };
+    /* Put the extensions  this plugin handles on @table
+     * SCM disabled because, well, script.img is the standard file for it and is like a 'new' thing
+     * May disable RRR too? */
+    static const char* table[] = { "img", "dff", "txd", "col", "ipl", "dat", "ifp", "rrr", /*"scm",*/ 0 };
     return (len = GetArrayLength(table), table);
 }
 
@@ -95,11 +97,23 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
     else if(!file.is_dir)
     {
         size_t plen;
+        
         /* Check on extension table if the extension is supported */
         for(const char** p = this->GetExtensionTable(plen); *p; ++p)
         {
             if(IsFileExtension(file.filext, *p))
-                return MODLOADER_YES;
+            {
+                bool isOkay = true; int dummy;
+                std::string str;
+                
+                /* If dat or r3 file, we need to make sure that they're nodes%d.dat or carrec%d.rrr */
+                if(IsFileExtension(file.filext, "dat"))
+                    isOkay = (sscanf(tolower(str = file.filename).c_str(), "nodes%d", &dummy) == 1);
+                else if(IsFileExtension(file.filext, "rrr"))
+                    isOkay = (sscanf(tolower(str = file.filename).c_str(), "carrec%d", &dummy) == 1);
+                    
+                if(isOkay) return MODLOADER_YES;
+            }
         }
     }
     return MODLOADER_NO;
@@ -131,10 +145,8 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  */
 int CThePlugin::PosProcess()
 {
-    for(auto& x : mainContent.imgFiles)
-    {
-        x.second.Process();
-    }
+    mainContent.Process();
+    for(auto& x : this->imgFiles) x.Process();
     return 0;
 }
 
@@ -149,7 +161,10 @@ void CThePlugin::AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const cha
     
     auto& f = img.imgFiles[xname];
     if(f.path.empty())
+    {
         f.path = GetFilePath(file) + filename2;
+        f.name = xname;
+    }
     else
         Log("Trying to add new file into std-img but file \"%s\" is already loaded into std-img!\n"
             "\tFirst file path: %s",
@@ -161,8 +176,9 @@ void CThePlugin::AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const cha
  */
 bool CThePlugin::ProcessImgFolder(const modloader::ModLoaderFile& file)
 {
-    auto& img = AddNewItemToContainer(this->imgFiles);
-    img.path = file.filepath;
+    //auto& img = AddNewItemToContainer(this->imgFiles);
+    //img.path = file.filepath;
+    auto& img = this->mainContent;
     
     /* Recursivelly iterate on this img folder adding all files into the img list */
     ForeachFile("*.*", true, [this, &img, &file](ModLoaderFile& ff)
@@ -174,7 +190,6 @@ bool CThePlugin::ProcessImgFolder(const modloader::ModLoaderFile& file)
         return true;
     });
     
-    img.Process();
     return true;
 }
 
@@ -183,6 +198,17 @@ bool CThePlugin::ProcessImgFolder(const modloader::ModLoaderFile& file)
  */
 bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
 {
-    // TODO
+    /*
+     *  TODO  loading .img files
+     *      The implementation of this function shall:
+     *          Replace the img string at the game executable if the filepath is folder example "/models/gta3.img"
+     *          In any other case, the file should be ignored, needing gta.dat registering
+     *          Well, maybe storing this filepath and looking for it on gta.dat read may be a good idea?
+     */
+    
+    if(IsFileInsideFolder(file.filepath, true, "models"))
+    {
+    }
+    
     return false;
 }

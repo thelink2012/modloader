@@ -18,3 +18,7 @@ Usage:
 	By using the second way, only this plugin will handle the files inside the folder.
 	The first way is recommended.
 
+TODO:
+	[*] Loading pure .img files (e.g. a new gta3.img)
+	[*] Testing, mainly with RRR and SCM files 
+

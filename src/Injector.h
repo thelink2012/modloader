@@ -182,8 +182,7 @@ inline memory_pointer GetAbsoluteOffsetInOpcode(memory_pointer at)
 {
 	switch(ReadMemory<uint8_t>(at, true))
 	{
-		// TODO: Handle other instructions
-		// TODO: Handle prefix
+        // We need to handle other instructions (and prefixes)...
 		case 0xE8:	// call rel
 		case 0xE9:	// jmp rel
 			return ReadRelativeOffset(at+1, 4);

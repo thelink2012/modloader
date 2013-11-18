@@ -29,8 +29,7 @@
 /*
  * TODO: Plugin Priority Config File
  *       ~~~~~~ Exclusion Config File
- *      Thread-safe ?
- *      Export ReadModf & LoadPlugin / UnloadPlugin
+ *      Export ReadModf & LoadPlugin / UnloadPlugin ?
  *      Export FindFileHandler ?
  * 
  *
@@ -344,7 +343,7 @@ namespace modloader
         SYSTEMTIME time;
         GetLocalTime(&time);
         
-        Log("Shutdowing modloader...");
+        Log("\nShutdowing modloader...");
         this->UnloadPlugins();
         Log("modloader has been shutdown.");
         
@@ -373,7 +372,7 @@ namespace modloader
     
     extern "C" void CALL_Startup() { loader.Startup(); }
     extern "C" void HOOK_Init();
-    extern "C" void* _gtasa_try;
+    extern "C" void* WinMainPtr;
     
     void CModLoader::Patch()
     {
@@ -392,7 +391,7 @@ namespace modloader
                 Error("Modloader still do not support other versioons than HOODLUM GTA SA 1.0");
             else
             {
-                _gtasa_try = MakeCALL(0x824577, (void*) &HOOK_Init);    
+                WinMainPtr = MakeCALL(0x8246EC, (void*) HOOK_Init);    
             }
             
         }, true);
@@ -699,7 +698,6 @@ namespace modloader
             Log("Handling file \"%s\\%s\" by plugin \"%s\"", file.parentMod->name.c_str(), filePath, pluginName);
             if(handler->ProcessFile && !handler->ProcessFile(handler, &file.data))
             {
-                /* TODO */
                 return true;
             }
             else

@@ -23,17 +23,21 @@
 .globl  _HOOK_RemFile
 .globl  _CALL_RemFile
 
+.globl _HOOK_RequestClothes
 
 
 /* vars */
 .globl  _ms_aInfoForModel
+.globl  _playerImgDirectory
 .globl  _iLoadingObjectIndex
 .globl  _pBeginStreamReadCoolReturn
+.globl  _CStreaming__RequestObject
 
 /* funcs */
 .globl __AllocateOrFindExternalScript
 .globl _ImportImgContents
-.globl  _CALL_RegisterModelIndex
+.globl _CALL_RegisterModelIndex
+.globl _OnClothesRequest
 
 
 .text
@@ -85,6 +89,23 @@ _HOOK_RegisterNextModelRead:
         mov edx,  dword ptr [_ms_aInfoForModel]
         mov edx, [edx+0xC+eax*4]    # edx = ms_aInfoForModel[iLoadingModelIndex].iBlockCount
         ret
+
+/*
+    char _cdecl HOOK_RequestClothes(arg4 = index, arg8 = type)
+        This hook replaces the call to CStreaming::RequestObject that loads clothes.
+        We need it because we need to know clothes are being requested.
+*/
+_HOOK_RequestClothes:
+        cmp dword ptr [esp+8], 0x12     # Is clothes?
+        jnz _IsNotClothes
+        
+        push dword ptr [esp+4]      # index
+        push _playerImgDirectory    # img data
+        call _OnClothesRequest
+        add esp, 8
+
+    _IsNotClothes:
+        jmp dword ptr [_CStreaming__RequestObject]
 
 /*
     HANDLE _cdecl HOOK_NewFile(eax = hOriginalFile, esi = blockOffset)

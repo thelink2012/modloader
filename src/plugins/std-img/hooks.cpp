@@ -7,9 +7,6 @@
 
 /*
  *  TODO
- *    ** player loading
- *    ** img replacing
- *    ** I saw IMGs can handle .DAT files, what is that? Should we make a hook to prevent duplicates? ANS: YES!!!! nodes*.dat !!!
  *    ** Needs testing on RRR and SCM replacement to see if it is working well
  */
 
@@ -22,43 +19,53 @@ extern "C"      /* The content must have C name mangling, so our ASM code can ac
 {
     
 typedef int CExternalScripts;
-    
-
+  
 /* The following are hooks implemented in hooks.s file */
-void HOOK_OpenMainCacheImg();
 void HOOK_AllocateOrFindExternalScript();
 int  HOOK_AllocateOrFindPath(const char*);
 void HOOK_ReadImgContents();
 void HOOK_RegisterModelIndex();
 void HOOK_RegisterNextModelRead();
+void HOOK_RequestClothes();
 void HOOK_NewFile();
 void HOOK_RemFile();
 void* pBeginStreamReadCoolReturn;
 
-
+void* CStreaming__RequestObject;
 void (*ReadImgContent)(void* imgEntry, int imgId) = memory_pointer_a(0x5B6170);
+
+uint32_t (*crc32FromUpcaseString)(const char*);
 
 DWORD* pStreamCreateFlags;          /* Pointer to games async file handle flags (for CreateFile) */
 SImgGTAItemInfo* ms_aInfoForModel;  /* Pointer to array of game model info */
 void* CStreaming__ReadImgContents;  /* Pointer to the function that reads img header from open img's */
+void* playerImgDirectory;           /* files offsets, name, etc, from player.img */
+void* playerImgEntries;
 
 /* Those will point to game functions */
 static int (__cdecl *addPath)(const char* name);
 static int (__fastcall *CExternalScripts__Allocate)(CExternalScripts* self, int dummy, const char* name);
 static int (__fastcall *CExternalScripts__FindByName)(CExternalScripts* self, int dummy, const char* name);
+static int (__fastcall *CDirectory__CDirectory)(void* pDirectory, int dummy, size_t count, void* pEntries);
+static int (__fastcall *CDirectory__ReadImgEntries)(void* pDirectory, int dummy, const char* file);
 
 /* Those (again) will store pointer to game data */
 static int* paths;
 static int* pathCount;
 
+
+
 /*
- *  [hooks.s] HOOK_AllocateOrCreateScript
- *      By default the game always create a script, meaning there must be only a single file of scms
- *      Let's remove this, and do the way other file types do...
- *      search for file, found? return it : allocate;
+ *      We're going to replace the calls that registers a script or R3 path when reading from a img
+ *      By default the game always create a script or a r3 path, different from the other files format,
+ *      that does a (exist? existingIndex : allocIndex).
+ * 
  */
+
+
 /*
  *  AllocateOrFindExternalScript
+ *      for streamed SCM files
  *      Tries to find a external script, if not found, alloc it
  */
 int AllocateOrFindExternalScript(CExternalScripts* obj, const char* name)
@@ -93,11 +100,8 @@ static int getPath(const char* r3name)
 
 /*
  *  HOOK_AllocateOrFindPath
- *      This hook is placed because if the user duplicates a R3 path at user img,
- *      we won't alloc the path again, just get the one already defined.
- *      We doing this only in R3 paths (and SCM) because all this behaviour is already present
- *      in the game img loader for all extensions but SCM and RRR.
- *      Here we are fixing RRR.
+ *      for R3 paths
+ * 
  */
 int HOOK_AllocateOrFindPath(const char* name)
 {
@@ -107,10 +111,23 @@ int HOOK_AllocateOrFindPath(const char* name)
 }
 
 
+
+
+/*
+ * Read entries from player.img into it's CDirectory
+ */
+void ReadPlayerImgEntries()
+{
+    CDirectory__CDirectory(playerImgDirectory, 0, 550, playerImgEntries);
+    CDirectory__ReadImgEntries(playerImgDirectory, 0, "MODELS\\PLAYER.IMG");
+}
+
+
+
+
 /*
  *  We're going to reimplement SA's ReadFile/GetOverlappedResult (well, kinda) so it ignores the error ERROR_HANDLE_EOF.
  *  This will permit ours files on disk to not have a real size aligned to 2KiB
- * 
  * 
  */
 
@@ -157,13 +174,19 @@ static BOOL WINAPI NoEOF_GetOverlappedResult(HANDLE hFile, LPOVERLAPPED lpOverla
 void ApplyPatches()
 {
     size_t addr;
-
+    bool isHoodlum = ReadMemory<uint8_t>(0x406A20, true) == 0xE9;
+    
     /* Read some pointers */
     {
         ms_aInfoForModel = ReadMemory<SImgGTAItemInfo*>(0x408835 + 2, true);
+        playerImgDirectory = ReadMemory<void*>(0x5A69ED + 1, true);
+        playerImgEntries = ReadMemory<void*>(0x5A69E3 + 1, true);
         paths = ReadMemory<int*>(0x45A001 + 1, true);
         pathCount = ReadMemory<int*>(0x459FF0 + 2, true);
         CExternalScripts__FindByName = memory_pointer_a(0x4706F0);
+        crc32FromUpcaseString = memory_pointer_a(ReadRelativeOffset(0x471ADD + 1).p); 
+        CDirectory__CDirectory = memory_pointer_a(ReadRelativeOffset(0x5A69F2 + 1).p);
+        CDirectory__ReadImgEntries = memory_pointer_a(ReadRelativeOffset(0x5A6A01 + 1).p);
 
         /* for CreateFile flags... */
         pStreamCreateFlags = ReadMemory<DWORD*>(0x406BE5+1, true);
@@ -182,13 +205,28 @@ void ApplyPatches()
          * do something if it came from the call at 0x40CF34 */
         pBeginStreamReadCoolReturn = (void*)(0x40CF34 + 5);
 
-
         /* We need to know the next model to be read before the BeginStreamRead request happens */
         MakeCALL(0x40CCA6, (void*) HOOK_RegisterNextModelRead);
         MakeNOP(0x40CCA6 + 5, 2);
 
+        /* for clothes we also need to know it's hashes and other info */
+        if(isHoodlum)
+        {
+            CStreaming__RequestObject = MakeCALL(0x156644F, (void*) HOOK_RequestClothes).p; 
+            
+            /* Rewrite the HOODLUM call */
+            MakeCALL(0x1566401, (void*) HOOK_RequestClothes).p;
+            MakeJMP (0x1566406, 0x156641F);
+            MakeNOP (0x156640B, 0x14);
+        }
+        else
+        {
+            CStreaming__RequestObject = MakeCALL(0x40A106, (void*) HOOK_RequestClothes).p;     
+            MakeCALL(0x40A0D1, (void*) HOOK_RequestClothes).p;
+        }
+
         /* If registered a model that we've replaced, open our file and load from it */
-        addr = ReadMemory<uint8_t>(0x406A20, true) == 0xE9? 0x156C2FB : 0x406A5B; /* isHOODLUM? HOODLUM : ORIGINAL */
+        addr = isHoodlum? 0x156C2FB : 0x406A5B; /* isHOODLUM? HOODLUM : ORIGINAL */
         MakeCALL(addr, (void*) HOOK_NewFile);
         MakeNOP(addr+5, 1);
 
