@@ -735,7 +735,7 @@ namespace modloader
     ModLoaderPlugin* CModLoader::FindFileHandler(const ModLoaderFile& file)
     {
         ModLoaderPlugin* handler = 0;
-        
+
         /* First, search for the handler at the vector for the extension,
          * it is commonly possible that the handler for this file is here and we don't have to call CheckFile on all plugins
          * At this point all 'plugin.checked' are false.

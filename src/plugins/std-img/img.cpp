@@ -208,19 +208,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
      */
     static auto RegisterImgPath = [](std::string& buf, const char* path)
     {
-        if(!buf.empty())
-        {
-            imgPlugin->Log
-               ("Failed to replace again one of the main img files because you've already replaced it!\n"
-                "\tPath: %s", buf.c_str());
-            return false;
-        }
-        else
-        {
-            imgPlugin->Log("Pushed img file to imgFiles: %s", path);
-            buf = path;
-            return true;
-        }
+        return RegisterReplacementFile(*imgPlugin, "", buf, path);
     };
     
     /* Replace an pointer at mem with pointer to buf data */

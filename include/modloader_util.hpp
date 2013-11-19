@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cctype>
 
+#include "modloader.hpp"
 
 namespace modloader
 {
@@ -65,6 +66,53 @@ namespace modloader
     {
         return (std::string(file.modpath) + file.filepath);
     }
+
+    inline uint32_t fvn1a_32_init()
+    { return (2166136261U); }
+    inline uint32_t fnv1a_32_transform(uint32_t fvn, uint8_t c)
+    { return ((((fvn) ^ (uint32_t)(c)) * 16777619)); }
+    inline uint32_t fnv1a_32_final(uint32_t fnv)
+    { return (fnv); }
+
+    inline uint32_t fnv1a_32(const char* string)
+    {
+        uint32_t fnv = fvn1a_32_init();
+        for(const char* str = string; *str; ++str)
+            fnv = fnv1a_32_transform(fnv, *str);
+        return fnv1a_32_final(fnv);
+    }
+    
+    inline uint32_t fnv1a_upper_32(const char* string)
+    {
+        uint32_t fnv = fvn1a_32_init();
+        for(const char* str = string; *str; ++str)
+            fnv = fnv1a_32_transform(fnv, toupper(*str));
+        return fnv1a_32_final(fnv);
+    }
+    
+    inline uint32_t fnv1a(const char* string)
+    { return fnv1a_32(string); }
+    
+    inline uint32_t fnv1a_upper(const char* string)
+    { return fnv1a_upper_32(string); }
+    
+    inline bool RegisterReplacementFile(const CPlugin& plugin, const char* name,  std::string& buf, const char* path)
+    {
+        if(!buf.empty())
+        {
+            plugin.Log
+               ("warning: Failed to replace a file %s with \"%s\" because the file already has a replacement!\n"
+                "\tReplacement: %s", name, path, buf.c_str());
+            return false;
+        }
+        else
+        {
+            plugin.Log("Found replacement file for %s\n\tReplacement: %s", name, path);
+            buf = path;
+            return true;
+        }
+    }
+    
     
     /*
      *  ReadEntireFile

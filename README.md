@@ -31,6 +31,7 @@ Then, in a terminal *(cmd.exe on Windows)* go into the base source directory and
     cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ../ && make
     
 On **Linux**, using MinGW for cross-compiling you might replace the last line with:
+
     cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i486-mingw32-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ../ && make
     
 This will build the mod loader, if everything went fine, there will be a folder /bin at the source base directory with the binaries.

@@ -1,0 +1,48 @@
+Loading method to be used by each data\ file
+
+Methods:
+	by diff is look into the differences between the files in modloader dir and the original game file..
+	replace is to replace the entire file content (replacing the CFileMgr::Open string)
+	not used, well, the file is not even used by the game...
+	need to understand format means that, we need to understand the format beforing reaching a conclusion
+
+<DATAFILE>         <METHOD>
+--------------------------------------
+animgrp.dat        by diff
+animviewer.dat     not used
+ar_stats.dat       by diff
+carcols.dat        by diff
+cargrp.dat         by diff
+carmods.dat        by diff
+clothes.dat        need to understand format
+fonts.dat          replace
+furnitur.dat       not used
+gridref.dat        replace, not used at all
+default.dat		   by diff
+gta.dat            by diff
+gta_quick.dat      not used
+handling.cfg       by diff
+melee.dat          need to understand format
+numplate.dat       not used
+object.dat         by diff
+ped.dat            by diff
+pedgrp.dat         by diff
+pedstats.dat       by diff
+plants.dat         need to understand format
+polydensity.dat    not used
+popcycle.dat       replace
+procobj.dat        by diff (I think this file is not used at all by the game)
+shopping.dat       by diff
+statdisp.dat       by diff
+surface.dat        not used 
+surfaud.dat        by diff
+surfinfo.dat       by diff
+timecyc.dat        by diff
+timecycp.dat       not used
+water.dat          by diff
+water1.dat         not used
+weapon.dat         by diff
+
+new files:
+water9.dat         by diff
+
