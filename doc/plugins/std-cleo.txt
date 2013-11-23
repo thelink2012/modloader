@@ -1,0 +1,27 @@
+*************************************************************************
+	Name: std-cleo --- (Standard CLEO Plugin)
+	Version: RC1
+	Author: LINK/2012 <dma_2012@hotmail.com>
+	Default Priority: 50
+*************************************************************************
+
+Description:
+	This is the standard CLEO loader, it loads files related to the CLEO modification.
+	So, it handles the following extensions: cs, cm, cleo and fxt.
+
+Usage:
+	Just copy the specific CLEO file with cs, cm, cleo or fxt extension to anywhere inside a mod folder.
+	Or you can put the files inside a CLEO folder inside a mod folder.
+	The second way is recommended and is normally what comes in packed mods.
+
+Weakness and Limitations:
+	[*] It goes against one of the ModLoader main rules, to not touch the main game install.
+	    This plugin copies CLEO specific files into the CLEO\ folder at the main path.
+	   	But yeah, it does a cleanup when the game closes. On abnormal game termination, the cleanup is done on game startup.
+	   	
+	   	For that reason, I'd recommend the use of CLEO mods at the CLEO\ folder in the main game path.
+	   	But the choice is yours.
+	   	
+	[*] Can't load .cleo plugins, the reason?
+	    Because when the .cleo plugin file is finally copied into the CLEO\ folder, CLEO.asi has already take care of the .cleo plugins.
+

@@ -74,6 +74,14 @@ namespace modloader
     inline uint32_t fnv1a_32_final(uint32_t fnv)
     { return (fnv); }
 
+    inline uint32_t fnv1a_32_binary(const char* bytes, size_t size)
+    {
+        uint32_t fnv = fvn1a_32_init();
+        for( ; size--; ++bytes)
+            fnv = fnv1a_32_transform(fnv, *bytes);
+        return fnv1a_32_final(fnv);
+    }
+    
     inline uint32_t fnv1a_32(const char* string)
     {
         uint32_t fnv = fvn1a_32_init();
@@ -139,6 +147,8 @@ namespace modloader
                     bResult = true; /* Success */
                 else
                     out.clear();    /* Failure, clear output */
+                
+                bResult = true;
             }
 
             fclose(f);
@@ -366,6 +376,17 @@ namespace modloader
       return (dwAttrib != INVALID_FILE_ATTRIBUTES && 
              (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
     }
+    
+    /*
+     * IsFileA
+     *      WinAPI-like function to check if a file or directory exists
+     *      @szPath: Directory to check
+     */
+    inline BOOL IsPathA(LPCTSTR szPath)
+    {
+      DWORD dwAttrib = GetFileAttributes(szPath);
+      return (dwAttrib != INVALID_FILE_ATTRIBUTES);
+    }
 
     /*
      * MakeSureDirectoryExistA
@@ -376,11 +397,80 @@ namespace modloader
     {
         if(!IsDirectoryA(szPath))
         {
-            CreateDirectory(szPath, NULL);
+            CreateDirectoryA(szPath, NULL);
             return FALSE;
         }
         return TRUE;
     }
+    
+    inline BOOL CopyDirectoryA(LPCTSTR szFrom, LPCTSTR szTo)
+    {
+        // TODO error checking
+        if(CreateDirectoryA(szTo, NULL))
+        {
+            ForeachFile(szFrom, "*.*", false, [&szFrom, &szTo](ModLoaderFile& file)
+            {
+                CHAR szToFile[MAX_PATH], szFromFile[MAX_PATH];
+                const char* pPath = file.filename;
+                
+                sprintf(szToFile, "%s\\%s", szTo, pPath);
+                sprintf(szFromFile, "%s\\%s", szFrom, pPath);
+
+                if(file.is_dir)
+                    CopyDirectoryA(szFromFile, szToFile);
+                else
+                    CopyFileA(szFromFile, szToFile, FALSE);
+
+                return true;
+            });
+            
+            return TRUE;
+        }
+        
+        return FALSE;
+    }
+    
+    inline BOOL DestroyDirectoryA(LPCTSTR szPath)
+    {
+        // TODO error checking
+        
+        ForeachFile(szPath, "*.*", false, [&szPath](ModLoaderFile& file)
+        {
+                CHAR szPathFile[MAX_PATH];
+                const char* pPath = file.filename;
+                
+                sprintf(szPathFile, "%s\\%s", szPath, pPath);
+                
+                if(file.is_dir)
+                    DestroyDirectoryA(szPathFile);
+                else
+                    DeleteFileA(szPathFile);
+
+                return true;
+        });
+        
+        RemoveDirectoryA(szPath);
+        return TRUE;
+    }
+    
+    
+    
+    /* RAII for SetCurrentDirectory */
+    struct CSetCurrentDirectory
+    {
+        char buffer[MAX_PATH];
+        
+        CSetCurrentDirectory(const char* newDir)
+        {
+            GetCurrentDirectoryA(sizeof(buffer), buffer);
+            SetCurrentDirectoryA(newDir);
+        }
+        
+        ~CSetCurrentDirectory()
+        {
+            SetCurrentDirectoryA(buffer);
+        }
+    };
 
 
 }

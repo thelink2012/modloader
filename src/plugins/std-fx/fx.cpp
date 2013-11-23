@@ -30,6 +30,7 @@ class CThePlugin : public modloader::CPlugin
         int OnShutdown();
         int CheckFile(const modloader::ModLoaderFile& file);
         int ProcessFile(const modloader::ModLoaderFile& file);
+        int PosProcess();
 
         const char** GetExtensionTable(size_t& outTableLength);
 
@@ -159,7 +160,17 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     return !it->second.Process(GetFilePath(file).c_str());
 }
 
+/*
+ * Called after all files have been processed
+ */
+int CThePlugin::PosProcess()
+{
+    return 0;
+}
 
+/*
+ *  Setup replacement handler foreach file type 
+ */
 void CThePlugin::SetupHandlers()
 {
     const char* name;
@@ -275,69 +286,65 @@ void CThePlugin::SetupHandlers()
         
     // grass*.dff replacer
     {
-        static auto ReplaceGrassSprintf = []()
-        {
-            static bool bDidIt = false;
-            if(bDidIt) return;
-            
-            /* Replace a sprintf that is like "models/grass/%s" with just "%s" */
-            WriteMemory<const char*>(0x5DD25C + 1, "%s");
-            bDidIt = true;
-        };
+        /* Replace a sprintf that is like "models/grass/%s" with just "%s" */
+        WriteMemory<const char*>(0x5DD25C + 1, "%s");
+        /* Then replace the grass string pointers to have the full path instead of only the name... */
+        WriteMemory<const char*>(0x5DDA83 + 4, "models/grass/grass0_1.dff", true);
+        WriteMemory<const char*>(0x5DDA8B + 4, "models/grass/grass0_2.dff", true);
+        WriteMemory<const char*>(0x5DDA93 + 4, "models/grass/grass0_3.dff", true);
+        WriteMemory<const char*>(0x5DDA9B + 4, "models/grass/grass0_4.dff", true);
+        WriteMemory<const char*>(0x5DDABF + 4, "models/grass/grass1_1.dff", true);
+        WriteMemory<const char*>(0x5DDAC7 + 4, "models/grass/grass1_2.dff", true);
+        WriteMemory<const char*>(0x5DDACF + 4, "models/grass/grass1_3.dff", true);
+        WriteMemory<const char*>(0x5DDAD7 + 4, "models/grass/grass1_4.dff", true);
+        
+        /* Replacers: */
         
         name = "grass0_1.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDA83 + 4, path, true);
         });
         
         name = "grass0_2.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDA8B + 4, path, true);
         });
         
         name = "grass0_3.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDA93 + 4, path, true);
         });
         
         name = "grass0_4.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDA9B + 4, path, true);
         });
         
         name = "grass1_1.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDABF + 4, path, true);
         });
         
         name = "grass1_2.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDAC7 + 4, path, true);
         });
         
         name = "grass1_3.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDACF + 4, path, true);
         });
         
         name = "grass1_4.dff";
         h[hash(name)].Set(name, [](const handler_t& h, const char* path)
         {
-            ReplaceGrassSprintf();
             WriteMemory<const char*>(0x5DDAD7 + 4, path, true);
         });
     }

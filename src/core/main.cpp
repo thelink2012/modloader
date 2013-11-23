@@ -112,6 +112,10 @@ namespace modloader
         private:
             modloader_t loader;
             
+            bool bWorking;      /* true when the gameloader has been started up (Startup())
+                                 * and false when the loader has shut down (Shutdown())
+                                 */
+            
             std::string gamePath;
             std::string modsPath;
             std::string cachePath;
@@ -147,19 +151,13 @@ namespace modloader
             void HandleFiles()
             {
                 Log("\nHandling files...");
-                SetCurrentDirectoryA("modloader\\");
+                CSetCurrentDirectory xdir("modloader\\");
                 for(auto& mod : this->mods)
                 {
-                    SetCurrentDirectoryA((mod.name + "\\").c_str());
-                    {
-                        for(auto& file : mod.files)
-                        {
-                            this->HandleFile(file);
-                        }
-                    }
-                    SetCurrentDirectoryA("..\\");
+                    CSetCurrentDirectory xdir((mod.name + "\\").c_str());
+                    for(auto& file : mod.files)
+                        this->HandleFile(file);
                 }
-                SetCurrentDirectoryA("..\\");
             }
             
             /*
@@ -193,6 +191,7 @@ namespace modloader
              */
             void StartupPlugin(ModLoaderPlugin& data)
             {
+                Log("Starting up plugin \"%s\"", data.name);
                 if(data.OnStartup && data.OnStartup(&data))
                 {
                     Log("Failed to startup plugin '%s', unloading it.", data.name);
@@ -205,6 +204,7 @@ namespace modloader
              */
             void StartupPlugins()
             {
+                Log("\nStarting up plugins...");
                 for(auto& plugin : this->plugins)
                     StartupPlugin(plugin);
             }
@@ -212,7 +212,7 @@ namespace modloader
             
             
         public:
-            CModLoader() : currentModId(0), currentFileId(0)
+            CModLoader() : bWorking(false), currentModId(0), currentFileId(0)
             { }
             
             void Patch();
@@ -270,14 +270,25 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 
 namespace modloader
 {
+    static LPTOP_LEVEL_EXCEPTION_FILTER PrevFilter = 0;
+    
+    static LONG CALLBACK modloader_UnhandledExceptionFilter(LPEXCEPTION_POINTERS pException)
+    {
+        // TODO generate dump
+        Log("\n-------------\nUnhandled Exception! Calling loader.Shutdown();");
+        loader.Shutdown();
+        return (PrevFilter? PrevFilter(pException) : EXCEPTION_CONTINUE_SEARCH);  // I'm not really sure about this return
+    }
+     
+    
     /*
      * CModLoader::Startup
      *      Start ups modloader, loading plugins and other stuffs
      */
     bool CModLoader::Startup()
     {
-        // If modloader directory does not exist, do nothing
-        if(IsDirectoryA("modloader"))
+        // If already started up or modloader directory does not exist, do nothing
+        if(this->bWorking == false && IsDirectoryA("modloader"))
         {
             char gameFolder[MAX_PATH * 2];
             
@@ -292,30 +303,42 @@ namespace modloader
             Log("========================== modloader %d.%d.%d %s==========================\n",
                 MODLOADER_VERSION_MAJOR, MODLOADER_VERSION_MINOR, MODLOADER_VERSION_REVISION,
                 MODLOADER_VERSION_ISDEV? "Development Build " : "");
-            
-            /* Register modloader methods */
-            this->loader.Log   = &Log;
-            this->loader.Error = &Error;       
 
             /* --- */
             GetCurrentDirectoryA(sizeof(gameFolder), gameFolder);
             this->gamePath = gameFolder;
             MakeSureStringIsDirectory(this->gamePath);
+
+            /* Make sure the main paths do exist */
+            {
+                static const char* folders[] =
+                {
+                    "modloader/.data",
+                    "modloader/.data/plugins",
+                    "modloader/.data/cache",
+                    0
+                };
+                
+                this->modsPath = "modloader\\";
+                this->cachePath = this->modsPath + ".data\\cache\\";
+                
+                for(const char** folder = folders; *folder; ++folder)
+                {
+                    Log("Making sure directory \"%s\" exists...", *folder);
+                    if(!MakeSureDirectoryExistA(*folder)) Log("\t...it didn't, created it.");
+                }
+            }
             
-            /* "/modloader/.plugins" is used to store plugins .dll */
-            Log("Making sure directory \"\\modloader\\.plugins\\\" exists...");
-            if(!MakeSureDirectoryExistA("modloader/.plugins")) Log("...it didn't, created it.");
-           
-            /* "/modloader/.cache" is used for faster loading */
-            Log("Making sure directory \"\\modloader\\.cache\\\" exists...");
-            if(!MakeSureDirectoryExistA("modloader/.cache")) Log("...it didn't, created it.");
+            /* Register modloader methods and vars */
+            this->loader.gamepath  = this->gamePath.c_str();
+            this->loader.modspath  = this->modsPath.c_str();
+            this->loader.cachepath = this->cachePath.c_str();
+            this->loader.Log   = &Log;
+            this->loader.Error = &Error;
             
-            /* get full paths */
-            this->modsPath = this->gamePath + "modloader\\";
-            this->cachePath = this->modsPath + ".cache\\";
             
             // Do init
-            this->LoadPlugins();        /* Load plugins, such as std-img.dll at /modloader/.plugins */
+            this->LoadPlugins();        /* Load plugins, such as std-img.dll at /modloader/.data/plugins */
             this->StartupPlugins();     /* Call Startup methods from plugins */
             this->PerformSearch();      /* Search for mods at /modloader, but do not install them yet */
             this->HandleFiles();        /* Install mods found on search above */
@@ -327,11 +350,12 @@ namespace modloader
 
             /* Just make sure we're in the main folder before going back */
             SetCurrentDirectoryA(gameFolder);
+            
+            PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
+            this->bWorking = true;
+            return true;
         }
-        else { /* Can't even log */ }
-        
-        return true;
-
+        else { return false; }
     }
 
     /*
@@ -340,6 +364,12 @@ namespace modloader
      */
     bool CModLoader::Shutdown()
     {
+        /* Don't shutdown if not started up or already shut down */
+        if(this->bWorking == false)
+            return true;
+        
+        /* Set dir to be the make dir */
+        
         SYSTEMTIME time;
         GetLocalTime(&time);
         
@@ -359,6 +389,8 @@ namespace modloader
 #ifndef LOGFILE_AS_STDOUT       
         if(logfile) { fclose(logfile); logfile = 0; }
 #endif
+        
+        this->bWorking = false;
         return true;
     }
 
@@ -403,6 +435,7 @@ namespace modloader
      */   
     void CModLoader::PosProcess()
     {
+        CSetCurrentDirectory xdir(this->gamePath.c_str());
         Log("\nPos processing...");
         for(auto& plugin : this->plugins)
         {
@@ -419,9 +452,9 @@ namespace modloader
     void CModLoader::LoadPlugins()
     {
         Log("\nLooking for plugins...");
-        
+
         /* Goto plugins folder */
-        if(SetCurrentDirectoryA("modloader\\.plugins\\"))
+        if(SetCurrentDirectoryA("modloader\\.data\\plugins\\"))
         {       
             ForeachFile("*.dll", false, [this](ModLoaderFile& file)
             {
@@ -443,6 +476,8 @@ namespace modloader
      */
     void CModLoader::UnloadPlugins()
     {
+        CSetCurrentDirectory xdir(this->loader.gamepath);
+        
         // Unload one by one, calling OnShutdown callback before the unload
         for(auto& plugin : this->plugins)
         {
@@ -567,10 +602,11 @@ namespace modloader
      */
     bool CModLoader::UnloadPlugin(ModLoaderPlugin& plugin, bool bRemoveFromList)
     {
+        Log("Unloading plugin \"%s\"", plugin.name);
+        
         if(plugin.OnShutdown) plugin.OnShutdown(&plugin);
         if(plugin.pModule) FreeLibrary((HMODULE)(plugin.pModule));
-        
-        Log("Plugin \"%s\" Unloaded", plugin.name);
+
         if(bRemoveFromList) this->plugins.remove(plugin);
         
         return true;
@@ -585,7 +621,7 @@ namespace modloader
     {
         /* Iterate on all folders at /modloader/ dir, and treat them as a mod entity */
         Log("\nLooking for mods...");
-        SetCurrentDirectoryA("modloader\\");
+        CSetCurrentDirectory xdir("modloader\\");
         {
             ForeachFile("*.*", false, [this](ModLoaderFile& file)
             {
@@ -594,7 +630,6 @@ namespace modloader
                 return true;
             });
         }
-        SetCurrentDirectoryA("..\\");
     }
 
     
@@ -611,8 +646,9 @@ namespace modloader
         
         
         /* Go into the mod folder to work inside it */
-        SetCurrentDirectoryA(modfolder);
         {
+            CSetCurrentDirectory xdir(modfolder);
+            
             char buffer[MAX_PATH * 2];
             GetCurrentDirectoryA(sizeof(buffer), buffer);
  
@@ -630,8 +666,7 @@ namespace modloader
                 this->ReadFile(file, mod);
                 return true;
             });
-        }
-        SetCurrentDirectoryA("..\\");        
+        }     
     }
     
     
@@ -645,7 +680,6 @@ namespace modloader
         file.modname = mod.name.data();
         file.mod_id = mod.id;
         file.file_id = this->currentFileId++;
-        file.gamepath = this->gamePath.data();
         file.modpath = mod.path.data();
         file.modfullpath = mod.fullPath.data();      
         

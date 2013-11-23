@@ -6,7 +6,7 @@
  *  Modloader plugin interface
  *      The interface is extremly simple, you don't even have to link with modloader.
  *      The only thing you are requiered to do is export a 'GetPluginData' function (see below for the prototype).
- *      Put your plugin at '/modloader/.plugins' folder
+ *      Put your plugin at '/modloader/.data/plugins' folder
  * 
  */
 
@@ -60,12 +60,6 @@ typedef struct
      *          Contains 1 if the file is a directory or 0 otherwise.
      */
     char is_dir;
-    
-    /*
-     * gamepath
-     *      The full game path
-     */
-    const char* gamepath;
     
     /*
      * filename
@@ -275,6 +269,10 @@ typedef void (*modloader_fError)(const char* errmsg, ...);
 /* ---- Interface ---- */
 struct modloader_data
 {
+    const char* gamepath;   // game path
+    const char* modspath;   // modloader base path
+    const char* cachepath;  // cache path, normally "modloader/.data/cache"
+    
     modloader_fLog              Log;
     modloader_fError            Error;
 };

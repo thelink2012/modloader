@@ -1,7 +1,7 @@
 *************************************************************************
 	Name: std-movies
 	Version: Release Candidate 1
-	Author: LINK/2012 <dma_2012@hotmail.com)
+	Author: LINK/2012 <dma_2012@hotmail.com>
 	Default Priority: 50
 *************************************************************************
 

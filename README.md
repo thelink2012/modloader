@@ -4,7 +4,7 @@ San Andreas Mod Loader is an ASI Plugin for Rockstar's Grand Theft Auto San Andr
 
 ### Motivation
 
-Modifications are very popular in the Grand Theft Auto community, specially in Grand Theft Auto San Andreas, but everything is just too difficult to install since modding is not officially supported. People starting get scared of how hard it is to install modifications (well, hyperbole makes marketing better).
+Modifications are very popular in the Grand Theft Auto community, specially in Grand Theft Auto San Andreas, but everything is just too difficult to install since modding is not officially supported. People gets scared of how hard it is to install modifications (well, hyperbole makes marketing better).
 
 This modification aims to provide a extremely simple way to install modifications as seen in games with official modding support, you just place the modification in the modloader folder and look, it is installed! Easier than that is impossible. Uninstalling is that simple too, just remove the modification from the modloader folder.
 
@@ -34,7 +34,7 @@ On **Linux**, using MinGW for cross-compiling you might replace the last line wi
 
     cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i486-mingw32-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ../ && make
     
-This will build the mod loader, if everything went fine, there will be a folder /bin at the source base directory with the binaries.
+This will build modloader, if everything went fine, there will be a folder /bin at the source base directory with the binaries.
 To install those binaries (and other stuff) run the commands:
     
     cd build
@@ -46,13 +46,14 @@ To install those binaries (and other stuff) run the commands:
 ### Installing Modifications
 
 To install your modifications will probably just need to extract the modifications content into a new folder inside *modloader/* directory
+For details, check each text file at the source directory `doc/plugins` or, if installed, in the directory `modloader/.data/plugins`
 
-**Mod Loader is still in development**
+**Mod Loader is still under development**
 
 
 ### License
 
-The source code is licensed under GNU GPL v3, giving you the freedom to modify, create derivated works and more. See the LICENSE file for more details.
+The source code is licensed under GNU GPL v3, giving you the freedom to modify, create derivated works and more. See the LICENSE file for details.
 
 - - -
 Grand Theft Auto and all related trademarks are © Rockstar North 1997-2013.

@@ -11,7 +11,6 @@
 #include <modloader.hpp>
 #include <modloader_util.hpp>
 #include "Injector.h"
-using modloader::GetArrayLength;
 using namespace modloader;
 
 /*
@@ -106,24 +105,24 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     /* Since we only accept main.scm and script.img,
      * we can just check the first letter to see which file is it */
     
-    static std::string mainScm;
+    static char mainScm[MAX_PATH];
     
-    if(!mainScm.empty())
+    if(mainScm[0])
     {
         Log("Failed to register main.scm file because there's already one registered\n"
-            "\tCurrently registered path: %s", mainScm.c_str());
+            "\tCurrently registered path: %s", mainScm);
         return false;
     }
     
     /* Register new main.scm buffer */
-    mainScm = GetFilePath(file);
+    strcpy(mainScm, GetFilePath(file).c_str());
     
     /* Avoid chdir into "data/script" */
     MakeNOP(0x468EBA, 5);
     
     /* Replace references to "~~/main.scm" string */
-    WriteMemory<const char*>(0x468EC4 + 1, mainScm.data(), true);
-    WriteMemory<const char*>(0x489A45 + 1, mainScm.data(), true);
+    WriteMemory<const char*>(0x468EC4 + 1, mainScm, true);
+    WriteMemory<const char*>(0x489A45 + 1, mainScm, true);
     
     return 0;
 }
