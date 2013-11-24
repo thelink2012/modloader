@@ -131,6 +131,8 @@ class CThePlugin : public modloader::CPlugin
             
         };
         
+        std::string pedIfp;                              /* ped.ifp replacement path */
+        
         ImgInfo mainContent;                             /* main contents */
         std::list<ImgInfo> imgFiles;                     /* list of img files to import */
         

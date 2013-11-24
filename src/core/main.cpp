@@ -654,7 +654,7 @@ namespace modloader
  
             /* Push a new modification into the mods list */
             auto& mod = AddNewItemToContainer(this->mods);
-            mod.name = GetLastPathComponent(modfolder);
+            mod.name = &modfolder[GetLastPathComponent(modfolder)];
             mod.id = this->currentModId++;
             mod.path = std::string("modloader\\") + modfolder;
             mod.fullPath = buffer;

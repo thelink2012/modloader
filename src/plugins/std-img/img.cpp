@@ -50,7 +50,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.5";
+    return "0.6";
 }
 
 const char** CThePlugin::GetExtensionTable(size_t& len)
@@ -134,7 +134,11 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     }
     else /* Other extensions, dff, txd, etc */
     {
-        AddFileToImg(mainContent, file);
+        if(!strcmp(file.filename, "ped.ifp", false))
+            RegisterReplacementFile(*this, "ped.ifp", this->pedIfp, GetFilePath(file).c_str());
+        else
+            AddFileToImg(mainContent, file);
+        
         return 0;
     }
     return 1;
@@ -146,8 +150,14 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  */
 int CThePlugin::PosProcess()
 {
+    // Process img contents
     mainContent.Process();
     for(auto& x : this->imgFiles) x.Process();
+    
+    // Replace ped.ifp
+    if(!this->pedIfp.empty())
+        WriteMemory<const char*>(0x4D563D+1, this->pedIfp.data(), true);
+    
     return 0;
 }
 

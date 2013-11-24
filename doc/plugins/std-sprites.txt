@@ -1,0 +1,15 @@
+*************************************************************************
+	Name: std-sprites --- (Standard Sprites Loader Plugin)
+	Version: RC1
+	Author: LINK/2012 <dma_2012@hotmail.com>
+	Default Priority: 50
+*************************************************************************
+
+Description:
+	This is the standard sprite loader, it loads .txd files that are inside "models/txd" folder.
+	Those kind of files are normally used as script sprites.	
+
+Usage:
+	Copy the sprite txd file into a "models/txd" folder inside the mod folder.
+
+

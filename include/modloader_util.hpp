@@ -323,15 +323,14 @@ namespace modloader
     /*
      *  GetLastPathComponent
      *      @path: Path to get the last component from
-     *      @return: Returns the last path component
+     *      @return: Returns the last path component position in the string
      */
-    inline std::string GetLastPathComponent(std::string path)
+    inline std::string::size_type GetLastPathComponent(std::string path)
     {
         PopLastCharIf(path, '/');
         PopLastCharIf(path, '\\');
         size_t pos = path.find_last_of("/\\");
-        
-        return (pos == path.npos? path : path.substr(path.find_last_of("/\\")));
+        return (pos == path.npos? 0 : pos + 1);
     }
     
     

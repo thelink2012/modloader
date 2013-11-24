@@ -97,24 +97,16 @@ class CThePlugin : public modloader::CPlugin
                 strcpy(dstPath, (std::string(!flags.bIsFXT? "CLEO\\" : "CLEO\\CLEO_TEXT\\") + file.filename).c_str());
             }
             
-            void Setup2(const std::string& modir_fullpath, const ModLoaderFile& modir, const ModLoaderFile& file)
+            void Setup2(const ModLoaderFile& modir, const ModLoaderFile& file)
             {
-                /* Get the src path */
-                std::string src = modir_fullpath;
-                {
-                    /* The first component of file.filepath is "CLEO/",
-                     * ignore it becuase modir_fullpath last component is "CLEO/" too! */
-                    
-                    std::string x = file.filepath;
-                    size_t pos = x.find_first_of("\\/");
-                    if(pos != x.npos) src += &(x.c_str()[pos+1]);
-                }
-                
+                std::string src = GetFilePath(modir) + file.filepath;
+                std::string dst = std::string("CLEO\\") + file.filepath;
+
                 /* Setup */
                 flags.bIsDir = file.is_dir;
                 if(!flags.bIsDir) flags.bIsFXT = IsFileExtension(file.filext, "fxt");
                 strcpy(srcPath, src.c_str());
-                strcpy(dstPath, file.filepath);
+                strcpy(dstPath, dst.c_str());
             }
             
         };
@@ -252,11 +244,12 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     {
         if(file.is_dir)
         {
-            std::string fullpath = GetFilePath(file);
             // This is the CLEO directory, go recursive to copy all files inside this folder
-            ForeachFile(file.filepath, "*.*", true, [this,&file,&fullpath](ModLoaderFile& mf)
+            CSetCurrentDirectory xdir(file.filepath);
+            
+            ForeachFile("*.*", true, [this,&file](ModLoaderFile& mf)
             {
-                AddNewItemToContainer(this->files).Setup2(fullpath, file, mf);
+                AddNewItemToContainer(this->files).Setup2(file, mf);
                 return true;
             });
         }
@@ -285,7 +278,7 @@ int CThePlugin::PosProcess()
  */
 bool CThePlugin::StartCacheFile()
 {
-    Log(">%s\n>%s", cacheDirPath, cacheFilePath);
+    //Log(">%s\n>%s", cacheDirPath, cacheFilePath);
    
     std::vector<char> filebuf;
     CacheHeader header;
@@ -369,7 +362,7 @@ bool CThePlugin::StartCacheFile()
  */
 bool CThePlugin::FinishCacheFile()
 {
-    Log(">%s\n>%s", cacheDirPath, cacheFilePath);
+    //Log(">%s\n>%s", cacheDirPath, cacheFilePath);
 
     std::vector<char> filebuf;
     CacheHeader header;
@@ -438,12 +431,13 @@ bool CThePlugin::FinishCacheFile()
             Log("Failed to read cache file. Reading terminated without EOF reached.");
         else
         {
+            fclose(f); f = 0;                   /* close cache before deleting it */
             DeleteFileA(cacheFilePath);         /* delete cache */
             DestroyDirectoryA(cacheCleoPath);   /* delete bakup */
         }
     }
     
     Log("Cache file has been finished");
-    fclose(f);
+    if(f) fclose(f);
     return true;
 }
