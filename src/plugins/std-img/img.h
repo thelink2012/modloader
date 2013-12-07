@@ -11,8 +11,12 @@
 
 #include <windows.h>
 
-#include "modloader.hpp"
-#include "modloader_util.hpp"
+#include <modloader.hpp>
+#include <modloader_util_hash.hpp>
+#include <modloader_util_path.hpp>
+
+#include <cctype>
+
 #include <string>
 #include <map>
 #include <list>
@@ -20,7 +24,6 @@
 
 using namespace modloader;
 
-extern "C" uint32_t (*crc32FromUpcaseString)(const char*);
 
 /* Gets the file size from filename */
 inline __int64 GetFileSize(const char* filename)
@@ -64,7 +67,7 @@ class CThePlugin : public modloader::CPlugin
                 /* aligned fileSize in 2KiB blocks */
                 this->fileSizeBlocks = ((fileSize % 2048) == 0? fileSize / 2048 : (fileSize / 2048) + 1);
                 
-                this->fileHash = crc32FromUpcaseString(name.c_str());
+                this->fileHash = hash(name, ::toupper);
             }
             
             size_t GetSizeInBlocks()
@@ -123,10 +126,10 @@ class CThePlugin : public modloader::CPlugin
             
             void Setup(const modloader::ModLoaderFile& file)
             {
-                this->path        = DoPathNormalization(GetFilePath(file));
-                this->pathMod     = DoPathNormalization(file.filepath);
-                this->pathHash    = crc32FromUpcaseString(this->path.c_str());
-                this->pathModHash = crc32FromUpcaseString(this->pathMod.c_str());
+                this->path        = NormalizePath(GetFilePath(file));
+                this->pathMod     = NormalizePath(file.filepath);
+                this->pathHash    = hash(this->path);
+                this->pathModHash = hash(this->pathMod);
             }
             
         };
@@ -156,7 +159,7 @@ class CThePlugin : public modloader::CPlugin
         int CheckFile(const modloader::ModLoaderFile& file);
         int ProcessFile(const modloader::ModLoaderFile& file);
         int PosProcess();
-        const char** GetExtensionTable(size_t& outTableLength);
+        const char** GetExtensionTable();
         
         
         /* <--> */

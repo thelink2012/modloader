@@ -12,6 +12,7 @@
 #include "img.h"
 #include "Injector.h"
 #include <modloader_util.hpp>
+#include <functional>
 using namespace modloader;
 
 extern const char* noImgName;
@@ -53,13 +54,13 @@ const char* CThePlugin::GetVersion()
     return "0.6";
 }
 
-const char** CThePlugin::GetExtensionTable(size_t& len)
+const char** CThePlugin::GetExtensionTable()
 {
     /* Put the extensions  this plugin handles on @table
      * SCM disabled because, well, script.img is the standard file for it and is like a 'new' thing
      * May disable RRR too? */
     static const char* table[] = { "img", "dff", "txd", "col", "ipl", "dat", "ifp", "rrr", /*"scm",*/ 0 };
-    return (len = GetArrayLength(table), table);
+    return table;
 }
 
 /*
@@ -97,10 +98,8 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
     }
     else if(!file.is_dir)
     {
-        size_t plen;
-        
         /* Check on extension table if the extension is supported */
-        for(const char** p = this->GetExtensionTable(plen); *p; ++p)
+        for(const char** p = this->GetExtensionTable(); *p; ++p)
         {
             if(IsFileExtension(file.filext, *p))
             {

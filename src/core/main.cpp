@@ -9,7 +9,8 @@
  */
 
 #include <modloader.hpp>
-#include <modloader_util.hpp>
+#include <modloader_util_path.hpp>
+#include <modloader_util_container.hpp>
 
 
 #include <windows.h>
@@ -279,6 +280,32 @@ namespace modloader
         loader.Shutdown();
         return (PrevFilter? PrevFilter(pException) : EXCEPTION_CONTINUE_SEARCH);  // I'm not really sure about this return
     }
+    
+    typedef int (CALLBACK *WinMain_t)(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow); 
+    static WinMain_t WinMainPtr;        // address original WinMain function is at
+    static void* WinMainIsCalledAt;     // address the instruction "call WinMain" is at
+    
+    /*
+     *  Our hook at game's WinMain call, modloader startup happens here
+     */
+    static int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+    {
+        // Startup the modloader
+        loader.Startup();
+        
+        // Setup exception filter, we need (whenever possible) to call shutdown before a crash or something
+        PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
+        
+        // Jump back to the original call
+        // Use the original address if after loader.Startup() the instruction "call WinMain"
+        // hasn't changed it's call address, an ASI may have changed it
+        WinMain_t jmp = (WinMain_t) ReadRelativeOffset((char*)WinMainIsCalledAt + 1).p;
+        jmp = (jmp != WinMain? jmp : WinMainPtr);
+        return jmp(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+    }
+    
+    
+    
      
     
     /*
@@ -350,8 +377,7 @@ namespace modloader
 
             /* Just make sure we're in the main folder before going back */
             SetCurrentDirectoryA(gameFolder);
-            
-            PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
+
             this->bWorking = true;
             return true;
         }
@@ -398,16 +424,9 @@ namespace modloader
      * CModLoader::Patch
      *      Patches the game code
      */
-    
-    static GameInfo gameInfo;
-    
-    
-    extern "C" void CALL_Startup() { loader.Startup(); }
-    extern "C" void HOOK_Init();
-    extern "C" void* WinMainPtr;
-    
     void CModLoader::Patch()
     {
+        static GameInfo gameInfo;
         gameInfo.PluginName = "modloader";
         
         // I can't use LoadLibrary at DllMain, so use it somewhere at the beggining, before the startup of the game engine
@@ -423,7 +442,7 @@ namespace modloader
                 Error("Modloader still do not support other versioons than HOODLUM GTA SA 1.0");
             else
             {
-                WinMainPtr = MakeCALL(0x8246EC, (void*) HOOK_Init);    
+                WinMainPtr = (WinMain_t) MakeCALL(WinMainIsCalledAt = (void*)(0x8246EC), (void*) WinMain).p;
             }
             
         }, true);

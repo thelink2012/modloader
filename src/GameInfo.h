@@ -1,17 +1,24 @@
 /*
-//	GameInfo:
-//		Class to detect the game, version and region;
-//		Note:
-//			[*] The object must be global if you are planning to use DelayedDetect function
-//			[*]	If the game is SA and it is a non-cracked version and you are trying to detect
-//				the game before the securom decryption occurs (DllMain), the class won't be able to detect infos,
-//				a solution is to use DelayedDetect method
-//
-//
-//		by LINK/2012; Thanks to Silent!
-//		Licensed under WTFPLv2 (http://www.wtfpl.net/txt/copying/)
-//
-*/
+ * GameInfo:
+ * 		Class to detect the game, version and region;
+ * 		Note:
+ * 			[*] The object must be global if you are planning to use DelayedDetect function
+ * 			[*]	If the game is SA and it is a non-cracked version and you are trying to detect
+ * 				the game before the securom decryption occurs (DllMain), the class won't be able to detect infos,
+ * 				a solution is to use DelayedDetect method
+ * 
+ * 
+ * 	by LINK/2012 <dma_2012@hotmail.com>; Thanks to Silent!
+ * 
+ *  This source code is offered for use in the public domain. You may
+ *  use, modify or distribute it freely.
+ *
+ *  This code is distributed in the hope that it will be useful but
+ *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
+ *  DISCLAIMED. This includes but is not limited to warranties of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * 
+ */
 #pragma once
 #include "Injector.h"
 #include <windows.h>			// for threads

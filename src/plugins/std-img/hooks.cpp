@@ -35,7 +35,6 @@ void* pBeginStreamReadCoolReturn;
 /* Those will point to game functions */
 void* CStreaming__RequestObject;
 void (*ReadImgContent)(void* imgEntry, int imgId) = memory_pointer_a(0x5B6170);
-uint32_t (*crc32FromUpcaseString)(const char*);
 int (*CStreaming__OpenImgFile)(const char* filename, char notPlayerImg);
 
 static void(*readImgFileFromDat)(const char* path);
@@ -140,8 +139,8 @@ void HOOK_ReadImgFileFromDat(const char* path)
 {
     imgPlugin->Log("HOOK_ReadImgFileFromDat(\"%s\")", path);
     
-    std::string normalizedPath = DoPathNormalization(path);
-    uint32_t hash = crc32FromUpcaseString(normalizedPath.c_str());
+    std::string normalizedPath = NormalizePath(path);
+    size_t hash = modloader::hash(normalizedPath);
     
     auto it = std::find_if(imgPlugin->imgFiles.begin(), imgPlugin->imgFiles.end(),
         [&hash, &normalizedPath](const CThePlugin::ImgInfo& info)
@@ -250,7 +249,6 @@ void ApplyPatches()
         pathCount = ReadMemory<int*>(0x459FF0 + 2, true);
 
         ReadImgContent = memory_pointer_a(0x5B6170);
-        crc32FromUpcaseString = memory_pointer_a(0x53CF30); 
         CExternalScripts__FindByName = memory_pointer_a(0x4706F0);
         CDirectory__CDirectory = memory_pointer_a(0x5322F0);
         CDirectory__ReadImgEntries = memory_pointer_a(0x532350);

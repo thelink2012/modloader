@@ -8,6 +8,8 @@
  */
 #include <modloader.hpp>
 #include <modloader_util.hpp>
+#include <modloader_util_hash.hpp>
+#include <modloader_util_path.hpp>
 using namespace modloader;
 
 #include <map>
@@ -32,7 +34,7 @@ class CThePlugin : public modloader::CPlugin
         int ProcessFile(const modloader::ModLoaderFile& file);
         int PosProcess();
 
-        const char** GetExtensionTable(size_t& outTableLength);
+        const char** GetExtensionTable();
 
         struct handler_t
         {
@@ -65,7 +67,7 @@ class CThePlugin : public modloader::CPlugin
         void SetupHandlers();
         
         static uint32_t hash(const char* filename)
-        { return fnv1a_upper(filename); }
+        { return modloader::hash(filename, ::toupper); }
         
 } plugin;
 
@@ -102,11 +104,11 @@ const char* CThePlugin::GetVersion()
     return "RC1";
 }
 
-const char** CThePlugin::GetExtensionTable(size_t& len)
+const char** CThePlugin::GetExtensionTable()
 {
     /* Put the extensions  this plugin handles on @table */
     static const char* table[] = { "fxp", "txd", "dff", 0 };
-    return (len = GetArrayLength(table), table);
+    return table;
 }
 
 /*

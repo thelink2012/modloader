@@ -2,7 +2,7 @@
 
 San Andreas Mod Loader is an ASI Plugin for Rockstar's Grand Theft Auto San Andreas that adds an extremely easy way to install and uninstall your modifications, without even messing around anything in your game installation.
 
-### Motivation
+### Introduction
 
 Modifications are very popular in the Grand Theft Auto community, specially in Grand Theft Auto San Andreas, but everything is just too difficult to install since modding is not officially supported. People gets scared of how hard it is to install modifications (well, hyperbole makes marketing better).
 
@@ -24,6 +24,9 @@ If you are building from the source code, it is very simple to compile. You'll n
 + [CMake](http://www.cmake.org/)
 + [MinGW](http://mingw-w64.sourceforge.net/download.php) *(32 bits, SJLJ exception handling is prefered)*
 
+An Visual Studio port would be easy, checkout `doc/MSVC.txt` file
+
+
 Then, in a terminal *(cmd.exe on Windows)* go into the base source directory and run the commands:
 
     mkdir build
@@ -34,6 +37,8 @@ On **Linux**, using MinGW for cross-compiling you might replace the last line wi
 
     cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i486-mingw32-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ../ && make
     
+Or something like that.
+
 This will build modloader, if everything went fine, there will be a folder /bin at the source base directory with the binaries.
 To install those binaries (and other stuff) run the commands:
     
@@ -41,15 +46,8 @@ To install those binaries (and other stuff) run the commands:
     make install "DESTDIR=C:/Program Files (x86)/Rockstar Games/GTA San Andreas"
     
 ...replacing the path after `DESTDIR=` with your game directory.
-    
 
-### Installing Modifications
-
-To install your modifications will probably just need to extract the modifications content into a new folder inside *modloader/* directory
-For details, check each text file at the source directory `doc/plugins` or, if installed, in the directory `modloader/.data/plugins`
-
-**Mod Loader is still under development**
-
+Now, to understand how to use, read the user-targeted "doc/readme/readme.txt" file
 
 ### License
 

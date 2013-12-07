@@ -1,0 +1,27 @@
+---> Microsoft Visual C++ Port
+
+    An Visual Studio 2012 (MSVC 11) or above port wouldn't be hard. In fact it is easier than you'd think.
+    
+    "Hey man, 2010 rocks! I'll use it!"
+    Unfortunately, a MSVC 10 port will be much hard and I don't it'll be worth it, C++11 is so beauty.
+    Modloader uses many C++11 features that are not present in MSVC 10 such as lambda expressions¹.
+
+    So, back in MSVC 11, to port it we have just to port one single file from GNU Assembler to Microsoft Assembler syntax.
+    Hey, calm down! We have only to port the directives (such as .globl, .text, etc), no need to port x86 syntax.
+    I didn't use AT&T syntax, Intel syntax rocks.
+    
+    The problem is, I can't do it by myself, I don't have access to MSVC from Linux.
+    
+    So, which files is it? It is "src/plugins/std-img/hooks.s"
+    Just copy it and rename to "hooks.asm" and fix the directives to be like MSVC.
+    It's done, just create the Visual Studio Project file from CMake or the NMake file.
+    Yeah, the CMakeLists is ready to support this.
+    
+
+
+
+¹ MSVC 10 implements a unfinished version of lambda expressions since C++11 specification wasn't ready in the time MSVC 10 was launched
+    
+
+
+

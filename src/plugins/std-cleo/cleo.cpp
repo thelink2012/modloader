@@ -10,7 +10,9 @@
  * 
  */
 #include <modloader.hpp>
-#include <modloader_util.hpp>
+#include <modloader_util_hash.hpp>
+#include <modloader_util_path.hpp>
+#include <modloader_util_file.hpp>
 using namespace modloader;
 
 #include <list>
@@ -33,7 +35,7 @@ class CThePlugin : public modloader::CPlugin
         int ProcessFile(const modloader::ModLoaderFile& file);
         int PosProcess();
         
-        const char** GetExtensionTable(size_t& outTableLength);
+        const char** GetExtensionTable();
 
     public:
         
@@ -166,11 +168,11 @@ const char* CThePlugin::GetVersion()
     return "1.0";
 }
 
-const char** CThePlugin::GetExtensionTable(size_t& len)
+const char** CThePlugin::GetExtensionTable()
 {
     /* Put the extensions  this plugin handles on @table */
     static const char* table[] = { "cs", "cm", "cleo", "fxt", 0 };
-    return (len = GetArrayLength(table), table);
+    return table;
 }
 
 /*
@@ -222,10 +224,8 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
         }
         else
         {
-            size_t len;
-
             /* Check if an CLEO handled extension */
-            for(const char** p = GetExtensionTable(len); *p; ++p)
+            for(const char** p = GetExtensionTable(); *p; ++p)
             {
                 if(IsFileExtension(file.filext, *p))
                     return MODLOADER_YES;
@@ -328,7 +328,7 @@ bool CThePlugin::StartCacheFile()
             }
             else
             {
-                file.hash = fnv1a_32_binary(filebuf.data(), filebuf.size());
+                file.hash = hash((void*)filebuf.data(), filebuf.size());
             }
             
             /* Finally make the file copy at main game path CLEO/ */
@@ -397,7 +397,7 @@ bool CThePlugin::FinishCacheFile()
             
             /* Take the hash to see if the file is still the same as the one I copied */
             if(!ReadEntireFile(file.dstPath, filebuf)
-            || file.hash != fnv1a_32_binary(filebuf.data(), filebuf.size()))
+            || file.hash != hash((void*)filebuf.data(), filebuf.size()))
             {
                 Log("Failed to read or validate hash for file \"%s\". Skipping it.", file.dstPath);
                 continue;

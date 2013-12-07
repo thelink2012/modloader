@@ -1,0 +1,17 @@
+------> Users FAQ
+
+
+    Q. How is it different from the competition?
+    A. Well, that's a long answer...
+        There's no competition! You might be mistaken or not understand how modloader works.
+        If by competition you mean tools like GGMM or SAMI, you're completly mistaken in fact simply because those tools modify the game files in the first place.
+        But if by competition you mean Citzen.Launcher or Custom Mod Manager, that's still not the competition, we are very different!
+        Both Citzen.Launcher and Custom Mod Manager (in my point of view) are developer based, meaning the developer must provide the launcher data for the user (or the users create it by themselves) so then can be loaded. And CMM at least load only one mod.
+        And there's also the fact that Citzen.Launcher modifies the game files (I guess? That's what is written on the readme).
+        So, modloader is user-friendly, trying to be compatible with whatever modifications out, making the user to just extract the files and do not worry about anything else, nothing like other tools out.
+
+
+------> Developers FAQ
+
+
+

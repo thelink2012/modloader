@@ -8,7 +8,7 @@
  * 
  */
 #include <modloader.hpp>
-#include "modloader_util.hpp"
+#include <modloader_util_path.hpp>
 #include "Injector.h"
 using namespace modloader;
 
@@ -32,7 +32,7 @@ class CThePlugin : public modloader::CPlugin
         int CheckFile(const modloader::ModLoaderFile& file);
         int ProcessFile(const modloader::ModLoaderFile& file);
         
-        const char** GetExtensionTable(size_t& outTableLength);
+        const char** GetExtensionTable();
 
 };
 
@@ -66,10 +66,10 @@ const char* CThePlugin::GetVersion()
     return "RC1";
 }
 
-const char** CThePlugin::GetExtensionTable(size_t& len)
+const char** CThePlugin::GetExtensionTable()
 {
     static const char* table[] = { "mpg", 0 };
-    return (len = GetArrayLength(table), table);
+    return table;
 }
 
 /*

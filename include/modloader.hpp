@@ -40,7 +40,7 @@ namespace modloader
                 virtual int PosProcess() { return 0; } /* default */
                 
                 /* Returns the favorable file extensions for this plugin */
-                virtual const char** GetExtensionTable(size_t& outTableLength)=0;
+                virtual const char** GetExtensionTable()=0;
     };
     
     // Callbacks wrapper
@@ -115,7 +115,9 @@ namespace modloader
         data->PosProcess = &CPluginCallbacks::PosProcess;
         
         // Get Extension Table
-        data->extable = interfc.GetExtensionTable(data->extable_len);
+        data->extable = interfc.GetExtensionTable();
+        for(const char** extable = data->extable; *extable; ++extable)
+            ++data->extable_len;
         
         // Modloader
         interfc.data      = data;
@@ -123,6 +125,7 @@ namespace modloader
         interfc.Error     = interfc.modloader->Error;
         interfc.Log       = interfc.modloader->Log;
     }
+    
 };
 
 

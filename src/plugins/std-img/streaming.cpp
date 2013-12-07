@@ -243,7 +243,7 @@ extern "C" void BuildPlayerFilesList(CDirectoryEntry* entries, size_t numEntries
     for(size_t i = 0; i < numEntries; ++i)
     {
         CDirectoryEntry& entry = entries[i];
-        uint32_t entryHash = crc32FromUpcaseString((char*)entry.filename);
+        uint32_t entryHash = hash((char*)entry.filename, ::toupper);
 
         // Find in our files by the hash
         auto it = files.find(entryHash);

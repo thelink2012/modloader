@@ -24,7 +24,7 @@ class CThePlugin : public modloader::CPlugin
         int ProcessFile(const modloader::ModLoaderFile& file);
         int PosProcess();
         
-        const char** GetExtensionTable(size_t& outTableLength);
+        const char** GetExtensionTable();
 
 } plugin;
 
@@ -58,11 +58,11 @@ const char* CThePlugin::GetVersion()
     /* Return the plugin version (e.g. "1.0") */
 }
 
-const char** CThePlugin::GetExtensionTable(size_t& len)
+const char** CThePlugin::GetExtensionTable()
 {
     /* Put the extensions  this plugin handles on @table */
     static const char* table[] = { 0 };
-    return (len = GetArrayLength(table), table);
+    return table;
 }
 
 /*

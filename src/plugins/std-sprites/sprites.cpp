@@ -9,6 +9,7 @@
  */
 #include <modloader.hpp>
 #include <modloader_util.hpp>
+#include <modloader_util_path.hpp>
 #include <list>
 
 #include "Injector.h"
@@ -32,7 +33,7 @@ class CThePlugin : public modloader::CPlugin
         int ProcessFile(const modloader::ModLoaderFile& file);
         int PosProcess();
         
-        const char** GetExtensionTable(size_t& outTableLength);
+        const char** GetExtensionTable();
 
         struct SSpriteFile
         {
@@ -81,11 +82,11 @@ const char* CThePlugin::GetVersion()
     return "RC1";
 }
 
-const char** CThePlugin::GetExtensionTable(size_t& len)
+const char** CThePlugin::GetExtensionTable()
 {
     /* Put the extensions  this plugin handles on @table */
     static const char* table[] = { "txd", 0 };
-    return (len = GetArrayLength(table), table);
+    return table;
 }
 
 /*
@@ -168,6 +169,7 @@ int CThePlugin::PosProcess()
             }
 
             /* Jump to the original call to LoadTxd */
+            spritesPlugin->Log("Loading script sprite \"%s\"", filepath);
             return CTxdStore__LoadTxd(index, filepath);
         });
         
