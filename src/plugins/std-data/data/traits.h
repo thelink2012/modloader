@@ -2,7 +2,8 @@
  * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *
+ *  File data traits base and utility types
+ * 
  */
 #ifndef TRAITS_H
 #define	TRAITS_H
@@ -12,17 +13,21 @@ using namespace DataTraitsNamespace;
 
 #include <string>
 #include <cstdint>
+#include <modloader_util_hash.hpp>
 
 /* Base trait for our purposes... we need to have a path */
-template<class T>
-struct DataTraitsBase : public DataTraits<T>
+template<class ContainerType>
+struct DataTraitsBase : public DataTraits<ContainerType>
 {
     std::string path;
     
-    // child must implement [bool LoadData()] loading 'path' file.
-    // normally this implementation is like
-    // bool LoadData() { return DataTraits::LoadData(path.c_str(), myParser); }
+    /*
+     *  The child must implement [bool LoadData()] loading 'path' file.
+     *  Normally this implementation is like
+     *      bool LoadData() { return DataTraits::LoadData(path.c_str(), MyParser);
+     */
 };
+
 
 /* Our data structures will be at a data namespace */
 namespace data
@@ -34,31 +39,79 @@ namespace data
     /* We will need some wrapper */
     namespace util
     {
+        /* String wrapper with a hash */
+        template<size_t N> struct SString;
+        
+        /* SString specialization with 0 space for the string buffer, that's, it only deppends on the hash */
+        template<>
+        struct SString<0>
+        {
+            uint32_t hash;
+            
+            SString& operator=(const char* str)
+            {
+                this->hash = modloader::hash(str);
+                return *this;
+            }
+            
+            bool operator==(const SString& rhs) const
+            {
+                return (this->hash == rhs.hash);
+            }
+            
+            bool operator<(const SString& rhs) const
+            {
+                return (this->hash < rhs.hash);
+            }
+            
+            /* The following are dummies since we don't have the original buffer */
+            
+            SString& recalc()
+            { return *this; }
+            
+            template<class TransformerFunctor>
+            SString& recalc(TransformerFunctor tr)
+            { return *this; }
+        };
+        
         /* This wrapper will provide a string buffer with a hash */
         template<size_t N>
         struct SString
         {
-            //static const size_t n = N;
-            char     buf[N];    /* this must be on the top */
-            uint32_t hash;
-
-            // TODO
+            /* BE SURE TO recalc THE HASH AFTER ASSIGNING SOMETHING TO buf */
             
-            void Recalc()
+            char     buf[N];    /* this must be on the top */
+            size_t   hash;
+
+            /* not copyable, you must copy into buf and then do recalc */
+            
+            bool operator==(const SString& rhs) const
             {
-                hash = 0; // TODO
+                return this->hash == rhs.hash;
             }
 
-            bool operator==(const SString& sz) const
+            bool operator<(const SString& rhs) const
             {
-                return this->hash == sz.hash;
+                return this->hash < rhs.hash;
             }
-
-            bool operator<(const SString& sz) const
+            
+            /* Recalculates the hash from buf */
+            SString& recalc()
             {
-                return this->hash < sz.hash;
+                this->hash = modloader::hash(buf);
+                return *this;
+            }
+            
+            /* Recalculates the hash from buf */
+            template<class TransformerFunctor>
+            SString& recalc(TransformerFunctor tr)
+            {
+                this->hash = modloader::hash(buf, tr);
+                return *this;
             }
         };
+        
+
 
         /* This wrapper will provide a floating-point buffer.
          * The real purposes of this is to provide good comparision between them
@@ -86,33 +139,37 @@ namespace data
                 return ( ((this->f - sz.f) < epsilon) && (fabs(this->f - sz.f) > epsilon) );
             }
         };
+        
+        /*
+         * This wrapper puts N containers to build a vector type
+         * Useful for coordinates 
+         */
         template<size_t N>
         struct SVector
         {
             SComplex<float> c[N];
             
-            template<class Functor>
-            bool comp(const SVector& b) const
-            {
-                Functor comparer;
-                for(size_t i = 0; i < N; ++i)
-                {
-                    if(!(comparer(c[i], b.c[i])))
-                        return false;
-                }
-                return true;                
-            }
+            /* Main comparisions operators */
             
             bool operator==(const SVector& b) const
             {
-                return comp<std::equal_to<SComplex<float>>>(b);
+                for(size_t i = 0; i < N; ++i)
+                {
+                    if(!(c[i] == b.c[i])) return false;
+                }
+                return true;      
             }
             
             bool operator<(const SVector& b) const
             {
-                return comp<std::less<SComplex<float>>>(b);
+                for(size_t i = 0; i < N; ++i)
+                {
+                    if(c[i] < b.c[i]) return true;
+                }
+                return false;     
             }
             
+            /* Returns a SComplex by index */
             SComplex<float>& operator[](size_t i)
             {
                 return c[i];
@@ -124,33 +181,34 @@ namespace data
             }
         };
 
+        /* Let's see if types size are alright */
+        static_assert(sizeof(SComplex<float>) == sizeof(float), "Wrong size of SComplex");
+        static_assert(sizeof(SVector<3>) == 3 * sizeof(float), "Wrong size of SVector");
+        
         /* typedef the wrappers */
-        typedef uint32_t        hash;
-        typedef uint32_t        uhash;      /* upper case hash */
+        typedef int             integer;
+        typedef SString<0>      hash;
+        typedef SString<8>      string8;
+        typedef SString<16>     string16;
+        typedef SString<24>     string24;
         typedef SString<32>     string32;
+        typedef SString<64>     string64;
+        typedef SString<128>    string128;
         typedef SComplex<float> complex;
         typedef SVector<2>      vec2;
         typedef SVector<3>      vec3;
         typedef SVector<4>      vec4;
-        typedef int             integer;
+        
+        /* game objects typedef */
+        typedef string32        model;
         typedef unsigned int    flags;
         typedef unsigned int    obj_id;
-
-
     }
 }
 
 #define OPI(item, op)   (a.item op b.item)
 #define EQ(item)        OPI(item, ==)
 #define LE(item)        OPI(item, <)
-
-/* Include data structures */
-#include "ide.h"
-#include "ipl.h"
-
-#undef OPI
-#undef EQ
-#undef LE
 
 
 #endif	/* TRAITS_H */

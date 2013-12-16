@@ -192,6 +192,8 @@ namespace modloader
              */
             void StartupPlugin(ModLoaderPlugin& data)
             {
+                CSetCurrentDirectory xdir(this->loader.gamepath);
+                
                 Log("Starting up plugin \"%s\"", data.name);
                 if(data.OnStartup && data.OnStartup(&data))
                 {
@@ -262,7 +264,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
             break;
             
         case DLL_PROCESS_DETACH:
-            bResult = loader.Shutdown();
+            bResult = loader.Shutdown();    /* Shutdown the loader if it hasn't shutdown yet */
             break;
     }
     return bResult;
@@ -290,18 +292,25 @@ namespace modloader
      */
     static int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
     {
-        // Startup the modloader
+        /* Startup the loader */
         loader.Startup();
         
-        // Setup exception filter, we need (whenever possible) to call shutdown before a crash or something
+        /* Setup exception filter, we need (whenever possible) to call shutdown before a crash or something */
         PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
+     
+        /*
+         *  Call the original call
+         *  Use the original address if after loader.Startup() the instruction "call WinMain" hasn't changed it's call address.
+         *  An ASI may have changed it
+         */
+        WinMain_t call = (WinMain_t) ReadRelativeOffset((char*)WinMainIsCalledAt + 1).p;
+        call = (call != WinMain? call : WinMainPtr);
+        int result = call(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
         
-        // Jump back to the original call
-        // Use the original address if after loader.Startup() the instruction "call WinMain"
-        // hasn't changed it's call address, an ASI may have changed it
-        WinMain_t jmp = (WinMain_t) ReadRelativeOffset((char*)WinMainIsCalledAt + 1).p;
-        jmp = (jmp != WinMain? jmp : WinMainPtr);
-        return jmp(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+        /* Shutdown the loader */
+        loader.Shutdown();
+        
+        return result;
     }
     
     
@@ -321,7 +330,7 @@ namespace modloader
             
             /* Open log file */
 #ifndef LOGFILE_AS_STDOUT
-            if(!logfile) logfile = fopen(".\\modloader\\modloader.log", "w");
+            if(!logfile) logfile = fopen("modloader/modloader.log", "w");
 #else
             logfile = stdout;
 #endif
@@ -372,7 +381,6 @@ namespace modloader
             this->PosProcess();         /* After mods are installed, notify all plugins, they may want to do some pos processing */
             this->ClearFilesData();     /* Clear files data (such as paths) freeing memory */
             
-            // =)
             Log("\nGame is ready!\n");
 
             /* Just make sure we're in the main folder before going back */
@@ -495,12 +503,11 @@ namespace modloader
      */
     void CModLoader::UnloadPlugins()
     {
-        CSetCurrentDirectory xdir(this->loader.gamepath);
-        
         // Unload one by one, calling OnShutdown callback before the unload
-        for(auto& plugin : this->plugins)
+        for(auto it = this->plugins.begin(); it != this->plugins.end(); ++it)
         {
-            this->UnloadPlugin(plugin, true);
+            this->UnloadPlugin(*it, false);
+            it = this->plugins.erase(it);
         }
         // Clear plugin list after all
         this->plugins.clear();
@@ -602,11 +609,7 @@ namespace modloader
         for(auto it = this->plugins.begin(); it != this->plugins.end(); ++it)
         {
             if(!strcmp(it->name, pluginName, true))
-            {
-                bool result = this->UnloadPlugin(*it, false);
-                this->plugins.erase(it);
-                return result;
-            }
+                return this->UnloadPlugin(*it, true);
         }
         
         Log("Could not unload plugin named '%s' because it was not found", pluginName);
@@ -617,15 +620,17 @@ namespace modloader
      *  CModLoader::UnloadPlugin
      *      Unloads a specific plugin
      *      @plugin: The plugin instance
-     *      @bRemoveFromList: Removes plugin from this->plugins list
+     *      @bRemoveFromList: Removes plugin from this->plugins list,
+     *                        when true be warned that iterators to this element will get invalidated!
      */
     bool CModLoader::UnloadPlugin(ModLoaderPlugin& plugin, bool bRemoveFromList)
     {
+        CSetCurrentDirectory xdir(this->loader.gamepath);
+        
         Log("Unloading plugin \"%s\"", plugin.name);
         
         if(plugin.OnShutdown) plugin.OnShutdown(&plugin);
         if(plugin.pModule) FreeLibrary((HMODULE)(plugin.pModule));
-
         if(bRemoveFromList) this->plugins.remove(plugin);
         
         return true;

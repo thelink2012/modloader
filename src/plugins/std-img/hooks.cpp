@@ -34,7 +34,7 @@ void* pBeginStreamReadCoolReturn;
 
 /* Those will point to game functions */
 void* CStreaming__RequestObject;
-void (*ReadImgContent)(void* imgEntry, int imgId) = memory_pointer_a(0x5B6170);
+void (*ReadImgContent)(void* imgEntry, int imgId) = memory_pointer(0x5B6170).get();
 int (*CStreaming__OpenImgFile)(const char* filename, char notPlayerImg);
 
 static void(*readImgFileFromDat)(const char* path);
@@ -248,21 +248,21 @@ void ApplyPatches()
         paths = ReadMemory<int*>(0x45A001 + 1, true);
         pathCount = ReadMemory<int*>(0x459FF0 + 2, true);
 
-        ReadImgContent = memory_pointer_a(0x5B6170);
-        CExternalScripts__FindByName = memory_pointer_a(0x4706F0);
-        CDirectory__CDirectory = memory_pointer_a(0x5322F0);
-        CDirectory__ReadImgEntries = memory_pointer_a(0x532350);
-        CStreaming__OpenImgFile = memory_pointer_a(0x407610);
+        ReadImgContent = memory_pointer(0x5B6170).get();
+        CExternalScripts__FindByName = memory_pointer(0x4706F0).get();
+        CDirectory__CDirectory = memory_pointer(0x5322F0).get();
+        CDirectory__ReadImgEntries = memory_pointer(0x532350).get();
+        CStreaming__OpenImgFile = memory_pointer(0x407610).get();
     }
    
     /* Apply hooks */
     {
         /* Checks the path of the img files being loaded from gta.dat to see if any replacement, etc */
-        readImgFileFromDat = memory_pointer_a(MakeCALL(0x5B915B, (void*) HOOK_ReadImgFileFromDat).p);
+        readImgFileFromDat = MakeCALL(0x5B915B, (void*) HOOK_ReadImgFileFromDat).get();
         
         /* Replace calls to find/get entity index from img file name */
-        addPath = memory_pointer_a(MakeCALL(0x5B63E8, (void*)(HOOK_AllocateOrFindPath)).p);
-        CExternalScripts__Allocate = memory_pointer_a(MakeCALL(0x5B6419, (void*)(HOOK_AllocateOrFindExternalScript)).p);
+        addPath = MakeCALL(0x5B63E8, (void*)(HOOK_AllocateOrFindPath)).get();
+        CExternalScripts__Allocate = MakeCALL(0x5B6419, (void*)(HOOK_AllocateOrFindExternalScript)).get();
         
         /* Replace ReadImgContents call and get it's original calling function pointer */
         CStreaming__ReadImgContents = MakeCALL(0x5B8E1B, (void*)HOOK_ReadImgContents).p;

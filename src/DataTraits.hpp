@@ -25,17 +25,29 @@ namespace DataTraitsNamespace   /* well... ugly name but we expect you to do 'us
 /* Those flag names are temporary, we must provide names not related to modloader and more explained */
 static const int flag_dominant_ide = 1;
 static const int flag_dominant_ipl = 2;
+static const int flag_noname       = 128;   // still has no name
 
     
 /* The following data structure represent a package of values (data) */
-template<class T>       /* T must provide operator== and a typedef key_type */
+//template<class T>       /* T must provide operator== and a typedef key_type */
+template<class ContainerType>
 struct DataTraits
 {
-    typedef T value_type;
-    typedef typename value_type::key_type key_type;
-    typedef std::map<key_type, value_type> container_type;
-    typedef typename container_type::value_type pair_type;
-    typedef typename container_type::value_type pair_ref_type;
+    typedef ContainerType container_type;
+    
+    typedef typename container_type::key_type       key_type;
+    typedef typename container_type::mapped_type    mapped_type;
+    typedef typename container_type::value_type     pair_type;
+    /*
+    struct pair_ref_type
+    {
+        std::reference_wrapper<typename container_type::value_type>
+        std::reference_wrapper<typename container_type::value_type>
+    };*/
+    
+    
+    typedef std::pair<std::reference_wrapper<key_type>, std::reference_wrapper<mapped_type>>      pair_ref_type;
+    
     
     bool isReady;           /* Will probably always be true */
     bool isDefault;         /* Is the default (original) trait, see later on the algorithm what that means */
@@ -71,14 +83,14 @@ struct DataTraits
  *
  */
 template<class T, class ForwardIterator> inline
-auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, ForwardIterator end, int flags) -> typename T::value_type*
+auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, ForwardIterator end, int flags) -> typename T::mapped_type*
 {
     /* Object refering to the value_type */
     struct SValue
     {
-        typename T::value_type* p;      // pointer to an value
+        typename T::mapped_type* p;      // pointer to an value
 
-        SValue(typename T::value_type& value)
+        SValue(typename T::mapped_type& value)
             : p(&value)
         {}
         
@@ -162,13 +174,13 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
     {
         /* Skip this if not initialized */
         if(!it->isReady) continue;
-    
+
         // Mark if there's any custom in the search
         bAnyCustom |= !it->isDefault;
         
         auto& map  = it->map;       // map of values
         auto  data = map.find(key); // find value based on our key
-        
+
         if(data == map.end())   // value not found?
         {
             if(!it->isDefault)
@@ -186,7 +198,7 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
             // Skip
             continue;
         }
-        
+
         // Get this iterating value at the 'counter' (or create it if it doesn't exist)
         auto& iCount = count[ SValue(data->second) ];
         
@@ -199,15 +211,19 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
     }
     
     // Nothing? uh
-    if(!count.size()) return nullptr;
+    if(!count.size()) { return nullptr; }
 
     // Apply IPL rule if specified
     if(flags == flag_dominant_ipl)
     {
         if(bAnyCustom)
         {
+            /*
             if(bNotExistInOneCustom && bExistInDefault)
+            {
                 return nullptr;
+            }
+            */
         }
     }
     
@@ -234,7 +250,7 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
     // Assign the found dominant
     if(xdom != count.end())
         return xdom->first.p;
-   
+
     return nullptr;
 }
 

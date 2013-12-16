@@ -19,15 +19,41 @@
 #include <cstdio>
 #include <cstdarg>
 #include <vector>
+#include <functional>
 
 namespace modloader
 {
     /* Handler for SectionParser() */
     template<class ContainerType>
-    struct SSectionHandler
+    struct SectionHandler
     {
-        const char* section;
-        bool (*handler)(const char* line, ContainerType& map);
+        typedef std::function<bool(const char* line, ContainerType& map)>   onReadType;
+        typedef std::function<bool(ContainerType& map)>                     onBeginType;
+        typedef std::function<bool(ContainerType& map)>                     onEndType;
+        
+        const char* section;                   
+        onReadType  onRead;
+        onBeginType onBegin;
+        onEndType   onEnd;
+        
+        SectionHandler() : section(0)
+        {}
+        
+        SectionHandler(const SectionHandler& rhs)
+            : section(rhs.section), onRead(rhs.onRead), onBegin(rhs.onBegin), onEnd(rhs.onEnd)
+        {}
+        
+        SectionHandler& Section(const char* section)
+        { this->section = section; return *this; }
+        
+        SectionHandler& OnRead(const onReadType& cb)
+        { this->onRead = cb; return *this; }
+        
+        SectionHandler& OnBegin(const onBeginType& cb)
+        { this->onBegin = cb; return *this; }
+        
+        SectionHandler& OnEnd(const onEndType& cb)
+        { this->onEnd = cb; return *this; }
      };
     
      
@@ -78,6 +104,7 @@ namespace modloader
         char* result = str;
         bool bTrim = true;
         
+        //printf("\n>>p> %s\n", str);
         if(result)
         {
             /* Iterate on string making apropiate changes */
@@ -103,16 +130,67 @@ namespace modloader
     
     
     /*
+     *  FixFormatString
+     *      Replaces %f with %g
+     */
+    inline char* FixFormatString(const char* format, char* out)
+    {
+        char* result = out;
+        char lastlast = 0, last = 0;
+        
+        for(const char* p = format; *p; ++p, ++out)
+        {
+            if(lastlast != '%' && last == '%' && *p == 'f')
+                *out = 'g';
+            else
+                *out = *p;
+            
+            lastlast = last;
+            last = *p;
+        }
+        
+        *out = 0;
+        return result;
+    }
+    
+    /*
      *  ScanConfigLine
-     *      Scans the GTA configuration line @str with format @fmt
+     *      Scans the GTA configuration line @str with format @format
      *      Retruns true if the scan sucessfully acquieres @count arguments, returns false otherwise
      */
-    inline bool ScanConfigLine(int count, const char* str, const char* fmt, ...)
+    inline bool ScanConfigLine(int count, const char* str, const char* format, ...)
     {
-        va_list va; va_start(va, fmt);
-        int result = vsscanf(str, fmt, va);
+        char fmt[256];
+        va_list va; va_start(va, format);
+        int result = vsscanf(str, FixFormatString(format, fmt), va);
         va_end(va);
         return (result == count);
+    }
+
+    /*
+     *  PrintConfigLine
+     *      Writes the GTA configuration line with @format to string @str
+     */
+    inline bool PrintConfigLine(char* str, const char* format, ...)
+    {
+        char fmt[256];
+        va_list va; va_start(va, format);
+        vsprintf(str, FixFormatString(format, fmt), va);
+        va_end(va);
+        return true;
+    }
+    
+    /*
+     *  PrintConfigLine
+     *      Writes the GTA configuration line with @format to file @f
+     */
+    inline bool PrintConfigLine(FILE* f, const char* format, ...)
+    {
+        char fmt[256];
+        va_list va; va_start(va, format);
+        bool bResult = vfprintf(f, FixFormatString(format, fmt), va) != 0;
+        va_end(va);
+        return bResult;
     }
     
 
@@ -121,10 +199,12 @@ namespace modloader
       * SectionParser
       *     Parses file @filepath as an GTA config file with sections calling @handlers for each specific section line.
       */
-    template<class ContainerType, class SectionHandler>
-    inline bool SectionParser(const char* filepath, ContainerType& map, SectionHandler* handlers)
+    template<class ContainerType, class SectionHandlerIt>
+    inline bool SectionParser(const char* filepath, ContainerType& map, SectionHandlerIt begin, SectionHandlerIt end)
     {
-        SectionHandler* h = 0;
+        bool bHasHandler = false;
+        SectionHandlerIt h;
+        
         char *line, linebuf[512];
         FILE* cfg = fopen(filepath, "r");
 
@@ -136,15 +216,20 @@ namespace modloader
                 if(*line == 0) continue;
 
                 /* No section bein handled? */
-                if(h == 0)
+                if(!bHasHandler)
                 {
                     /* Find handler based on this line identification (e.g. "inst", "objs", etc) */
-                    for(SectionHandler* ph = handlers; h == 0 && ph->section; ++ph)
+                    for(SectionHandlerIt ph = begin; !bHasHandler && ph != end; ++ph)
                     {
                         for(const char *pl = line, *pc = ph->section;   ; ++pc, ++pl)
                         {
                             if(*pc == 0)
+                            {
                                 h = ph; /* This is the section handler */
+                                bHasHandler = true;
+                                if(h->onBegin) h->onBegin(map);
+                                break;
+                            }
                             else if(*pl != *pc)
                                 break;  /* This isn't the section handler */
                         }
@@ -154,9 +239,12 @@ namespace modloader
                 {
                     /* End of section? */
                     if(line[0] == 'e' && line[1] == 'n' && line[2] == 'd')
-                        h = 0;                  /* Yeah, no section being handled now */
-                    else if(h->handler)
-                        h->handler(line, map);  /* Handle this line */
+                    {
+                        if(h->onEnd) h->onEnd(map);
+                        bHasHandler = false;
+                    }
+                    else if(h->onRead)
+                        h->onRead(line, map);  /* Handle this line */
                 }
             }
             return true;

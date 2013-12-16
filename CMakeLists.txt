@@ -16,7 +16,7 @@ set(CMAKE_STATIC_LIBRARY_PREFIX "")
 include_directories("${CMAKE_SOURCE_DIR}/include")
 add_subdirectory(src)
 
-
+# install commmand
 set(CMAKE_INSTALL_PREFIX "")
 file(GLOB asi "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/*.asi")
 file(GLOB plugins "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/*.dll")

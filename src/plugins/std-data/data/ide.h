@@ -9,6 +9,9 @@
 
 #include "traits.h"
 
+
+// TODO
+
 namespace data
 {
     using namespace data::util;
@@ -110,7 +113,7 @@ namespace data
         
     };
     
-    typedef DataTraitsBase<SDataIDE>    TraitsIDE;
+    typedef DataTraitsBase<std::map<SDataIDE::key_type, SDataIDE>>    TraitsIDE;
 
 }
 

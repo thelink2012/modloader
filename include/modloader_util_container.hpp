@@ -28,6 +28,14 @@
 
 namespace modloader
 {
+    /* Dummy std::hash<> */
+    struct DummyHasher
+    {
+        template<class T>
+        size_t operator()(const T&) const
+        { return 0; }
+    };
+    
     /*
      *  Adds a new item to the container @container and returns the reference to it
      */
@@ -98,6 +106,24 @@ namespace modloader
     inline std::string& toupper(std::string& str)
     {
         std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+        return str;
+    }
+    
+    /*
+     *  Makes string @str lower case
+     */
+    inline char* tolower(char* str)
+    {
+        for(char* p = str; *p; ++p) *p = ::tolower(*p);
+        return str;
+    }
+    
+    /*
+     *  Makes string @str upper case
+     */
+    inline char* toupper(char* str)
+    {
+        for(char* p = str; *p; ++p) *p = ::toupper(*p);
         return str;
     }
     

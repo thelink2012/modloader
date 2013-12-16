@@ -3,24 +3,18 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  std-data -- Standard Data Loader Plugin for San Andreas Mod Loader
- *          This plugin is responssible for loading .dat, .cfg, .ide and .ipl files from data/ folder
+ *          This plugin is responsible for loading .dat, .cfg, .ide and .ipl files from data/ folder
  *
  */
 #include "data.h"
-#include <modloader_util.hpp>
+#include "Injector.h"
 
-#include <set>
-#include <vector>
-
-#include <cstdlib>
-#include <ctime>
-
+/* Global objects */
+CAllTraits traits;
 CThePlugin* dataPlugin;
 static CThePlugin plugin;
 
-fs_t fs;
 
-#include "Injector.h"
 
 
 /*
@@ -66,17 +60,25 @@ const char** CThePlugin::GetExtensionTable()
  */
 int CThePlugin::OnStartup()
 {
-    char buf[128];
-    sprintf(buf, "%s%s\\", this->modloader->cachepath, "std-data");
-    this->cachePath = buf;
-    MakeSureDirectoryExistA(buf);
+    // Create std-data cache path
+    {
+        char buf[128];
+        sprintf(buf, "%s%s\\", this->modloader->cachepath, "std-data");
+        this->cachePath = buf;
+        DestroyDirectoryA(buf);
+        MakeSureDirectoryExistA(buf);
+    }
+    
     return 0;
 }
 
 int CThePlugin::OnShutdown()
 {
+    // Cleanup cache folder
+    DestroyDirectoryA(this->cachePath.c_str());
     return 0;
 }
+
 
 /*
  *  Check if the file is the one we're looking for
@@ -89,7 +91,6 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
         if(IsFileExtension(file.filext, *p))
             return MODLOADER_YES;
     }
-    
     return MODLOADER_NO;
 }
 
@@ -100,12 +101,12 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     if(IsFileExtension(file.filext, "ide"))
     {
-        fs.ide.Add(file);
+        traits.ide.AddFile(file);
         return 1;
     }
     else if(IsFileExtension(file.filext, "ipl"))
     {
-        fs.ipl.Add(file);
+        traits.ipl.AddFile(file);
         return 0;
     }
     else if(IsFileExtension(file.filext, "cfg"))
@@ -120,85 +121,145 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     return 1;
 }
 
-static int BuiltDataFilesCount = 0;
 
-// TODO LOG
-typedef void (*load_t)(const char*);
 
-template<class T>
-static std::string BuildDataFile(const char* fdefault, CDataFS<T>& fs)
-{
-    auto* pList = fs.GetList(fdefault);
-    auto Log = dataPlugin->Log;
-    if(!pList) return fdefault;
-    
-    struct SValue
-    {
-        const typename T::key_type* p;      // pointer to an value
 
-        SValue(const typename T::key_type& k)
-            : p(&k)
-        {}
-        
-        bool operator<(const SValue& rhs) const
-        { return (*this->p < *rhs.p); }
-    };    
-    
-    std::set<SValue> keys;
-    std::vector< typename T::pair_ref_type > lines;
-    
-    fs.Add(fdefault).isDefault = true;
-   
-    auto& tlist = *pList;
-    for(auto& x : tlist)
-    {
-        if(x.LoadData())
-        {
-            for(auto& itk : x.map)
-            {
-                keys.insert( SValue(itk.first) );
-            }
-        }
-    }
-        
-    
-    for(auto& k : keys)
-    {
-        if(auto* line = FindDominantData<T>(*k.p, tlist.begin(), tlist.end(), flag_dominant_ipl))
-        {
-            lines.push_back( typename T::pair_ref_type(*k.p, *line) );
-        }
-    }
 
-    Log("CACHE: %s\n", dataPlugin->cachePath.c_str());
-    char xfname[64];
-    sprintf(xfname, "%sdata_%d", dataPlugin->cachePath.c_str(), ++BuiltDataFilesCount);
-    
-    Log("----> %s = %s", fdefault, xfname);
-    if(T::Build(xfname, lines))
-    {
-        Log("OI");
-        return xfname;
-    }
-    Log("POXA");
-    return fdefault;
-    
-}
-//4002-0022
 
-static load_t xLoadIPL;
-static void LoadIPL(const char* filename)
-{
-    return xLoadIPL(BuildDataFile(filename, fs.ipl).c_str());
-}
+
+
+
+
+
 
 
 /*
- * Called after all files have been processed
+ *  Builds replacement file for @defaultFile
+ *  @fs is the filesystem with custom files
+ *  @domflag is the flags for the algorithm FindDominantData()
+ */
+template<class T>
+static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int domflags)
+{
+    auto Log = dataPlugin->Log;
+    
+    /* Get list of files assigned to defaultFile (that's, candidates to replace/mix with it) */
+    auto* pList = fs.GetList(defaultFile);
+    if(pList == nullptr)
+    {
+        /* There's no custom file for defaultFile path, use defaultFile itself as data file */
+        return defaultFile;
+    }
+    
+    /* Let's put it in a referece for the sake of readability and modernity! */
+    auto& list = *pList;
+
+    std::string cacheFile;
+    
+    /* Vector to store references to all keys present in default and custom files */
+    std::vector<std::reference_wrapper<typename T::key_type>> keys;
+    
+    /* Vector to store reference to pairs of <key, value> of dominant data, to be later built into a new data file  */
+    std::vector<typename T::pair_ref_type> lines;
+    
+    
+    
+    /* If the default file really exist (that's, not only custom files about it) put it in fs */
+    if(IsPathA(defaultFile))
+    {
+        fs.AddFile(defaultFile);   // Automatically detected as default
+    }
+        
+    /* Iterate on each file on the list... */
+    for(auto& f : list)
+    {
+        /* ...loading it... */
+        if(f.LoadData())
+        {
+            /* and iterating on their data */
+            for(auto& it : f.map)
+            {
+                auto& key = it.first;
+                
+                /* check if key isn't detected yet... */
+                if(std::find_if(keys.begin(), keys.end(), [&key](const typename T::key_type& a)
+                {
+                    return (a == key);
+                }) == keys.end())
+                {
+                    /* ... if not detected yet, push it to the list of all keys */
+                    keys.push_back(key);
+                }
+            }
+        }
+    }
+     
+    /* Iterate on all detected keys, finding the dominant data at list */
+    for(auto& key : keys)
+    {
+        if(auto* data = FindDominantData<T>(key.get(), list.begin(), list.end(), domflags))
+        {
+            lines.push_back( typename T::pair_ref_type(key.get(), *data) );
+        }
+    }
+
+    /* Retrieve the cache file path for building defaultFile replacement... */
+    cacheFile = fs.GetCacheFileFor(defaultFile);
+    
+    /* ...and build the replacement file */
+    if(T::Build(cacheFile.c_str(), lines))
+    {
+        return cacheFile;
+    }
+    else
+        return defaultFile;
+    
+}
+
+
+
+/* Types Helpers */
+typedef void (*LoadProcType1)(const char*);
+typedef void* (*LoadProcType2)(const char*, const char*);
+/* Macros Helpers */
+#define MakeProcHook(xtype, callAddress, func)  (procs.func = (xtype) MakeCALL(callAddress, (void*) func).p)
+#define MakeProcHook1(callAddress, func)        MakeProcHook(LoadProcType1, callAddress, func)
+#define MakeProcHook2(callAddress, func)        MakeProcHook(LoadProcType2, callAddress, func)
+
+/* Stores pointer to original game functions that loads stuff */
+struct LoadProcs
+{
+    LoadProcType1 LoadIPL;
+    LoadProcType2 LoadGTAConfig;
+    
+} procs;
+
+/* ------------------------- Loading hooks ------------------------- */
+
+static void LoadIPL(const char* filename)
+{
+    std::string file = BuildDataFile(filename, traits.ipl, 0);
+    dataPlugin->Log("Loading IPL file \"%s\"", file.c_str());
+    return procs.LoadIPL(file.c_str());
+}
+
+/*
+static void* LoadGTAConfig(const char* filename, const char* mode)
+{
+    std::string file = BuildDataFile(filename, traits.gta, 0);
+    dataPlugin->Log("Loading game config \"%s\"", file.c_str());
+    return procs.LoadGTAConfig(file.c_str(), mode);
+}
+*/
+
+/*
+ *  Called after all files have been processed
+ *  Hooks everything needed
  */
 int CThePlugin::PosProcess()
 {
-    xLoadIPL = (load_t) MakeCALL(0x5B92C7, (void*) LoadIPL).p;
-    
+    MakeProcHook1(0x5B92C7, LoadIPL);
+    //MakeProcHook2(0x5B905E, LoadGTAConfig);
+
     return 0;
 }

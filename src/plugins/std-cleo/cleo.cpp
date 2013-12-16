@@ -180,8 +180,6 @@ const char** CThePlugin::GetExtensionTable()
  */
 int CThePlugin::OnStartup()
 {
-    CSetCurrentDirectory xdir(this->modloader->gamepath);
-    
     /* Setup vars */
     sprintf(cacheDirPath, "%s%s", this->modloader->cachepath, "std-cleo\\");
     sprintf(cacheFilePath, "%s%s", cacheDirPath, "cache.bin");
@@ -278,8 +276,6 @@ int CThePlugin::PosProcess()
  */
 bool CThePlugin::StartCacheFile()
 {
-    //Log(">%s\n>%s", cacheDirPath, cacheFilePath);
-   
     std::vector<char> filebuf;
     CacheHeader header;
    
@@ -362,8 +358,6 @@ bool CThePlugin::StartCacheFile()
  */
 bool CThePlugin::FinishCacheFile()
 {
-    //Log(">%s\n>%s", cacheDirPath, cacheFilePath);
-
     std::vector<char> filebuf;
     CacheHeader header;
     CacheStruct file;

@@ -45,21 +45,6 @@
 //
 //
 //
-union memory_pointer
-{
-	void*	 p;
-	uintptr_t a;
-
-	memory_pointer()						{ p = nullptr; }
-	memory_pointer(void* x) : p(x)			{}
-	memory_pointer(uint32_t x) : a(x)		{}
-
-	operator void*()		{ return p; }
-	operator uintptr_t()	{ return a; }
-
-	memory_pointer& operator=(void* x)		{ return p = x, *this; }
-	memory_pointer& operator=(uintptr_t x)	{ return a = x, *this; }
-};
 
 union memory_pointer_a	// used to hack the compiler, don't use for general purposes
 {
@@ -72,6 +57,25 @@ union memory_pointer_a	// used to hack the compiler, don't use for general purpo
 
 	template<class T>
 	operator T*() { return reinterpret_cast<T*>(p); }
+};
+
+union memory_pointer    // use for general purposes
+{
+	void*	 p;
+	uintptr_t a;
+
+	memory_pointer()						{ p = nullptr; }
+	memory_pointer(void* x) : p(x)			{}
+	memory_pointer(uint32_t x) : a(x)		{}
+
+    /* Use to get pointer and automatically cast to another type */
+    memory_pointer_a get()  { return memory_pointer_a(p); }
+    
+	operator void*()		{ return p; }
+	operator uintptr_t()	{ return a; }
+
+	memory_pointer& operator=(void* x)		{ return p = x, *this; }
+	memory_pointer& operator=(uintptr_t x)	{ return a = x, *this; }
 };
 
 
