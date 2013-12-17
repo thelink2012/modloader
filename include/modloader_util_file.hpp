@@ -153,42 +153,59 @@ namespace modloader
         return result;
     }
     
+    
     /*
      *  ScanConfigLine
      *      Scans the GTA configuration line @str with format @format
-     *      Retruns true if the scan sucessfully acquieres @count arguments, returns false otherwise
+     *      Returns the number of items in the arglist successfully filled
      */
-    inline bool ScanConfigLine(int count, const char* str, const char* format, ...)
+    inline int ScanConfigLine(const char* str, const char* format, ...)
     {
         char fmt[256];
         va_list va; va_start(va, format);
         int result = vsscanf(str, FixFormatString(format, fmt), va);
         va_end(va);
-        return (result == count);
+        return result;
+    }
+    
+    /*
+     *  ScanConfigLine
+     *      Scans the GTA configuration line @str with format @format
+     *      Retruns true if the scan sucessfully acquieres @count arguments, returns false otherwise
+     */
+    inline bool ScanConfigLine(const char* str, int count, const char* format, ...)
+    {
+        char fmt[256];
+        va_list va; va_start(va, format);
+        int result = vsscanf(str, FixFormatString(format, fmt), va);
+        va_end(va);
+        return (result >= count);
     }
 
     /*
      *  PrintConfigLine
      *      Writes the GTA configuration line with @format to string @str
+     *      Returns true on success, false otherwise
      */
     inline bool PrintConfigLine(char* str, const char* format, ...)
     {
         char fmt[256];
         va_list va; va_start(va, format);
-        vsprintf(str, FixFormatString(format, fmt), va);
+        bool bResult = vsprintf(str, FixFormatString(format, fmt), va) >= 0;
         va_end(va);
-        return true;
+        return bResult;
     }
     
     /*
      *  PrintConfigLine
      *      Writes the GTA configuration line with @format to file @f
+     *      Returns true on success, false otherwise
      */
-    inline bool PrintConfigLine(FILE* f, const char* format, ...)
+    inline int PrintConfigLine(FILE* f, const char* format, ...)
     {
         char fmt[256];
         va_list va; va_start(va, format);
-        bool bResult = vfprintf(f, FixFormatString(format, fmt), va) != 0;
+        bool bResult = vfprintf(f, FixFormatString(format, fmt), va) >= 0;
         va_end(va);
         return bResult;
     }

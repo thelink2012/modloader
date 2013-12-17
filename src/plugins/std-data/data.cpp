@@ -51,7 +51,7 @@ const char* CThePlugin::GetVersion()
 const char** CThePlugin::GetExtensionTable()
 {
     /* Put the extensions  this plugin handles on @table */
-    static const char* table[] = { "dat", "cfg", "ide", "ipl", 0 };
+    static const char* table[] = { "dat", "cfg", "ide", "ipl", "zon", 0 };
     return table;
 }
 
@@ -104,7 +104,7 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
         traits.ide.AddFile(file);
         return 1;
     }
-    else if(IsFileExtension(file.filext, "ipl"))
+    else if(IsFileExtension(file.filext, "ipl") || IsFileExtension(file.filext, "zon"))
     {
         traits.ipl.AddFile(file);
         return 0;
@@ -136,10 +136,10 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 /*
  *  Builds replacement file for @defaultFile
  *  @fs is the filesystem with custom files
- *  @domflag is the flags for the algorithm FindDominantData()
+ *  @domflag is a functor that returns the flags for the algorithm FindDominantData()
  */
-template<class T>
-static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int domflags)
+template<class T, class DomFlagsFunctor>
+static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFlagsFunctor domflags)
 {
     auto Log = dataPlugin->Log;
     
@@ -195,11 +195,12 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int do
     }
      
     /* Iterate on all detected keys, finding the dominant data at list */
-    for(auto& key : keys)
+    for(auto& wrapper : keys)
     {
-        if(auto* data = FindDominantData<T>(key.get(), list.begin(), list.end(), domflags))
+        auto& key = wrapper.get();
+        if(auto* data = FindDominantData<T>(key, list.begin(), list.end(), domflags(key)))
         {
-            lines.push_back( typename T::pair_ref_type(key.get(), *data) );
+            lines.push_back( typename T::pair_ref_type(key, *data) );
         }
     }
 
@@ -214,6 +215,15 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int do
     else
         return defaultFile;
     
+}
+
+/*
+ *  Same as BuildDataFile<T,F> but sending the flag directly, no functor 
+ */
+template<class T>
+static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int domflags)
+{
+    return BuildDataFile(defaultFile, fs, [domflags](const typename T::key_type&) { return domflags; });
 }
 
 
@@ -238,7 +248,18 @@ struct LoadProcs
 
 static void LoadIPL(const char* filename)
 {
-    std::string file = BuildDataFile(filename, traits.ipl, 0);
+    /* Functor that returns appropriate flags for the IPL key */
+    struct
+    {
+        int operator()(const SDataIPL::key_type& key) const
+        {
+            if(key.section == IPL_INST) return 0;
+            return flag_RemoveIfNotExistInAnyCustom;
+        }
+        
+    } domflags;
+    
+    std::string file = BuildDataFile(filename, traits.ipl, domflags);
     dataPlugin->Log("Loading IPL file \"%s\"", file.c_str());
     return procs.LoadIPL(file.c_str());
 }

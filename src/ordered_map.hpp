@@ -18,10 +18,11 @@
 
 /* This is very basic, needs work */
 
-template<class Key, class Value>
+template<class Key, class Value, class KeyComp = std::equal_to<Key>>
 class ordered_map//_temp
 {
     public:
+        typedef KeyComp                         key_compare;
         typedef Key                             key_type;
         typedef Value                           mapped_type;
         typedef std::pair<Key, Value>           value_type;
@@ -32,6 +33,8 @@ class ordered_map//_temp
         container_type list;
   
     private:
+        key_compare CompareKey;
+        
         value_type& new_item()
         {
             list.resize(list.size() + 1);
@@ -39,16 +42,16 @@ class ordered_map//_temp
         }
         
     public:
-        
-        iterator begin() { return list.begin(); }
-        iterator end()   { return list.end();   }
-        size_t size()    { return list.size();  }
+        key_compare key_comp() const    { return CompareKey; }
+        iterator begin()                { return list.begin(); }
+        iterator end()                  { return list.end();   }
+        size_t size()                   { return list.size();  }
         
         iterator find(const key_type& k)
         {
-            return std::find_if(begin(), end(), [&k](const value_type& pair)
+            return std::find_if(begin(), end(), [this,&k](const value_type& pair)
             {
-                return pair.first == k;
+                return this->CompareKey(pair.first, k);
             });
         }
         
@@ -57,9 +60,8 @@ class ordered_map//_temp
             auto it = find(k);
             if(it == end())
             {
-                auto& pair = new_item();
-                pair.first = k;
-                return pair.second;
+                list.push_back( value_type(k, mapped_type()) );
+                return list.back().second;
             }
             else
                 return it->second;

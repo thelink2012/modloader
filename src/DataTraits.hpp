@@ -16,16 +16,18 @@
 #ifndef ML_DATATRAITS_HPP
 #define	ML_DATATRAITS_HPP
 
-#include <map>
 #include <algorithm>
+#include <ordered_map.hpp>
 
 namespace DataTraitsNamespace   /* well... ugly name but we expect you to do 'using namespace' or alias the name */
 {
 
-/* Those flag names are temporary, we must provide names not related to modloader and more explained */
-static const int flag_dominant_ide = 1;
-static const int flag_dominant_ipl = 2;
-static const int flag_noname       = 128;   // still has no name
+/* Algorithm flags */
+
+// If the key do not exist in at least one custom trait BUT exists in the default trait, just remove the value (return null)
+static const int flag_RemoveIfNotExistInOneCustomButInDefault = 1; 
+// If the key do not exist in any of the custom traits, remove the value (return null)
+static const int flag_RemoveIfNotExistInAnyCustom = 2;
 
     
 /* The following data structure represent a package of values (data) */
@@ -38,15 +40,7 @@ struct DataTraits
     typedef typename container_type::key_type       key_type;
     typedef typename container_type::mapped_type    mapped_type;
     typedef typename container_type::value_type     pair_type;
-    /*
-    struct pair_ref_type
-    {
-        std::reference_wrapper<typename container_type::value_type>
-        std::reference_wrapper<typename container_type::value_type>
-    };*/
-    
-    
-    typedef std::pair<std::reference_wrapper<key_type>, std::reference_wrapper<mapped_type>>      pair_ref_type;
+    typedef std::pair<std::reference_wrapper<key_type>, std::reference_wrapper<mapped_type>>    pair_ref_type;
     
     
     bool isReady;           /* Will probably always be true */
@@ -85,19 +79,6 @@ struct DataTraits
 template<class T, class ForwardIterator> inline
 auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, ForwardIterator end, int flags) -> typename T::mapped_type*
 {
-    /* Object refering to the value_type */
-    struct SValue
-    {
-        typename T::mapped_type* p;      // pointer to an value
-
-        SValue(typename T::mapped_type& value)
-            : p(&value)
-        {}
-        
-        bool operator==(const SValue& rhs) const
-        { return (*this->p == *rhs.p); }
-    };
-
     /* Object that determines the state of the value in the search */
     struct SCount
     {
@@ -108,61 +89,9 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
         {} 
     };
 
-    /*
-     *  The following data structure was built because well, the standard do not provide a container for such a thing =/
-     *  This data structure stores values as <Key, Value> (just like a std::map), where each Key is unique.
-     *  Okay but, why not std::map? I didn't work very well for my purposes, I used it like:
-     *      typedef std::map<SValue, SCount, CompType>   CounterType; 
-     *      Where CompType was a functional object that returned !(a == b)
-     */
-    struct ListType
-    {
-        /* We'll try to build it almost similar to the std::map structure, because I was using a map before (as said above)
-         * and I don't want to waste time porting container accessing... */
-        
-        /* !!! THIS DATA STRUCTURE IS NOT SUITABLE (AND WASN'T BUILT) FOR GENERAL PURPOSES !!! */
-        
-        /* YUNO template? Templates aren't support in nested scope. */
-        typedef SValue Key;
-        typedef SCount Value;
-
-        /* Similar to an std::pair<Key, Value> */
-        struct value_type
-        {
-            Key first;
-            Value second;
-            
-            value_type(const Key& k) :
-                first(k)
-            {}
-            
-            bool operator==(const Key& rhs)
-            { return first == rhs; }
-        };
-        
-        typedef std::vector<value_type> Container;
-        typedef typename Container::iterator iterator;
-        
-        Container list;
-        
-        iterator begin() { return list.begin(); }
-        iterator end()   { return list.end(); }  
-        size_t size()    { return list.size(); }
-        
-        /* This operator[] works almost like an std::map::operator[],
-         * it checks if Key exist, if not, create it returning a newly allocated value,
-         * otherwise returning the previouslly allocated value */
-        Value& operator[](const Key& k)
-        {
-            auto it = std::find(list.begin(), list.end(), k);
-            if(it != list.end()) return it->second;
-            list.push_back(k);
-            return list.back().second;
-        }
-    };
-
-    typedef ListType CounterType;
-    typedef typename CounterType::value_type CounterPair;
+    typedef typename T::mapped_type mapped_type;
+    typedef ordered_map<std::reference_wrapper<mapped_type>, SCount, std::equal_to<mapped_type>>    CounterType;
+    typedef typename CounterType::value_type    CounterPair;
 
     bool bExistInDefault = false;
     bool bNotExistInOneCustom = false;
@@ -186,21 +115,16 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
             if(!it->isDefault)
             {
                 bNotExistInOneCustom = true;
+                if(flags & flag_RemoveIfNotExistInAnyCustom)
+                    return nullptr;
             }
-            
-            // Enable the following behaviour by flags
-            if(false)
-            {
-                // If value not found and this is not the default trait, favour the remotion now!
-                if(!it->isDefault) return nullptr;
-            }
-                
+
             // Skip
             continue;
         }
 
         // Get this iterating value at the 'counter' (or create it if it doesn't exist)
-        auto& iCount = count[ SValue(data->second) ];
+        auto& iCount = count[ std::ref(data->second) ];
         
         // Increase the number of times this value happens
         ++iCount.num; 
@@ -213,25 +137,16 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
     // Nothing? uh
     if(!count.size()) { return nullptr; }
 
-    // Apply IPL rule if specified
-    if(flags == flag_dominant_ipl)
+    // Apply inst rule if specified
+    if(flags & flag_RemoveIfNotExistInOneCustomButInDefault)
     {
         if(bAnyCustom)
         {
-            /*
             if(bNotExistInOneCustom && bExistInDefault)
-            {
                 return nullptr;
-            }
-            */
         }
     }
-    
-    if(flags == flag_dominant_ide)
-    {
-        // Need to do nothing
-    }
-    
+
     // Find the dominant based on the information gathered in the iteration above
     auto xdom = std::min_element(count.begin(), count.end(), [](const CounterPair& a, const CounterPair& b)
     {
@@ -249,7 +164,7 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
    
     // Assign the found dominant
     if(xdom != count.end())
-        return xdom->first.p;
+        return &xdom->first.get();
 
     return nullptr;
 }

@@ -99,7 +99,7 @@ namespace data
         static bool set(const char* line, SObject& inst)
         {
             char dummy[64];
-            return ScanConfigLine(count(), line, format(),
+            return ScanConfigLine(line, count(), format(),
                         &inst.id, dummy, &inst.interior,
                         &inst.pos[0].f, &inst.pos[1].f, &inst.pos[2].f,
                         &inst.rot[0].f, &inst.rot[1].f, &inst.rot[2].f, &inst.rot[3].f,
@@ -145,10 +145,27 @@ namespace data
         uint8_t formating;   // not an actual parameter
         union
         {
-            integer unknown3;   // when formating == 0
-            vec4 mirror;        // when formating == 1
+            vec4 mirror;        // when formating == 0
+            integer unknown3;   // when formating == 1
         };
         
+        
+        /* Complete formating information */
+        static const char* format(uint8_t formating, size_t& count)
+        {
+            switch(formating)
+            {
+                case 0:  count = 14; return "%f %f %f %f %f %f %f %f %f %d %f %f %f %f";
+                case 1:  count = 11; return "%f %f %f %f %f %f %f %f %f %d %d";
+                default: count = -1; return "";
+            }
+        }
+        
+        /* Formating information */
+        const char* format() const { size_t a; return (format(formating, a));    }
+        size_t count()       const { size_t a; return (format(formating, a), a); }
+
+        /* Comparision */
         bool operator==(const SDataIPL_CULL& b) const
         {
             const SDataIPL_CULL& a = *this;
@@ -163,26 +180,61 @@ namespace data
                     /* Compare formating type specific data */
                     switch(formating)
                     {
-                        case 0: return EQ(unknown3);
-                        case 1: return EQ(mirror);
+                        case 0: return EQ(mirror);
+                        case 1: return EQ(unknown3);
                     }
                 }
             }
             return false;
         }
-
-        const char* format()
-        {
-            return "";
-        }
         
+        /* Sets data from string */
         bool set(const char* line)
         {
+            /* Try with formating types 0 and 1 */
+            for(int i = 0; i < 2; ++i)
+            {
+                /* Try with this formating */
+                switch(this->formating = i)
+                {
+                    case 0: /* vec4 at the end */
+                        if(ScanConfigLine(line, count(), format(),
+                                  &center[0].f, &center[1].f, &center[2].f,
+                                  &unknown1.f, &length.f, &bottom.f, &width.f, &unknown2.f, &top.f, &flag,
+                                  &mirror[0].f, &mirror[1].f, &mirror[2].f, &mirror[3].f)) return true;
+                        break;
+                    
+                    case 1: /* integer at the end */
+                        if(ScanConfigLine(line, count(), format(),
+                                  &center[0].f, &center[1].f, &center[2].f,
+                                  &unknown1.f, &length.f, &bottom.f, &width.f, &unknown2.f, &top.f, &flag,
+                                  &unknown3)) return true;
+                        break;
+                }
+            }
+            
+            /* Nope? formating state is undefined. */
             return false;
         }
         
+        /* Gets data to string */
         bool get(char* line) const
         {
+            switch(this->formating)
+            {
+                case 0: /* vec4 at the end */
+                    return PrintConfigLine(line, format(),
+                                center[0].f, center[1].f, center[2].f,
+                                unknown1.f, length.f, bottom.f, width.f, unknown2.f, top.f, flag,
+                                mirror[0].f, mirror[1].f, mirror[2].f, mirror[3].f);
+                    break;
+                
+                case 1: /* integer at the end */
+                    return PrintConfigLine(line, format(),
+                                center[0].f, center[1].f, center[2].f,
+                                unknown1.f, length.f, bottom.f, width.f, unknown2.f, top.f, flag,
+                                unknown3);
+            }
             return false;
         }
     };
@@ -200,14 +252,33 @@ namespace data
         uint8_t formating;
         union
         {
-            struct  // when formating == 1 --- this is Garage eXtender data
+            struct  // when formating == 0 --- this is Garage eXtender data
             {       // (see http://gtaforums.com/topic/536465-garage-extender/)
                 
                 integer num_cars;
                 flags grgx_type;
                 flags door_style;
             };
+            struct  // when formating == 1
+            {       // game's default data
+            };
         };
+        
+        
+        /* Complete formating information */
+        static const char* format(uint8_t formating, size_t& count)
+        {
+            switch(formating)
+            {
+                case 0:  count = 14; return "%f %f %f %f %f %f %f %f %d %d %s %d %d %d";
+                case 1:  count = 11; return "%f %f %f %f %f %f %f %f %d %d %s";
+                default: count = -1; return "";
+            }
+        }
+        
+        /* Formating information */
+        const char* format() const { size_t a; return (format(formating, a));    }
+        size_t count()       const { size_t a; return (format(formating, a), a); }
         
         bool operator==(const SDataIPL_GRGE& b) const
         {
@@ -222,28 +293,78 @@ namespace data
                     /* Compare formating type specific data */
                     switch(formating)
                     {
-                        case 0: return true;
-                        case 1: return (EQ(num_cars) && EQ(grgx_type) && EQ(door_style));
+                        case 0: return (EQ(num_cars) && EQ(grgx_type) && EQ(door_style));
+                        case 1: return true;
                     }
                 }
             }
             return false;
         }
-
-        const char* format()
-        {
-            return "";
-        }
         
+        /* Sets data from string */
         bool set(const char* line)
         {
+            bool bResult = false;
+            
+            /* Try with formating types 0 and 1 */
+            for(int i = 0; i < 2; ++i)
+            {
+                /* Try with this formating */
+                switch(this->formating = i)
+                {
+                    case 0: /* grgx data at the end */
+                        bResult = ScanConfigLine(line, count(), format(),
+                                        &pos1[0].f, &pos1[1].f, &pos1[2].f,
+                                        &depth[0].f, &depth[1].f,
+                                        &pos2[0].f, &pos2[1].f, &pos2[2].f,
+                                        &flag, &type, name.buf,
+                                        &num_cars, &grgx_type, &door_style);
+                        break;
+                    
+                    case 1: /* no grgx data at the end */
+                        bResult = ScanConfigLine(line, count(), format(),
+                                        &pos1[0].f, &pos1[1].f, &pos1[2].f,
+                                        &depth[0].f, &depth[1].f,
+                                        &pos2[0].f, &pos2[1].f, &pos2[2].f,
+                                        &flag, &type, name.buf);
+                        break;
+                }
+                
+                /* If found correct formating, go ahead and return,
+                 * but before we need to calculate the name hash */
+                if(bResult)
+                {
+                    name.recalc(::toupper);
+                    return true;
+                }
+            }
+            
             return false;
         }
         
+        /* Gets data to string */
         bool get(char* line) const
         {
+            switch(this->formating)
+            {
+                case 0: /* grgx data at the end */
+                    return PrintConfigLine(line, format(),
+                                pos1[0].f, pos1[1].f, pos1[2].f,
+                                depth[0].f, depth[1].f,
+                                pos2[0].f, pos2[1].f, pos2[2].f,
+                                flag, type, name.buf,
+                                num_cars, grgx_type, door_style);
+                    
+                case 1: /* no grgx data at the end */
+                    return PrintConfigLine(line, format(),
+                                pos1[0].f, pos1[1].f, pos1[2].f,
+                                depth[0].f, depth[1].f,
+                                pos2[0].f, pos2[1].f, pos2[2].f,
+                                flag, type, name.buf);
+            }
             return false;
         }
+        
     };
     
     /* Enex section */
@@ -276,7 +397,7 @@ namespace data
         /* Sets data from string */
         bool set(const char* line)
         {
-            if(ScanConfigLine(count(), line, format(),
+            if(ScanConfigLine(line, count(), format(),
                 &entrance[0].f, &entrance[1].f, &entrance[2].f, &entrance[3].f,
                 &width[0].f, &width[1].f,
                 &unknown1.f,
@@ -310,26 +431,28 @@ namespace data
         obj_id id;
         vec3   pos;
         
+        /* Formating information */
+        const char* format() const { return "%d %f %f %f"; }
+        size_t count()       const { return 4; }
+        
         bool operator==(const SDataIPL_PICK& b) const
         {
             const SDataIPL_PICK& a = *this;
             return EQ(id) && EQ(pos);
         }
         
-
-        const char* format()
-        {
-            return "";
-        }
-        
+        /* Sets data from string */
         bool set(const char* line)
         {
-            return false;
+            return ScanConfigLine(line, count(), format(),
+                                  &id, &pos[0].f, &pos[1].f, &pos[2].f);
         }
         
+        /* Gets data to string */
         bool get(char* line) const
         {
-            return false;
+            return PrintConfigLine(line, format(),
+                                  id, pos[0].f, pos[1].f, pos[2].f);
         }
     };
     
@@ -343,25 +466,38 @@ namespace data
         vec3    camerapos;
         integer reward;
         
+        /* Formating information */
+        const char* format() const { return "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d"; }
+        size_t count()       const { return 16; }
+        
         bool operator==(const SDataIPL_JUMP& b) const
         {
             const SDataIPL_JUMP& a = *this;
             return(EQ(start1) && EQ(start2) && EQ(target1) && EQ(target2) && EQ(camerapos) && EQ(reward));
         }
 
-        const char* format()
-        {
-            return "";
-        }
-        
+        /* Sets data from string */
         bool set(const char* line)
         {
-            return false;
+            return ScanConfigLine(line, count(), format(),
+                                  &start1[0].f, &start1[1].f, &start1[2].f,
+                                  &start2[0].f, &start2[1].f, &start2[2].f,
+                                  &target1[0].f, &target1[1].f, &target1[2].f,
+                                  &target2[0].f, &target2[1].f, &target2[2].f,
+                                  &camerapos[0].f, &camerapos[1].f, &camerapos[2].f,
+                                  &reward);
         }
         
+        /* Gets data to string */
         bool get(char* line) const
         {
-            return false;
+            return ScanConfigLine(line, count(), format(),
+                                  start1[0].f, start1[1].f, start1[2].f,
+                                  start2[0].f, start2[1].f, start2[2].f,
+                                  target1[0].f, target1[1].f, target1[2].f,
+                                  target2[0].f, target2[1].f, target2[2].f,
+                                  camerapos[0].f, camerapos[1].f, camerapos[2].f,
+                                  reward);
         }
     };
     
@@ -370,9 +506,15 @@ namespace data
     {
         vec3 pos1;      // box edge 1
         vec3 pos2;      // box edge 2
-        vec3 unk;       // dunno what is this, not even use if it's a vector
+        integer unk1;
+        integer unk2;
+        complex unk3;
         vec3 opt;       // those parameters are optional... in fact, this isn't a vector... default is (100.0, 1.0, 1.0)
         uint8_t nopt;   // num opt parameters received
+        
+        /* Formating information */
+        const char* format() const { return 0; }   // format and count are 'dynamic'
+        size_t count()       const { return 0; }   //
         
         bool operator==(const SDataIPL_TCYC& b) const
         {
@@ -382,7 +524,7 @@ namespace data
             if(EQ(nopt))
             {
                 /* Comparen non-optional parameters */
-                if(EQ(pos1) && EQ(pos2) && EQ(unk))
+                if(EQ(pos1) && EQ(pos2) && EQ(unk1) && EQ(unk2) && EQ(unk3))
                 {
                     /* Compare option parameters */
                     switch(nopt)
@@ -397,19 +539,53 @@ namespace data
             return false;
         }
         
-        const char* format()
-        {
-            return "";
-        }
-        
+         /* Sets data from string */
         bool set(const char* line)
         {
+            const int ndefault = 9;
+            
+            // Scan config line getting the number of parameters successfully caught
+            int nargs = ScanConfigLine(line, "%f %f %f %f %f %f %d %d %f %f %f %f",
+                                       &pos1[0].f, &pos1[1].f, &pos1[2].f,
+                                       &pos2[0].f, &pos2[1].f, &pos2[2].f,
+                                       &unk1, &unk2, &unk3.f,
+                                       &opt[0].f, &opt[1].f, &opt[2].f);
+            
+            // Check if successfully caught at least the number of non-optional parameters
+            if(nargs >= ndefault)
+            {
+                // Setup the number optional arguments field and return success...
+                this->nopt = nargs - ndefault;
+                return true;
+            }
             return false;
         }
         
+        /* Gets data from string */
         bool get(char* line) const
         {
-            return false;
+            char buf[256];
+            bool bResult = false;
+            
+            // Print common data into line
+            if(!PrintConfigLine(line, "%f %f %f %f %f %f %d %d %f ",
+                    pos1[0].f, pos1[1].f, pos1[2].f,
+                    pos2[0].f, pos2[1].f, pos2[2].f,
+                    unk1, unk2, unk3.f))
+                return false;
+            
+            // Print optional data into temporary buffer
+            switch(nopt)
+            {
+                case 0: bResult = true; buf[0] = '\0'; break;
+                case 1: bResult = PrintConfigLine(buf, "%f", opt[0].f); break;
+                case 2: bResult = PrintConfigLine(buf, "%f %f", opt[0].f, opt[1].f); break;
+                case 3: bResult = PrintConfigLine(buf, "%f %f %f", opt[0].f, opt[1].f, opt[2].f); break;
+            }
+            
+            // Append optional data into line
+            if(bResult) strcat(line, buf);
+            return bResult;
         }
     };
     
@@ -426,6 +602,21 @@ namespace data
             vec3 box[2];    // when formating == 0
             vec4 sphere;    // when formating == 1
         };
+        
+        /* Complete formating information */
+        static const char* format(uint8_t formating, size_t& count)
+        {
+            switch(formating)
+            {
+                case 0:  count = 9;  return "%s %d %d %f %f %f %f %f %f";
+                case 1:  count = 7;  return "%s %d %d %f %f %f %f";
+                default: count = -1; return "";
+            }
+        }
+        
+        /* Formating information */
+        const char* format() const { size_t a; return (format(formating, a));    }
+        size_t count()       const { size_t a; return (format(formating, a), a); }
         
         bool operator==(const SDataIPL_AUZO& b) const
         {
@@ -448,19 +639,59 @@ namespace data
             return false;
         }
         
-
-        const char* format()
-        {
-            return "";
-        }
-        
+        /* Sets data from string */
         bool set(const char* line)
         {
+            bool bResult = false;
+            
+            /* Try with formating types 0 and 1 */
+            for(int i = 0; i < 2; ++i)
+            {
+                /* Try with this formating */
+                switch(this->formating = i)
+                {
+                    case 0: /* box data */
+                        bResult = ScanConfigLine(line, count(), format(),
+                                        &name.buf, &id, &state,
+                                        &box[0][0].f, &box[0][1].f,  &box[0][2].f,
+                                        &box[1][0].f, &box[1][1].f,  &box[1][2].f);
+                        break;
+                    
+                    case 1: /* sphere data */
+                        bResult = ScanConfigLine(line, count(), format(),
+                                        &name.buf, &id, &state,
+                                        &sphere[0].f, &sphere[1].f, &sphere[2].f, &sphere[3].f);
+                        break;
+                }
+                
+                /* If found correct formating, go ahead and return,
+                 * but before we need to calculate the name hash */
+                if(bResult)
+                {
+                    name.recalc(::toupper);
+                    return true;
+                }
+            }
+            
             return false;
         }
         
+        /* Gets data to string */
         bool get(char* line) const
         {
+            switch(this->formating)
+            {
+                case 0: /* box data */
+                    return PrintConfigLine(line, format(),
+                                name.buf, id, state,
+                                box[0][0].f, box[0][1].f,  box[0][2].f,
+                                box[1][0].f, box[1][1].f,  box[1][2].f);
+                    
+                case 1: /* sphere data */
+                    return PrintConfigLine(line, format(),
+                                name.buf, id, state,
+                                sphere[0].f, sphere[1].f, sphere[2].f, sphere[3].f);
+            }
             return false;
         }
     };    
@@ -477,6 +708,10 @@ namespace data
         integer lock;
         integer unk[2];
         
+        /* Formating information */
+        const char* format() const { return "%f %f %f %f %d %d %d %d %d %d %d %d"; }
+        size_t count()       const { return 12; }
+        
         bool operator==(const SDataIPL_CARS& b) const
         {
             const SDataIPL_CARS& a = *this;
@@ -484,20 +719,22 @@ namespace data
                  && EQ(alarm) && EQ(lock) && EQ(unk[0]) && EQ(unk[1]));
         }
         
-
-        const char* format()
-        {
-            return "";
-        }
-        
+        /* Sets data from string */
         bool set(const char* line)
         {
-            return false;
+            return ScanConfigLine(line, count(), format(),
+                        &pos[0].f, &pos[1].f, &pos[2].f, &pos[3].f,
+                        &id, &color[0], &color[1], &force, &alarm, &lock,
+                        &unk[0], &unk[1]);
         }
         
+        /* Gets data from string */
         bool get(char* line) const
         {
-            return false;
+            return PrintConfigLine(line, format(),
+                        pos[0].f, pos[1].f, pos[2].f, pos[3].f,
+                        id, color[0], color[1], force, alarm, lock,
+                        unk[0], unk[1]);
         }
     };
     
@@ -511,7 +748,12 @@ namespace data
         complex rotation;
         vec2    opt1;       // optional parameter 1 (not sure if this is a vector)
         integer opt2;       // optional parramter 2
+        
         uint8_t nopt;       // number optional parameters
+        
+        /* Formating information */
+        const char* format() const { return 0; }    // dynamic
+        size_t count()       const { return 0; }    //
         
         bool operator==(const SDataIPL_OCCL& b) const
         {
@@ -536,20 +778,51 @@ namespace data
             return false;
         }
         
-
-        const char* format()
-        {
-            return "";
-        }
-        
+        /* Sets data from string */
         bool set(const char* line)
         {
+            const int ndefault = 7;
+            
+            // Scan config line getting the number of parameters successfully caught
+            int nargs = ScanConfigLine(line, "%f %f %f %f %f %f %f %f %f %d",
+                                       &mid[0].f, &mid[1].f, &bottom.f,
+                                       &width[0].f, &width[1].f, &height.f, &rotation.f,
+                                       &opt1[0].f, &opt1[1].f, &opt2);
+            
+            // Check if successfully caught at least the number of non-optional parameters
+            if(nargs >= ndefault)
+            {
+                // Setup the number optional arguments field and return success...
+                this->nopt = nargs - ndefault;
+                return true;
+            }
             return false;
         }
         
+        /* Gets data from string */
         bool get(char* line) const
         {
-            return false;
+            char buf[256];
+            bool bResult = false;
+            
+            // Print common data into line
+            if(!PrintConfigLine(line, "%f %f %f %f %f %f %f ",
+                mid[0].f, mid[1].f, bottom.f,
+                width[0].f, width[1].f, height.f, rotation.f))
+                    return false;
+            
+            // Print optional data into temporary buffer
+            switch(nopt)
+            {
+                case 0: bResult = true; buf[0] = '\0'; break;
+                case 1: bResult = PrintConfigLine(buf, "%f", opt1[0].f); break;
+                case 2: bResult = PrintConfigLine(buf, "%f %f", opt1[0].f, opt1[1].f); break;
+                case 3: bResult = PrintConfigLine(buf, "%f %f %d", opt1[0].f, opt1[1].f, opt2); break;
+            }
+            
+            // Append optional data into line
+            if(bResult) strcat(line, buf);
+            return bResult;
         }
     };
     
@@ -562,26 +835,41 @@ namespace data
         integer island;
         string8 label;
         
+        /* Formating information */
+        const char* format() const { return "%s %d %f %f %f %f %f %f %d %s"; }
+        size_t count()       const { return 10; }
+        
         bool operator==(const SDataIPL_ZONE& b) const
         {
             const SDataIPL_ZONE& a = *this;
             return (EQ(name) && EQ(type) && EQ(box[0]) && EQ(box[1]) && EQ(island) && EQ(label));
         }
         
-
-        const char* format()
-        {
-            return "";
-        }
-        
+        /* Sets data from string */
         bool set(const char* line)
         {
+            if(ScanConfigLine(line, count(), format(),
+                              name.buf, &type,
+                              &box[0][0].f, &box[0][1].f, &box[0][2].f,
+                              &box[1][0].f, &box[1][1].f, &box[1][2].f,
+                              &island, label.buf))
+            {
+                // Calculate hash and return success
+                name.recalc(::toupper);
+                label.recalc(::toupper);
+                return true;
+            }
             return false;
         }
         
+        /* Gets data from string */
         bool get(char* line) const
         {
-            return false;
+            return PrintConfigLine(line, format(),
+                        name.buf, type,
+                        box[0][0].f, box[0][1].f, box[0][2].f,
+                        box[1][0].f, box[1][1].f, box[1][2].f,
+                        island, label.buf);
         }
     };
     

@@ -8,7 +8,7 @@
 #define	DATAIDE_H
 
 #include "traits.h"
-
+#include <map>
 
 // TODO
 
