@@ -142,6 +142,7 @@ struct CAllTraits
 {
     CDataFS<TraitsIDE>      ide;
     CDataFS<TraitsIPL>      ipl;
+    CDataFS<TraitsGTA>      gta;
 };
 extern CAllTraits traits;
 

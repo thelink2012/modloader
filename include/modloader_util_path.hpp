@@ -23,6 +23,7 @@
 #include <string>
 #include <cstring>
 #include <windows.h>
+#include <modloader.hpp>
 #include <modloader_util_container.hpp>
 
 namespace modloader

@@ -14,6 +14,8 @@ using namespace DataTraitsNamespace;
 #include <string>
 #include <cstdint>
 #include <modloader_util_hash.hpp>
+#include <modloader_util_parser.hpp>
+using modloader::SectionInfo;
 
 /* Base trait for our purposes... we need to have a path */
 template<class ContainerType>
@@ -122,20 +124,24 @@ namespace data
             typedef T value_type;
 
             value_type f;
-
-            // TODO
             
-            // Must make those comparisions better
-
+            
+            static T epsilon()
+            {
+                // This is our epsilon, based on program outputs (like MEd) and the actual original file
+                // Don't use std::numeric_limits epsilon, it's not for our purposes!
+                return 0.008;
+            }
+            
             bool operator==(const SComplex& sz) const
             {
-                const T epsilon = std::numeric_limits<T>::epsilon();
+                const float epsilon = this->epsilon();
                 return std::abs(this->f - sz.f) <= epsilon;
             }
 
             bool operator<(const SComplex& sz) const
             {
-                const T epsilon = std::numeric_limits<T>::epsilon();
+                const float epsilon = this->epsilon();
                 return ( ((this->f - sz.f) < epsilon) && (fabs(this->f - sz.f) > epsilon) );
             }
         };

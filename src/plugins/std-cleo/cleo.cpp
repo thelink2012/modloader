@@ -120,7 +120,7 @@ class CThePlugin : public modloader::CPlugin
         char cacheCleoPath[MAX_PATH];
         
         bool StartCacheFile();
-        bool FinishCacheFile();
+        bool FinishCacheFile(bool bIsStartup = false);
         
         void CreateImportantFolders()
         {
@@ -191,7 +191,7 @@ int CThePlugin::OnStartup()
     if(bHaveCLEO)
     {
         /* Finish the cache if it still exist, probably because an abnormal termination of the game */
-        FinishCacheFile();
+        FinishCacheFile(true);
     }
     else
         Log("CLEO not found! std-cleo plugin features will be disabled.");
@@ -356,7 +356,7 @@ bool CThePlugin::StartCacheFile()
  * 
  * 
  */
-bool CThePlugin::FinishCacheFile()
+bool CThePlugin::FinishCacheFile(bool bIsStartup)
 {
     std::vector<char> filebuf;
     CacheHeader header;
@@ -368,7 +368,10 @@ bool CThePlugin::FinishCacheFile()
     FILE* f = fopen(cacheFilePath, "rb");
     if(f == NULL)
     {
-        Log("Failed to open cache file for reading (%s)", cacheFilePath);
+        if(bIsStartup)
+            Log("Nothing to finish");
+        else
+            Log("Failed to open cache file for reading (%s)", cacheFilePath);
         return false;
     }
     

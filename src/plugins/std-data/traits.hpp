@@ -11,5 +11,8 @@
 #include "data/ide.h"
 #include "data/ipl.h"
 
+
+#include "data/gta.h"
+
 #endif
 

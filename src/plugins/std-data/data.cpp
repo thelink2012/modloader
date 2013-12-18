@@ -8,6 +8,8 @@
  */
 #include "data.h"
 #include "Injector.h"
+#include <type_traits>
+#include <set>
 
 /* Global objects */
 CAllTraits traits;
@@ -115,6 +117,8 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     }
     else if(IsFileExtension(file.filext, "dat"))
     {
+        traits.gta.AddFile(file);
+        return 0;
         // TODO
     }    
     
@@ -125,12 +129,41 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 
 
 
-
-
-
-
-
-
+/*
+ * The following structure is a helper for the BuildDataFile() function
+ * It's not contained within the function itself because it has template arguments
+ */
+template<class T, class K>
+struct BuildDataFileKeyInserter
+{
+    // Used when isSorted == false
+    struct NonSorted
+    {
+        bool operator()(T& keys, const K& key)
+        {
+            // Check if the key exist in the container...
+            if(std::find_if(keys.begin(), keys.end(), [&key](const K& a)
+            {
+                return (a == key);
+            }) == keys.end())
+            {
+                // It doesn't, push it
+                keys.push_back( key );
+                return true;
+            }
+            return false;
+        }
+    };
+    
+    // Used when isSorted == true
+    struct Sorted
+    {
+        bool operator()(T& keys, const K& key)
+        {
+            return keys.insert(key).second;
+        }
+    };
+};
 
 
 /*
@@ -138,9 +171,11 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  *  @fs is the filesystem with custom files
  *  @domflag is a functor that returns the flags for the algorithm FindDominantData()
  */
-template<class T, class DomFlagsFunctor>
+template<bool isSorted, class T, class DomFlagsFunctor>
 static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFlagsFunctor domflags)
 {
+    typedef typename T::key_type    key_type;
+    
     auto Log = dataPlugin->Log;
     
     /* Get list of files assigned to defaultFile (that's, candidates to replace/mix with it) */
@@ -154,22 +189,34 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
     /* Let's put it in a referece for the sake of readability and modernity! */
     auto& list = *pList;
 
-    std::string cacheFile;
-    
-    /* Vector to store references to all keys present in default and custom files */
-    std::vector<std::reference_wrapper<typename T::key_type>> keys;
-    
-    /* Vector to store reference to pairs of <key, value> of dominant data, to be later built into a new data file  */
-    std::vector<typename T::pair_ref_type> lines;
-    
-    
-    
     /* If the default file really exist (that's, not only custom files about it) put it in fs */
     if(IsPathA(defaultFile))
     {
         fs.AddFile(defaultFile);   // Automatically detected as default
     }
-        
+    
+    /* If there's only one member on the list (probably a single custom element), just return it */
+    if(list.size() == 1)
+    {
+        return list.front().path;
+    }
+    
+    //
+    std::string cacheFile;
+
+
+    /* Findout the type of the list to store keys based on isSorted template parameter
+     * Uses std::set if isSorted or std::vector if not ordered */
+    typedef std::vector<std::reference_wrapper<const key_type>>                         keys_type1;
+    typedef std::set<std::reference_wrapper<const key_type>, std::less<key_type> >      keys_type2;
+    typedef typename std::conditional<!isSorted, keys_type1, keys_type2>::type          keys_type;
+    
+    /* Container to store references to all keys present in default and custom files */
+    keys_type keys;
+    
+    /* Vector to store reference to pairs of <key, value> of dominant data, to be later built into a new data file  */
+    std::vector<typename T::pair_ref_type> lines;
+    
     /* Iterate on each file on the list... */
     for(auto& f : list)
     {
@@ -179,51 +226,46 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
             /* and iterating on their data */
             for(auto& it : f.map)
             {
-                auto& key = it.first;
-                
-                /* check if key isn't detected yet... */
-                if(std::find_if(keys.begin(), keys.end(), [&key](const typename T::key_type& a)
-                {
-                    return (a == key);
-                }) == keys.end())
-                {
-                    /* ... if not detected yet, push it to the list of all keys */
-                    keys.push_back(key);
-                }
+                // Add it key into keys list
+                typedef BuildDataFileKeyInserter<keys_type, key_type> add;
+                typename std::conditional<!isSorted, typename add::NonSorted, typename add::Sorted>::type func;
+                func(keys, it.first);
             }
         }
     }
-     
+    
     /* Iterate on all detected keys, finding the dominant data at list */
     for(auto& wrapper : keys)
     {
-        auto& key = wrapper.get();
+        auto& key = const_cast<key_type&>(wrapper.get());
         if(auto* data = FindDominantData<T>(key, list.begin(), list.end(), domflags(key)))
         {
-            lines.push_back( typename T::pair_ref_type(key, *data) );
+            lines.push_back( typename T::pair_ref_type(key, *data));
         }
     }
-
+    
     /* Retrieve the cache file path for building defaultFile replacement... */
     cacheFile = fs.GetCacheFileFor(defaultFile);
-    
+
     /* ...and build the replacement file */
     if(T::Build(cacheFile.c_str(), lines))
     {
         return cacheFile;
     }
     else
+    {
         return defaultFile;
+    }
     
 }
 
 /*
  *  Same as BuildDataFile<T,F> but sending the flag directly, no functor 
  */
-template<class T>
+template<bool isSorted, class T>
 static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int domflags)
 {
-    return BuildDataFile(defaultFile, fs, [domflags](const typename T::key_type&) { return domflags; });
+    return BuildDataFile<isSorted>(defaultFile, fs, [domflags](const typename T::key_type&) { return domflags; });
 }
 
 
@@ -259,19 +301,19 @@ static void LoadIPL(const char* filename)
         
     } domflags;
     
-    std::string file = BuildDataFile(filename, traits.ipl, domflags);
+    std::string file = BuildDataFile<false>(filename, traits.ipl, domflags);
     dataPlugin->Log("Loading IPL file \"%s\"", file.c_str());
     return procs.LoadIPL(file.c_str());
 }
 
-/*
+
 static void* LoadGTAConfig(const char* filename, const char* mode)
 {
-    std::string file = BuildDataFile(filename, traits.gta, 0);
-    dataPlugin->Log("Loading game config \"%s\"", file.c_str());
+    std::string file = BuildDataFile<true>(filename, traits.gta, flag_RemoveIfNotExistInOneCustomButInDefault);
+    dataPlugin->Log("Loading gta config \"%s\"", file.c_str());
     return procs.LoadGTAConfig(file.c_str(), mode);
 }
-*/
+
 
 /*
  *  Called after all files have been processed
@@ -280,7 +322,7 @@ static void* LoadGTAConfig(const char* filename, const char* mode)
 int CThePlugin::PosProcess()
 {
     MakeProcHook1(0x5B92C7, LoadIPL);
-    //MakeProcHook2(0x5B905E, LoadGTAConfig);
+    MakeProcHook2(0x5B905E, LoadGTAConfig);
 
     return 0;
 }

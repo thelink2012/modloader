@@ -889,7 +889,6 @@ namespace data
             bool operator()(T& a, const U& b) { return a.set(b); }
         };
         
-        
         /* The key from this is the actual line data... */
         struct key_type
         {
@@ -917,10 +916,53 @@ namespace data
             /*
              *  Checks if section is valid 
              */
-            bool IsValidSection()
+            bool IsValidSection() const
             {
                 return (section >= IPL_INST && section <= IPL_ZONE);
             }
+            
+            
+#if 1
+            /*
+             *  Sections table 
+             */
+            static SectionInfo* GetTable()
+            {
+                /* Section table for lookup */
+                static SectionInfo sections[] =
+                {
+                    { IPL_NONE, "none" },
+                    { IPL_INST, "inst" },
+                    { IPL_CULL, "cull" },
+                    { IPL_PATH, "path" },
+                    { IPL_GRGE, "grge" },
+                    { IPL_ENEX, "enex" },
+                    { IPL_PICK, "pick" },
+                    { IPL_JUMP, "jump" },
+                    { IPL_TCYC, "tcyc" },
+                    { IPL_AUZO, "auzo" },
+                    { IPL_MULT, "mult" },
+                    { IPL_CARS, "cars" },
+                    { IPL_OCCL, "occl" },
+                    { IPL_ZONE, "zone" },
+                    { IPL_NONE, nullptr }
+                };
+                return sections;
+            }
+
+            /* Search for section in sections table */
+            static SectionInfo* FindSectionByLine(const char* line)
+            {
+                return SectionInfo::FindByLine(GetTable(), line);
+            }
+
+            /* Search for section in sections table */
+            static SectionInfo* FindSectionById(uint8_t id)
+            {
+                return SectionInfo::FindByIndex(GetTable(), id);
+            }
+#endif
+           
             
 #if 1
             /* Executes DoFunction operator on current section field */
@@ -977,8 +1019,8 @@ namespace data
             }
             
             /* Executes DoFunction in a section field sending b as argument */
-            template<class ResultType, template<class, class> class DoFunction, class T>
-            static ResultType DoIt(key_type& a, T& b, ResultType defaultResult)
+            template<class ResultType, template<class, class> class DoFunction, class A, class T>
+            static ResultType DoIt(A& a, T& b, ResultType defaultResult)
             {
                 switch(a.section)                   
                 {                                   
@@ -1047,14 +1089,14 @@ namespace data
             }
             
             /* Sets the current data to the data at @line, knowing that the section to handle is @section */
-            bool set(uint8_t section, const char* line)
+            bool set(const SectionInfo* pSection, const char* line)
             {
-                this->section = section;
+                this->section = pSection->id;
                 return DoIt<bool, call_set>(*this, line, false);
             }
             
             /* Gets the current data to the string @output */
-            bool get(char* output)
+            bool get(char* output) const
             {
                 return this->IsValidSection()
                     && DoIt<bool, call_get>(*this, output, false);
@@ -1072,8 +1114,9 @@ namespace data
     /* The IPL traits */
     struct TraitsIPL : DataTraitsBase< ordered_map<SDataIPL::key_type, SDataIPL> >
     {
-        static bool Parser(const char* filename, DataTraits::container_type& map, bool isDefault);
-        static bool Build(const char* filename, const std::vector<DataTraits::pair_ref_type>& lines);
+        static bool Parser(const char* filename, DataTraits::container_type& map, bool isDefault);      // implemented at ipl.cpp
+        static bool Build(const char* filename, const std::vector<DataTraits::pair_ref_type>& lines);   //
+        
         bool LoadData()
         {
             return DataTraits::LoadData(path.c_str(), [this](const char* filename, container_type& map)
@@ -1081,6 +1124,7 @@ namespace data
                 return Parser(filename, map, this->isDefault);
             });
         }
+        
     };
     
 };

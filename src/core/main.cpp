@@ -12,33 +12,33 @@
 #include <modloader_util_path.hpp>
 #include <modloader_util_container.hpp>
 
-
 #include <windows.h>
 #include <cstdio>
 #include <cstring>
 #include <string>
-#include <map>
-#include <vector>
-#include <list>
+
 #include "Injector.h"
 #include "GameInfo.h"
+#include "CModLoader.hpp"
 
 #if 0 && !defined(NDEBUG)
 #define LOGFILE_AS_STDOUT
 #endif
+
 
 /*
  * TODO: Plugin Priority Config File
  *       ~~~~~~ Exclusion Config File
  *      Export ReadModf & LoadPlugin / UnloadPlugin ?
  *      Export FindFileHandler ?
+ *      mods sub-recursion. E.g. when a mod contains a modloader folder, load mods from it's folder
  * 
  *
  */
 
 namespace modloader
 {
-    static const char* modurl = "<LINK/2012>";/* TODO, web address for mod, gta forums? google code? gta garage? dunno */
+    static const char* modurl = "https://github.com/thelink2012/sa-modloader";
     
     // log stream
     static FILE* logfile = 0;
@@ -49,7 +49,7 @@ namespace modloader
      *      @msg: (Format) Message to log
      *      @...: Additional args to format
      */
-    static void Log(const char* msg, ...)
+    void Log(const char* msg, ...)
     {
         if(logfile)
         {
@@ -67,7 +67,7 @@ namespace modloader
      *      @msg: (Format) Error to display
      *      @...: Additional args to format
      */
-    static void Error(const char* msg, ...)
+    void Error(const char* msg, ...)
     {
         va_list va; va_start(va, msg);
         char buffer[1024];
@@ -75,162 +75,6 @@ namespace modloader
         MessageBoxA(NULL, buffer, "modloader", MB_ICONERROR); 
         va_end(va);
     }
-    
-    /*
-     * CModLoader
-     *      Mod Loader Core Class
-     */
-    class CModLoader
-    {
-        private:
-            struct ModInfo;
-            struct FileInfo;
-            
-            struct ModInfo
-            {
-                std::list<FileInfo> files;
-
-                std::string  path;          /* relative to main game dir (ex: "modloader/mymod") */
-                std::string  fullPath;      /* full path */
-                std::string  name;          /* modname */
-                unsigned int id;            /* Note: This id is (probably) unique on each game call */
-            };
-            
-            struct FileInfo
-            {
-                ModLoaderPlugin* handler;
-                ModInfo*         parentMod;
-                ModLoaderFile    data;
-                
-                std::string     fileName;       /* name */
-                std::string     fileExtension;  /* ext */
-                std::string     filePath;       /* full */
-                
-                unsigned int    id;         /* Note: This id is (probably) unique on each game call */
-                bool            isDir;
-            };
-
-        private:
-            modloader_t loader;
-            
-            bool bWorking;      /* true when the gameloader has been started up (Startup())
-                                 * and false when the loader has shut down (Shutdown())
-                                 */
-            
-            std::string gamePath;
-            std::string modsPath;
-            std::string cachePath;
-            
-            unsigned int currentModId;
-            unsigned int currentFileId;
-
-            std::list<ModInfo> mods;
-            std::list<ModLoaderPlugin> plugins;
-            std::map<std::string, std::vector<ModLoaderPlugin*>> extMap;
-            
-        private:
-            void LoadPlugins();
-            void UnloadPlugins();
-            void PerformSearch();
-            ModLoaderPlugin* FindFileHandler(const ModLoaderFile& file);
-            
-            bool UnloadPlugin(ModLoaderPlugin& plugin, bool bRemoveFromList = false);
-            
-            void PosProcess();
-            
-            /*
-             *  Freeup memory taken by mods information
-             */
-            void ClearFilesData()
-            {
-                mods.clear();
-            }
-            
-            /*
-             *  Handle all files readen
-             */
-            void HandleFiles()
-            {
-                Log("\nHandling files...");
-                CSetCurrentDirectory xdir("modloader\\");
-                for(auto& mod : this->mods)
-                {
-                    CSetCurrentDirectory xdir((mod.name + "\\").c_str());
-                    for(auto& file : mod.files)
-                        this->HandleFile(file);
-                }
-            }
-            
-            /*
-             *  Sorts plugins by priority and name order
-             */
-            void SortPlugins()
-            {
-                this->plugins.sort([](const ModLoaderPlugin& a, const ModLoaderPlugin& b)
-                {
-                    return (a.priority != b.priority?
-                            a.priority < b.priority :
-                            strcmp(a.name, b.name) < 0);
-                });
-            }
-            
-            /*
-             *  Builds extensions std::map, used in the file checking algorithm
-             */
-            void BuildExtensionMap()
-            {
-                for(auto& plugin : this->plugins)
-                {
-                    for(size_t i = 0, n = plugin.extable_len;
-                        i < n; ++i)
-                        this->extMap[plugin.extable[i]].push_back(&plugin);
-                }
-            }
-         
-            /*
-             *  Call plugin OnStartup method
-             */
-            void StartupPlugin(ModLoaderPlugin& data)
-            {
-                CSetCurrentDirectory xdir(this->loader.gamepath);
-                
-                Log("Starting up plugin \"%s\"", data.name);
-                if(data.OnStartup && data.OnStartup(&data))
-                {
-                    Log("Failed to startup plugin '%s', unloading it.", data.name);
-                    this->UnloadPlugin(data, true);
-                }
-            }
-            
-            /*
-             *  Call plugins OnStartup method
-             */
-            void StartupPlugins()
-            {
-                Log("\nStarting up plugins...");
-                for(auto& plugin : this->plugins)
-                    StartupPlugin(plugin);
-            }
-            
-            
-            
-        public:
-            CModLoader() : bWorking(false), currentModId(0), currentFileId(0)
-            { }
-            
-            void Patch();
-            bool Startup();
-            bool Shutdown();
-            
-            void ReadModf(const char* modfolder);
-            void ReadFile(ModLoaderFile& file, CModLoader::ModInfo& mod);
-            bool HandleFile(FileInfo& file);
-            
-            bool LoadPlugin(const char* pluginPath, bool bDoStuffNow);
-            bool UnloadPlugin(const char* pluginName);
-            
-    };
-    
 
 }
 
@@ -240,11 +84,7 @@ using namespace modloader;
 static CModLoader loader;
 
 
-/* Plugins are equal only (and only if) they point to the same data space */
-bool operator==(const ModLoaderPlugin& a, const ModLoaderPlugin& b)
-{
-    return (&a == &b);
-}
+
 
 
 /*
@@ -277,9 +117,13 @@ namespace modloader
     
     static LONG CALLBACK modloader_UnhandledExceptionFilter(LPEXCEPTION_POINTERS pException)
     {
-        // TODO generate dump
-        Log("\n-------------\nUnhandled Exception! Calling loader.Shutdown();");
+        LogException(pException);
+        
+        // We should shutdown our loader at all cost
+        Log("Calling loader.Shutdown();");
         loader.Shutdown();
+        
+        // Continue exception propagation
         return (PrevFilter? PrevFilter(pException) : EXCEPTION_CONTINUE_SEARCH);  // I'm not really sure about this return
     }
     
@@ -414,7 +258,7 @@ namespace modloader
 		Log(
 			"\n*********************************\n"
 			"> Logging finished: %.2d:%.2d:%.2d\n"
-			"  Powered by modloader (%s)\n"
+			"  Powered by sa-modloader (%s)\n"
 			"*********************************\n",
 			time.wHour, time.wMinute, time.wSecond,
             modurl);

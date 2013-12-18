@@ -2,70 +2,132 @@
  * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
+ *  IPL Parser and Builder
+ *  This code is not in the header because it's kinda huge and the header is already huge
  */
 #include "data/ipl.h"
 #include <functional>
 #include <modloader_util_container.hpp>
-#include <modloader_util_file.hpp>
+#include <modloader_util_parser.hpp>
 using namespace modloader;
 
-// TODO need to test all ipl sections but INST and ENEX
 
 namespace data
 {
     
 /* Constants and typesdefs */
+typedef std::vector<SDataIPL_INST::SObject> InstListType;
 typedef TraitsIPL::container_type   container_type;
 static const integer no_lod = -1;   /* for SObject.lod */
 static const integer is_lod = -2;   /* for SObject.lod */
 
-struct IplSectionTableItem
+/*
+ * IPL handling is very specific in the INST section, let's derive from KeyOnly
+ * functor and customize it to handle INST section
+ */
+struct KeyOnlyForIPL : public parser::KeyOnly<TraitsIPL>
 {
-    uint8_t     id;
-    const char* name;
-};
-
-/* Section table for lookup */
-static IplSectionTableItem sections[] =
-{
-    { IPL_NONE, "____" },
-    { IPL_INST, "inst" },
-    { IPL_CULL, "cull" },
-    { IPL_PATH, "path" },
-    { IPL_GRGE, "grge" },
-    { IPL_ENEX, "enex" },
-    { IPL_PICK, "pick" },
-    { IPL_JUMP, "jump" },
-    { IPL_TCYC, "tcyc" },
-    { IPL_AUZO, "auzo" },
-    { IPL_MULT, "mult" },
-    { IPL_CARS, "cars" },
-    { IPL_OCCL, "occl" },
-    { IPL_ZONE, "zone" },
-    { IPL_NONE, nullptr }
-};
-
-/* Search for section in sections table */
-IplSectionTableItem* FindSectionFromName(const char* line)
-{
-    for(IplSectionTableItem* p = sections; p->name; ++p)
+    typedef KeyOnly     super;
+        
+    /* The set functor for SectionParser */
+    struct Set
     {
-        if(!strncmp(p->name, line, 4))
-            return p;
-    }
-    return nullptr;
-}
+        InstListType& instList;
+            
+        Set(InstListType& instList) : instList(instList)
+        {}
+            
+        bool operator()(SectionInfo* section, const char* line, container_type& map)
+        {
+            /* Inst section must be handled in a special way... */
+            if(section->id == IPL_INST)
+            {
+                /* Store inst data for later post-processing */
+                auto& inst = AddNewItemToContainer(instList);
+                if(!SDataIPL_INST::set(line, inst))
+                {
+                    instList.pop_back();
+                    return false;
+                }
+                return true;
+            }
+            else
+            {
+                /* Other sections can be handled normally */
+                return super::Set()(section, line, map);
+            }
+        }
+    };
+    
+    /* The get function for SectionBuilder */
+    struct Get
+    {
+        unsigned int instIndex;
+        
+        Get() : instIndex(0)
+        {}
+        
+        /* Writes an @inst object into the string @buf acumulating the @buf length at @lenaccum */
+        bool WriteInstObject(char* buf, const SDataIPL_INST::SObject& inst, int lod, size_t& lenaccum)
+        {
+            if(SDataIPL_INST::get(buf, inst, lod))
+            {
+                /* Write the content at the null terminator (seeing lenaccum) */
+                int result = sprintf(&buf[lenaccum], "%s", buf);
+                if(result >= 0)
+                {
+                    ++instIndex;        // Increase the current inst being written index (for LODs)
+                    lenaccum += result; // Accumulate the length
+                    return true;
+                }
+            }
+            return false;
+        };
+        
+        bool operator()(SectionType section, char* line, const key_type& key, const value_type& value)
+        {
+            // If inst section, we need to handle in a special way
+            if(section->id == IPL_INST)
+            {
+                size_t total_len = 0;
+                auto& item = key.inst;
+                
+                /* If object has no lod = but it's .lod field is a valid lod, use it, otherwise use -1
+                 * If object has lod, write the lod object just after it
+                 */
+                int obj_lod = (!item.has_lod? (item.obj.lod >= 0? item.obj.lod : -1) : instIndex + 1);
+                if(WriteInstObject(line, item.obj, obj_lod, total_len))
+                {
+                    if(item.has_lod)
+                    {
+                        // End line the last object
+                        line[total_len++] = '\n';
+                        // Write LOD object into line
+                        return WriteInstObject(line, item.lod, -1, total_len);
+                    }
+                    return true;
+                }
+            }
+            else
+            {
+                // Normal handling
+                return super::Get()(section, line, key, value);
+            }
+            return false;
+        }
+        
+        
+    };
+    
+};
 
-/* Search for section in sections table */
-IplSectionTableItem* FindSectionFromId(uint8_t id)
+/*
+ *  Builds a new IPL file from an array of traits data
+ */
+bool TraitsIPL::Build(const char* filename, const std::vector<pair_ref_type>& lines)
 {
-    if(id >= IPL_INST && id <= IPL_ZONE)
-        return &sections[id];
-    return nullptr;
+    return SectionBuilder<KeyOnlyForIPL>(filename, lines);
 }
-
-
-
 
 
 /*
@@ -73,196 +135,61 @@ IplSectionTableItem* FindSectionFromId(uint8_t id)
  */
 bool TraitsIPL::Parser(const char* filename, container_type& map, bool isDefault)
 {
-    IplSectionTableItem* section = 0;
-    char* line, linebuf[512];
+    InstListType instList;
+    instList.reserve(4096);
     
-    if(FILE* f = fopen(filename, "r"))
+    if(SectionParser(filename, map, KeyOnlyForIPL::Find(), KeyOnlyForIPL::Set(instList)))
     {
-        std::vector<SDataIPL_INST::SObject> instList;
-        instList.reserve(4098);
-        
-        /* Read config line from file */
-        while(line = ParseConfigLine(fgets(linebuf, sizeof(linebuf), f)))
-        {
-            if(*line == 0) continue;
-            
-            /* If no section assigned, try to assign one */
-            if(section == nullptr)
-            {
-                section = FindSectionFromName(line);
-            }
-            else
-            {
-                /* End of section? */
-                 if(line[0] == 'e' && line[1] == 'n' && line[2] == 'd')
-                 {
-                     section = nullptr;
-                 }
-                 else
-                 {
-                     /* Assign line data to SDataIPL key */
-                     
-                     /* Inst section must be handled in a special way... */
-                     if(section->id == IPL_INST)
-                     {
-                         /* Store inst data for later post-processing */
-                         auto& inst = AddNewItemToContainer(instList);
-                         if(!SDataIPL_INST::set(line, inst))
-                            instList.pop_back();
-                     }
-                     /* Other sections can be handled normally */
-                     else
-                     {
-                        /* Scan line into key and put it into the data map */
-                        SDataIPL::key_type key;
-
-                        if(key.set(section->id, line))
-                            map[key];
-                     }
-                     
-                 }
-            }
-        }
-        
-        /* Done with the file */
-        fclose(f);
-
-        
         /*
          *   Post process INST section data taken into instList
          *   If this file isDefault, it's integrity must be preserved at a maximum cost because of streamed IPLs...
          */
+        
+        SDataIPL::key_type key;
+        key.section = IPL_INST;
+        SDataIPL_INST& data = key.inst;
+
+        /* Identify all LOD entries */
+        if(!isDefault)
         {
-            SDataIPL::key_type key;
-            key.section = IPL_INST;
-            SDataIPL_INST& data = key.inst;
-
-            /* Identify all LOD entries */
-            if(!isDefault)
-            {
-                for(auto& obj : instList)
-                {
-                    if(obj.lod != no_lod && obj.lod != is_lod)
-                    {
-                        instList.at(obj.lod).lod = is_lod;
-                    }
-                }
-            }
-
-            /* Add entries to @map */
             for(auto& obj : instList)
             {
-                /* Add object to map only if it isn't a LOD */
-                if(obj.lod != is_lod)
+                if(obj.lod != no_lod && obj.lod != is_lod)
                 {
-                    data.obj = obj;
-
-                    /* Copy the LOD from this object into it's data memory
-                     * (But it should not happen if the data is a default data because default line order matters!) */
-                    if(data.has_lod = (obj.lod != no_lod && !isDefault))
-                    {
-                        data.obj.lod = -1;
-                        data.lod = instList.at(obj.lod);
-                    }
-
-                    key.isDefault = isDefault;
-                    data.isDefault = isDefault;
-
-                    /* Add entry to @map */
-                    map[key];
+                    instList.at(obj.lod).lod = is_lod;
                 }
             }
         }
-        
+
+        /* Add entries to @map */
+        for(auto& obj : instList)
+        {
+            /* Add object to map only if it isn't a LOD */
+            if(obj.lod != is_lod)
+            {
+                data.obj = obj;
+
+                /* Copy the LOD from this object into it's data memory
+                * (But it should not happen if the data is a default data because default line order matters!) */
+                if(data.has_lod = (obj.lod != no_lod && !isDefault))
+                {
+                    data.obj.lod = -1;
+                    data.lod = instList.at(obj.lod);
+                }
+
+                key.isDefault = isDefault;
+                data.isDefault = isDefault;
+
+                /* Add entry to @map */
+                map[key];
+            }
+        }
+            
         return true;
     }
     
     return false;
 }
-
-
-/*
- *  Builds a new IPL file from an array of traits data
- */
-bool TraitsIPL::Build(const char* filename, const std::vector<pair_ref_type>& lines)
-{
-    if(FILE* f = fopen(filename, "w"))
-    {
-        int8_t newsec, section = -1;
-        unsigned int instIndex = 0;
-       
-        fputs("# IPL generated by modloader\n", f);
-        
-        /* Function to switch from reading one section to another,
-         * automatically puting a section start (and end) at the IPL file */
-        auto UpdateSection = [&f, &section](uint8_t newsec, const char* secname)
-        {
-            if(section != newsec)
-            {
-                PrintConfigLine(f, "%s%s\n", (section != -1? "end\n" : ""), secname);
-                section = newsec;
-            }
-        };
-        
-        /* Writes an inst object,
-         * effectivelly increasing the instIndex variable if successful */
-        auto WriteInstObject = [&f, &instIndex](char* buf, const SDataIPL_INST::SObject& inst, int lod)
-        {
-            if(SDataIPL_INST::get(buf, inst, lod))
-            {
-                if(PrintConfigLine(f, "%s\n", buf))
-                {
-                    ++instIndex;
-                    return true;
-                }
-            }
-            return false;
-        };
-        
-        
-        /* Iterate on the IPL data */
-        for(auto& pair : lines)
-        {
-            char buf[512];
-            auto& key = pair.first.get();
-            
-            /* Find if the section is valid */
-            if(IplSectionTableItem* section =  FindSectionFromId(key.section))
-            {
-                /* Updates the current section we're working on the file */
-                UpdateSection(section->id, section->name);
-
-                /* Inst is a complex section, we need to handle it manually */
-                if(section->id == IPL_INST)
-                {
-                    /*
-                     *  If item has an lod built in it (item.lod), write the lod just after it
-                     *  If item has no lod built in, test if it has a lod at a fixed line, and use it.
-                     *  Otherwise use nolod (-1)
-                     */
-                    auto& item = key.inst;
-                    WriteInstObject(buf, item.obj, (!item.has_lod? (item.obj.lod >= 0? item.obj.lod : -1) : instIndex + 1) );
-                    if(item.has_lod) WriteInstObject(buf, item.lod, -1);
-                }
-                else
-                {
-                    // Get data into buf string, then write it into the file */
-                    if(key.get(buf)) PrintConfigLine(f, "%s\n", buf);
-                }
-            }
-        }
-        
-        /* Finish up section, so, if there's a section open, close it */
-        UpdateSection(-1, "");
-        
-        /* Close IPL and return success */
-        fclose(f);
-        return true;
-    }
-    return false;
-}
-
-
 
 
 } // namespace

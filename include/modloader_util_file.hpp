@@ -23,40 +23,8 @@
 
 namespace modloader
 {
-    /* Handler for SectionParser() */
-    template<class ContainerType>
-    struct SectionHandler
-    {
-        typedef std::function<bool(const char* line, ContainerType& map)>   onReadType;
-        typedef std::function<bool(ContainerType& map)>                     onBeginType;
-        typedef std::function<bool(ContainerType& map)>                     onEndType;
-        
-        const char* section;                   
-        onReadType  onRead;
-        onBeginType onBegin;
-        onEndType   onEnd;
-        
-        SectionHandler() : section(0)
-        {}
-        
-        SectionHandler(const SectionHandler& rhs)
-            : section(rhs.section), onRead(rhs.onRead), onBegin(rhs.onBegin), onEnd(rhs.onEnd)
-        {}
-        
-        SectionHandler& Section(const char* section)
-        { this->section = section; return *this; }
-        
-        SectionHandler& OnRead(const onReadType& cb)
-        { this->onRead = cb; return *this; }
-        
-        SectionHandler& OnBegin(const onBeginType& cb)
-        { this->onBegin = cb; return *this; }
-        
-        SectionHandler& OnEnd(const onEndType& cb)
-        { this->onEnd = cb; return *this; }
-     };
+    static const size_t MaxLineSize = 512;
     
-     
     /*
      *  ReadEntireFile
      *      Reads a file into memory
@@ -201,73 +169,13 @@ namespace modloader
      *      Writes the GTA configuration line with @format to file @f
      *      Returns true on success, false otherwise
      */
-    inline int PrintConfigLine(FILE* f, const char* format, ...)
+    inline bool PrintConfigLine(FILE* f, const char* format, ...)
     {
         char fmt[256];
         va_list va; va_start(va, format);
         bool bResult = vfprintf(f, FixFormatString(format, fmt), va) >= 0;
         va_end(va);
         return bResult;
-    }
-    
-
-
-     /*
-      * SectionParser
-      *     Parses file @filepath as an GTA config file with sections calling @handlers for each specific section line.
-      */
-    template<class ContainerType, class SectionHandlerIt>
-    inline bool SectionParser(const char* filepath, ContainerType& map, SectionHandlerIt begin, SectionHandlerIt end)
-    {
-        bool bHasHandler = false;
-        SectionHandlerIt h;
-        
-        char *line, linebuf[512];
-        FILE* cfg = fopen(filepath, "r");
-
-        if(cfg)
-        {
-            /* Read each config line */
-            while(line = ParseConfigLine(fgets(linebuf, sizeof(linebuf), cfg)))
-            {
-                if(*line == 0) continue;
-
-                /* No section bein handled? */
-                if(!bHasHandler)
-                {
-                    /* Find handler based on this line identification (e.g. "inst", "objs", etc) */
-                    for(SectionHandlerIt ph = begin; !bHasHandler && ph != end; ++ph)
-                    {
-                        for(const char *pl = line, *pc = ph->section;   ; ++pc, ++pl)
-                        {
-                            if(*pc == 0)
-                            {
-                                h = ph; /* This is the section handler */
-                                bHasHandler = true;
-                                if(h->onBegin) h->onBegin(map);
-                                break;
-                            }
-                            else if(*pl != *pc)
-                                break;  /* This isn't the section handler */
-                        }
-                    }
-                }
-                else
-                {
-                    /* End of section? */
-                    if(line[0] == 'e' && line[1] == 'n' && line[2] == 'd')
-                    {
-                        if(h->onEnd) h->onEnd(map);
-                        bHasHandler = false;
-                    }
-                    else if(h->onRead)
-                        h->onRead(line, map);  /* Handle this line */
-                }
-            }
-            return true;
-        }
-
-        return false;
     }
     
 }
