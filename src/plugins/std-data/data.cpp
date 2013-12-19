@@ -76,8 +76,10 @@ int CThePlugin::OnStartup()
 
 int CThePlugin::OnShutdown()
 {
+#if NDEBUG
     // Cleanup cache folder
     DestroyDirectoryA(this->cachePath.c_str());
+#endif
     return 0;
 }
 
@@ -93,6 +95,14 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
         if(IsFileExtension(file.filext, *p))
             return MODLOADER_YES;
     }
+    
+    // Not found any extension compatible? If .txt (probably the readme), push it into the list of readmes for later procesing
+    if(IsFileExtension(file.filext, "txt"))
+    {
+        readme.push_back(GetFilePath(file));
+        // do not mark as MODLOADER_YES !!
+    }
+    
     return MODLOADER_NO;
 }
 
@@ -120,8 +130,7 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
         traits.gta.AddFile(file);
         return 0;
         // TODO
-    }    
-    
+    }
     return 1;
 }
 
@@ -217,23 +226,28 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
     /* Vector to store reference to pairs of <key, value> of dominant data, to be later built into a new data file  */
     std::vector<typename T::pair_ref_type> lines;
     
+    auto AddKeysFromContainer = [&keys](typename T::container_type& map)
+    {
+        /* and iterating on their data */
+        for(auto& it : map)
+        {
+            // Add it key into keys list
+            typedef BuildDataFileKeyInserter<keys_type, key_type> add;
+            typename std::conditional<!isSorted, typename add::NonSorted, typename add::Sorted>::type func;
+            func(keys, it.first);
+        }
+    };
+    
     /* Iterate on each file on the list... */
+    Log("A");
     for(auto& f : list)
     {
         /* ...loading it... */
         if(f.LoadData())
-        {
-            /* and iterating on their data */
-            for(auto& it : f.map)
-            {
-                // Add it key into keys list
-                typedef BuildDataFileKeyInserter<keys_type, key_type> add;
-                typename std::conditional<!isSorted, typename add::NonSorted, typename add::Sorted>::type func;
-                func(keys, it.first);
-            }
-        }
+            AddKeysFromContainer(f.map);
     }
     
+    Log("B");
     /* Iterate on all detected keys, finding the dominant data at list */
     for(auto& wrapper : keys)
     {
@@ -247,9 +261,11 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
     /* Retrieve the cache file path for building defaultFile replacement... */
     cacheFile = fs.GetCacheFileFor(defaultFile);
 
+    Log("C");
     /* ...and build the replacement file */
     if(T::Build(cacheFile.c_str(), lines))
     {
+        Log("D");
         return cacheFile;
     }
     else
@@ -321,8 +337,13 @@ static void* LoadGTAConfig(const char* filename, const char* mode)
  */
 int CThePlugin::PosProcess()
 {
+    // Process readme files, before anything else, 'cause we need to know if we should hook things
+    this->ProcessReadmeFiles();
+    
+    // Hook things
+    
     MakeProcHook1(0x5B92C7, LoadIPL);
     MakeProcHook2(0x5B905E, LoadGTAConfig);
-
+    
     return 0;
 }

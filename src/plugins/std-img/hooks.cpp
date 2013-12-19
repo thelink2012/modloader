@@ -37,7 +37,7 @@ void* CStreaming__RequestObject;
 void (*ReadImgContent)(void* imgEntry, int imgId) = memory_pointer(0x5B6170).get();
 int (*CStreaming__OpenImgFile)(const char* filename, char notPlayerImg);
 
-static void(*readImgFileFromDat)(const char* path);
+static void(*readImgFileFromDat)(const char* path, char notPlayerImg);
 static int (*addPath)(const char* name);
 
 static int (__fastcall *CExternalScripts__Allocate)(CExternalScripts* self, int dummy, const char* name);
@@ -135,10 +135,10 @@ void ReadPlayerImgEntries()
  *      It is good for TC's (but other situations too) that replaces the files loaded from gta.dat
  *      This will try to find a similar file in the mods folder and load it instead
  */
-void HOOK_ReadImgFileFromDat(const char* path)
+void HOOK_ReadImgFileFromDat(const char* path, char notPlayerImg)
 {
     imgPlugin->Log("HOOK_ReadImgFileFromDat(\"%s\")", path);
-    
+
     std::string normalizedPath = NormalizePath(path);
     size_t hash = modloader::hash(normalizedPath);
     
@@ -161,9 +161,9 @@ void HOOK_ReadImgFileFromDat(const char* path)
         path = it->path.data();
         imgPlugin->Log("Replacement img for dat img: %s", path);
     }
-
+        
     /* ...continue the gta.dat img file loading */
-    return readImgFileFromDat(path);
+    return readImgFileFromDat(path, notPlayerImg);
 }
 
 /*
@@ -267,10 +267,6 @@ void ApplyPatches()
         /* Replace ReadImgContents call and get it's original calling function pointer */
         CStreaming__ReadImgContents = MakeCALL(0x5B8E1B, (void*)HOOK_ReadImgContents).p;
 
-        /* Our hook to BeginStreamRead (our hook is HOOK_NewFile) will only
-         * do something if it came from the call at 0x40CF34 */
-        pBeginStreamReadCoolReturn = (void*)(0x40CF34 + 5);
-
         /* We need to know the next model to be read before the BeginStreamRead request happens */
         MakeCALL(0x40CCA6, (void*) HOOK_RegisterNextModelRead);
         MakeNOP(0x40CCA6 + 5, 2);
@@ -280,7 +276,7 @@ void ApplyPatches()
         {
             CStreaming__RequestObject = MakeCALL(0x156644F, (void*) HOOK_RequestClothes).p; 
             
-            /* Rewrite the HOODLUM call */
+            // Rewrite the HOODLUM call
             MakeCALL(0x1566401, (void*) HOOK_RequestClothes).p;
             MakeJMP (0x1566406, 0x156641F);
             MakeNOP (0x156640B, 0x14);
@@ -290,9 +286,14 @@ void ApplyPatches()
             CStreaming__RequestObject = MakeCALL(0x40A106, (void*) HOOK_RequestClothes).p;     
             MakeCALL(0x40A0D1, (void*) HOOK_RequestClothes).p;
         }
-
+        
+        
+        /* Our hook to BeginStreamRead (our hook is HOOK_NewFile) will only
+         * do something if it came from the call at 0x40CF34 */
+        pBeginStreamReadCoolReturn = (void*)(0x40CF34 + 5);
+        
         /* If registered a model that we've replaced, open our file and load from it */
-        addr = isHoodlum? 0x156C2FB : 0x406A5B; /* isHOODLUM? HOODLUM : ORIGINAL */
+        addr = isHoodlum? 0x156C2FB : 0x406A5B; // isHOODLUM? HOODLUM : ORIGINAL
         MakeCALL(addr, (void*) HOOK_NewFile);
         MakeNOP(addr+5, 1);
 
@@ -366,7 +367,8 @@ void ApplyPatches()
      * Anyway it looks to be safe, and if someone relates the code reaching there, I think it's easily fixed.
      * 
      */
-#if 1 || !defined(NDEBUG)
+#if 0 || !defined(NDEBUG)   // TODO FIX, THIS REALLY NEEDS A HOOK
+                            // 0x4076C0 is actually something like CStreaming::RetryLoadInStream
     static void (*trouble_4076C0)() = []()
     {
         imgPlugin->Log("FATAL ERROR: THIS IS A BUG! [0x4076C0 called]. Please report this bug!");

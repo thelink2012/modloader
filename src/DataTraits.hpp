@@ -54,7 +54,8 @@ struct DataTraits
     template<class FuncT>   /* bool FuncT(const char* filename, SDataTraits<T>::container_type& out) */
     bool LoadData(const char* filename, FuncT parser)
     {
-        return (isReady = parser(filename, this->map));
+        if(!isReady) isReady = parser(filename, this->map);
+        return isReady;
     }
 };
 

@@ -24,10 +24,11 @@ extern class CThePlugin* dataPlugin;
 class CThePlugin : public modloader::CPlugin
 {
     public:
+        static const int default_priority = 50;
+        
         unsigned int BuiltDataFilesCount;
         std::string cachePath;
-        
-        static const int default_priority = 50;
+        std::list<std::string>  readme;
         
         CThePlugin() : BuiltDataFilesCount(0)
         {}
@@ -42,6 +43,31 @@ class CThePlugin : public modloader::CPlugin
         int PosProcess();
         
         const char** GetExtensionTable();
+        
+        void ProcessReadmeFile(const char* filename);
+        void ProcessReadmeFiles()
+        {
+            for(auto& readme : this->readme)
+            {
+                ProcessReadmeFile(readme.c_str());
+            }
+        }
+        
+        /* Returns the cache file (used to finally send data to the game) from the assigned @path name
+         * (e.g. "DATA/MAPS/VEGAS/VEGASS.IPL" will return something like "$CACHE_PATH/data_10/VEGASS.IPL" */
+        std::string GetCacheFileFor(const char* path)
+        {
+            char dataPath[MAX_PATH];
+            
+            /* Create path to store the cache file,
+             * it's like that because the original filename (last @path component) must be preserved */
+            sprintf(dataPath, "%sdata_%d\\", cachePath.c_str(), ++BuiltDataFilesCount);
+            MakeSureDirectoryExistA(dataPath);
+            
+            /* Append the cache path with the file name */
+            return std::string(dataPath) + &path[GetLastPathComponent(path)];
+        }
+        
 };
 
 
@@ -64,6 +90,13 @@ class CDataFS
         /* map< FSPath, ListOfPhysicalPaths > */
         std::map< std::string, TraitsList > files;
         
+        enum eType
+        {
+            DefaultFile,
+            CustomFile,
+            NullFile
+        };
+        
         
     public:
         /* Returns an pointer to the list of files assigned with @path or nullptr if no file is assigned to it */
@@ -85,11 +118,12 @@ class CDataFS
         /* Adds a file to the container, it's assigned path will be @fsPath and the physical path on the computer is @physicalPath 
          * It will be pushed in the front of the list and marked as default if @isDefault is true
          */
-        DataTraitsType& AddFile(const char* fsPath, const char* physicalPath, bool isDefault)
+        DataTraitsType& AddFile(const char* fsPath, const char* physicalPath, eType filetype)
         {
             DataTraitsType* p;
             auto& l = *GetListAlways(fsPath);
-            
+            bool isDefault = (filetype == DefaultFile);
+
             /* Get space in the list */
             if(isDefault)
             {
@@ -101,6 +135,13 @@ class CDataFS
                 p = &AddNewItemToContainer(l);
             }
             
+            // If file is null, just for simulating data from a file, mark it is as ready
+            if(filetype == NullFile)
+            {
+                physicalPath = modloader::szNullFile;
+                p->isReady = true;
+            }
+            
             /* Assign information and return */
             p->path = physicalPath;
             p->isDefault = isDefault;
@@ -110,28 +151,25 @@ class CDataFS
         /* Adds a default file (that's, original, from the base game folder) to the container */
         DataTraitsType& AddFile(const char* filepath)
         {
-            return AddFile(filepath, filepath, true);
+            return AddFile(filepath, filepath, DefaultFile);
         }
         
         /* Adds a custom file to the container */
         DataTraitsType& AddFile(const ModLoaderFile& file)
         {
-            return AddFile(file.filepath, GetFilePath(file).c_str(), false);
+            return AddFile(file.filepath, GetFilePath(file).c_str(), CustomFile);
         }
 
         /* Returns the cache file (used to finally send data to the game) from the assigned @path name
          * (e.g. "DATA/MAPS/VEGAS/VEGASS.IPL" will return something like "$CACHE_PATH/data_10/VEGASS.IPL" */
         std::string GetCacheFileFor(const char* path)
         {
-            char dataPath[MAX_PATH];
-            
-            /* Create path to store the cache file,
-             * it's like that because the original filename (last @path component) must be preserved */
-            sprintf(dataPath, "%sdata_%d\\", dataPlugin->cachePath.c_str(), ++dataPlugin->BuiltDataFilesCount);
-            MakeSureDirectoryExistA(dataPath);
-            
-            /* Append the cache path with the file name */
-            return std::string(dataPath) + &path[GetLastPathComponent(path)];
+            return dataPlugin->GetCacheFileFor(path);
+        }
+        
+        bool size()
+        {
+            return files.size();
         }
         
 };

@@ -289,7 +289,7 @@ void CThePlugin::SetupHandlers()
     // grass*.dff replacer
     {
         /* Replace a sprintf that is like "models/grass/%s" with just "%s" */
-        WriteMemory<const char*>(0x5DD25C + 1, "%s");
+        WriteMemory<const char*>(0x5DD25C + 1, "%s", true);
         /* Then replace the grass string pointers to have the full path instead of only the name... */
         WriteMemory<const char*>(0x5DDA83 + 4, "models/grass/grass0_1.dff", true);
         WriteMemory<const char*>(0x5DDA8B + 4, "models/grass/grass0_2.dff", true);

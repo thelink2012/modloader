@@ -262,7 +262,7 @@ extern "C" void BuildPlayerFilesList(CDirectoryEntry* entries, size_t numEntries
  */
 extern "C" void OnClothesRequest(CDirectory* imgData, int index)
 {
-#if false && !defined(NDEBUG)
+#if 0 && !defined(NDEBUG)
     imgPlugin->Log("OnClothesRequest(%p, %d)", imgData, index);
 #endif
     
@@ -287,7 +287,7 @@ extern "C" void OnClothesRequest(CDirectory* imgData, int index)
  */
 extern "C" HANDLE CALL_NewFile(HANDLE hOriginal, void* from)
 {
-#if false && !defined(NDEBUG)
+#if 0 && !defined(NDEBUG)
     imgPlugin->Log("CALL_NewFile from %p with original handle %p -- (modelIndex %d)", from, hOriginal, iLoadingObjectIndex);
 #endif
     
@@ -309,7 +309,7 @@ extern "C" HANDLE CALL_NewFile(HANDLE hOriginal, void* from)
         ImportObject(it->first, *it->second);
     }
     
-#if false && !defined(NDEBUG)
+#if 0 && !defined(NDEBUG)
     imgPlugin->Log("\t...going on this call.", from, hOriginal, iLoadingObjectIndex);
 #endif
     
@@ -338,7 +338,7 @@ extern "C" void CALL_RemFile(GTA_STREAM* stream)
 {
     CriticalLock lock(cs);  /* We're in the streaming thread, lock any access to our data from main thread */
     
-#if false && !defined(NDEBUG) 
+#if 0 && !defined(NDEBUG) 
     imgPlugin->Log("CALL_RemFile");
 #endif
     

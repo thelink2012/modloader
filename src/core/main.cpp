@@ -136,12 +136,12 @@ namespace modloader
      */
     static int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
     {
-        /* Startup the loader */
-        loader.Startup();
-        
         /* Setup exception filter, we need (whenever possible) to call shutdown before a crash or something */
         PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
-     
+        
+        /* Startup the loader */
+        loader.Startup();
+
         /*
          *  Call the original call
          *  Use the original address if after loader.Startup() the instruction "call WinMain" hasn't changed it's call address.

@@ -28,6 +28,7 @@
 
 namespace modloader
 {
+    static const char* szNullFile = "NUL";    // "/dev/null" on POSIX systems
     static const char cNormalizedSlash = '\\';
     std::string NormalizePath(std::string path);
     

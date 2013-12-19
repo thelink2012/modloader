@@ -133,6 +133,7 @@ _HOOK_NewFile:
 
     _YesCoolFile:
         and esi, 0x00FFFFFF     # Original code
+
         push edx                # Caller + 5
         push eax                # hOriginalFile
         call _CALL_NewFile      # Returns hFile HANDLE
