@@ -11,6 +11,7 @@
 #include <modloader.hpp>
 #include <modloader_util_path.hpp>
 #include <modloader_util_container.hpp>
+#include <modloader_util_ini.hpp>
 
 #include <windows.h>
 #include <cstdio>
@@ -25,23 +26,13 @@
 #define LOGFILE_AS_STDOUT
 #endif
 
-
-/*
- * TODO: Plugin Priority Config File
- *       ~~~~~~ Exclusion Config File
- *      Export ReadModf & LoadPlugin / UnloadPlugin ?
- *      Export FindFileHandler ?
- *      mods sub-recursion. E.g. when a mod contains a modloader folder, load mods from it's folder
- * 
- *
- */
-
 namespace modloader
 {
     static const char* modurl = "https://github.com/thelink2012/sa-modloader";
     
     // log stream
     static FILE* logfile = 0;
+    static bool bImmediateFlush = true;     // Flushes the logfile everything something is written to it
     
     /*
      * Log
@@ -56,7 +47,7 @@ namespace modloader
             va_list va; va_start(va, msg);
             vfprintf(logfile, msg, va);
             fputc('\n', logfile);
-            fflush(logfile);
+            if(bImmediateFlush) fflush(logfile);
             va_end(va);
         }
     }
@@ -138,7 +129,7 @@ namespace modloader
     {
         /* Setup exception filter, we need (whenever possible) to call shutdown before a crash or something */
         PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
-        
+
         /* Startup the loader */
         loader.Startup();
 
@@ -158,7 +149,69 @@ namespace modloader
     }
     
     
-    
+    /*
+     * CModLoader::ParseCommandLine
+     *      Parses the gta_sa.exe (or whatever the executable name is) command line 
+     */
+    void CModLoader::ParseCommandLine()
+    {
+        char buf[512];
+        wchar_t **argv; int argc; 
+        argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+        
+        Log("\nReading command line");
+
+        if(!argv) // CommandLineToArgvW failed!!
+        {
+            Log("Failed to read command line. CommandLineToArgvW() failed.");
+            return;
+        }
+        
+        /* Converts wchar_t buffer into char* ASCII buffer (not UTF-8, alright?) */
+        auto toASCII = [](const wchar_t* wstr, char* abuf, size_t asize)
+        {
+            return !!WideCharToMultiByte(CP_ACP, 0, wstr, -1, abuf, asize, NULL, NULL);
+        };
+        
+        /* Iterate on the arguments */
+        for(int i = 0; i < argc; ++i)
+        {
+            /* If an actual argument... */
+            if(argv[i][0] == '-')
+            {
+                wchar_t *arg = (i+1 < argc? argv[i+1] : nullptr);
+                wchar_t *argname = &argv[i][1];
+                
+                /* Mod argument */
+                if(!_wcsicmp(argname, L"mod"))
+                {
+                    // Is argument after mod argument valid?
+                    if(arg == nullptr)
+                    {
+                        // ...nope
+                        Log("Failed to read command line. Mod command line is incomplete.");
+                        break;
+                    }
+                    else
+                    {
+                        // ...yep
+                        if(toASCII(arg, buf, sizeof(buf)))
+                        {
+                            // Force exclusion and include the specified mod
+                            modsfolder.flags.bForceExclude = true;
+                            modsfolder.AddIncludedMod(buf);
+                            
+                            //
+                            Log("Command line argument received: -mod \"%s\"", buf);
+                        }
+                    }
+                }
+            }
+        }
+        
+        LocalFree(argv);
+        Log("Done reading command line");
+    }
      
     
     /*
@@ -172,18 +225,20 @@ namespace modloader
         {
             char gameFolder[MAX_PATH * 2];
             
-            /* Open log file */
-#ifndef LOGFILE_AS_STDOUT
-            if(!logfile) logfile = fopen("modloader/modloader.log", "w");
-#else
-            logfile = stdout;
-#endif
+            // First of all of everything else in the world, open the log file
+            this->OpenLog();
             
-            /* Log header, with version number and isdev information */
-            Log("========================== modloader %d.%d.%d %s==========================\n",
-                MODLOADER_VERSION_MAJOR, MODLOADER_VERSION_MINOR, MODLOADER_VERSION_REVISION,
-                MODLOADER_VERSION_ISDEV? "Development Build " : "");
+            // Read basic config from "modloader/modloader.ini"
+            // This will tell us if we need to log stuff
+            this->ReadBasicConfig("modloader/modloader.ini");
 
+            // Basic logging happened, close log if logging is disabled
+            if(!this->bEnableLog)
+            {
+                Log("Logging is disabled. Closing log file...");
+                this->CloseLog();
+            }
+            
             /* --- */
             GetCurrentDirectoryA(sizeof(gameFolder), gameFolder);
             this->gamePath = gameFolder;
@@ -199,8 +254,8 @@ namespace modloader
                     0
                 };
                 
-                this->modsPath = "modloader\\";
-                this->cachePath = this->modsPath + ".data\\cache\\";
+                std::string modsPath = "modloader\\";
+                this->cachePath = modsPath + ".data\\cache\\";
                 
                 for(const char** folder = folders; *folder; ++folder)
                 {
@@ -211,19 +266,21 @@ namespace modloader
             
             /* Register modloader methods and vars */
             this->loader.gamepath  = this->gamePath.c_str();
-            this->loader.modspath  = this->modsPath.c_str();
+            //this->loader.modspath  = this->modsPath.c_str();
+            this->loader.modspath = nullptr;
             this->loader.cachepath = this->cachePath.c_str();
             this->loader.Log   = &Log;
             this->loader.Error = &Error;
             
             
             // Do init
-            this->LoadPlugins();        /* Load plugins, such as std-img.dll at /modloader/.data/plugins */
-            this->StartupPlugins();     /* Call Startup methods from plugins */
-            this->PerformSearch();      /* Search for mods at /modloader, but do not install them yet */
-            this->HandleFiles();        /* Install mods found on search above */
-            this->PosProcess();         /* After mods are installed, notify all plugins, they may want to do some pos processing */
-            this->ClearFilesData();     /* Clear files data (such as paths) freeing memory */
+            this->ParseCommandLine();   // Parse command line arguments, such as "-mod modname"
+            this->LoadPlugins();        // Load plugins, such as std-img.dll at /modloader/.data/plugins
+            this->StartupPlugins();     // Call Startup methods from plugins
+            this->PerformSearch();      // Search for mods at /modloader, but do not install them yet
+            this->HandleFiles();        // Install mods found on search above
+            this->PosProcess();         // After mods are installed, notify all plugins, they may want to do some pos processing
+            this->ClearFilesData();     // Clear files data (such as paths) freeing memory
             
             Log("\nGame is ready!\n");
 
@@ -246,32 +303,58 @@ namespace modloader
         if(this->bWorking == false)
             return true;
         
-        /* Set dir to be the make dir */
-        
-        SYSTEMTIME time;
-        GetLocalTime(&time);
-        
         Log("\nShutdowing modloader...");
         this->UnloadPlugins();
         Log("modloader has been shutdown.");
-        
-		Log(
-			"\n*********************************\n"
-			"> Logging finished: %.2d:%.2d:%.2d\n"
-			"  Powered by sa-modloader (%s)\n"
-			"*********************************\n",
-			time.wHour, time.wMinute, time.wSecond,
-            modurl);
-
-        
-#ifndef LOGFILE_AS_STDOUT       
-        if(logfile) { fclose(logfile); logfile = 0; }
-#endif
+        this->CloseLog();
         
         this->bWorking = false;
         return true;
     }
 
+    /*
+     * CModLoader::OpenLog
+     *      Open modloader log file
+     */
+    void CModLoader::OpenLog()
+    {
+        /* Open log file */
+#ifndef LOGFILE_AS_STDOUT
+        if(!logfile) logfile = fopen("modloader/modloader.log", "w");
+#else
+        logfile = stdout;
+#endif
+        
+        /* Log header, with version number and isdev information */
+        Log("========================== modloader %d.%d.%d %s==========================\n",
+                MODLOADER_VERSION_MAJOR, MODLOADER_VERSION_MINOR, MODLOADER_VERSION_REVISION,
+                MODLOADER_VERSION_ISDEV? "Development Build " : "");
+    }
+    
+    /*
+     * CModLoader::CloseLog
+     *      Closes modloader log file
+     */
+    void CModLoader::CloseLog()
+    {
+        SYSTEMTIME time;
+        GetLocalTime(&time);
+        
+        Log(
+			"\n******************************************************************************\n"
+			"> Logging finished: %.2d:%.2d:%.2d\n"
+			"  Powered by sa-modloader (%s)\n"
+			"******************************************************************************\n",
+			time.wHour, time.wMinute, time.wSecond,
+            modurl);
+
+        if(logfile && logfile != stdout)
+        {
+            fclose(logfile);
+            logfile = 0;
+        }
+    }
+    
     /*
      * CModLoader::Patch
      *      Patches the game code
@@ -300,22 +383,7 @@ namespace modloader
         }, true);
     }
 
-    /*
-     * CModLoader::PosProcess
-     *      Call all 'plugin.PosProcess' methods
-     */   
-    void CModLoader::PosProcess()
-    {
-        CSetCurrentDirectory xdir(this->gamePath.c_str());
-        Log("\nPos processing...");
-        for(auto& plugin : this->plugins)
-        {
-            Log("Pos processing plugin \"%s\"", plugin.name);
-            if(plugin.PosProcess(&plugin))
-                Log("Plugin \"%s\" failed to pos process", plugin.name);
-        }
-    }
-    
+
     /*
      * CModLoader::LoadPlugins
      *      Loads all plugins
@@ -324,21 +392,45 @@ namespace modloader
     {
         Log("\nLooking for plugins...");
 
-        /* Goto plugins folder */
-        if(SetCurrentDirectoryA("modloader\\.data\\plugins\\"))
-        {       
-            ForeachFile("*.dll", false, [this](ModLoaderFile& file)
+        // Load basic plugins only if bEnablePlugin is true
+        if(this->bEnablePlugins)
+        {
+            // Goto plugins folder
+            CSetCurrentDirectory xdir("modloader\\.data\\plugins");
             {
-                LoadPlugin(file.filepath, false);
-                return true;
-            });
+                // Read plugins priority
+                {
+                    modloader::ini ini;
+                    
+                    Log("Reading plugins.ini");
+                    if(ini.load_file("plugins.ini"))
+                    {
+                        // Check out plugins priority overrides
+                        for(auto& pair : ini["PRIORITY"])
+                        {
+                            auto& key = pair.first;
+                            auto& value = pair.second;
+                            plugins_priority.emplace(NormalizePath(key), std::stoi(value));
+                        }
+                    }
+                    else Log("Failed to read plugins.ini");
+                }
+                
+                
+                // Iterate on each dll plugin
+                ForeachFile("*.dll", false, [this](ModLoaderFile& file)
+                {
+                    LoadPlugin(file.filepath, false);
+                    return true;
+                });
 
-            this->SortPlugins();
-            this->BuildExtensionMap();
-            
-            /* Go back to main folder */
-            SetCurrentDirectory("..\\..\\");
+                // Finish the load
+                this->SortPlugins();
+                this->BuildExtensionMap();
+            }
         }
+        else
+            Log("Plugins ignored!");
     }
 
     /*
@@ -369,7 +461,17 @@ namespace modloader
         modloader_plugin_t data;
         bool bFail = false;
         HMODULE module;
+        int priority = -1;
 
+        // Check if module is on plugins overriding priority list
+        {
+            auto it = this->plugins_priority.find(NormalizePath(pluginPath));
+            if(it != this->plugins_priority.end())
+            {
+                priority = it->second;
+            }
+        }
+        
         // Load plugin module
         if(module = LoadLibraryA(modulename))
         {
@@ -380,13 +482,20 @@ namespace modloader
             memset(&data, 0, sizeof(data));
             data.modloader = &this->loader;
             data.pModule   = module;
-            data.priority  = 50;
+            data.priority  = priority == -1? 50 : priority;
             
             // Check if plugin has been loaded sucessfully
             if(GetPluginData)
             {
                 GetPluginData(&data);
 
+                // Override data.priority if requested to
+                if(priority != -1)
+                {
+                    Log("Overriding priority, from %d to %d", data.priority, priority);
+                    data.priority = priority;
+                }
+                
                 // Check version incompatibilities (ignore for now, no incompatibilities)
                 if(false && (data.major && data.minor && data.revision))
                 {
@@ -412,8 +521,11 @@ namespace modloader
                 {
                     data.name = data.GetName? data.GetName(&data) : "NONAME";
                     data.version = data.GetVersion? data.GetVersion(&data) : "NOVERSION";
-                    data.author = data.GetAuthor? data.GetAuthor(&data) : "NOAUTHOR";
-                    Log("Plugin module '%s' loaded as %s %s by %s", modulename, data.name, data.version, data.author);
+                    data.author = data.GetAuthor? data.GetAuthor(&data) : "";
+                    Log("Plugin module '%s' loaded as %s %s %s %s",
+                        modulename,
+                        data.name, data.version,
+                        data.author? "by" : "", data.author);
                 }
             }
             else
@@ -427,8 +539,9 @@ namespace modloader
                 FreeLibrary(module);
             else
             {
+                // Push plugin to list
                 this->plugins.push_back(data);
-                if(bDoStuffNow)
+                if(bDoStuffNow) // Start plugin and sort modloader extension table?
                 {
                     this->StartupPlugin(this->plugins.back());
                     this->SortPlugins();
@@ -473,65 +586,210 @@ namespace modloader
         
         Log("Unloading plugin \"%s\"", plugin.name);
         
+        // Call the plugin shutdown notification
         if(plugin.OnShutdown) plugin.OnShutdown(&plugin);
+        // Free the module
         if(plugin.pModule) FreeLibrary((HMODULE)(plugin.pModule));
+        // Remove from plugins list if requested (invalidating some iterators)
         if(bRemoveFromList) this->plugins.remove(plugin);
         
         return true;
     }
-    
+   
+    /*
+     * CModLoader::StartupPlugins
+     *      Call plugin OnStartup method
+     */
+    void CModLoader::StartupPlugin(ModLoaderPlugin& data)
+    {
+        CSetCurrentDirectory xdir(this->loader.gamepath);
 
+        Log("Starting up plugin \"%s\"", data.name);
+        if(data.OnStartup && data.OnStartup(&data))
+        {
+            Log("Failed to startup plugin '%s', unloading it.", data.name);
+            this->UnloadPlugin(data, true);
+        }
+    }
+            
+    /*
+     * CModLoader::StartupPlugins
+     *      Call plugins OnStartup method
+     */
+    void CModLoader::StartupPlugins()
+    {
+        Log("\nStarting up plugins...");
+        for(auto& plugin : this->plugins)
+            StartupPlugin(plugin);
+    }
+
+    
     /*
      * CModLoader::PeformSearch
      *      Search for mods
      */
     void CModLoader::PerformSearch()
     {
-        /* Iterate on all folders at /modloader/ dir, and treat them as a mod entity */
-        Log("\nLooking for mods...");
-        CSetCurrentDirectory xdir("modloader\\");
+        this->PerformSearch(this->modsfolder);
+    }
+    
+    
+    /*
+     * CModLoader::PeformSearch
+     *      Search for mods at @modfolder
+     */
+    void CModLoader::PerformSearch(ModFolderInfo& modfolder)
+    {
+        //  Iterate on all folders at modfolder dir, and treat them as a mod entity
+        Log("\nLooking for mods at \"%s\"...", modfolder.path.c_str());
         {
-            ForeachFile("*.*", false, [this](ModLoaderFile& file)
+            CSetCurrentDirectory xdir(modfolder.path.c_str());
             {
-                /* Must be a directory to be a mod */
-                if(file.is_dir) this->ReadModf(file.filepath);
-                return true;
-            });
+                // Load this config
+                LoadConfigFromINI("modloader.ini", modfolder);
+                
+                if(modfolder.flags.bIgnoreAll == false)
+                {
+                    // Iterate on all files, to load mods
+                    ForeachFile("*.*", false, [this, &modfolder](ModLoaderFile& file)
+                    {
+                        // Must be a directory to be a mod
+                        if(file.is_dir)
+                        {
+                            // If the file is on the exclusion list, don't load it
+                            if(!modfolder.IsModIgnored(file))
+                            {
+                                this->ReadModf(modfolder, file.filepath);
+                            }
+                            else
+                                Log("Ignoring mod at \"%s\"", file.filepath);
+                        }
+                        return true;
+                    });
+                }
+                else
+                    Log("Ignoring all mods\n");
+            }
+        }
+        
+        // Perform search on the child modloader folders we found above
+        for(auto& child : modfolder.childs)
+        {
+            PerformSearch(child);
         }
     }
 
+    /*
+     * CModLoader::ReadBasicConfig
+     *      Loads main config file from @filename
+     */
+    void CModLoader::ReadBasicConfig(const char* filename)
+    {
+        modloader::ini data;
+        
+        Log("Loading basic config file %s", filename);
+        if(data.load_file(filename))
+        {
+            // Read basic stuff from CONFIG section
+            for(auto& pair : data["CONFIG"])
+            {
+                auto& key = pair.first;
+                auto& value = pair.second;
+
+               if(!compare(key, "ENABLE_PLUGINS", false))
+                    this->bEnablePlugins = to_bool(value);
+                else if(!compare(key, "LOG_ENABLE", false))
+                    this->bEnableLog = to_bool(value);
+                else if(!compare(key, "LOG_IMMEDIATE_FLUSH", false))
+                    bImmediateFlush = to_bool(value);
+            }
+            
+        }
+        else
+            Log("Failed to load basic config file");
+    }
+    
+    /*
+     * CModLoader::LoadConfigFromINI
+     *      Loads ini config from @filename into @modx 
+     */
+    void CModLoader::LoadConfigFromINI(const char* filename, ModFolderInfo& modx)
+    {
+        modloader::ini data;
+        
+        Log("Loading modloader config file %s", filename);
+        if(data.load_file(filename))
+        {
+            // Read CONFIG section
+            for(auto& pair : data["CONFIG"])
+            {
+                auto& key = pair.first;
+                auto& value = pair.second;
+                
+                if(!compare(key, "IGNORE_ALL", false))
+                    modx.flags.bIgnoreAll = to_bool(value);
+                else if(!compare(key, "EXCLUDE_ALL", false))
+                    modx.flags.bExcludeAll = to_bool(value);
+            }
+            
+            // Read excluded mods list
+            for(auto& pair : data["EXCLUDE_MODS"])
+            {
+                auto& exclude = pair.first;
+                modx.AddIgnoredMod(exclude.c_str());
+            }
+            
+            // Read excluded files and extensions list
+            for(auto& pair : data["EXCLUDE_FILES"])
+            {
+                auto& exclude = pair.first;
+                modx.AddIgnoredFile(exclude.c_str());
+            }
+            
+            // Read mods that must be loaded even when EXCLUDE_ALL is TRUE
+            for(auto& pair : data["INCLUDE_MODS"])
+            {
+                auto& include = pair.first;
+                modx.AddIncludedMod(include.c_str());
+            }
+            
+        }
+        else
+            Log("Failed to load modloader config file");
+    }
     
     /*
      * CModLoader::ReadModf
      *      Read a mod
-     *      @modfolder: Mod folder
+     *      @modsbase: The modloader folder that the mod is at, normally "modloader\\"
+     *      @modfolder_cc: Mod folder
      */
-    void CModLoader::ReadModf(const char* modfolder_cc)
+    void CModLoader::ReadModf(ModFolderInfo& modsbase, const std::string& modfolder)
     {
-        std::string modfolder_str = modfolder_cc;
-        //if(modfolder_str.compare(, 2, ".\\");
-        const char* modfolder = modfolder_str.c_str();
-        
-        
         /* Go into the mod folder to work inside it */
         {
-            CSetCurrentDirectory xdir(modfolder);
-            
-            char buffer[MAX_PATH * 2];
+            CSetCurrentDirectory xdir(modfolder.c_str());
+
+            char buffer[MAX_PATH];
             GetCurrentDirectoryA(sizeof(buffer), buffer);
  
-            /* Push a new modification into the mods list */
-            auto& mod = AddNewItemToContainer(this->mods);
-            mod.name = &modfolder[GetLastPathComponent(modfolder)];
+            // Push a new modification into the mods list
+            auto& mod = AddNewItemToContainer(modsbase.mods);
+            mod.name = &modfolder.c_str()[GetLastPathComponent(modfolder)];
             mod.id = this->currentModId++;
-            mod.path = std::string("modloader\\") + modfolder;
+            mod.path = modsbase.path + modfolder;
             mod.fullPath = buffer;
             
-            Log("Reading mod \"%s\" (%d) at \"%s\"...", mod.name.c_str(), mod.id, modfolder);
+            Log("Reading mod \"%s\" (%d) at \"%s\"...", mod.name.c_str(), mod.id, modfolder.c_str());
             
-            ForeachFile("*.*", true, [this, &mod](ModLoaderFile& file)
+            // Iterate on the mod files...
+            ForeachFile("*.*", true, [this, &mod, &modsbase](ModLoaderFile& file)
             {
-                this->ReadFile(file, mod);
+                // Checkout if this file/filetype is being ignored, otherwise continue the load...
+                if(!modsbase.IsFileIgnored(file))
+                {
+                    this->ReadFile(modsbase, file, mod);
+                }
                 return true;
             });
         }     
@@ -542,7 +800,7 @@ namespace modloader
      *  CModLoader::ReadFile
      *      Read file
      */
-    void CModLoader::ReadFile(ModLoaderFile& file, CModLoader::ModInfo& mod)
+    void CModLoader::ReadFile(ModFolderInfo& modsbase, ModLoaderFile& file, CModLoader::ModInfo& mod)
     {
         /* Continue the 'file' setup */
         file.modname = mod.name.data();
@@ -574,15 +832,21 @@ namespace modloader
             
             /* Copy C POD data into fileInfo */
             memcpy(&fileInfo.data, &file, sizeof(file));
-        }
             
-        if(handler)
             Log("Handler for file \"%s\" (%d) is \"%s\"", file.filepath, file.file_id, handler->name);
+        }
+        else if(!strcmp(file.filepath, "modloader\\", false))
+        {
+            // Child modloader folder!!!
+            file.recursion = false;
+            modsbase.AddChild(GetFilePath(file));
+            Log("Found child modloader folder");
+        }
         else
-            Log("Handler for file \"%s\" (%d) not found", file.filepath, file.file_id);    
-        
-
-        
+        {
+            //
+            Log("Handler for file \"%s\" (%d) not found", file.filepath, file.file_id);
+        }
     }
     
     /*
@@ -668,6 +932,50 @@ namespace modloader
         }
         
         return handler;
+    }
+    
+
+    
+    /*
+     * CModLoader::HandleFiles
+     *      Handle all files readen
+     */
+    void CModLoader::HandleFiles()
+    {
+        Log("\nHandling files...");
+
+        // Gets all mod folders from modsfolder and all it's childs
+        for(ModFolderInfo& folder : modsfolder.GetAllFolders())
+        {
+            CSetCurrentDirectory xdir(folder.path.c_str());
+                    
+            // Iterate on each modification
+            for(auto& mod : folder.mods)
+            {
+                CSetCurrentDirectory xdir((mod.name + "\\").c_str());
+                
+                // Handle all the files
+                for(auto& file : mod.files)
+                    this->HandleFile(file);
+            }
+        }
+    }
+            
+    /*
+     * CModLoader::PosProcess
+     *      Call all 'plugin.PosProcess' methods
+     */   
+    void CModLoader::PosProcess()
+    {
+        CSetCurrentDirectory xdir(this->gamePath.c_str());
+        
+        Log("\nPos processing...");
+        for(auto& plugin : this->plugins)
+        {
+            Log("Pos processing plugin \"%s\"", plugin.name);
+            if(plugin.PosProcess(&plugin))
+                Log("Plugin \"%s\" failed to pos process", plugin.name);
+        }
     }
 
 }

@@ -35,12 +35,6 @@ class ordered_map//_temp
     private:
         key_compare CompareKey;
         
-        value_type& new_item()
-        {
-            list.resize(list.size() + 1);
-            return list.back();
-        }
-        
     public:
         key_compare key_comp() const    { return CompareKey; }
         iterator begin()                { return list.begin(); }
@@ -60,7 +54,7 @@ class ordered_map//_temp
             auto it = find(k);
             if(it == end())
             {
-                list.push_back( value_type(k, mapped_type()) );
+                list.emplace_back(k, mapped_type());
                 return list.back().second;
             }
             else

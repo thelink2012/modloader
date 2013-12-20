@@ -6,8 +6,6 @@
  *      Loads all compatible files with imgs (on game request),
  *      it loads directly from disk not by creating a cache or virtual img.
  * 
- * 
- *  TODO loading .txd folders with images inside (.png, .jpg, .bmp, etc)
  */
 #include "img.h"
 #include "Injector.h"
@@ -51,7 +49,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.6";
+    return "0.7";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -166,19 +164,16 @@ int CThePlugin::PosProcess()
  */
 void CThePlugin::AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const char* filename2)
 {
-    const char* xname = filename2? filename2 : file.filename;
+    // See function description commentary
+    const char* xname = filename2? filename2 : file.filename;   
     if(!filename2) filename2 = "";
     
+    //
     auto& f = img.imgFiles[xname];
-    if(f.path.empty())
+    if(RegisterReplacementFile(*this, xname, f.path, (GetFilePath(file) + filename2).c_str()))
     {
-        f.path = GetFilePath(file) + filename2;
         f.name = xname;
     }
-    else
-        Log("Trying to add new file into std-img but file \"%s\" is already loaded into std-img!\n"
-            "\tFirst file path: %s",
-            xname, f.path.c_str());
 }
 
 /*
@@ -240,7 +235,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
         char* gta3Path   = ReadMemory<char*>(0x40844C + 1, true);
         char* gtaIntPath = ReadMemory<char*>(0x40848C + 1, true);;
         
-        imgPlugin->Log("gta3.img path: %s\ngta_int.img path: %s", gta3Path, gtaIntPath);
+        imgPlugin->Log("Overridden gta3 img: %s\nOverridden gta_int img: %s", gta3Path, gtaIntPath);
         
         *gta3ImgDescriptorNum = CStreaming__OpenImgFile(gta3Path, true);
         *gtaIntImgDescriptorNum = CStreaming__OpenImgFile(gtaIntPath, true);

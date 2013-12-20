@@ -29,7 +29,11 @@ extern "C" {
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         0
 #define MODLOADER_VERSION_REVISION      0
+#ifdef NDEBUG
+#define MODLOADER_VERSION_ISDEV         0
+#else
 #define MODLOADER_VERSION_ISDEV         1
+#endif
 
     
 /**************************************
@@ -270,7 +274,7 @@ typedef void (*modloader_fError)(const char* errmsg, ...);
 struct modloader_data
 {
     const char* gamepath;   // game path
-    const char* modspath;   // modloader base path
+    const char* modspath;   // modloader base path      -- currently set to NULL
     const char* cachepath;  // cache path, normally "modloader/.data/cache"
     
     modloader_fLog              Log;

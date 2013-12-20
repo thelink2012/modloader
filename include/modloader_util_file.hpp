@@ -101,7 +101,7 @@ namespace modloader
      *  FixFormatString
      *      Replaces %f with %g
      */
-    inline char* FixFormatString(const char* format, char* out)
+    inline char* FixFormatString(const char* format, char* out, bool addStringAtEnd = false)
     {
         char* result = out;
         char lastlast = 0, last = 0;
@@ -115,6 +115,11 @@ namespace modloader
             
             lastlast = last;
             last = *p;
+        }
+        
+        if(addStringAtEnd)
+        {
+            *out++ = ' '; *out++ = '%'; *out++ = 's';
         }
         
         *out = 0;
@@ -145,9 +150,9 @@ namespace modloader
     {
         char fmt[256];
         va_list va; va_start(va, format);
-        int result = vsscanf(str, FixFormatString(format, fmt), va);
+        int result = vsscanf(str, FixFormatString(format, fmt, true), va);
         va_end(va);
-        return (result >= count);
+        return (result == count);
     }
 
     /*

@@ -239,7 +239,6 @@ namespace modloader
     
     inline BOOL CopyDirectoryA(LPCTSTR szFrom, LPCTSTR szTo)
     {
-        // TODO error checking
         if(CreateDirectoryA(szTo, NULL))
         {
             ForeachFile(szFrom, "*.*", false, [&szFrom, &szTo](ModLoaderFile& file)
@@ -266,8 +265,6 @@ namespace modloader
     
     inline BOOL DestroyDirectoryA(LPCTSTR szPath)
     {
-        // TODO error checking
-        
         ForeachFile(szPath, "*.*", false, [&szPath](ModLoaderFile& file)
         {
                 CHAR szPathFile[MAX_PATH];

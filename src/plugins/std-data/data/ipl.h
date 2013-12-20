@@ -931,7 +931,7 @@ namespace data
                 /* Section table for lookup */
                 static SectionInfo sections[] =
                 {
-                    { IPL_NONE, "none" },
+                    { IPL_NONE, ""     },
                     { IPL_INST, "inst" },
                     { IPL_CULL, "cull" },
                     { IPL_PATH, "path" },

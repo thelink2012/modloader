@@ -31,21 +31,28 @@ namespace modloader
      *  Registers @path into @buf if it is empty.
      *  Returns true if registration is sucessfull and false otherwise.
      *  Logging happens with @plugin ::Log and @name to specify a identifier for the path
+     *  
+     *  The behaviour of this function can change whenever we think it's necessary
      */
-    inline bool RegisterReplacementFile(CPlugin& plugin, const char* name,  std::string& buf, const char* path)
+    inline bool RegisterReplacementFile(CPlugin& plugin, const char* name,  std::string& buf, const char* path, bool bLogOnSuccess = true)
     {
+        // If buffer is not empty, there's a replacement present, log it
         if(!buf.empty())
         {
-            plugin.Log("warning: Failed to replace a file %s with \"%s\" because the file already has a replacement!\n"
-                "\tReplacement: %s", name, path, buf.c_str());
-            return false;
+            plugin.Log("Warning: Overriding replacement for file %s, from \"%s\" with \"%s\"",
+                       name, buf.c_str(), path);
         }
-        else
+        
+        // Do replacement
+        buf = path;
+        
+        // Log successful replacement
+        if(bLogOnSuccess)
         {
-            plugin.Log("Found replacement file for %s\n\tReplacement: %s", name, path);
-            buf = path;
-            return true;
+            plugin.Log("Found replacement for file %s which is \"%s\"", name, path);
         }
+        
+        return true;
     }
 }
 

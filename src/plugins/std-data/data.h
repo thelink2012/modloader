@@ -82,27 +82,31 @@ class CThePlugin : public modloader::CPlugin
 template<class DataTraitsType>  /* DataTraitsType must be of DataTraitsBase */
 class CDataFS
 {
+    private:
+        
+        // Returns hashed normalized path
+        static size_t NormalizeAndHash(const char* path)
+        {
+            return modloader::hash(NormalizePath(path));
+        }
+        
     public:
         typedef std::list<DataTraitsType> TraitsList;
         
-        /* TODO hash NormalizeFSPath */
+        /* map< hash_FSPath, ListOfPhysicalPaths > */
+        std::map< size_t, TraitsList > files;
         
-        /* map< FSPath, ListOfPhysicalPaths > */
-        std::map< std::string, TraitsList > files;
-        
-        enum eType
-        {
-            DefaultFile,
-            CustomFile,
-            NullFile
-        };
-        
+        bool bAdditional;
+        DataTraitsType* additional;
+
+        CDataFS() : bAdditional(false), additional(0)
+        {}
         
     public:
         /* Returns an pointer to the list of files assigned with @path or nullptr if no file is assigned to it */
         TraitsList* GetList(const char* path)
         {
-            auto it = files.find(NormalizePath(path));
+            auto it = files.find(NormalizeAndHash(path));
             if(it == files.end() || it->second.empty())
                 return nullptr;
             return &it->second;
@@ -112,34 +116,26 @@ class CDataFS
          * if no file is assigned to @path returns the empty list */
         TraitsList* GetListAlways(const char* path)
         {
-            return &files[NormalizePath(path)];
+            return &files[NormalizeAndHash(path)];
         }
         
         /* Adds a file to the container, it's assigned path will be @fsPath and the physical path on the computer is @physicalPath 
          * It will be pushed in the front of the list and marked as default if @isDefault is true
          */
-        DataTraitsType& AddFile(const char* fsPath, const char* physicalPath, eType filetype)
+        DataTraitsType& AddFile(const char* fsPath, const char* physicalPath, bool isDefault)
         {
             DataTraitsType* p;
             auto& l = *GetListAlways(fsPath);
-            bool isDefault = (filetype == DefaultFile);
-
+            
             /* Get space in the list */
             if(isDefault)
             {
-                l.push_front( DataTraitsType() );
+                l.emplace_front();
                 p = &l.front();
             }
             else
             {
                 p = &AddNewItemToContainer(l);
-            }
-            
-            // If file is null, just for simulating data from a file, mark it is as ready
-            if(filetype == NullFile)
-            {
-                physicalPath = modloader::szNullFile;
-                p->isReady = true;
             }
             
             /* Assign information and return */
@@ -151,13 +147,13 @@ class CDataFS
         /* Adds a default file (that's, original, from the base game folder) to the container */
         DataTraitsType& AddFile(const char* filepath)
         {
-            return AddFile(filepath, filepath, DefaultFile);
+            return AddFile(filepath, filepath, true);
         }
         
         /* Adds a custom file to the container */
         DataTraitsType& AddFile(const ModLoaderFile& file)
         {
-            return AddFile(file.filepath, GetFilePath(file).c_str(), CustomFile);
+            return AddFile(file.filepath, GetFilePath(file).c_str(), false);
         }
 
         /* Returns the cache file (used to finally send data to the game) from the assigned @path name
@@ -170,6 +166,20 @@ class CDataFS
         bool size()
         {
             return files.size();
+        }
+        
+        DataTraitsType& Additional(const char* fsPath = nullptr)
+        {
+            if(fsPath == nullptr && bAdditional == false)
+            {
+                // We've a problem
+            }
+            if(bAdditional == false)
+            {
+                additional = &AddFile(fsPath, fsPath, false);
+                bAdditional = true;
+            }
+            return *additional;
         }
         
 };

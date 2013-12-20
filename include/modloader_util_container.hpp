@@ -132,11 +132,19 @@ namespace modloader
      */
     inline std::string& TrimString(std::string& s, bool trimLeft = true, bool trimRight = true)
     {
-        if(trimLeft)
-            s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-        if(trimRight)
-            s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ref(::isspace))).base(), s.end());
+        if(s.size())
+        {
+            if(trimLeft)
+                s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+            if(trimRight)
+                s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ref(::isspace))).base(), s.end());
+        }
         return s;
+    }
+    
+    inline bool to_bool(const std::string& s)
+    {
+        return !!compare(s, "false", false);
     }
     
 }

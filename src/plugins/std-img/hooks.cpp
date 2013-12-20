@@ -344,7 +344,7 @@ void ApplyPatches()
      *          but I don't think it's a problem because the imgDescripts are initialized only once.
      * 
      */
-    if(true) // TODO enable/disable by ini
+    if(true)
     {
         addr = isHoodlum? 0x1564B90 : 0x406886;         // streamNames hook
         MakeNOP(addr, 10);
@@ -368,7 +368,7 @@ void ApplyPatches()
      * 
      */
 #if 0 || !defined(NDEBUG)   // TODO FIX, THIS REALLY NEEDS A HOOK
-                            // 0x4076C0 is actually something like CStreaming::RetryLoadInStream
+                            // 0x4076C0 is actually CStreaming::RetryLoadFile
     static void (*trouble_4076C0)() = []()
     {
         imgPlugin->Log("FATAL ERROR: THIS IS A BUG! [0x4076C0 called]. Please report this bug!");

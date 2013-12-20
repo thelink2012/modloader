@@ -8,8 +8,10 @@
  */
 #include "data.h"
 #include "Injector.h"
+#include <modloader_util_injector.hpp>    // Must be included after Injector.h
 #include <type_traits>
 #include <set>
+
 
 /* Global objects */
 CAllTraits traits;
@@ -99,7 +101,7 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
     // Not found any extension compatible? If .txt (probably the readme), push it into the list of readmes for later procesing
     if(IsFileExtension(file.filext, "txt"))
     {
-        readme.push_back(GetFilePath(file));
+        readme.emplace_back(GetFilePath(file));
         // do not mark as MODLOADER_YES !!
     }
     
@@ -239,7 +241,6 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
     };
     
     /* Iterate on each file on the list... */
-    Log("A");
     for(auto& f : list)
     {
         /* ...loading it... */
@@ -247,25 +248,22 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
             AddKeysFromContainer(f.map);
     }
     
-    Log("B");
     /* Iterate on all detected keys, finding the dominant data at list */
     for(auto& wrapper : keys)
     {
         auto& key = const_cast<key_type&>(wrapper.get());
         if(auto* data = FindDominantData<T>(key, list.begin(), list.end(), domflags(key)))
         {
-            lines.push_back( typename T::pair_ref_type(key, *data));
+            lines.emplace_back(key, *data);
         }
     }
     
     /* Retrieve the cache file path for building defaultFile replacement... */
     cacheFile = fs.GetCacheFileFor(defaultFile);
 
-    Log("C");
     /* ...and build the replacement file */
     if(T::Build(cacheFile.c_str(), lines))
     {
-        Log("D");
         return cacheFile;
     }
     else
@@ -331,19 +329,33 @@ static void* LoadGTAConfig(const char* filename, const char* mode)
 }
 
 
+
+
+
+
+
+
+
+
 /*
  *  Called after all files have been processed
  *  Hooks everything needed
  */
 int CThePlugin::PosProcess()
 {
-    // Process readme files, before anything else, 'cause we need to know if we should hook things
+    // Process readme files before anything else!
     this->ProcessReadmeFiles();
     
     // Hook things
+    {
+        MakeProcHook1(0x5B92C7, LoadIPL);
+        MakeProcHook2(0x5B905E, LoadGTAConfig);
+    }
     
-    MakeProcHook1(0x5B92C7, LoadIPL);
-    MakeProcHook2(0x5B905E, LoadGTAConfig);
+    // Ignore when files couldn't get open
+    {
+        OpenFixer<0x5B871A>();  // For IPL files
+    }
     
     return 0;
 }

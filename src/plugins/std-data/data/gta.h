@@ -39,7 +39,7 @@ namespace data
         {
             static SectionInfo a[] =
             {
-                { GTA_NONE,   "NONE"        },
+                { GTA_NONE,   ""            },
                 { GTA_IMG,    "IMG"         },
                 { GTA_TXD,    "TEXDICTION"  },
                 { GTA_DFF,    "MODELFILE"   },
@@ -94,9 +94,9 @@ namespace data
             
             
             // Sets this data from string @line
-            bool set(SectionInfo*, const char* line)
+            bool set(SectionInfo* info, const char* line, bool detecting = false)
             {
-                if(SectionInfo* info = FindSectionByLine(line))
+                if(info || (info = FindSectionByLine(line)))
                 {
                     const char* path = 0;
 
@@ -117,9 +117,17 @@ namespace data
                     // If the line has a path (if it doesn't, the user is doing something wrong), continue the set
                     if(path)
                     {
+                        std::string normalized = modloader::NormalizePath(path).c_str();
+                        
+                        // If detecting from a text file and path string do not contain any path slash, ignore it
+                        if(detecting && (normalized.find_first_of(modloader::cNormalizedSlash) == normalized.npos))
+                        {
+                            return false;
+                        }
+                        
                         // Setup
                         this->section = info->id;
-                        strcpy(this->path.buf, modloader::NormalizePath(path).c_str());
+                        strcpy(this->path.buf, normalized.c_str());
                         
                         // Calculate the hash (no need of ::toupper functor because the normalize path is... well... normalized)
                         this->path.recalc();
@@ -127,6 +135,12 @@ namespace data
                     }
                 }
                 return false;
+            }
+            
+            // Auto-detect section and stuff. Used to read readme files lines.
+            bool set(const char* line)
+            {
+                return set(nullptr, line, true);
             }
 
             // Gets data into string @line

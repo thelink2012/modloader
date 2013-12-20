@@ -1,0 +1,12 @@
+----------> gta_sa.exe command line arguments added by modloader
+
+    OPTIONS:
+    
+        -mod modname
+            This command line option makes modloader load only @modname folder from the root modloader folder.
+            This essentially is the same as going into modloader.ini, enabling EXCLUDE_ALL, and adding @modname into [INCLUDE_MODS] section
+            
+            Usage example: gta_sa.exe -mod gtaunited
+                Will load only the mod "modloader/gtaunited" and other mods that are in [INCLUDE_MODS] section
+                
+

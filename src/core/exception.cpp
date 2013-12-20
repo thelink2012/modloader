@@ -1,12 +1,18 @@
 /* 
- * San Andreas modloader
- * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
- * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * San Andreas Mod Loader Exception Description
+ * Created by LINK/2012 <dma_2012@hotmail.com>
  * 
- *  Logs an EXCEPTION_POINTER into an string
+ *  This file provides helpful functions for plugins creators.
+ * 
+ *  This source code is offered for use in the public domain. You may
+ *  use, modify or distribute it freely.
  *
+ *  This code is distributed in the hope that it will be useful but
+ *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
+ *  DISCLAIMED. This includes but is not limited to warranties of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * 
  */
-#include "CModLoader.hpp"
 #include <windows.h>
 #include <cstdio>
 
@@ -46,14 +52,16 @@
  * LogException
  *      Takes an LPEXCEPTION_POINTERS and transforms in a string that is put in the logging steam
  */
-void modloader::LogException(LPEXCEPTION_POINTERS pException)
+int LogException(char* buffer, LPEXCEPTION_POINTERS pException)
 {
-    char buffer[512] = {0};
+    buffer[0] = 0;
     size_t len = 0;
     char szModuleName[MAX_PATH];
     MEMORY_BASIC_INFORMATION mbi;
     LPEXCEPTION_RECORD pRecord;
 
+    
+    
     // Acquiere common information that we'll access
     pRecord = pException->ExceptionRecord;
     DWORD dwExceptionCode = pRecord->ExceptionCode;
@@ -92,6 +100,7 @@ void modloader::LogException(LPEXCEPTION_POINTERS pException)
         }
     }
     
-    // Transfer log inside buffer into the logging stream
-    if(buffer[0]) Log(buffer);
+    return buffer[0] != 0;
 }
+
+

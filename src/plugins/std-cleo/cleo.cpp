@@ -70,7 +70,7 @@ class CThePlugin : public modloader::CPlugin
         {
             char        srcPath[128];       /* Source directory of the copy process */
             char        dstPath[128];       /* Destination directory of the copy process */
-            uint32_t    hash;               /* Source file hash */
+            size_t      hash;               /* Source file hash */
             
             union {
                 uint32_t i;
@@ -91,7 +91,10 @@ class CThePlugin : public modloader::CPlugin
                 srcPath[0] = dstPath[0] = 0;
             }
             
-            void Setup1(const ModLoaderFile& file)
+            /*
+             *  Setup this using @file as a CLEO file
+             */
+            void Setup(const ModLoaderFile& file)
             {
                 flags.bIsDir   = file.is_dir;
                 if(!flags.bIsDir) flags.bIsFXT   = IsFileExtension(file.filext, "fxt"); 
@@ -99,7 +102,10 @@ class CThePlugin : public modloader::CPlugin
                 strcpy(dstPath, (std::string(!flags.bIsFXT? "CLEO\\" : "CLEO\\CLEO_TEXT\\") + file.filename).c_str());
             }
             
-            void Setup2(const ModLoaderFile& modir, const ModLoaderFile& file)
+            /*
+             *  Setup this using @file as a CLEO file inside @modir 
+             */
+            void Setup(const ModLoaderFile& modir, const ModLoaderFile& file)
             {
                 std::string src = GetFilePath(modir) + file.filepath;
                 std::string dst = std::string("CLEO\\") + file.filepath;
@@ -247,13 +253,13 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
             
             ForeachFile("*.*", true, [this,&file](ModLoaderFile& mf)
             {
-                AddNewItemToContainer(this->files).Setup2(file, mf);
+                AddNewItemToContainer(this->files).Setup(file, mf);
                 return true;
             });
         }
         else
         {
-            AddNewItemToContainer(this->files).Setup1(file);
+            AddNewItemToContainer(this->files).Setup(file);
         }
     }
     return 0;

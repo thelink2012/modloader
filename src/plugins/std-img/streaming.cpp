@@ -302,8 +302,8 @@ extern "C" HANDLE CALL_NewFile(HANDLE hOriginal, void* from)
     /* Alright, this is a custom object, let's return the hFile to it... */
     const char* filepath = it->second->path.c_str();
 
-    // Reprocess the file, may be it has been changed
-    if(true) // TODO enable/disable by config file
+    // Reprocess the file, maybe it has been changed
+    if(false)
     {
         it->second->Process();
         ImportObject(it->first, *it->second);

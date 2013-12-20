@@ -7,27 +7,30 @@
  */
 #include "data.h"
 
-static auto NullFile = traits.gta.NullFile;
-
-
 void CThePlugin::ProcessReadmeFile(const char* filename)
 {
+    // TODO, in the final release, improve this to show the line number only, not the string at the line
+    
     char buf[2048], *line;
-    return;
+    size_t nLine;
+    
+    Log("Reading readme file %s", filename);
+    
     SDataGTA::key_type gtaKey;
-    auto& gta = traits.gta.AddFile("data/gta.dat", nullptr, NullFile);
-    return;
-#if 0    
+    auto& gta = traits.gta.Additional("data/gta.dat");
+
     if(FILE* f = fopen(filename, "r"))
     {
-        while(line = fgets(buf, sizeof(buf), f))
+        for(nLine = 0; line = ParseConfigLine(fgets(buf, sizeof(buf), f)); ++nLine)
         {
-            if(gtaKey.get(line))
+            if(*line == 0) continue;
+
+            if(gtaKey.set(line))
             {
+                Log("\tFound gta config line at line %d: %s", nLine, line);
                 gta.map[gtaKey];
             }
         }
         fclose(f);
     }
-#endif
 }

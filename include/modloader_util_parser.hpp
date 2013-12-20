@@ -33,13 +33,22 @@ namespace modloader
              */
             static SectionInfo* FindByLine(SectionInfo* sections, const char* line)
             {
+                // It's fine to compare against ' ' instead of using isspace() here because the line string is fully processed!
+                
                 /* On each section on the array... */
                 for(SectionInfo* p = sections; p->name; ++p)
                 {
+                    if(p->name[0] == 0) continue;   // Ignore if has no string in it
+                    
                     /* ...Compare first chars from line with the section name */
                     for(const char *s1 = line, *s2 = p->name;  ; ++s1, ++s2)
                     {
-                        if(*s2 == 0) return p;
+                        if(*s2 == 0)
+                        {
+                            // Found only if the line-string do not continue with another word
+                            if(*s1 == 0 || *s1 == ' ') return p;
+                            break;
+                        }
                         if(*s1 == 0 || (toupper(*s1) != toupper(*s2))) break;
                     }
                 }
