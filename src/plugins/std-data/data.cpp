@@ -161,7 +161,7 @@ struct BuildDataFileKeyInserter
             }) == keys.end())
             {
                 // It doesn't, push it
-                keys.push_back( key );
+                keys.emplace_back( key );
                 return true;
             }
             return false;
@@ -289,25 +289,23 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int do
  *      @addr is the address to hook, @T is the fs CDataFS type
  *      Note the object is dummy (has no content), all stored information is static
  */
-template<size_t addr, class T>
-class CFileMixer
+template<uintptr_t addr, class T>
+class CFileMixer : function_hooker<addr, void*(const char*, const char*)>
 {
-    private:
-        typedef void* (*OpenFileType)(const char*, const char*);    // fopen prototype
+    protected:
+        typedef function_hooker<addr, void*(const char*, const char*)> super;
+        typedef typename super::func_type func_type;
         
-        // Static variables
-        static OpenFileType& OpenFilePtr()      // fopen from the hook
-        { static OpenFileType a; return a; }
         static T*& FSPtr()                      // the pointer to the used fs
         { static T* a; return a; }
 
         // The fopen hook
-        static void* OpenFile(const char* filename, const char* mode)
+        static void* OpenFile(func_type fopen, const char*& filename, const char*& mode)
         {
             typedef typename T::traits_type  traits_type;
             std::string file = BuildDataFile(filename, *FSPtr(), traits_type::domflags());
             dataPlugin->Log("Loading %s \"%s\"", traits_type::what(), file.c_str());
-            return OpenFilePtr()(file.c_str(), mode);
+            return fopen(file.c_str(), mode);
         }
         
     public:
@@ -315,10 +313,9 @@ class CFileMixer
         /*
          *  Constructs a file mixer. This should be called only once.
          */
-        CFileMixer(T& fs)
+        CFileMixer(T& fs) : super(OpenFile)
         {
-            OpenFilePtr() = MakeCALL(addr, (void*) OpenFile).get();
-            FSPtr()       = &fs;
+            FSPtr() = &fs;
         }
         
 };
@@ -326,7 +323,7 @@ class CFileMixer
 /*
  *  Helper function to create a file mixer, just pass @fs as argument an it's done 
  */
-template<size_t at_address, class T>
+template<uintptr_t at_address, class T>
 CFileMixer<at_address, T> make_file_mixer(T& fs)
 {
     return CFileMixer<at_address, T>(fs);
@@ -356,7 +353,9 @@ int CThePlugin::PosProcess()
     }
     
     // Ignore when files couldn't get open
+    if(false)
     {
+        OpenFixer<0x5B8428>();  // For IDE files
         OpenFixer<0x5B871A>();  // For IPL files
     }
     

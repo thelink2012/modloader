@@ -396,7 +396,7 @@ namespace modloader
         if(this->bEnablePlugins)
         {
             // Goto plugins folder
-            CSetCurrentDirectory xdir("modloader\\.data\\plugins");
+            scoped_chdir xdir("modloader\\.data\\plugins");
             {
                 // Read plugins priority
                 {
@@ -540,7 +540,7 @@ namespace modloader
             else
             {
                 // Push plugin to list
-                this->plugins.push_back(data);
+                this->plugins.emplace_back(std::move(data));
                 if(bDoStuffNow) // Start plugin and sort modloader extension table?
                 {
                     this->StartupPlugin(this->plugins.back());
@@ -582,7 +582,7 @@ namespace modloader
      */
     bool CModLoader::UnloadPlugin(ModLoaderPlugin& plugin, bool bRemoveFromList)
     {
-        CSetCurrentDirectory xdir(this->loader.gamepath);
+        scoped_chdir xdir(this->loader.gamepath);
         
         Log("Unloading plugin \"%s\"", plugin.name);
         
@@ -602,7 +602,7 @@ namespace modloader
      */
     void CModLoader::StartupPlugin(ModLoaderPlugin& data)
     {
-        CSetCurrentDirectory xdir(this->loader.gamepath);
+        scoped_chdir xdir(this->loader.gamepath);
 
         Log("Starting up plugin \"%s\"", data.name);
         if(data.OnStartup && data.OnStartup(&data))
@@ -643,7 +643,7 @@ namespace modloader
         //  Iterate on all folders at modfolder dir, and treat them as a mod entity
         Log("\nLooking for mods at \"%s\"...", modfolder.path.c_str());
         {
-            CSetCurrentDirectory xdir(modfolder.path.c_str());
+            scoped_chdir xdir(modfolder.path.c_str());
             {
                 // Load this config
                 LoadConfigFromINI("modloader.ini", modfolder);
@@ -768,13 +768,14 @@ namespace modloader
     {
         /* Go into the mod folder to work inside it */
         {
-            CSetCurrentDirectory xdir(modfolder.c_str());
+            scoped_chdir xdir(modfolder.c_str());
 
             char buffer[MAX_PATH];
             GetCurrentDirectoryA(sizeof(buffer), buffer);
  
             // Push a new modification into the mods list
-            auto& mod = AddNewItemToContainer(modsbase.mods);
+            modsbase.mods.emplace_back();
+            auto& mod = modsbase.mods.back();
             mod.name = &modfolder.c_str()[GetLastPathComponent(modfolder)];
             mod.id = this->currentModId++;
             mod.path = modsbase.path + modfolder;
@@ -819,7 +820,8 @@ namespace modloader
             file.recursion = false;
             
             /* Setup fileInfo */
-            auto& fileInfo = AddNewItemToContainer(mod.files);
+            mod.files.emplace_back();
+            auto& fileInfo = mod.files.back();
             fileInfo.id = file.file_id;
             fileInfo.parentMod = &mod;
             fileInfo.handler = handler;
@@ -861,7 +863,7 @@ namespace modloader
             const char* pluginName = handler->name;
             const char* filePath   = file.filePath.data(); 
             
-            Log("Handling file \"%s\\%s\" by plugin \"%s\"", file.parentMod->name.c_str(), filePath, pluginName);
+            //Log("Handling file \"%s\\%s\" by plugin \"%s\"", file.parentMod->name.c_str(), filePath, pluginName);
             if(handler->ProcessFile && !handler->ProcessFile(handler, &file.data))
             {
                 return true;
@@ -947,12 +949,12 @@ namespace modloader
         // Gets all mod folders from modsfolder and all it's childs
         for(ModFolderInfo& folder : modsfolder.GetAllFolders())
         {
-            CSetCurrentDirectory xdir(folder.path.c_str());
+            scoped_chdir xdir(folder.path.c_str());
                     
             // Iterate on each modification
             for(auto& mod : folder.mods)
             {
-                CSetCurrentDirectory xdir((mod.name + "\\").c_str());
+                scoped_chdir xdir((mod.name + "\\").c_str());
                 
                 // Handle all the files
                 for(auto& file : mod.files)
@@ -967,7 +969,7 @@ namespace modloader
      */   
     void CModLoader::PosProcess()
     {
-        CSetCurrentDirectory xdir(this->gamePath.c_str());
+        scoped_chdir xdir(this->gamePath.c_str());
         
         Log("\nPos processing...");
         for(auto& plugin : this->plugins)

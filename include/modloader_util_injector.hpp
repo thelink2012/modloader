@@ -30,7 +30,7 @@ namespace modloader
      *      This hook hooks a call to fopen (or CFileMgr__OpenFile, whatever)
      *     in San Andreas to open the file always, that's, if couldn't open the request file, open null device.
      */
-    template<size_t addr>
+    template<uintptr_t addr>
     struct OpenFixer
     {
         typedef void* (*fopen_func)(const char*, const char*);
@@ -52,6 +52,56 @@ namespace modloader
             fopen() = MakeCALL(addr, (void*) OpenAlways).get();
         }
     };
+ 
+    template<uintptr_t addr, class Prototype>
+    struct function_hooker;
+
+    template<uintptr_t addr, class Ret, class ...Args>
+    struct function_hooker<addr, Ret(Args...)>
+    {
+        public:
+            typedef Ret(*func_type)(Args...);
+            typedef Ret(*hook_type)(func_type, Args&...);
+
+        protected:
+            static func_type& original()
+            {
+                static func_type f;
+                return f;
+            }
+
+            static hook_type& hook()
+            {
+                static hook_type h;
+                return h;
+            }
+
+            static Ret call(Args... a)
+            {
+                return hook()(original(), a...);
+            }
+
+        public:
+            function_hooker(hook_type hooker)
+            {
+                hook() = hooker;
+                original() = MakeCALL(addr, (void*) call).get();
+            }
+
+    };
+    
+    template<class T> inline
+    T make_function_hook(typename T::hook_type hooker)
+    {
+        return T(hooker);
+    }
+    
+    template<uintptr_t addr, class T, class U> inline
+    function_hooker<addr, T> make_function_hook(U hooker)
+    {
+        typedef function_hooker<addr, T> type;
+        return make_function_hook<type>(hooker);
+    }
     
 }
 

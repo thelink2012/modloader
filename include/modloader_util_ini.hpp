@@ -152,7 +152,7 @@ namespace modloader
                             line.erase(pos);
                         
                         // Trim the string, and if it gets empty, skip this line
-                        if(TrimString(line).empty())
+                        if(trim(line).empty())
                             continue;
                         
                         // Find section name
@@ -161,7 +161,7 @@ namespace modloader
                             pos = line.find_first_of(']');
                             if(pos != line.npos)
                             {
-                                TrimString(key.assign(line, 1, pos-1));
+                                trim(key.assign(line, 1, pos-1));
                                 keys = &data[std::move(key)];  // Create section
                             }
                             else
@@ -180,8 +180,8 @@ namespace modloader
                             else
                             {
                                 // There's the key and the value
-                                TrimString(key.assign(line, 0, pos), false, true);                  // trim the right
-                                TrimString(value.assign(line, pos + 1, line.npos), true, false);    // trim the left
+                                trim(key.assign(line, 0, pos), false, true);                  // trim the right
+                                trim(value.assign(line, pos + 1, line.npos), true, false);    // trim the left
                             }
 
                             // Put the key/value into the current keys object, or into the section "" if no section has been found

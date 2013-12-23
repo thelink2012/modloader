@@ -37,7 +37,7 @@ namespace modloader
                 virtual int OnShutdown() { return 0; }              /* default */
                 virtual int CheckFile(const ModLoaderFile& file)=0;
                 virtual int ProcessFile(const ModLoaderFile& file)=0;
-                virtual int PosProcess() { return 0; } /* default */
+                virtual int PosProcess()=0;
                 
                 /* Returns the favorable file extensions for this plugin */
                 virtual const char** GetExtensionTable()=0;

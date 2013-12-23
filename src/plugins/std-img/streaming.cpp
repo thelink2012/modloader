@@ -324,7 +324,7 @@ extern "C" HANDLE CALL_NewFile(HANDLE hOriginal, void* from)
     else
     {
         /* Push new file into open files list */
-        openFileList.push_back(hResult);
+        openFileList.emplace_back(hResult);
     }
     
     return (hResult);

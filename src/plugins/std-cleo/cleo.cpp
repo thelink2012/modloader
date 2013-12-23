@@ -92,9 +92,9 @@ class CThePlugin : public modloader::CPlugin
             }
             
             /*
-             *  Setup this using @file as a CLEO file
+             *  Construct this using @file as a CLEO file
              */
-            void Setup(const ModLoaderFile& file)
+            CacheStruct(const ModLoaderFile& file)
             {
                 flags.bIsDir   = file.is_dir;
                 if(!flags.bIsDir) flags.bIsFXT   = IsFileExtension(file.filext, "fxt"); 
@@ -103,9 +103,9 @@ class CThePlugin : public modloader::CPlugin
             }
             
             /*
-             *  Setup this using @file as a CLEO file inside @modir 
+             *  Construct this using @file as a CLEO file inside @modir 
              */
-            void Setup(const ModLoaderFile& modir, const ModLoaderFile& file)
+            CacheStruct(const ModLoaderFile& modir, const ModLoaderFile& file)
             {
                 std::string src = GetFilePath(modir) + file.filepath;
                 std::string dst = std::string("CLEO\\") + file.filepath;
@@ -128,6 +128,9 @@ class CThePlugin : public modloader::CPlugin
         bool StartCacheFile();
         bool FinishCacheFile(bool bIsStartup = false);
         
+        /*
+         *  Creates all necessary folders for this plugin to work properly 
+         */
         void CreateImportantFolders()
         {
             MakeSureDirectoryExistA("CLEO");
@@ -136,6 +139,9 @@ class CThePlugin : public modloader::CPlugin
             MakeSureDirectoryExistA(cacheCleoPath);
         }
         
+        /*
+         * Checks if the user has the CLEO library installed
+         */
         bool DoesHaveCLEO()
         {
             /* You have CLEO if either CLEO folder exists or cleo.asi exists */
@@ -249,17 +255,17 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
         if(file.is_dir)
         {
             // This is the CLEO directory, go recursive to copy all files inside this folder
-            CSetCurrentDirectory xdir(file.filepath);
+            scoped_chdir xdir(file.filepath);
             
             ForeachFile("*.*", true, [this,&file](ModLoaderFile& mf)
             {
-                AddNewItemToContainer(this->files).Setup(file, mf);
+                this->files.emplace_back(file, mf);
                 return true;
             });
         }
         else
         {
-            AddNewItemToContainer(this->files).Setup(file);
+            this->files.emplace_back(file);
         }
     }
     return 0;

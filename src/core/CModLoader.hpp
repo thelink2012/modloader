@@ -201,7 +201,7 @@ namespace modloader
                     ModFolderInfoList list;
                     
                     // Put myself on the list
-                    list.push_back(*this);
+                    list.emplace_back(*this);
                     
                     // Put my child modloader folders,  my childs childs [...] into the list
                     for(auto& child : this->childs)
@@ -296,7 +296,7 @@ namespace modloader
                     // ... push the extensions handled by it into the extension map
                     for(size_t i = 0, n = plugin.extable_len;
                         i < n; ++i)
-                        this->extMap[plugin.extable[i]].push_back(&plugin);
+                        this->extMap[plugin.extable[i]].emplace_back(&plugin);
                 }
             }
 

@@ -6,6 +6,9 @@
  *      Loads all compatible files with imgs (on game request),
  *      it loads directly from disk not by creating a cache or virtual img.
  * 
+ *  TODO: This plugin needs rewriting,
+ *        yeah, it works fine, but it looks like a prototype (and it is!) that works fine.
+ * 
  */
 #include "img.h"
 #include "Injector.h"
@@ -222,8 +225,8 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
     };
 
     /* Push new img item into container and setup it */
-    auto& img = AddNewItemToContainer(this->imgFiles);
-    img.Setup(file);
+    this->imgFiles.emplace_back(file);
+    auto& img = this->imgFiles.back();
     
     /* Bufs */
     static std::string gta3, gta_int, player, cuts;

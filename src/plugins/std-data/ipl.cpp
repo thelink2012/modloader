@@ -43,7 +43,8 @@ struct KeyOnlyForIPL : public parser::KeyOnly<TraitsIPL>
             if(section->id == IPL_INST)
             {
                 /* Store inst data for later post-processing */
-                auto& inst = AddNewItemToContainer(instList);
+                instList.emplace_back();
+                auto& inst = instList.back();
                 if(!SDataIPL_INST::set(line, inst))
                 {
                     instList.pop_back();

@@ -3,7 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  std-fx -- Standard GFX Replacement Plugin for San Andreas Mod Loader
- *      Loads (for replacement) all *.txd, *.fxp and grass*.dff files from models folder
+ *      Overrides all *.txd, *.fxp and grass*.dff files from models folder
  * 
  */
 #include <modloader.hpp>
@@ -14,6 +14,7 @@ using namespace modloader;
 
 #include <map>
 #include "Injector.h"
+#include "modloader_util_injector.hpp"
 
 
 /*
@@ -36,37 +37,55 @@ class CThePlugin : public modloader::CPlugin
 
         const char** GetExtensionTable();
 
+        /*
+         * This object represents a handler for a specific file name (for example effectsPC.txd)
+         */
         struct handler_t
         {
             typedef void (*fhandler_t)(const handler_t& self, const char* path);
-            const char* name;
-            fhandler_t func;
             
-            std::string buf;
+            const char* name;   // This handle handles this file...
+            fhandler_t func;    // The function that patches the game for this file
+            std::string buf;    // Replacement file
             
+            /*
+             * Setup the handler
+             */
             void Set(const char* name, fhandler_t func)
             {
                 this->name = name;
                 this->func = func;
             }
             
+            /*
+             * Process the handler 
+             */
             bool Process(const char* path)
             {
                 if(!RegisterReplacementFile(*fxPlugin, name, buf, path))
                     return false;
-                func(*this, buf.c_str());
                 return true;
+            }
+            
+            /*
+             * Pos Process the handler 
+             */
+            void PosProcess()
+            {
+                if(buf.size()) func(*this, buf.c_str());
             }
         };
         
         
-        
+        // Map of file handlers (see above)
         typedef std::map<uint32_t, handler_t> handler_map;
         handler_map handlers;
 
+        // Setup the handlers map
         void SetupHandlers();
         
-        static uint32_t hash(const char* filename)
+        // Helper function
+        static size_t hash(const char* filename)
         { return modloader::hash(filename, ::toupper); }
         
 } plugin;
@@ -112,7 +131,7 @@ const char** CThePlugin::GetExtensionTable()
 }
 
 /*
- *  Startup / Shutdown (do nothing)
+ *  Startup / Shutdown
  */
 int CThePlugin::OnStartup()
 {
@@ -137,9 +156,9 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
         /* Check if txd/dff/fxp extension */
         if((IsFileExtension(file.filext, "txd") || IsFileExtension(file.filext, "dff")
         ||  IsFileExtension(file.filext, "fxp"))
-        && (IsFileInsideFolder(file.filepath, true, "models")
+        /*&& (IsFileInsideFolder(file.filepath, true, "models")
         || IsFileInsideFolder(file.filepath, true, "models/grass")
-        || IsFileInsideFolder(file.filepath, true, "models/generic")))
+        || IsFileInsideFolder(file.filepath, true, "models/generic"))*/)
         {
             /* Find the filename in the handlers map */
             it = this->handlers.find(hash(file.filename));
@@ -167,6 +186,8 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  */
 int CThePlugin::PosProcess()
 {
+    // Call each file handler to patch the game
+    for(auto& h : this->handlers) h.second.PosProcess();
     return 0;
 }
 
@@ -177,9 +198,6 @@ void CThePlugin::SetupHandlers()
 {
     const char* name;
     auto& h = this->handlers;
-
-    typedef int (__cdecl *LoadTxd_t)(int index, const char *filename);
-    static LoadTxd_t CTxdStore__LoadTxd;
     static const char* pEffectsPC = 0;
     
     /*
@@ -263,12 +281,11 @@ void CThePlugin::SetupHandlers()
     
     /* We need to replace the call that loads effectsPC.txd because it's filename is
      * just the path to effects.fxp with the last chars replaced with 'PC.txd' */
-    CTxdStore__LoadTxd = (LoadTxd_t)
-        MakeCALL(0x5C248F, (void*)((LoadTxd_t)([](int index, const char* filename)
+    typedef function_hooker<0x5C248F, int(int, const char*)> hooker;
+    make_function_hook<hooker>([](hooker::func_type LoadTxd, int& index, const char*& filename)
     {
-        return CTxdStore__LoadTxd(index, pEffectsPC? pEffectsPC : "models\\effectsPC.txd");
-        
-    }))).p;
+        return LoadTxd(index, pEffectsPC? pEffectsPC : "models\\effectsPC.txd");
+    });
     
     /* Replace even txd's not used by the game */
     {

@@ -175,9 +175,8 @@ const char* AllocBufferForString(const char* inBuf)
     //imgPlugin->Log("Allocating static buffer for string \"%s\"", inBuf);
     
     static std::list<std::string> bufList;
-    std::string& buf = AddNewItemToContainer(bufList);
-    buf = inBuf;
-    return buf.data();
+    bufList.emplace_back(inBuf);
+    return bufList.back().data();
 }
 
 
@@ -368,7 +367,7 @@ void ApplyPatches()
      * Anyway it looks to be safe, and if someone relates the code reaching there, I think it's easily fixed.
      * 
      */
-#if 0 || !defined(NDEBUG)   // TODO FIX, THIS REALLY NEEDS A HOOK
+#if 0 || !defined(NDEBUG)   // THIS REALLY NEEDS A HOOK
                             // 0x4076C0 is actually CStreaming::RetryLoadFile
     static void (*trouble_4076C0)() = []()
     {

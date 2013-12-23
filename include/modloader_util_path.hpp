@@ -16,10 +16,6 @@
 #ifndef MODLOADER_UTIL_PATH_HPP
 #define	MODLOADER_UTIL_PATH_HPP
 
-/*
- *  TODO this header needs revision
- */
-
 #include <string>
 #include <cstring>
 #include <windows.h>
@@ -28,26 +24,77 @@
 
 namespace modloader
 {
-    static const char* szNullFile = "NUL";    // "/dev/null" on POSIX systems
-    static const char cNormalizedSlash = '\\';
-    std::string NormalizePath(std::string path);
-    
-    inline std::string& MakeSureStringIsDirectory(std::string& dir, bool touchEmpty = true)
-    {
-        if(dir.empty()) { if(touchEmpty) dir = ".\\"; }
-        else if(dir.back() != '\\')
-        { dir.push_back('\\'); }
-        
-        return dir;
-    }
-    
+    static const char* szNullFile = "NUL";          // "/dev/null" on POSIX systems
+    static const char cNormalizedSlash = '\\';      // The slash used in the normalized path
+
+    /*
+     *  GetFilePath
+     *      Gets the filepath relative to the root game directory from the ModLoaderFile object @file
+     */
     inline std::string GetFilePath(const ModLoaderFile& file)
     {
         return (std::string(file.modpath) + file.filepath);
     }
     
-
+    /*
+     *  MakeSureStringIsDirectory
+     *      Makes sure the string @dir is a directory path. If @touchEmpty is true,
+     *      dir will be made a directory even when the string is empty.
+     * 
+     *      A string is considered as a path when it ends with a slash
+     */
+    inline std::string& MakeSureStringIsDirectory(std::string& dir, bool touchEmpty = true)
+    {
+        if(dir.empty())
+        {
+            if(touchEmpty) dir = ".\\";
+        }
+        else if(dir.back() != cNormalizedSlash)
+        {
+            dir.push_back(cNormalizedSlash);
+        }
+        return dir;
+    }
     
+    
+    /*
+     *  NormalizePath
+     *      Normalizates a path string, so for example:
+     *          "somefolder/something" will output "somefolder\\something"
+     *          "SOMEfoldER/something/" will output "somefolder\\something"
+     *          "somefolder\\something" will output "somefolder\\something"
+     *          etc
+     */
+    inline std::string NormalizePath(std::string path)
+    {
+        
+        std::replace(path.begin(), path.end(), '/', '\\');  // Replace all '/' with '\\'
+        tolower(path);                                      // tolower the strings (Windows paths are case insensitive)
+        while(path.back() == '/' || path.back() == '\\')    // We don't want a slash at the end of the folder path
+            path.pop_back();                                // ..
+        trim(path);                                         // Trim the string...
+        return path;
+    }
+    
+    
+    /*
+     *  GetProperlyPath
+     *      This works exactly the same as NormalizePath (see above), except if @transform is not a null pointer
+     *      It will return the first time that @transform (probably a folder)  appears in the normalized path
+     * 
+     *      PS: @transform MUST be normalized!
+     */
+    static std::string GetProperlyPath(std::string path, const char* transform)
+    {
+        path = NormalizePath(std::move(path));
+        if(transform)
+        {
+            size_t pos = path.find(transform);
+            if(pos != 0 && pos != path.npos) path.erase(0, pos);
+        }
+        return path;
+    }
+
     /*
      * ForeachFile
      *      Iterates on all files in a directory, files beggining with '.' will be ignored.
@@ -126,15 +173,13 @@ namespace modloader
      *      @file File path to check
      *      @bJust  Returns true only if just right inside the folder
      *      @folder Folder path
-     * 
-     *      XXX this func can be better optimized
      */
     inline bool IsFileInsideFolder(std::string file, bool bJust, std::string folder)
     {
         file = NormalizePath(file);
         folder= NormalizePath(folder);
         
-        if(bJust)
+        if(bJust)   // Only if just right inside the folder?
         {
             //
             size_t last = file.find_last_of(cNormalizedSlash);
@@ -155,6 +200,7 @@ namespace modloader
         }
     }
     
+    
     /*
      *  GetLastPathComponent
      *      @path: Path to get the last component from
@@ -162,8 +208,9 @@ namespace modloader
      */
     inline std::string::size_type GetLastPathComponent(std::string path)
     {
-        PopLastCharIf(path, '/');
-        PopLastCharIf(path, '\\');
+        // Remove any slash at the end of the string, so our finding can be safe
+        while(path.back() == '/' || path.back() == '\\') path.pop_back();
+        // Do the search
         size_t pos = path.find_last_of("/\\");
         return (pos == path.npos? 0 : pos + 1);
     }
@@ -173,31 +220,14 @@ namespace modloader
      *  IsFileExtension
      *      @str: File
      *      @ext: Extension
+     * 
+     *      This is just a case-insensitive comparision between str and ext
      */
-    inline bool IsFileExtension(const char* str_ext, const char* ext)
+    inline bool IsFileExtension(const char* str, const char* ext)
     {
-        return (!strcmp(str_ext, ext, false));
+        return (!strcmp(str, ext, false));
     }
-    
-    
-    /*
-     *  NormalizePath
-     *      Normalizates a path string, so for example:
-     *          "somefolder/something" will output "SOMEFOLDER\\SOMETHING"
-     *          "SOMEfoldER/something/" will output "SOMEFOLDER\\SOMETHING"
-     *          "somefolder\\something" will output "SOMEFOLDER\\SOMETHING"
-     *          etc
-     */
-    inline std::string NormalizePath(std::string path)
-    {
-        // Replace all '/' with '\\', and toupper the strings (because Windows paths are case insensitive)
-        toupper(ReplaceChar(path, '/', '\\'));
-        // We don't want a slash at the end of the folder path
-        PopLastCharIf(path, '\\');
-        TrimString(path);
-        return path;
-    }
-    
+
     
     /*
      * IsDirectoryA
@@ -237,6 +267,11 @@ namespace modloader
         return TRUE;
     }
     
+    /*
+     *  CopyDirectoryA
+     *      WinAPI-like function that copies the full directory @szFrom to @szTo
+     *      If @szTo doesn't exist, it is created
+     */
     inline BOOL CopyDirectoryA(LPCTSTR szFrom, LPCTSTR szTo)
     {
         if(CreateDirectoryA(szTo, NULL))
@@ -249,7 +284,7 @@ namespace modloader
                 sprintf(szToFile, "%s\\%s", szTo, pPath);
                 sprintf(szFromFile, "%s\\%s", szFrom, pPath);
 
-                if(file.is_dir)
+                if(file.is_dir) // Call myself again for recursion
                     CopyDirectoryA(szFromFile, szToFile);
                 else
                     CopyFileA(szFromFile, szToFile, FALSE);
@@ -263,21 +298,25 @@ namespace modloader
         return FALSE;
     }
     
+    /*
+     *  DestroyDirectoryA
+     *      WinAPI-like function that deletes the path @szPath fully
+     */
     inline BOOL DestroyDirectoryA(LPCTSTR szPath)
     {
         ForeachFile(szPath, "*.*", false, [&szPath](ModLoaderFile& file)
         {
-                CHAR szPathFile[MAX_PATH];
-                const char* pPath = file.filename;
+            CHAR szPathFile[MAX_PATH];
+            const char* pPath = file.filename;
                 
-                sprintf(szPathFile, "%s\\%s", szPath, pPath);
+            sprintf(szPathFile, "%s\\%s", szPath, pPath);
                 
-                if(file.is_dir)
-                    DestroyDirectoryA(szPathFile);
-                else
-                    DeleteFileA(szPathFile);
+            if(file.is_dir)
+                DestroyDirectoryA(szPathFile);
+            else
+                DeleteFileA(szPathFile);
 
-                return true;
+            return TRUE;
         });
         
         RemoveDirectoryA(szPath);
@@ -287,17 +326,17 @@ namespace modloader
     
     
     /* RAII for SetCurrentDirectory */
-    struct CSetCurrentDirectory
+    struct scoped_chdir
     {
         char buffer[MAX_PATH];
         
-        CSetCurrentDirectory(const char* newDir)
+        scoped_chdir(const char* newDir)
         {
             GetCurrentDirectoryA(sizeof(buffer), buffer);
             SetCurrentDirectoryA(newDir);
         }
         
-        ~CSetCurrentDirectory()
+        ~scoped_chdir()
         {
             SetCurrentDirectoryA(buffer);
         }

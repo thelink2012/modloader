@@ -7,9 +7,11 @@
 #ifndef DATA_H
 #define	DATA_H
 
-#include "traits.hpp"
 #include <map>
 #include <list>
+#include <cassert>
+#include <type_traits>
+#include "traits.hpp"
 #include <modloader.hpp>
 #include <modloader_util_path.hpp>
 using namespace modloader;
@@ -83,11 +85,19 @@ template<class DataTraitsType>  /* DataTraitsType must be of DataTraitsBase */
 class CDataFS
 {
     private:
-        
-        // Returns hashed normalized path
+        // Returns hashed normalized path with DataTraitsType specific transformation
         static size_t NormalizeAndHash(const char* path)
         {
-            return modloader::hash(NormalizePath(path));
+            /*
+             *  If DataTraitsType is either SDataIDE or SDataIPL perform intelligent path finding
+             *  That's, if the path is "Folder1/Folder2/data/a.ipl", It's of course "data/a.ipl" that we want
+             */
+            const char* transform = nullptr;
+            if(std::is_same<TraitsIDE, DataTraitsType>::value || std::is_same<TraitsIPL, DataTraitsType>::value)
+            {
+                transform = "data\\";   // transform = NormalizePath("data/");
+            }
+            return modloader::hash(GetProperlyPath(path, transform));
         }
         
     public:
@@ -136,7 +146,8 @@ class CDataFS
             }
             else
             {
-                p = &AddNewItemToContainer(l);
+                l.emplace_back();
+                p = &l.front();
             }
             
             /* Assign information and return */
@@ -173,7 +184,8 @@ class CDataFS
         {
             if(fsPath == nullptr && bAdditional == false)
             {
-                // We've a problem
+                // We've got a problem
+                assert(0);
             }
             if(bAdditional == false)
             {

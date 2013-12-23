@@ -110,6 +110,11 @@ class CThePlugin : public modloader::CPlugin
                 isOriginal      = false;
             }
             
+            ImgInfo(const modloader::ModLoaderFile& file)
+            {
+                Setup(file);
+            }
+            
             void Process()
             {
                 /* Lets build the list of files sorted in hashing order. */

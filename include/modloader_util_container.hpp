@@ -28,24 +28,6 @@
 
 namespace modloader
 {
-    /* Dummy std::hash<> */
-    struct DummyHasher
-    {
-        template<class T>
-        size_t operator()(const T&) const
-        { return 0; }
-    };
-    
-    /*
-     *  Adds a new item to the container @container and returns the reference to it
-     */
-    template<class C>
-    inline typename C::reference& AddNewItemToContainer(C& container)
-    {
-        container.resize(container.size() + 1);
-        return container.back();
-    }
-    
     /*
      *  String comparision functions, with case sensitive option
      */
@@ -73,22 +55,14 @@ namespace modloader
     }
     
     /*
-     * Replaces all @find chars with @replace chars at string @str
+     * pop_last_if
+     *      Removes the last element from the @container if it is equal to @e
      */
-    inline std::string& ReplaceChar(std::string& str, char find, char replace)
+    template<class C, class T>
+    inline C& pop_last_if(C& container, const T& e)
     {
-        for(auto& c : str)
-            if(c == find) c = replace;
-        return str;
-    }
-    
-    /*
-     * Removes the lsat char from @str if it is @c
-     */
-    inline std::string& PopLastCharIf(std::string& str, char c)
-    {
-        if(str.back() == c) str.resize(str.size() - 1);
-        return str;
+        if(container.back() == e) container.pop_back();
+        return container;
     }
     
     /*
@@ -105,7 +79,7 @@ namespace modloader
      */
     inline std::string& toupper(std::string& str)
     {
-        std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+        std::transform(str.begin(), str.end(), str.begin(), ::toupper);
         return str;
     }
     
@@ -130,7 +104,7 @@ namespace modloader
     /*
      * Remove space characters from the string @s. Removes left spaces if @trimLeft and removes right spaces if @trimRight.
      */
-    inline std::string& TrimString(std::string& s, bool trimLeft = true, bool trimRight = true)
+    inline std::string& trim(std::string& s, bool trimLeft = true, bool trimRight = true)
     {
         if(s.size())
         {
@@ -142,6 +116,9 @@ namespace modloader
         return s;
     }
     
+    /*
+     *  Converts a string into a boolean
+     */
     inline bool to_bool(const std::string& s)
     {
         return !!compare(s, "false", false);
