@@ -137,7 +137,7 @@ void ReadPlayerImgEntries()
  */
 void HOOK_ReadImgFileFromDat(const char* path, char notPlayerImg)
 {
-    imgPlugin->Log("HOOK_ReadImgFileFromDat(\"%s\")", path);
+    
 
     std::string normalizedPath = NormalizePath(path);
     size_t hash = modloader::hash(normalizedPath);
@@ -159,8 +159,9 @@ void HOOK_ReadImgFileFromDat(const char* path, char notPlayerImg)
     if(it != imgPlugin->imgFiles.end())
     {
         path = it->path.data();
-        imgPlugin->Log("Replacement img for dat img: %s", path);
     }
+        
+    imgPlugin->Log("Opening img file from level file: \"%s\"", path);
         
     /* ...continue the gta.dat img file loading */
     return readImgFileFromDat(path, notPlayerImg);
@@ -171,7 +172,7 @@ void HOOK_ReadImgFileFromDat(const char* path, char notPlayerImg)
  */
 const char* AllocBufferForString(const char* inBuf)
 {
-    imgPlugin->Log("Allocating static buffer for string \"%s\"", inBuf);
+    //imgPlugin->Log("Allocating static buffer for string \"%s\"", inBuf);
     
     static std::list<std::string> bufList;
     std::string& buf = AddNewItemToContainer(bufList);

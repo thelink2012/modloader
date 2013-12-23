@@ -21,7 +21,7 @@
 
 namespace modloader
 {
-
+    
     struct SectionInfo
     {
             int         id;
@@ -49,7 +49,7 @@ namespace modloader
                             if(*s1 == 0 || *s1 == ' ') return p;
                             break;
                         }
-                        if(*s1 == 0 || (toupper(*s1) != toupper(*s2))) break;
+                        if(*s1 == 0 || (tolower(*s1) != tolower(*s2))) break;
                     }
                 }
                 return nullptr;
@@ -62,8 +62,216 @@ namespace modloader
             {
                 return &sections[idx];
             }
-            
     };
+    
+    
+    namespace parser
+    {
+        /*
+         *  inline optimization for isspace 
+         */
+        inline bool isspace(char c)
+        {
+            return c >= '\t' && c <= ' ';
+        }
+    }
+    
+    /*
+     *  PreParseFormat
+     *      Pre parses a formating string to make sure some conditions are meet
+     *      @scanned:   Used in scan cases, this is the string to be scanned. In case of printf use nullptr here.
+     *      @format:    The format...
+     *      @out:       The output format after the processing
+     *      @min_count: (optional) Minimum number of formats at @scanned and @format
+     *      @max_count: (optional) Maximum number of formats at @scanned and @format
+     * 
+     *      @returns nullptr on failure or @out pointer on success     
+     * 
+     * 
+     *      PS: [] format not support
+     */
+    inline char* PreParseFormat(const char* scanned, const char* format, char* out,
+                                unsigned int min_count = 0, unsigned int max_count = -1)
+    {
+        using parser::isspace;
+        
+        char* result = out;
+        unsigned int count = 0;
+        bool terminate = false, terminated = false;
+        
+        // Skip first spaces
+        if(scanned) { while(isspace(*scanned)) ++scanned; }
+        
+        for(const char* p = format;  ; )
+        {
+            // If format identifier...
+            if(*p == '%')
+            {
+                if(!terminated) *out++ = *p++;    // Register it on the out string
+                
+                // If really a formating, continue the parsing
+                if(*p != '%')
+                {
+                    // Do not read/write this parameter?
+                    if(*p != '*') ++count;
+                    else if(!terminated) *out++ = *p++;
+                    
+                    // Skip width
+                    while(*p >= '0' && *p <= '9')
+                    {
+                        if(!terminated) *out++ = *p++;
+                    }
+                    
+                    // Skip length
+                    while(*p == 'h' || *p == 'l' || *p == 'L' || *p == 'j' || *p == 'z' || *p == 't')
+                    {
+                        if(!terminated) *out++ = *p++;
+                    }
+                    
+                    // The actual formating type is at *p !!
+                    switch(*p)
+                    {
+                        // If floating-point format, use %g, not %f !!
+                        case 'f': if(!terminated) *out++ = 'g'; break;
+                        default:  if(!terminated) *out++ = *p;  break;
+                        case 0: break;  // just ignore things, something bad happened
+                            
+                    }
+                    
+                    if(*p) p++;
+                    
+                    // For scan?
+                    if(scanned) 
+                    {
+                        // Go forward in the scanned string
+                        while(*scanned && !isspace(*scanned)) ++scanned;    // Skip chars from this fill
+                        while(isspace(*scanned))  ++scanned;                // Skip spaces, so we can reach the next fill
+                    }
+                    else    // Nope, for print
+                    {
+                        if(count >= max_count)
+                            terminate = true;
+                    }
+                }
+            }
+            
+            // Register current char
+            if(!terminated)
+            {
+                *out = terminate? 0 : *p;
+                if(*out == 0) terminated = true;
+                ++out;
+            }
+            
+            if(*p != 0) ++p;
+            
+            // If reached the end of format string or scanned string, test if min and max conditions are met
+            if(*p == 0 || terminate || (terminated && (!scanned || *scanned == 0)) || (scanned && *scanned == 0))
+            {
+                if(!terminated) *out = 0;
+                
+                // Check if filled at least min_count
+                if((count >= min_count) == false)
+                    return nullptr;
+                // Check if filled less than max_count
+                if((count <= max_count) == false)
+                    return nullptr;
+                if(max_count != -1 && scanned && *scanned != 0)
+                    return nullptr;
+                    
+                // Everything okay
+                return result;
+            }
+        }
+        
+        // The code shall never reach here
+        return nullptr;
+    }
+    
+#if 1   // For testing purposes, set this to 0 to make sure your Scans are count based
+    /*
+     *  ScanConfigLine
+     *      Scans the GTA configuration line @str with format @format
+     *      Returns -1 on failure or the number of tokens filled
+     */
+    inline int ScanConfigLine(const char* str, const char* format, ...)
+    {
+        char fmt[256];
+        int result = -1;
+        
+        if(const char *s = PreParseFormat(str, format, fmt))
+        {
+            va_list va; va_start(va, format);
+            result = vsscanf(str, s, va);
+            va_end(va);
+        }
+        return result == EOF? -1 : result;  // make sure EOF is -1 on this target platform
+    }
+#endif
+    
+    /*
+     *  ScanConfigLine
+     *      Scans the GTA configuration line @str with format @format
+     *      The @format and the scanned string @str must contain at least @min tokens and a maximum of @max tokens
+     *      Returns -1 on failure or the number of tokens filled
+     * 
+     */
+    inline int ScanConfigLine(const char* str, unsigned int min, unsigned int max, const char* format, ...)
+    {
+        char fmt[256];
+        int result = -1;
+        
+        if(const char *s = PreParseFormat(str, format, fmt, min, max))
+        {
+            va_list va; va_start(va, format);
+            result = vsscanf(str, s, va);
+            va_end(va);
+        }
+        return result == EOF? -1 : result;  // make sure EOF is -1 on this target platform
+    }
+     
+#if 1   // For testing purposes, set this to 0 to make sure your Prints are count based
+    /*
+     *  PrintConfigLine
+     *      Writes the GTA configuration line with @format to string @str
+     *      Returns -1 on failure or the number of bytes written on success.
+     */
+    inline int PrintConfigLine(char* str, const char* format, ...)
+    {
+        char fmt[256];
+        int result = -1;
+        
+        if(const char *s = PreParseFormat(nullptr, format, fmt))
+        {
+            va_list va; va_start(va, format);
+            result = vsprintf(str, s, va);
+            va_end(va);
+        }
+        return result < 0? -1 : result;
+    }
+#endif
+    
+    /*
+     *  PrintConfigLine
+     *      Writes the GTA configuration line with @format to string @str
+     *      The @format will be truncated to @max tokens
+     *      Returns -1 on failure or the number of bytes written on success.
+     */
+    inline int PrintConfigLine(char* str, unsigned int max, const char* format, ...)
+    {
+        char fmt[256];
+        int result = -1;
+        
+        if(const char *s = PreParseFormat(nullptr, format, fmt, 0, max))
+        {
+            va_list va; va_start(va, format);
+            result = vsprintf(str, s, va);
+            va_end(va);
+        }
+        return result < 0? -1 : result;
+    }
+
+    
     
      /*
       * SectionParser
@@ -126,11 +334,13 @@ namespace modloader
         
         if(FILE* f = fopen(filepath, "r"))
         {
+            SectionInfo* section = nullptr;
+            
             /* Read each config line */
             while(line = ParseConfigLine(fgets(linebuf, sizeof(linebuf), f)))
             {
                 if(*line == 0) continue;
-                set(nullptr, line, map);
+                set(section, line, map);
             }
             fclose(f);
             return true;
@@ -158,7 +368,7 @@ namespace modloader
             {
                 if(section != newsec)
                 {
-                    PrintConfigLine(f, "%s%s\n", (section? "end\n" : ""), (newsec? newsec->name : ""));
+                    fprintf(f, "%s%s\n", (section? "end\n" : ""), (newsec? newsec->name : ""));
                     section = newsec;
                 }
             };
@@ -179,7 +389,7 @@ namespace modloader
                     /* Gets data into buf */
                     if(get(section, buf, key, value))
                     {
-                        PrintConfigLine(f, "%s\n", buf);
+                        fprintf(f, "%s\n", buf);
                     }
                 }
             }
@@ -204,6 +414,8 @@ namespace modloader
     {
         if(FILE* f = fopen(filepath, "w"))
         {
+            SectionInfo* section = nullptr;
+            
             /* Iterate on the lines data pair */
             for(auto& pair : lines)
             {
@@ -212,9 +424,9 @@ namespace modloader
                 auto& value = pair.second.get();
 
                 /* Gets data into buf */
-                if(get(nullptr, buf, key, value))
+                if(get(section, buf, key, value))
                 {
-                    PrintConfigLine(f, "%s\n", buf);
+                    fprintf(f, "%s\n", buf);
                 }
             }
 
@@ -223,6 +435,21 @@ namespace modloader
             return true;
         }
         return false;
+    }
+    
+    /*
+     *  If any section is equal to this, that means the section
+     *  is undefined and the data was taken from a readme file
+     */
+    inline SectionInfo* ReadmeSection()
+    {
+        static SectionInfo x = { -1, 0 };
+        return &x;
+    }
+    
+    inline bool IsReadmeSection(SectionInfo* sec)
+    {
+        return (sec == ReadmeSection());
     }
     
     
@@ -238,19 +465,17 @@ namespace modloader
             typedef typename TraitsType::mapped_type             value_type;
             typedef typename TraitsType::container_type          container_type;
             typedef decltype(value_type::FindSectionByLine(""))  SectionType;
-            
-            
+
             // Section finder
             struct Find
             {
                 SectionType operator()(const char* line)
                 { return value_type::FindSectionByLine(line); }
                 SectionType operator()(const key_type& key, const value_type& value)
-                { return value.section; }
+                { return value_type::FindSectionById(value.section); }
             };
             
             // Map setter
-            template<class T>
             struct Set
             {
                 bool operator()(SectionType section, const char* line, container_type& map)

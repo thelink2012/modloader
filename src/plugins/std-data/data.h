@@ -91,6 +91,7 @@ class CDataFS
         }
         
     public:
+        typedef DataTraitsType traits_type;
         typedef std::list<DataTraitsType> TraitsList;
         
         /* map< hash_FSPath, ListOfPhysicalPaths > */

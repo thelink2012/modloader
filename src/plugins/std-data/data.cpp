@@ -69,7 +69,9 @@ int CThePlugin::OnStartup()
         char buf[128];
         sprintf(buf, "%s%s\\", this->modloader->cachepath, "std-data");
         this->cachePath = buf;
+        
         DestroyDirectoryA(buf);
+        Log("Creating data cache folder...");
         MakeSureDirectoryExistA(buf);
     }
     
@@ -78,8 +80,8 @@ int CThePlugin::OnStartup()
 
 int CThePlugin::OnShutdown()
 {
-#if NDEBUG
-    // Cleanup cache folder
+#ifdef NDEBUG
+    Log("Deleting data cache folder...");
     DestroyDirectoryA(this->cachePath.c_str());
 #endif
     return 0;
@@ -113,25 +115,25 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
  */
 int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
-    if(IsFileExtension(file.filext, "ide"))
+    if(IsFileExtension(file.filext, "dat"))
     {
-        traits.ide.AddFile(file);
-        return 1;
-    }
-    else if(IsFileExtension(file.filext, "ipl") || IsFileExtension(file.filext, "zon"))
-    {
-        traits.ipl.AddFile(file);
+        traits.gta.AddFile(file);
         return 0;
+        // TODO
     }
     else if(IsFileExtension(file.filext, "cfg"))
     {
         // TODO
     }
-    else if(IsFileExtension(file.filext, "dat"))
+    else if(IsFileExtension(file.filext, "ide"))
     {
-        traits.gta.AddFile(file);
+        traits.ide.AddFile(file);
         return 0;
-        // TODO
+    }
+    else if(IsFileExtension(file.filext, "ipl") || IsFileExtension(file.filext, "zon"))
+    {
+        traits.ipl.AddFile(file);
+        return 0;
     }
     return 1;
 }
@@ -182,7 +184,7 @@ struct BuildDataFileKeyInserter
  *  @fs is the filesystem with custom files
  *  @domflag is a functor that returns the flags for the algorithm FindDominantData()
  */
-template<bool isSorted, class T, class DomFlagsFunctor>
+template<class T, class DomFlagsFunctor>
 static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFlagsFunctor domflags)
 {
     typedef typename T::key_type    key_type;
@@ -220,14 +222,13 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
      * Uses std::set if isSorted or std::vector if not ordered */
     typedef std::vector<std::reference_wrapper<const key_type>>                         keys_type1;
     typedef std::set<std::reference_wrapper<const key_type>, std::less<key_type> >      keys_type2;
-    typedef typename std::conditional<!isSorted, keys_type1, keys_type2>::type          keys_type;
+    typedef typename std::conditional<!T::is_sorted, keys_type1, keys_type2>::type          keys_type;
     
     /* Container to store references to all keys present in default and custom files */
     keys_type keys;
     
     /* Vector to store reference to pairs of <key, value> of dominant data, to be later built into a new data file  */
     std::vector<typename T::pair_ref_type> lines;
-    
     auto AddKeysFromContainer = [&keys](typename T::container_type& map)
     {
         /* and iterating on their data */
@@ -235,11 +236,11 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
         {
             // Add it key into keys list
             typedef BuildDataFileKeyInserter<keys_type, key_type> add;
-            typename std::conditional<!isSorted, typename add::NonSorted, typename add::Sorted>::type func;
+            typename std::conditional<!T::is_sorted, typename add::NonSorted, typename add::Sorted>::type func;
             func(keys, it.first);
         }
     };
-    
+
     /* Iterate on each file on the list... */
     for(auto& f : list)
     {
@@ -276,60 +277,60 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
 /*
  *  Same as BuildDataFile<T,F> but sending the flag directly, no functor 
  */
-template<bool isSorted, class T>
+template<class T>
 static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, int domflags)
 {
-    return BuildDataFile<isSorted>(defaultFile, fs, [domflags](const typename T::key_type&) { return domflags; });
+    return BuildDataFile(defaultFile, fs, [domflags](const typename T::key_type&) { return domflags; });
 }
 
-
-
-/* Types Helpers */
-typedef void (*LoadProcType1)(const char*);
-typedef void* (*LoadProcType2)(const char*, const char*);
-/* Macros Helpers */
-#define MakeProcHook(xtype, callAddress, func)  (procs.func = (xtype) MakeCALL(callAddress, (void*) func).p)
-#define MakeProcHook1(callAddress, func)        MakeProcHook(LoadProcType1, callAddress, func)
-#define MakeProcHook2(callAddress, func)        MakeProcHook(LoadProcType2, callAddress, func)
-
-/* Stores pointer to original game functions that loads stuff */
-struct LoadProcs
+/*
+ *  File mixer
+ *      Hooks a fopen call to mix files in @fs and opens the mixed file instead
+ *      @addr is the address to hook, @T is the fs CDataFS type
+ *      Note the object is dummy (has no content), all stored information is static
+ */
+template<size_t addr, class T>
+class CFileMixer
 {
-    LoadProcType1 LoadIPL;
-    LoadProcType2 LoadGTAConfig;
-    
-} procs;
+    private:
+        typedef void* (*OpenFileType)(const char*, const char*);    // fopen prototype
+        
+        // Static variables
+        static OpenFileType& OpenFilePtr()      // fopen from the hook
+        { static OpenFileType a; return a; }
+        static T*& FSPtr()                      // the pointer to the used fs
+        { static T* a; return a; }
 
-/* ------------------------- Loading hooks ------------------------- */
-
-static void LoadIPL(const char* filename)
-{
-    /* Functor that returns appropriate flags for the IPL key */
-    struct
-    {
-        int operator()(const SDataIPL::key_type& key) const
+        // The fopen hook
+        static void* OpenFile(const char* filename, const char* mode)
         {
-            if(key.section == IPL_INST) return 0;
-            return flag_RemoveIfNotExistInAnyCustom;
+            typedef typename T::traits_type  traits_type;
+            std::string file = BuildDataFile(filename, *FSPtr(), traits_type::domflags());
+            dataPlugin->Log("Loading %s \"%s\"", traits_type::what(), file.c_str());
+            return OpenFilePtr()(file.c_str(), mode);
         }
         
-    } domflags;
-    
-    std::string file = BuildDataFile<false>(filename, traits.ipl, domflags);
-    dataPlugin->Log("Loading IPL file \"%s\"", file.c_str());
-    return procs.LoadIPL(file.c_str());
-}
+    public:
+        
+        /*
+         *  Constructs a file mixer. This should be called only once.
+         */
+        CFileMixer(T& fs)
+        {
+            OpenFilePtr() = MakeCALL(addr, (void*) OpenFile).get();
+            FSPtr()       = &fs;
+        }
+        
+};
 
-
-static void* LoadGTAConfig(const char* filename, const char* mode)
+/*
+ *  Helper function to create a file mixer, just pass @fs as argument an it's done 
+ */
+template<size_t at_address, class T>
+CFileMixer<at_address, T> make_file_mixer(T& fs)
 {
-    std::string file = BuildDataFile<true>(filename, traits.gta, flag_RemoveIfNotExistInOneCustomButInDefault);
-    dataPlugin->Log("Loading gta config \"%s\"", file.c_str());
-    return procs.LoadGTAConfig(file.c_str(), mode);
+    return CFileMixer<at_address, T>(fs);
 }
-
-
-
 
 
 
@@ -348,8 +349,10 @@ int CThePlugin::PosProcess()
     
     // Hook things
     {
-        MakeProcHook1(0x5B92C7, LoadIPL);
-        MakeProcHook2(0x5B905E, LoadGTAConfig);
+        make_file_mixer<0x5B8428>(traits.ide);
+        make_file_mixer<0x5B871A>(traits.ipl);
+        make_file_mixer<0x5B905E>(traits.gta);
+        
     }
     
     // Ignore when files couldn't get open

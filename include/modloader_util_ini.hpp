@@ -124,7 +124,7 @@ namespace modloader
             void clear()
             { return data.clear(); }
             
-            /* Too lazy to continue this container, TODO */
+            /* Too lazy to continue this container... If you need more methods, just add it */
             
 #if 1
             bool load_file(const char_type* filename)

@@ -72,7 +72,6 @@ namespace modloader
         char* result = str;
         bool bTrim = true;
         
-        //printf("\n>>p> %s\n", str);
         if(result)
         {
             /* Iterate on string making apropiate changes */
@@ -95,94 +94,7 @@ namespace modloader
         }
         return result;
     }
-    
-    
-    /*
-     *  FixFormatString
-     *      Replaces %f with %g
-     */
-    inline char* FixFormatString(const char* format, char* out, bool addStringAtEnd = false)
-    {
-        char* result = out;
-        char lastlast = 0, last = 0;
-        
-        for(const char* p = format; *p; ++p, ++out)
-        {
-            if(lastlast != '%' && last == '%' && *p == 'f')
-                *out = 'g';
-            else
-                *out = *p;
-            
-            lastlast = last;
-            last = *p;
-        }
-        
-        if(addStringAtEnd)
-        {
-            *out++ = ' '; *out++ = '%'; *out++ = 's';
-        }
-        
-        *out = 0;
-        return result;
-    }
-    
-    
-    /*
-     *  ScanConfigLine
-     *      Scans the GTA configuration line @str with format @format
-     *      Returns the number of items in the arglist successfully filled
-     */
-    inline int ScanConfigLine(const char* str, const char* format, ...)
-    {
-        char fmt[256];
-        va_list va; va_start(va, format);
-        int result = vsscanf(str, FixFormatString(format, fmt), va);
-        va_end(va);
-        return result;
-    }
-    
-    /*
-     *  ScanConfigLine
-     *      Scans the GTA configuration line @str with format @format
-     *      Retruns true if the scan sucessfully acquieres @count arguments, returns false otherwise
-     */
-    inline bool ScanConfigLine(const char* str, int count, const char* format, ...)
-    {
-        char fmt[256];
-        va_list va; va_start(va, format);
-        int result = vsscanf(str, FixFormatString(format, fmt, true), va);
-        va_end(va);
-        return (result == count);
-    }
 
-    /*
-     *  PrintConfigLine
-     *      Writes the GTA configuration line with @format to string @str
-     *      Returns true on success, false otherwise
-     */
-    inline bool PrintConfigLine(char* str, const char* format, ...)
-    {
-        char fmt[256];
-        va_list va; va_start(va, format);
-        bool bResult = vsprintf(str, FixFormatString(format, fmt), va) >= 0;
-        va_end(va);
-        return bResult;
-    }
-    
-    /*
-     *  PrintConfigLine
-     *      Writes the GTA configuration line with @format to file @f
-     *      Returns true on success, false otherwise
-     */
-    inline bool PrintConfigLine(FILE* f, const char* format, ...)
-    {
-        char fmt[256];
-        va_list va; va_start(va, format);
-        bool bResult = vfprintf(f, FixFormatString(format, fmt), va) >= 0;
-        va_end(va);
-        return bResult;
-    }
-    
 }
 
 #endif	/* MODLOADER_UTIL_FILE_HPP */

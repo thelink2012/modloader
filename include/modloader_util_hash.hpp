@@ -40,9 +40,17 @@ namespace modloader
         }
 
         /* Performs an interation in the hash algorithm */
-        hash_type transform(hash_type fvn, char c)
+        hash_type transform(hash_type fnv, char c)
         {
-            return ((((fvn) ^ (uint32_t)( uint8_t(c) )) * 16777619));
+            return ((fnv * 16777619) ^ (hash_type)(uint8_t(c)));
+        }
+    
+        /* Performs transform on more than one byte */
+        hash_type transform(hash_type fnv, const void* data_, size_t size)
+        {
+            const char* data = (char*)(data_);
+            for(size_t i = 0; i < size; ++i) fnv = transform(fnv, *data++);
+            return fnv;
         }
 
         /* Performs the hash algorithm finalization */
@@ -129,7 +137,65 @@ namespace modloader
     inline size_t hash(const char* string, TransformerFunctor tr)
     {
         return fnv1a<32>()(string, -1, tr, fnv_fun::condition_ascii());
-    }   
+    }
+    
+    /*
+     *  Utility class to hash many data into a single line
+     */
+    template<class HasherType = fnv1a<32>>
+    class hash_transformer
+    {
+        public:
+            typedef HasherType hasher_type;
+        private:
+            hasher_type hasher;
+            size_t      hash;
+        
+        public:
+            hash_transformer() : hash(hasher.init())
+            {
+            }
+
+            /*
+             *  Transforms with a basic or POD type
+             */
+            template<class T>
+            hash_transformer& transform(const T& pod)
+            {
+                static_assert(std::is_pod<T>::value,            "T must be a plain-old-data type");
+                static_assert(!std::is_floating_point<T>::value, "Floating-points aren't transformable");
+                this->hash = hasher.transform(this->hash, &pod, sizeof(T));
+                return *this;
+            }
+            
+            /*
+             *  Transforms with a array of N elements with type T 
+             */
+            template<class T, size_t N>
+            hash_transformer& transform(const T (&arr)[N])
+            {
+                for(size_t i = 0; i < N; ++i) this->transform(arr[i]);
+                return *this;
+            }
+
+            /*
+             *  Finalizes the hashing and returns the final hash of the transformation
+             */
+            size_t final()
+            {
+                return hasher.final(this->hash);
+            }
+            
+            /*
+             *  Returns the resulting hash after transformation and finalization 
+             */
+            size_t get()
+            {
+                return this->hash;
+            }
+            
+    };
+    
     
 }
     

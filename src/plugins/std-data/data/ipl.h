@@ -4,6 +4,18 @@
  * 
  *  IPL structures
  * 
+ *  TODO Automatic LOD placing, that would be a nice feature!
+ *        Possible implementations:
+ *              1. This one looks to be better...
+ *                 Each LOD readen from a IPL is stored in a data structure
+ *                 When a object has no LOD, try to find a LOD for it in that data structure
+ *                 This would be fast and work well because custom IPLs are placed at the end of the load-list
+ * 
+ *              2. This one is interesting, but slower... In my opnion the first option is better!
+ *                  When a object has no LOD, try to find a LOD for it based in LOD name standards
+ *                  using the game function to find a object by name.
+ *                  Simple? No, the first one is simpler than that, really.
+ * 
  */
 #ifndef TRAITS_IPL_H
 #define	TRAITS_IPL_H
@@ -11,7 +23,6 @@
 #include "traits.h"
 #include <ordered_map.hpp>
 #include <algorithm>
-#include <modloader_util_file.hpp>
 
 namespace data
 {
@@ -67,7 +78,9 @@ namespace data
 
         /* Formating information */
         static const char* format() { return "%d %s %d %f %f %f %f %f %f %f %d"; }
-        static size_t count()       { return 11; }
+        static size_t count()       { return min_count(); }
+        static size_t min_count()   { return 11; }
+        static size_t max_count()   { return min_count(); }
         
         /* Proper inst comparision */
         bool operator==(const SDataIPL_INST& b) const
@@ -99,21 +112,21 @@ namespace data
         static bool set(const char* line, SObject& inst)
         {
             char dummy[64];
-            return ScanConfigLine(line, count(), format(),
+            return ScanConfigLine(line, min_count(), max_count(), format(),
                         &inst.id, dummy, &inst.interior,
                         &inst.pos[0].f, &inst.pos[1].f, &inst.pos[2].f,
                         &inst.rot[0].f, &inst.rot[1].f, &inst.rot[2].f, &inst.rot[3].f,
-                        &inst.lod);
+                        &inst.lod) > 0;
         }
         
         /* Gets an SObject to string data. Note the lod will be from the function argument. */
         static bool get(char* line, const SObject& inst, int lod)
         {
-            return PrintConfigLine(line, format(),
+            return PrintConfigLine(line, count(), format(),
                     inst.id, "dummy", inst.interior,
                     inst.pos[0].f, inst.pos[1].f, inst.pos[2].f,
                     inst.rot[0].f, inst.rot[1].f, inst.rot[2].f, inst.rot[3].f,
-                    lod);
+                    lod) > 0;
         }
         
         /*
@@ -157,13 +170,15 @@ namespace data
             {
                 case 0:  count = 14; return "%f %f %f %f %f %f %f %f %f %d %f %f %f %f";
                 case 1:  count = 11; return "%f %f %f %f %f %f %f %f %f %d %d";
-                default: count = -1; return "";
+                default: count = 1; return "";
             }
         }
         
         /* Formating information */
         const char* format() const { size_t a; return (format(formating, a));    }
         size_t count()       const { size_t a; return (format(formating, a), a); }
+        static size_t min_count()  { return 11; }
+        static size_t max_count()  { return 14; }
 
         /* Comparision */
         bool operator==(const SDataIPL_CULL& b) const
@@ -191,27 +206,27 @@ namespace data
         /* Sets data from string */
         bool set(const char* line)
         {
-            /* Try with formating types 0 and 1 */
-            for(int i = 0; i < 2; ++i)
-            {
-                /* Try with this formating */
-                switch(this->formating = i)
-                {
-                    case 0: /* vec4 at the end */
-                        if(ScanConfigLine(line, count(), format(),
-                                  &center[0].f, &center[1].f, &center[2].f,
-                                  &unknown1.f, &length.f, &bottom.f, &width.f, &unknown2.f, &top.f, &flag,
-                                  &mirror[0].f, &mirror[1].f, &mirror[2].f, &mirror[3].f)) return true;
-                        break;
+            /* Try with each formating type */
+            size_t c;
+            const char* fmt;
+            
+            /* vec4 at the end */
+            formating = 0;
+            fmt = format(formating, c);
+            if(ScanConfigLine(line, c, c, fmt,
+                    &center[0].f, &center[1].f, &center[2].f,
+                    &unknown1.f, &length.f, &bottom.f, &width.f, &unknown2.f, &top.f, &flag,
+                    &mirror[0].f, &mirror[1].f, &mirror[2].f, &mirror[3].f) > 0)
+                return true;
                     
-                    case 1: /* integer at the end */
-                        if(ScanConfigLine(line, count(), format(),
-                                  &center[0].f, &center[1].f, &center[2].f,
-                                  &unknown1.f, &length.f, &bottom.f, &width.f, &unknown2.f, &top.f, &flag,
-                                  &unknown3)) return true;
-                        break;
-                }
-            }
+            /* integer at the end */
+            formating = 1;
+            fmt = format(formating, c);
+            if(ScanConfigLine(line, c, c, fmt,
+                    &center[0].f, &center[1].f, &center[2].f,
+                    &unknown1.f, &length.f, &bottom.f, &width.f, &unknown2.f, &top.f, &flag,
+                    &unknown3) > 0)
+                return true;
             
             /* Nope? formating state is undefined. */
             return false;
@@ -223,17 +238,16 @@ namespace data
             switch(this->formating)
             {
                 case 0: /* vec4 at the end */
-                    return PrintConfigLine(line, format(),
+                    return PrintConfigLine(line, count(), format(),
                                 center[0].f, center[1].f, center[2].f,
                                 unknown1.f, length.f, bottom.f, width.f, unknown2.f, top.f, flag,
-                                mirror[0].f, mirror[1].f, mirror[2].f, mirror[3].f);
-                    break;
+                                mirror[0].f, mirror[1].f, mirror[2].f, mirror[3].f) > 0;
                 
                 case 1: /* integer at the end */
-                    return PrintConfigLine(line, format(),
+                    return PrintConfigLine(line, count(), format(),
                                 center[0].f, center[1].f, center[2].f,
                                 unknown1.f, length.f, bottom.f, width.f, unknown2.f, top.f, flag,
-                                unknown3);
+                                unknown3) > 0;
             }
             return false;
         }
@@ -260,7 +274,7 @@ namespace data
                 flags door_style;
             };
             struct  // when formating == 1
-            {       // game's default data
+            {       // game's default data (nothing)
             };
         };
         
@@ -272,13 +286,16 @@ namespace data
             {
                 case 0:  count = 14; return "%f %f %f %f %f %f %f %f %d %d %s %d %d %d";
                 case 1:  count = 11; return "%f %f %f %f %f %f %f %f %d %d %s";
-                default: count = -1; return "";
+                default: count = 1; return "";
             }
         }
         
         /* Formating information */
         const char* format() const { size_t a; return (format(formating, a));    }
         size_t count()       const { size_t a; return (format(formating, a), a); }
+        static size_t min_count()  { return 11; }
+        static size_t max_count()  { return 14; }
+        
         
         bool operator==(const SDataIPL_GRGE& b) const
         {
@@ -305,40 +322,42 @@ namespace data
         bool set(const char* line)
         {
             bool bResult = false;
+            size_t c;
+            const char* fmt;
             
-            /* Try with formating types 0 and 1 */
-            for(int i = 0; i < 2; ++i)
+            /* default, no grgx data at the end */
+            if(!bResult)
             {
-                /* Try with this formating */
-                switch(this->formating = i)
-                {
-                    case 0: /* grgx data at the end */
-                        bResult = ScanConfigLine(line, count(), format(),
-                                        &pos1[0].f, &pos1[1].f, &pos1[2].f,
-                                        &depth[0].f, &depth[1].f,
-                                        &pos2[0].f, &pos2[1].f, &pos2[2].f,
-                                        &flag, &type, name.buf,
-                                        &num_cars, &grgx_type, &door_style);
-                        break;
-                    
-                    case 1: /* no grgx data at the end */
-                        bResult = ScanConfigLine(line, count(), format(),
-                                        &pos1[0].f, &pos1[1].f, &pos1[2].f,
-                                        &depth[0].f, &depth[1].f,
-                                        &pos2[0].f, &pos2[1].f, &pos2[2].f,
-                                        &flag, &type, name.buf);
-                        break;
-                }
-                
-                /* If found correct formating, go ahead and return,
-                 * but before we need to calculate the name hash */
-                if(bResult)
-                {
-                    name.recalc(::toupper);
-                    return true;
-                }
+                formating = 1;
+                fmt = format(formating, c);
+                bResult = ScanConfigLine(line, c, c, fmt,
+                            &pos1[0].f, &pos1[1].f, &pos1[2].f,
+                            &depth[0].f, &depth[1].f,
+                            &pos2[0].f, &pos2[1].f, &pos2[2].f,
+                            &flag, &type, name.buf) > 0;
             }
             
+            /* grgx data at the end */
+            if(!bResult)
+            {
+                formating = 0;
+                fmt = format(formating, c);
+                bResult = ScanConfigLine(line, c, c, fmt,
+                                &pos1[0].f, &pos1[1].f, &pos1[2].f,
+                                &depth[0].f, &depth[1].f,
+                                &pos2[0].f, &pos2[1].f, &pos2[2].f,
+                                &flag, &type, name.buf,
+                                &num_cars, &grgx_type, &door_style) > 0;
+            }
+            
+
+            /* If found correct formating, go ahead and return,
+             * but before we need to calculate the name hash */
+            if(bResult)
+            {
+                name.recalc(::toupper);
+                return true;
+            }
             return false;
         }
         
@@ -348,19 +367,19 @@ namespace data
             switch(this->formating)
             {
                 case 0: /* grgx data at the end */
-                    return PrintConfigLine(line, format(),
+                    return PrintConfigLine(line, count(), format(),
                                 pos1[0].f, pos1[1].f, pos1[2].f,
                                 depth[0].f, depth[1].f,
                                 pos2[0].f, pos2[1].f, pos2[2].f,
                                 flag, type, name.buf,
-                                num_cars, grgx_type, door_style);
+                                num_cars, grgx_type, door_style) > 0;
                     
                 case 1: /* no grgx data at the end */
-                    return PrintConfigLine(line, format(),
+                    return PrintConfigLine(line, count(), format(),
                                 pos1[0].f, pos1[1].f, pos1[2].f,
                                 depth[0].f, depth[1].f,
                                 pos2[0].f, pos2[1].f, pos2[2].f,
-                                flag, type, name.buf);
+                                flag, type, name.buf) > 0;
             }
             return false;
         }
@@ -384,7 +403,9 @@ namespace data
         
         /* Formating information */
         static const char* format() { return "%f %f %f %f %f %f %f %f %f %f %f %d %d %s %d %d %d %d"; }
-        static size_t count()       { return 18; }
+        static size_t count()       { return min_count(); }
+        static size_t min_count()   { return 18; }
+        static size_t max_count()   { return min_count(); }
         
         /* Comparer */
         bool operator==(const SDataIPL_ENEX& b) const
@@ -397,13 +418,12 @@ namespace data
         /* Sets data from string */
         bool set(const char* line)
         {
-            if(ScanConfigLine(line, count(), format(),
+            if(ScanConfigLine(line, min_count(), max_count(), format(),
                 &entrance[0].f, &entrance[1].f, &entrance[2].f, &entrance[3].f,
                 &width[0].f, &width[1].f,
                 &unknown1.f,
                 &exit[0].f, &exit[1].f, &exit[2].f, &exit[3].f,
-                &interior, &flag, &name.buf[0], &sky, &unknown2, &time1, &time2
-             ))
+                &interior, &flag, &name.buf[0], &sky, &unknown2, &time1, &time2) > 0)
             {
                 /* Calculate the name hash */
                 name.recalc(::toupper);
@@ -415,13 +435,12 @@ namespace data
         /* Gets data to string */
         bool get(char* line) const
         {
-            return PrintConfigLine(line, format(),
+            return PrintConfigLine(line, count(), format(),
                     entrance[0].f, entrance[1].f, entrance[2].f, entrance[3].f,
                     width[0].f, width[1].f,
                     unknown1.f,
                     exit[0].f, exit[1].f, exit[2].f, exit[3].f,
-                    interior, flag, name.buf, sky, unknown2, time1, time2
-                 );
+                    interior, flag, name.buf, sky, unknown2, time1, time2) > 0;
         }
     };
     
@@ -433,7 +452,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%d %f %f %f"; }
-        size_t count()       const { return 4; }
+        size_t count()       const { return min_count(); }
+        static size_t min_count()  { return 4; }
+        static size_t max_count()  { return min_count(); }
         
         bool operator==(const SDataIPL_PICK& b) const
         {
@@ -444,15 +465,15 @@ namespace data
         /* Sets data from string */
         bool set(const char* line)
         {
-            return ScanConfigLine(line, count(), format(),
-                                  &id, &pos[0].f, &pos[1].f, &pos[2].f);
+            return ScanConfigLine(line, min_count(), max_count(), format(),
+                                  &id, &pos[0].f, &pos[1].f, &pos[2].f) > 0;
         }
         
         /* Gets data to string */
         bool get(char* line) const
         {
-            return PrintConfigLine(line, format(),
-                                  id, pos[0].f, pos[1].f, pos[2].f);
+            return PrintConfigLine(line, count(), format(),
+                                  id, pos[0].f, pos[1].f, pos[2].f) > 0;
         }
     };
     
@@ -468,7 +489,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d"; }
-        size_t count()       const { return 16; }
+        size_t count()       const { return min_count(); }
+        static size_t min_count()  { return 16; }
+        static size_t max_count()  { return min_count(); }
         
         bool operator==(const SDataIPL_JUMP& b) const
         {
@@ -479,25 +502,25 @@ namespace data
         /* Sets data from string */
         bool set(const char* line)
         {
-            return ScanConfigLine(line, count(), format(),
+            return ScanConfigLine(line, min_count(), max_count(), format(),
                                   &start1[0].f, &start1[1].f, &start1[2].f,
                                   &start2[0].f, &start2[1].f, &start2[2].f,
                                   &target1[0].f, &target1[1].f, &target1[2].f,
                                   &target2[0].f, &target2[1].f, &target2[2].f,
                                   &camerapos[0].f, &camerapos[1].f, &camerapos[2].f,
-                                  &reward);
+                                  &reward) > 0;
         }
         
         /* Gets data to string */
         bool get(char* line) const
         {
-            return ScanConfigLine(line, count(), format(),
+            return PrintConfigLine(line, count(), format(),
                                   start1[0].f, start1[1].f, start1[2].f,
                                   start2[0].f, start2[1].f, start2[2].f,
                                   target1[0].f, target1[1].f, target1[2].f,
                                   target2[0].f, target2[1].f, target2[2].f,
                                   camerapos[0].f, camerapos[1].f, camerapos[2].f,
-                                  reward);
+                                  reward) > 0;
         }
     };
     
@@ -513,8 +536,11 @@ namespace data
         uint8_t nopt;   // num opt parameters received
         
         /* Formating information */
-        const char* format() const { return 0; }   // format and count are 'dynamic'
-        size_t count()       const { return 0; }   //
+        const char* format() const { return "%f %f %f %f %f %f %d %d %f    %f %f %f"; }
+        size_t count()       const { return min_count() + nopt; }
+        static size_t min_count()  { return 9; }
+        static size_t max_count()  { return 9+3; }
+        
         
         bool operator==(const SDataIPL_TCYC& b) const
         {
@@ -542,20 +568,18 @@ namespace data
          /* Sets data from string */
         bool set(const char* line)
         {
-            const int ndefault = 9;
-            
             // Scan config line getting the number of parameters successfully caught
-            int nargs = ScanConfigLine(line, "%f %f %f %f %f %f %d %d %f %f %f %f",
+            int nargs = ScanConfigLine(line, min_count(), max_count(), format(),
                                        &pos1[0].f, &pos1[1].f, &pos1[2].f,
                                        &pos2[0].f, &pos2[1].f, &pos2[2].f,
                                        &unk1, &unk2, &unk3.f,
                                        &opt[0].f, &opt[1].f, &opt[2].f);
             
             // Check if successfully caught at least the number of non-optional parameters
-            if(nargs >= ndefault)
+            if(nargs > 0)
             {
                 // Setup the number optional arguments field and return success...
-                this->nopt = nargs - ndefault;
+                this->nopt = nargs - min_count();
                 return true;
             }
             return false;
@@ -564,28 +588,12 @@ namespace data
         /* Gets data from string */
         bool get(char* line) const
         {
-            char buf[256];
-            bool bResult = false;
-            
             // Print common data into line
-            if(!PrintConfigLine(line, "%f %f %f %f %f %f %d %d %f ",
-                    pos1[0].f, pos1[1].f, pos1[2].f,
-                    pos2[0].f, pos2[1].f, pos2[2].f,
-                    unk1, unk2, unk3.f))
-                return false;
-            
-            // Print optional data into temporary buffer
-            switch(nopt)
-            {
-                case 0: bResult = true; buf[0] = '\0'; break;
-                case 1: bResult = PrintConfigLine(buf, "%f", opt[0].f); break;
-                case 2: bResult = PrintConfigLine(buf, "%f %f", opt[0].f, opt[1].f); break;
-                case 3: bResult = PrintConfigLine(buf, "%f %f %f", opt[0].f, opt[1].f, opt[2].f); break;
-            }
-            
-            // Append optional data into line
-            if(bResult) strcat(line, buf);
-            return bResult;
+            return PrintConfigLine(line, count(), format(),
+                        pos1[0].f, pos1[1].f, pos1[2].f,
+                        pos2[0].f, pos2[1].f, pos2[2].f,
+                        unk1, unk2, unk3.f,
+                        opt[0].f, opt[1].f, opt[2].f) > 0;
         }
     };
     
@@ -610,13 +618,15 @@ namespace data
             {
                 case 0:  count = 9;  return "%s %d %d %f %f %f %f %f %f";
                 case 1:  count = 7;  return "%s %d %d %f %f %f %f";
-                default: count = -1; return "";
+                default: count = 1;  return "";
             }
         }
         
         /* Formating information */
         const char* format() const { size_t a; return (format(formating, a));    }
         size_t count()       const { size_t a; return (format(formating, a), a); }
+        static size_t min_count()  { return 7; }
+        static size_t max_count()  { return 9; }
         
         bool operator==(const SDataIPL_AUZO& b) const
         {
@@ -643,36 +653,37 @@ namespace data
         bool set(const char* line)
         {
             bool bResult = false;
+            size_t c;
+            const char* fmt;
             
-            /* Try with formating types 0 and 1 */
-            for(int i = 0; i < 2; ++i)
+            /* Box formating */
+            if(!bResult)
             {
-                /* Try with this formating */
-                switch(this->formating = i)
-                {
-                    case 0: /* box data */
-                        bResult = ScanConfigLine(line, count(), format(),
-                                        &name.buf, &id, &state,
-                                        &box[0][0].f, &box[0][1].f,  &box[0][2].f,
-                                        &box[1][0].f, &box[1][1].f,  &box[1][2].f);
-                        break;
-                    
-                    case 1: /* sphere data */
-                        bResult = ScanConfigLine(line, count(), format(),
-                                        &name.buf, &id, &state,
-                                        &sphere[0].f, &sphere[1].f, &sphere[2].f, &sphere[3].f);
-                        break;
-                }
-                
-                /* If found correct formating, go ahead and return,
-                 * but before we need to calculate the name hash */
-                if(bResult)
-                {
-                    name.recalc(::toupper);
-                    return true;
-                }
+                formating = 0;
+                fmt = format(formating, c);
+                bResult = ScanConfigLine(line, c, c, format(),
+                                &name.buf, &id, &state,
+                                &box[0][0].f, &box[0][1].f,  &box[0][2].f,
+                                &box[1][0].f, &box[1][1].f,  &box[1][2].f) > 0;
             }
             
+            /* Sphere formating */
+            if(!bResult)
+            {
+                formating = 1;
+                fmt = format(formating, c);
+                bResult = ScanConfigLine(line, c, c, fmt,
+                                &name.buf, &id, &state,
+                                &sphere[0].f, &sphere[1].f, &sphere[2].f, &sphere[3].f) > 0;
+            }
+                
+            /* If found correct formating, go ahead and return,
+             * but before we need to calculate the name hash */
+            if(bResult)
+            {
+                name.recalc(::toupper);
+                return true;
+            }
             return false;
         }
         
@@ -682,15 +693,15 @@ namespace data
             switch(this->formating)
             {
                 case 0: /* box data */
-                    return PrintConfigLine(line, format(),
+                    return PrintConfigLine(line, count(), format(),
                                 name.buf, id, state,
                                 box[0][0].f, box[0][1].f,  box[0][2].f,
-                                box[1][0].f, box[1][1].f,  box[1][2].f);
+                                box[1][0].f, box[1][1].f,  box[1][2].f) > 0;
                     
                 case 1: /* sphere data */
-                    return PrintConfigLine(line, format(),
+                    return PrintConfigLine(line, count(), format(),
                                 name.buf, id, state,
-                                sphere[0].f, sphere[1].f, sphere[2].f, sphere[3].f);
+                                sphere[0].f, sphere[1].f, sphere[2].f, sphere[3].f) > 0;
             }
             return false;
         }
@@ -700,41 +711,59 @@ namespace data
     struct SDataIPL_CARS
     {
         vec4    pos;
-        /* XXX we can hash the following fields into one hash */
-        obj_id  id;
-        integer color[2];
-        integer force;
-        integer alarm;
-        integer lock;
-        integer unk[2];
+        
+        size_t  hash;   // hash of the following members
+        struct
+        {
+            obj_id  id;
+            integer color[2];
+            integer force;
+            integer alarm;
+            integer lock;
+            integer unk[2];
+        };
         
         /* Formating information */
         const char* format() const { return "%f %f %f %f %d %d %d %d %d %d %d %d"; }
-        size_t count()       const { return 12; }
+        size_t count()       const { return min_count(); }
+        static size_t min_count()  { return 12; }
+        static size_t max_count()  { return min_count(); }
         
         bool operator==(const SDataIPL_CARS& b) const
         {
             const SDataIPL_CARS& a = *this;
-            return (EQ(pos) && EQ(id) && EQ(color[0]) && EQ(color[1]) && EQ(force)
-                 && EQ(alarm) && EQ(lock) && EQ(unk[0]) && EQ(unk[1]));
+            
+            /*return (EQ(pos) && EQ(id) && EQ(color[0]) && EQ(color[1]) && EQ(force)
+                 && EQ(alarm) && EQ(lock) && EQ(unk[0]) && EQ(unk[1]));*/
+            
+            return EQ(hash) && EQ(pos);
         }
         
         /* Sets data from string */
         bool set(const char* line)
         {
-            return ScanConfigLine(line, count(), format(),
+            if(ScanConfigLine(line, min_count(), max_count(), format(),
                         &pos[0].f, &pos[1].f, &pos[2].f, &pos[3].f,
                         &id, &color[0], &color[1], &force, &alarm, &lock,
-                        &unk[0], &unk[1]);
+                        &unk[0], &unk[1]) > 0)
+            {
+                this->hash = modloader::hash_transformer<>()
+                                .transform(id).transform(color).transform(force).transform(alarm)
+                                .transform(lock).transform(unk)
+                                .final();
+                
+                return true;
+            }
+            return false;
         }
         
         /* Gets data from string */
         bool get(char* line) const
         {
-            return PrintConfigLine(line, format(),
+            return PrintConfigLine(line, count(), format(),
                         pos[0].f, pos[1].f, pos[2].f, pos[3].f,
                         id, color[0], color[1], force, alarm, lock,
-                        unk[0], unk[1]);
+                        unk[0], unk[1]) > 0;
         }
     };
     
@@ -752,8 +781,11 @@ namespace data
         uint8_t nopt;       // number optional parameters
         
         /* Formating information */
-        const char* format() const { return 0; }    // dynamic
-        size_t count()       const { return 0; }    //
+        const char* format() const { return "%f %f %f %f %f %f %f     %f %f %d"; }
+        size_t count()       const { return min_count() + nopt; }
+        static size_t min_count()  { return 7; }
+        static size_t max_count()  { return 7+3; }
+        
         
         bool operator==(const SDataIPL_OCCL& b) const
         {
@@ -781,19 +813,17 @@ namespace data
         /* Sets data from string */
         bool set(const char* line)
         {
-            const int ndefault = 7;
-            
             // Scan config line getting the number of parameters successfully caught
-            int nargs = ScanConfigLine(line, "%f %f %f %f %f %f %f %f %f %d",
+            int nargs = ScanConfigLine(line, min_count(), max_count(), format(),
                                        &mid[0].f, &mid[1].f, &bottom.f,
                                        &width[0].f, &width[1].f, &height.f, &rotation.f,
                                        &opt1[0].f, &opt1[1].f, &opt2);
             
             // Check if successfully caught at least the number of non-optional parameters
-            if(nargs >= ndefault)
+            if(nargs >= min_count())
             {
                 // Setup the number optional arguments field and return success...
-                this->nopt = nargs - ndefault;
+                this->nopt = nargs - min_count();
                 return true;
             }
             return false;
@@ -802,27 +832,11 @@ namespace data
         /* Gets data from string */
         bool get(char* line) const
         {
-            char buf[256];
-            bool bResult = false;
-            
             // Print common data into line
-            if(!PrintConfigLine(line, "%f %f %f %f %f %f %f ",
-                mid[0].f, mid[1].f, bottom.f,
-                width[0].f, width[1].f, height.f, rotation.f))
-                    return false;
-            
-            // Print optional data into temporary buffer
-            switch(nopt)
-            {
-                case 0: bResult = true; buf[0] = '\0'; break;
-                case 1: bResult = PrintConfigLine(buf, "%f", opt1[0].f); break;
-                case 2: bResult = PrintConfigLine(buf, "%f %f", opt1[0].f, opt1[1].f); break;
-                case 3: bResult = PrintConfigLine(buf, "%f %f %d", opt1[0].f, opt1[1].f, opt2); break;
-            }
-            
-            // Append optional data into line
-            if(bResult) strcat(line, buf);
-            return bResult;
+            return(!PrintConfigLine(line, count(), format(),
+                        mid[0].f, mid[1].f, bottom.f,
+                        width[0].f, width[1].f, height.f, rotation.f,
+                        opt1[0].f, opt1[1].f, opt2)) > 0;
         }
     };
     
@@ -837,7 +851,10 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%s %d %f %f %f %f %f %f %d %s"; }
-        size_t count()       const { return 10; }
+        size_t count()       const { return min_count(); }
+        static size_t min_count()  { return 10; }
+        static size_t max_count()  { return min_count(); }
+        
         
         bool operator==(const SDataIPL_ZONE& b) const
         {
@@ -848,11 +865,11 @@ namespace data
         /* Sets data from string */
         bool set(const char* line)
         {
-            if(ScanConfigLine(line, count(), format(),
+            if(ScanConfigLine(line, min_count(), max_count(), format(),
                               name.buf, &type,
                               &box[0][0].f, &box[0][1].f, &box[0][2].f,
                               &box[1][0].f, &box[1][1].f, &box[1][2].f,
-                              &island, label.buf))
+                              &island, label.buf) > 0)
             {
                 // Calculate hash and return success
                 name.recalc(::toupper);
@@ -865,7 +882,7 @@ namespace data
         /* Gets data from string */
         bool get(char* line) const
         {
-            return PrintConfigLine(line, format(),
+            return PrintConfigLine(line, count(), format(),
                         name.buf, type,
                         box[0][0].f, box[0][1].f, box[0][2].f,
                         box[1][0].f, box[1][1].f, box[1][2].f,
@@ -877,18 +894,6 @@ namespace data
     /* An IPL line..... */
     struct SDataIPL
     {
-        template<class T, class U>
-        struct call_get
-        {
-            bool operator()(const T& a, U& b) { return a.get(b); }
-        };
-        
-        template<class T, class U>
-        struct call_set
-        {
-            bool operator()(T& a, const U& b) { return a.set(b); }
-        };
-        
         /* The key from this is the actual line data... */
         struct key_type
         {
@@ -1083,8 +1088,6 @@ namespace data
                     /* Then execute std::equal_to on the section field */
                     return DoIt<bool, std::equal_to>(a, b, false);
                 }
-                
-                /* The code shall never reach this point */
                 return false;
             }
             
@@ -1114,10 +1117,27 @@ namespace data
     /* The IPL traits */
     struct TraitsIPL : DataTraitsBase< ordered_map<SDataIPL::key_type, SDataIPL> >
     {
+        /* Functor that returns appropriate flags for the IPL key */
+        struct domflags_type
+        {
+            int operator()(const SDataIPL::key_type& key) const
+            {
+                if(key.section == IPL_INST) return 0;
+                return flag_RemoveIfNotExistInAnyCustom;
+            }
+
+        };
+        
+        /* What is this? */
+        static const bool is_sorted     = false;
+        static domflags_type domflags() { return domflags_type(); }
+        static const char* what()       { return "scene file"; }
+        
+        
+        /* File loading methods */
         static bool Parser(const char* filename, DataTraits::container_type& map, bool isDefault);      // implemented at ipl.cpp
         static bool Build(const char* filename, const std::vector<DataTraits::pair_ref_type>& lines);   //
-        
-        bool LoadData()
+        bool LoadData()     // Calls Parser...
         {
             return DataTraits::LoadData(path.c_str(), [this](const char* filename, container_type& map)
             {

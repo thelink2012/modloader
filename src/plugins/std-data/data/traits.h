@@ -16,19 +16,208 @@ using namespace DataTraitsNamespace;
 #include <modloader_util_hash.hpp>
 #include <modloader_util_parser.hpp>
 using modloader::SectionInfo;
+using modloader::ScanConfigLine;
+using modloader::PrintConfigLine;
+
 
 /* Base trait for our purposes... we need to have a path */
 template<class ContainerType>
 struct DataTraitsBase : public DataTraits<ContainerType>
 {
+    typedef typename DataTraits<ContainerType>::container_type  container_type;
+    typedef typename DataTraits<ContainerType>::pair_ref_type   pair_ref_type;
+    
     std::string path;
     
     /*
-     *  The child must implement [bool LoadData()] loading 'path' file.
-     *  Normally this implementation is like
-     *      bool LoadData() { return DataTraits::LoadData(path.c_str(), MyParser);
+     *  The child must implement the following:
+     *      [optional] type handler_type= The handler for line set/get, Must contain Set(), Get() and Func()
+     *      constexpr bool is_sorted    = whether the traits.map is sorted or not
+     *      bool LoadData()             = loading @path file.
+     *      auto domflags()             = Returns the domination flags (used in the dominance algorithm). This may be a int or a functor.
+     *      const char* what()          = What does this trait handle? Used to describe in the log.
+     * 
      */
 };
+
+
+
+
+
+
+
+
+/*****************************************************/
+/* Helpers                                           */
+/*****************************************************/
+
+/*
+ *  Functors to call SectionParser 
+ */
+template<bool HasSection, class HandlerType>
+struct SectionParserTemplate
+{
+    template<class C>
+    bool operator()(const char* filename, C& map)
+    {
+        // HasSection = true
+        return modloader::SectionParser<HandlerType>(filename, map);
+    }
+};
+
+template<class HandlerType>
+struct SectionParserTemplate<false, HandlerType>
+{
+    template<class C>
+    bool operator()(const char* filename, C& map)
+    {
+        // HasSection = false
+        return modloader::SectionParserNoSection<HandlerType>(filename, map);
+    }
+};
+
+/*
+ *  Functors to call SectionBuilder 
+ */
+template<bool HasSection, class HandlerType>
+struct SectionBuilderTemplate
+{
+    template<class C>
+    bool operator()(const char* filename, C& map)
+    {
+        // HasSection = true
+        return modloader::SectionBuilder<HandlerType>(filename, map);
+    }
+};
+
+template<class HandlerType>
+struct SectionBuilderTemplate<false, HandlerType>
+{
+    template<class C>
+    bool operator()(const char* filename, C& map)
+    {
+        // HasSection = false
+        return modloader::SectionBuilderNoSection<HandlerType>(filename, map);
+    }
+};
+
+
+/*
+ *  Functor object that returns @DomFlags
+ *  Intended to be used as parameter to the template DataTraitsImpl, for the argument DomFlags
+ */
+template<int iDomFlags>
+struct DomFlags
+{
+    int operator()() { return iDomFlags; }
+};
+
+/* Functor that calls a.get(b) */
+template<class T, class U>
+struct call_get
+{
+    bool operator()(const T& a, U& b) { return a.get(b); }
+};
+        
+/* Functor that calls a.set(b) */
+template<class T, class U>
+struct call_set
+{
+    bool operator()(T& a, const U& b) { return a.set(b); }
+};
+/*****************************************************/
+
+
+
+
+/*
+ *  The following template object implements the DataTraitsBase object has it's requiered to be implmented.
+ *  You still need a base class that implements [static const char* what();]
+ * 
+ *  The implementation is fully based on the template arguments that are received:
+ *      @ContainerType is the same as in DataTraits, the container to use for DataTraits::map
+ *      @HasSection tells if the data is sectioned
+ *      @HandlerType is the handler for the parser/builder function (that's, implement Set/Get/Find, see modloadere_util_parser.hpp include file)
+ *      @IsSorted tells if the container is sorted
+ *      @DomFlags is a functor object that returns an integer (the actual flags) or another functor object that receives the container key as parameter and returns the flags
+ *      @WhatString tells what the container handles, used for logging
+ *
+ */
+template<class ContainerType, bool HasSection, class HandlerType, bool IsSorted, class DomFlags>
+struct DataTraitsImpl : public DataTraitsBase<ContainerType>
+{
+    public:
+        typedef DataTraitsBase<ContainerType> super;
+        typedef typename super::container_type container_type;
+        typedef HandlerType                    handler_type;
+        
+        static const bool is_sorted = IsSorted;
+        static const decltype(DomFlags()()) domflags() { return DomFlags()(); }
+        
+        
+        static bool Parser(const char* filename, container_type& map)
+        {
+            return SectionParserTemplate<HasSection, HandlerType>()(filename, map);
+        }
+        
+        static bool Build(const char* filename, const std::vector<typename super::pair_ref_type>& lines)
+        {
+            return SectionBuilderTemplate<HasSection, HandlerType>()(filename, lines);
+        }
+        
+        bool LoadData()
+        {
+            return super::LoadData(super::path.c_str(), Parser);
+        }
+};
+
+/*
+ *  Same as DataTraitsImpl, except instead of 'class HandlerType' we have 'bool HasKeyValue' boolean
+ *      @HasKeyValue: Teels wether the trait handles only keys (e.g. value is dummy) or both key and value.
+ *                    Used to tell if uses the default HandlerType KeyValue or KeyOnly
+ */
+template<class ContainerType, bool HasSection, bool HasKeyValue, bool IsSorted, class DomFlags>
+struct DataTraitsImplSimple
+    : public DataTraitsImpl<
+                ContainerType, HasSection,
+                typename std::conditional<
+                    HasKeyValue,
+                    modloader::parser::KeyValue<DataTraits<ContainerType>>,
+                    modloader::parser::KeyOnly<DataTraits<ContainerType>>
+                >::type, IsSorted, DomFlags
+            >
+{
+};
+
+
+/*
+ * 
+ *  Data key/value from the traits must contain the following functions to pass throught the algorithms
+ * 
+ *  Value must implement at least:
+ *          bool operator==(const type& b) const
+ * 
+ *          if HasKeyValue:
+ *                  static SectionInfo* FindSectionByLine(const char* line)
+ *                  static SectionInfo* FindSectionById(uint8_t section)
+ *                  bool get(char* line) const
+ *                  bool set(SectionInfo*, const char*)
+ * 
+ * 
+ *  Key must implement at least:
+ *          .....
+ * 
+ *          if HasKeyValue:
+ *                  bool set(const value_type&) 
+ *          else:
+ *                  static SectionInfo* FindSectionByLine(const char* line)
+ *                  static SectionInfo* FindSectionById(uint8_t section)
+ *                  bool get(char* line) const
+ *                  bool set(SectionInfo*, const char*)
+ * 
+ */
+
+
 
 
 /* Our data structures will be at a data namespace */
@@ -200,6 +389,7 @@ namespace data
         typedef SString<32>     string32;
         typedef SString<64>     string64;
         typedef SString<128>    string128;
+        typedef SString<256>    string256;
         typedef SComplex<float> complex;
         typedef SVector<2>      vec2;
         typedef SVector<3>      vec3;

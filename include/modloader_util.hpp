@@ -18,12 +18,8 @@
 #pragma once
 
 #include <string>
-
 #include "modloader.hpp"
-#include "modloader_util_container.hpp"
-#include "modloader_util_file.hpp"
-#include "modloader_util_hash.hpp"
-#include "modloader_util_path.hpp"
+
 
 namespace modloader
 {

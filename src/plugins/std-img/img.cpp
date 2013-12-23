@@ -228,19 +228,6 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
     /* Bufs */
     static std::string gta3, gta_int, player, cuts;
 
-    // We need to do this hook to not hook too much code
-    MakeNOP(0x4083E4 + 5, 4);
-    MakeJMP(0x4083E4, (void*)((void (*)(void))([]()  // mid replacement for CStreaming::OpenGtaImg
-    {
-        char* gta3Path   = ReadMemory<char*>(0x40844C + 1, true);
-        char* gtaIntPath = ReadMemory<char*>(0x40848C + 1, true);;
-        
-        imgPlugin->Log("Overridden gta3 img: %s\nOverridden gta_int img: %s", gta3Path, gtaIntPath);
-        
-        *gta3ImgDescriptorNum = CStreaming__OpenImgFile(gta3Path, true);
-        *gtaIntImgDescriptorNum = CStreaming__OpenImgFile(gtaIntPath, true);
-    })));
-
     /*
      *  If any of the original img files (loaded from game code strings), replace the strings
      *  Note we'll set isOriginal flag from 'img' only if it's path could be registered
@@ -289,6 +276,23 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
             ReplaceAddr(0x5B07DA + 1, cuts);
             ReplaceAddr(0x5B1423 + 1, cuts);
         }
+    }
+    
+    // If replacing gta3 or gta_int, hook it's loading proc
+    if(!gta3.empty() || ! gta_int.empty())
+    {
+        // We need to do this hook to not hook too much code
+         MakeNOP(0x4083E4 + 5, 4);
+         MakeJMP(0x4083E4, (void*)((void (*)(void))([]()  // mid replacement for CStreaming::OpenGtaImg
+         {
+             char* gta3Path   = ReadMemory<char*>(0x40844C + 1, true);
+             char* gtaIntPath = ReadMemory<char*>(0x40848C + 1, true);;
+
+             imgPlugin->Log("Overridden gta3 img: %s\nOverridden gta_int img: %s", gta3Path, gtaIntPath);
+
+             *gta3ImgDescriptorNum = CStreaming__OpenImgFile(gta3Path, true);
+             *gtaIntImgDescriptorNum = CStreaming__OpenImgFile(gtaIntPath, true);
+         })));
     }
              
     return true;

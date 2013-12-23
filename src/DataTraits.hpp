@@ -24,6 +24,10 @@ namespace DataTraitsNamespace   /* well... ugly name but we expect you to do 'us
 
 /* Algorithm flags */
 
+ /*
+  * Important: If you add more flags or something be sure to update the std-data plugin file readme.cpp 
+  */
+
 // If the key do not exist in at least one custom trait BUT exists in the default trait, just remove the value (return null)
 static const int flag_RemoveIfNotExistInOneCustomButInDefault = 1; 
 // If the key do not exist in any of the custom traits, remove the value (return null)

@@ -29,7 +29,7 @@ namespace data
     };
 
 
-    struct SDataGTA
+    struct SDataGTA // fix me original sorting is important
     {
 
         /*
@@ -65,12 +65,21 @@ namespace data
         {
             uint8_t     section;
             string64    path;
+            int         index;      // Set by the handler Set object, see TraitsGTA
+                                    // This index is unique for each path
 
+         /*
+            const char* format() const { return "%s %s"; }
+            size_t count()       const { return min_count(); }
+            static size_t min_count()  { return 2; }
+            static size_t max_count()  { return min_count(); }
+         */
+ 
             // for map ordering and equality comparision
             bool operator<(const key_type& b) const
             {
                 const key_type& a = *this;
-                return EQ(section)? LE(path) : LE(section);
+                return EQ(section)? LE(index) : LE(section);
             }
             
             // 
@@ -94,9 +103,11 @@ namespace data
             
             
             // Sets this data from string @line
-            bool set(SectionInfo* info, const char* line, bool detecting = false)
+            bool set(SectionInfo* info, const char* line)
             {
-                if(info || (info = FindSectionByLine(line)))
+                bool detecting = IsReadmeSection(info);
+
+                if(info = FindSectionByLine(line))
                 {
                     const char* path = 0;
 
@@ -136,12 +147,6 @@ namespace data
                 }
                 return false;
             }
-            
-            // Auto-detect section and stuff. Used to read readme files lines.
-            bool set(const char* line)
-            {
-                return set(nullptr, line, true);
-            }
 
             // Gets data into string @line
             bool get(char* line) const
@@ -154,26 +159,97 @@ namespace data
 
     };
     
-    /* The gta.dat traits */
-    struct TraitsGTA : DataTraitsBase< std::map<SDataGTA::key_type, SDataGTA> >
+    // The traits object
+    struct TraitsGTA  : DataTraitsBase< std::map<SDataGTA::key_type, SDataGTA> >
     {
-        static bool Parser(const char* filename, container_type& map)
+        /*
+         *  Specialized set/get structure 
+         *  Why, you might ask?
+         * 
+         *  The order of files loaded by this trait matters, so we need to keep that order in someway.
+         *  For example, IPL files ENEX section loading order matters so much...
+         * 
+         *  To keep the loading order, we will make a map of <hash, index> and each SDataGTA::set we do in the SDataGTA
+         *  we will send the key hash to receive a index, then we set this index in SDataGTA::index
+         * 
+         */
+        struct handler_type : public modloader::parser::KeyOnly<TraitsGTA>
         {
-            return modloader::SectionParserNoSection<modloader::parser::KeyOnly<DataTraits>>(filename, map);
+            typedef std::map<size_t, int> index_map;
+            
+            // Get index map
+            static index_map& get_index_map()
+            {
+                /*
+                 *  Memory on this map will be present on memory for the entire duration of the program
+                 *  May not be a problem, but might be good to fix it
+                 *  Maybe on Build() call something like clear_index_map() ?
+                 */
+                static index_map a;
+                return a;
+            }
+            
+            // Advances the index and return it
+            static int get_index()
+            {
+                static int index = 0;
+                return ++index;
+            }
+
+            /*
+             * Get index based on normalized path (must be a rvalue)
+             * If index already exist in index map, return it, otherwise return a new index
+             * 
+             */
+            static int get_index(size_t hash)
+            {
+                index_map& map = get_index_map();
+                auto it = map.find(hash);
+                if(it == map.end())
+                {
+                    return (map[hash] = get_index());
+                }
+                return it->second;
+            }
+            
+            // Map setter, overriden for our purposes to set a index for the key
+            struct Set
+            {
+                bool operator()(SectionType section, const char* line, container_type& map)
+                {
+                    key_type key;
+                    if(key.set(section, line))
+                    {
+                        key.index = get_index(key.path.hash);
+                        map[key];
+                        return true;
+                    }
+                    return false;
+                }
+            };
+            
+        };
+        
+        /* What is this? */
+        static const bool is_sorted     = true;
+        static int domflags()       { return flag_RemoveIfNotExistInOneCustomButInDefault; }
+        static const char* what()   { return "level file"; }
+        
+        /* File loading methods */
+        static bool Parser(const char* filename, DataTraits::container_type& map)
+        {
+            return SectionParserTemplate<false, handler_type>()(filename, map);
         }
         
         static bool Build(const char* filename, const std::vector<DataTraits::pair_ref_type>& lines)
         {
-            return modloader::SectionBuilderNoSection<modloader::parser::KeyOnly<DataTraits>>(filename, lines);
+            return SectionBuilderTemplate<false, handler_type>()(filename, lines);
         }
         
-        bool LoadData()
-        {
-            return DataTraits::LoadData(path.c_str(), Parser);
-        }
+        bool LoadData()     // Calls Parser...
+        { return DataTraits::LoadData(path.c_str(), Parser);  }
     };
-    
-    
+
 }
 
 

@@ -29,6 +29,13 @@ install(FILES ${plugins_doc} DESTINATION "./modloader/.data/plugins")
 # Install README.md, LICENSE and CHANGELOG into modloader/.data
 install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
 # Install config files
-install(FILES "${CONFIGS_DIR}/modloader.ini" DESTINATION "./modloader")
-install(FILES "${CONFIGS_DIR}/plugins.ini" DESTINATION "./modloader/.data/plugins")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # Don't copy configs in Debug
+else()
+    install(FILES "${CONFIGS_DIR}/modloader.ini" DESTINATION "./modloader")
+    install(FILES "${CONFIGS_DIR}/plugins.ini" DESTINATION "./modloader/.data/plugins")
+endif()
+
+
 

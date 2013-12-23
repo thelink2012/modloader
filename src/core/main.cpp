@@ -373,8 +373,8 @@ namespace modloader
             //--
             else if(info.GetGame() != info.SA)
                 Error("Modloader was built for GTA San Andreas! This game is not supported.");
-            else if(info.GetMajorVersion() != 1 && info.GetMinorVersion() != 0)
-                Error("Modloader still do not support other versioons than HOODLUM GTA SA 1.0");
+            else if(info.GetMajorVersion() != 1 && info.GetMinorVersion() != 0 && info.GetRegion() != info.US)
+                Error("Modloader still do not support game versions other than HOODLUM GTA SA 1.0 US");
             else
             {
                 WinMainPtr = (WinMain_t) MakeCALL(WinMainIsCalledAt = (void*)(0x8246EC), (void*) WinMain).p;
