@@ -15,6 +15,7 @@
 #include <set>
 #include <modloader.hpp>
 #include <modloader_util_path.hpp>
+#include <modloader_util_container.hpp>
 
 extern int LogException(char* buffer, LPEXCEPTION_POINTERS pException);
 
@@ -35,6 +36,20 @@ namespace modloader
     }
     
     /*
+     *  Functor for sorting based on priority and name 
+     */
+    template<class T>
+    struct PriorityPred
+    {
+        bool operator()(const T& a, const T& b) const
+        {
+            return (a.priority != b.priority?
+                    a.priority > b.priority :
+                    compare(a.name, b.name, true) < 0);
+        }
+    };
+    
+    /*
      * CModLoader
      *      Mod Loader Core Class
      */
@@ -52,6 +67,11 @@ namespace modloader
                 std::string  fullPath;      // full path
                 std::string  name;          // modname
                 unsigned int id;            // Note: This id is (probably) unique on each game call
+                
+                unsigned int priority;      // The mod priority
+                
+                ModInfo() : priority(50)
+                {}
             };
             
             struct FileInfo
@@ -102,7 +122,8 @@ namespace modloader
                 std::set<std::string> exclude_mods;     // All mod names inside this list shall be ignored
                 std::set<std::string> exclude_files;    // All file names inside this list shall be ignored
                 std::set<std::string> exclude_files_ext;// All extensions in this list shall be ignored
-
+                std::map<std::string, int> mods_priority;// list of priorities to be applied to mods <key> (normalized)
+                
                 //
                 ModFolderInfo(const char* path, ModFolderInfo* parent = nullptr)
                     : path(path), parent(parent)
@@ -126,6 +147,12 @@ namespace modloader
                     childs.emplace_back(path, this);
                 }
                 
+                // Adds a priority to a mod
+                void AddPriority(const char* path, int priority)
+                {
+                    if(priority == 0) return AddIgnoredMod(path);
+                    mods_priority.emplace(NormalizePath(path), priority);
+                }
                 
                 // 
                 void AddIncludedMod(const char* name)
@@ -211,6 +238,23 @@ namespace modloader
                     return list;
                 }
                 
+                // Process mods list, ordering them by priority
+                void ProcessPriorities()
+                {
+                    // First, give priority to mods that need it
+                    for(auto& mod : this->mods)
+                    {
+                        auto it = this->mods_priority.find(NormalizePath(mod.name));
+                        if(it != this->mods_priority.end())
+                        {
+                            mod.priority = it->second;
+                        }
+                    }
+                    
+                    // Now sort mods
+                    this->mods.sort(PriorityPred<ModInfo>());
+                }
+                
             };
             
         private:
@@ -232,7 +276,7 @@ namespace modloader
             
             /* mods and plugins information */
             ModFolderInfo modsfolder;                   // all mods are contained here
-            std::map<std::string, int> plugins_priority;// list of priorities to be applied to plugins named key (normalized)
+            std::map<std::string, int> plugins_priority;// list of priorities to be applied to plugins <key> (normalized)
             std::list<ModLoaderPlugin> plugins;         // all plugins
             std::map<std::string, std::vector<ModLoaderPlugin*>> extMap;
             
@@ -248,7 +292,7 @@ namespace modloader
             bool LoadPlugin(const char* pluginPath, bool bDoStuffNow);
             bool UnloadPlugin(const char* pluginName);
             void StartupPlugins();                  // Call all plugins startup notification
-            void StartupPlugin(ModLoaderPlugin& data);
+            bool StartupPlugin(ModLoaderPlugin& data);
 
             
             /* Mods searching methods */
@@ -279,12 +323,7 @@ namespace modloader
             /* Sorts plugins by priority and name order */
             void SortPlugins()
             {
-                this->plugins.sort([](const ModLoaderPlugin& a, const ModLoaderPlugin& b)
-                {
-                    return (a.priority != b.priority?
-                            a.priority < b.priority :
-                            strcmp(a.name, b.name) < 0);
-                });
+                this->plugins.sort(PriorityPred<ModLoaderPlugin>());
             }
             
             /* Builds extensions std::map, used in the file checking algorithm */

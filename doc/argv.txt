@@ -8,5 +8,6 @@
             
             Usage example: gta_sa.exe -mod gtaunited
                 Will load only the mod "modloader/gtaunited" and other mods that are in [INCLUDE_MODS] section
+                However gtaunited will have 80 of priority value
                 
 

@@ -24,16 +24,14 @@ class CThePlugin* fxPlugin;;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 50;
-        
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        int OnStartup();
-        int OnShutdown();
-        int CheckFile(const modloader::ModLoaderFile& file);
-        int ProcessFile(const modloader::ModLoaderFile& file);
-        int PosProcess();
+        bool OnStartup();
+        bool OnShutdown();
+        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool PosProcess();
 
         const char** GetExtensionTable();
 
@@ -100,7 +98,6 @@ void GetPluginData(modloader_plugin_t* data)
 {
     fxPlugin = &plugin;
     modloader::RegisterPluginData(plugin, data);
-    plugin.data->priority = plugin.default_priority;
 }
 
 
@@ -133,21 +130,21 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Startup / Shutdown
  */
-int CThePlugin::OnStartup()
+bool CThePlugin::OnStartup()
 {
     plugin.SetupHandlers();
-    return 0;
+    return true;
 }
 
-int CThePlugin::OnShutdown()
+bool CThePlugin::OnShutdown()
 {
-    return 0;
+    return true;
 }
 
 /*
  *  Check if the file is the one we're looking for
  */
-int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     if(!file.is_dir)
     {
@@ -166,29 +163,29 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
         
         /* If handler was found, we can handle it */
         if(it != this->handlers.end())
-            return MODLOADER_YES;
+            return true;
     }
     
-    return MODLOADER_NO;
+    return false;
 }
 
 /*
  * Process the replacement
  */
-int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     auto it = this->handlers.find(hash(file.filename));  /* Surely this entry exists */
-    return !it->second.Process(GetFilePath(file).c_str());
+    return it->second.Process(GetFilePath(file).c_str());
 }
 
 /*
  * Called after all files have been processed
  */
-int CThePlugin::PosProcess()
+bool CThePlugin::PosProcess()
 {
     // Call each file handler to patch the game
     for(auto& h : this->handlers) h.second.PosProcess();
-    return 0;
+    return true;
 }
 
 /*

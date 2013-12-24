@@ -24,16 +24,14 @@ using namespace modloader;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 50;
-        
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        int OnStartup();
-        int OnShutdown();
-        int CheckFile(const modloader::ModLoaderFile& file);
-        int ProcessFile(const modloader::ModLoaderFile& file);
-        int PosProcess();
+        bool OnStartup();
+        bool OnShutdown();
+        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool PosProcess();
         
         const char** GetExtensionTable();
 
@@ -79,25 +77,25 @@ class CThePlugin : public modloader::CPlugin
                     bool bExists : 1;   /* File existed before copying ours? Create backup at $CACHE/CLEO */
                     bool bIsDir  : 1;   /* This is actually a directory, just create the directory dstPath */
                     bool bIsFXT  : 1;   /* If FXT copy to CLEO_TEXT */
+                    bool bIsConf : 1;   /* If is config file, such as ini... Copy from CLEO folder to the mod folder on shutdown */
                 };
-                
+
             } flags;
             
             
+            /*
+             *  Constructs without any data initialization 
+             */
             CacheStruct()
             {
-                hash = 0;
-                flags.i = 0;
-                srcPath[0] = dstPath[0] = 0;
             }
             
             /*
              *  Construct this using @file as a CLEO file
              */
-            CacheStruct(const ModLoaderFile& file)
+            CacheStruct(const ModLoaderFile& file) : hash(0)
             {
-                flags.bIsDir   = file.is_dir;
-                if(!flags.bIsDir) flags.bIsFXT   = IsFileExtension(file.filext, "fxt"); 
+                SetupFlags(file);
                 strcpy(srcPath, GetFilePath(file).c_str());
                 strcpy(dstPath, (std::string(!flags.bIsFXT? "CLEO\\" : "CLEO\\CLEO_TEXT\\") + file.filename).c_str());
             }
@@ -105,17 +103,23 @@ class CThePlugin : public modloader::CPlugin
             /*
              *  Construct this using @file as a CLEO file inside @modir 
              */
-            CacheStruct(const ModLoaderFile& modir, const ModLoaderFile& file)
+            CacheStruct(const ModLoaderFile& modir, const ModLoaderFile& file) : hash(0)
             {
-                std::string src = GetFilePath(modir) + file.filepath;
-                std::string dst = std::string("CLEO\\") + file.filepath;
-
-                /* Setup */
-                flags.bIsDir = file.is_dir;
-                if(!flags.bIsDir) flags.bIsFXT = IsFileExtension(file.filext, "fxt");
-                strcpy(srcPath, src.c_str());
-                strcpy(dstPath, dst.c_str());
+                SetupFlags(file);
+                strcpy(srcPath, (GetFilePath(modir) + file.filepath).c_str());
+                strcpy(dstPath, (std::string("CLEO\\") + file.filepath).c_str());
             }
+            
+            void SetupFlags(const ModLoaderFile& file)
+            {
+                flags.i = 0; hash = 0;
+                if((flags.bIsDir = file.is_dir) == false)
+                {
+                    flags.bIsFXT  = IsFileExtension(file.filext, "fxt");
+                    flags.bIsConf = IsFileExtension(file.filext, "ini");
+                }
+            }
+            
             
         };
         
@@ -157,7 +161,6 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     modloader::RegisterPluginData(plugin, data);
-    plugin.data->priority = plugin.default_priority;
 }
 
 
@@ -190,7 +193,7 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Startup / Shutdown (do nothing)
  */
-int CThePlugin::OnStartup()
+bool CThePlugin::OnStartup()
 {
     /* Setup vars */
     sprintf(cacheDirPath, "%s%s", this->modloader->cachepath, "std-cleo\\");
@@ -208,29 +211,29 @@ int CThePlugin::OnStartup()
     else
         Log("CLEO not found! std-cleo plugin features will be disabled.");
     
-    return 0;
+    return true;
 }
 
-int CThePlugin::OnShutdown()
+bool CThePlugin::OnShutdown()
 {
     if(bHaveCLEO)
     {
         FinishCacheFile();
     }
-    return 0;
+    return true;
 }
 
 /*
  *  Check if the file is the one we're looking for
  */
-int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     if(bHaveCLEO)
     {
         if(file.is_dir)
         {
             /* me can handle folder named CLEO */
-            return (!strcmp(file.filename, "CLEO", false)? MODLOADER_YES : MODLOADER_NO);
+            return (!strcmp(file.filename, "CLEO", false)? true : false);
         }
         else
         {
@@ -238,17 +241,17 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
             for(const char** p = GetExtensionTable(); *p; ++p)
             {
                 if(IsFileExtension(file.filext, *p))
-                    return MODLOADER_YES;
+                    return true;
             }
         }
     }
-    return MODLOADER_NO;
+    return false;
 }
 
 /*
  * Process the replacement
  */
-int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     if(bHaveCLEO)
     {
@@ -268,19 +271,19 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
             this->files.emplace_back(file);
         }
     }
-    return 0;
+    return true;
 }
 
 /*
  * Called after all files have been processed
  */
-int CThePlugin::PosProcess()
+bool CThePlugin::PosProcess()
 {
     if(bHaveCLEO)
     {
-        return !StartCacheFile();
+        return StartCacheFile();
     }
-    return 0;
+    return true;
 }
 
 /*
@@ -327,7 +330,7 @@ bool CThePlugin::StartCacheFile()
             {
                 file.flags.bExists = true;
             }
-            
+   
             /* Take the file hash */
             if(!ReadEntireFile(file.srcPath, filebuf))
             {
@@ -387,32 +390,51 @@ bool CThePlugin::FinishCacheFile(bool bIsStartup)
         return false;
     }
     
-    /* Check if the header is alright */
+    // Check if the header is alright
     if(fread(&header, sizeof(header), 1, f) != 1 || !header.Check())
     {
         Log("Failed to read or validate cache file header. File may be corrupted.");
     }
     else
     {
-        /* Read each entry in the file */
+        // Read each entry in the file
         while(fread(&file, sizeof(file), 1, f) == 1)
         {
             if(file.flags.bIsDir)
             {
-                /* Ignore 'cause is dir */
+                // Ignore 'cause is dir
                 Log("Ignoring file \"%s\" because it is a directory", file.dstPath);
                 continue;
             }
             
-            /* Take the hash to see if the file is still the same as the one I copied */
-            if(!ReadEntireFile(file.dstPath, filebuf)
-            || file.hash != hash((void*)filebuf.data(), filebuf.size()))
+            // Take the hash to see if the file is still the same as the one I copied
+            if(!ReadEntireFile(file.dstPath, filebuf))
             {
-                Log("Failed to read or validate hash for file \"%s\". Skipping it.", file.dstPath);
+                Log("Failed to read file \"%s\". Skipping it.", file.dstPath);
                 continue;
             }
             
-            /* Delete the file */
+            // Check if file has changed...
+            if(file.hash != hash((void*)filebuf.data(), filebuf.size()))
+            {
+                // If config file, update it in the source path
+                if(file.flags.bIsConf)
+                {
+                    Log("Config file \"%s\" has changed. Copying it back to source directory \"%s\"",
+                        file.dstPath, file.srcPath);
+                    
+                    if(!CopyFileA(file.dstPath, file.srcPath, FALSE))
+                        Log("Failed to update config file, ignoring this failure");
+                }
+                else
+                {
+                    // Not config file, nothing should've changed since then
+                    Log("Failed to validate hash for file \"%s\". Skipping it.", file.dstPath);
+                    continue;
+                }
+            }
+            
+            // Delete the file
             if(true)
             {
                 if(DeleteFileA(file.dstPath))
@@ -422,7 +444,7 @@ bool CThePlugin::FinishCacheFile(bool bIsStartup)
             }
             
             
-            /* If file existed before, take it from the backup folder and put back on the CLEO folder */
+            // If file existed before, take it from the backup folder and put back on the CLEO folder
             if(file.flags.bExists)
             {
                 Log("Restoring original file for \"%s\"", file.dstPath);
@@ -435,7 +457,7 @@ bool CThePlugin::FinishCacheFile(bool bIsStartup)
             
         }
         
-        /* Check if successful read all entries */
+        // Check if successful read all entries
         if(!feof(f) && ferror(f))
             Log("Failed to read cache file. Reading terminated without EOF reached.");
         else

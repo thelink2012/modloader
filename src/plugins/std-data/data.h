@@ -26,23 +26,20 @@ extern class CThePlugin* dataPlugin;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 50;
-        
-        unsigned int BuiltDataFilesCount;
         std::string cachePath;
         std::list<std::string>  readme;
         
-        CThePlugin() : BuiltDataFilesCount(0)
+        CThePlugin()
         {}
         
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        int OnStartup();
-        int OnShutdown();
-        int CheckFile(const modloader::ModLoaderFile& file);
-        int ProcessFile(const modloader::ModLoaderFile& file);
-        int PosProcess();
+        bool OnStartup();
+        bool OnShutdown();
+        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool PosProcess();
         
         const char** GetExtensionTable();
         
@@ -53,21 +50,6 @@ class CThePlugin : public modloader::CPlugin
             {
                 ProcessReadmeFile(readme.c_str());
             }
-        }
-        
-        /* Returns the cache file (used to finally send data to the game) from the assigned @path name
-         * (e.g. "DATA/MAPS/VEGAS/VEGASS.IPL" will return something like "$CACHE_PATH/data_10/VEGASS.IPL" */
-        std::string GetCacheFileFor(const char* path)
-        {
-            char dataPath[MAX_PATH];
-            
-            /* Create path to store the cache file,
-             * it's like that because the original filename (last @path component) must be preserved */
-            sprintf(dataPath, "%sdata_%d\\", cachePath.c_str(), ++BuiltDataFilesCount);
-            MakeSureDirectoryExistA(dataPath);
-            
-            /* Append the cache path with the file name */
-            return std::string(dataPath) + &path[GetLastPathComponent(path)];
         }
         
 };
@@ -85,6 +67,9 @@ template<class DataTraitsType>  /* DataTraitsType must be of DataTraitsBase */
 class CDataFS
 {
     private:
+        static const bool IsIdeOrIpl
+            = std::is_same<TraitsIDE, DataTraitsType>::value || std::is_same<TraitsIPL, DataTraitsType>::value;
+        
         // Returns hashed normalized path with DataTraitsType specific transformation
         static size_t NormalizeAndHash(const char* path)
         {
@@ -93,7 +78,7 @@ class CDataFS
              *  That's, if the path is "Folder1/Folder2/data/a.ipl", It's of course "data/a.ipl" that we want
              */
             const char* transform = nullptr;
-            if(std::is_same<TraitsIDE, DataTraitsType>::value || std::is_same<TraitsIPL, DataTraitsType>::value)
+            if(IsIdeOrIpl)
             {
                 transform = "data\\";   // transform = NormalizePath("data/");
             }
@@ -147,7 +132,7 @@ class CDataFS
             else
             {
                 l.emplace_back();
-                p = &l.front();
+                p = &l.back();
             }
             
             /* Assign information and return */
@@ -163,16 +148,39 @@ class CDataFS
         }
         
         /* Adds a custom file to the container */
-        DataTraitsType& AddFile(const ModLoaderFile& file)
+        DataTraitsType& AddFile(const ModLoaderFile& file, const char* fsPath = nullptr)
         {
-            return AddFile(file.filepath, GetFilePath(file).c_str(), false);
+            if(fsPath == nullptr) fsPath = file.filepath;
+            return AddFile(fsPath, GetFilePath(file).c_str(), false);
         }
 
         /* Returns the cache file (used to finally send data to the game) from the assigned @path name
          * (e.g. "DATA/MAPS/VEGAS/VEGASS.IPL" will return something like "$CACHE_PATH/data_10/VEGASS.IPL" */
         std::string GetCacheFileFor(const char* path)
         {
-            return dataPlugin->GetCacheFileFor(path);
+            /*
+             *  data_0  is reserved for .dat and .cfg files - this folder already exist, created together with cachePath
+             *  data_%d is reserved for .ipl and .ide files (randomly, they don't need to be pairs!)
+             *  TODO this system could be better!
+             */
+            
+            static int CacheId = IsIdeOrIpl? 1 : 0;
+
+            char dataPath[MAX_PATH];
+            
+            /* Create path to store the cache file,
+             * it's like that because the original filename (last @path component) must be preserved */
+            sprintf(dataPath, "%sdata_%d\\", dataPlugin->cachePath.c_str(), CacheId);
+            
+            // Increase cache id if the trait is for ide or ipl
+            if(IsIdeOrIpl)
+            {
+                ++CacheId;
+                MakeSureDirectoryExistA(dataPath);
+            }
+            
+            /* Append the cache path with the file name */
+            return std::string(dataPath) + &path[GetLastPathComponent(path)];
         }
         
         bool size()

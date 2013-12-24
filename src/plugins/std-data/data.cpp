@@ -29,7 +29,6 @@ void GetPluginData(modloader_plugin_t* data)
 {
     dataPlugin = &plugin;
     modloader::RegisterPluginData(plugin, data);
-    plugin.data->priority = plugin.default_priority;
 }
 
 
@@ -62,64 +61,73 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Startup / Shutdown
  */
-int CThePlugin::OnStartup()
+bool CThePlugin::OnStartup()
 {
     // Create std-data cache path
     {
-        char buf[128];
+        char buf[128], data0[128];
         sprintf(buf, "%s%s\\", this->modloader->cachepath, "std-data");
+        sprintf(data0, "%s%s\\", buf, "data_0");
+        
         this->cachePath = buf;
         
         DestroyDirectoryA(buf);
         Log("Creating data cache folder...");
         MakeSureDirectoryExistA(buf);
+        MakeSureDirectoryExistA(data0); // for dat and cfg files
     }
     
-    return 0;
+    return true;
 }
 
-int CThePlugin::OnShutdown()
+bool CThePlugin::OnShutdown()
 {
 #ifdef NDEBUG
     Log("Deleting data cache folder...");
     DestroyDirectoryA(this->cachePath.c_str());
 #endif
-    return 0;
+    return true;
 }
 
 
 /*
  *  Check if the file is the one we're looking for
  */
-int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     /* Check if handlable extension */
     for(const char** p = GetExtensionTable(); *p; ++p)
     {
         if(IsFileExtension(file.filext, *p))
-            return MODLOADER_YES;
+            return true;
     }
     
     // Not found any extension compatible? If .txt (probably the readme), push it into the list of readmes for later procesing
     if(IsFileExtension(file.filext, "txt"))
     {
         readme.emplace_back(GetFilePath(file));
-        // do not mark as MODLOADER_YES !!
+        // do not mark as handled !!
     }
     
-    return MODLOADER_NO;
+    return false;
 }
 
 /*
  * Process the replacement
  */
-int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
+    const char* filename = file.filename;
+    
     if(IsFileExtension(file.filext, "dat"))
     {
-        traits.gta.AddFile(file);
-        return 0;
+        if(!strcmp(filename, "gta.dat", false))
+            traits.gta.AddFile(file, "data/gta.dat");
+        else if(!strcmp(filename, "default.dat", false))
+            traits.gta.AddFile(file, "data/default.dat");
+        
         // TODO
+        return true;
     }
     else if(IsFileExtension(file.filext, "cfg"))
     {
@@ -128,14 +136,14 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     else if(IsFileExtension(file.filext, "ide"))
     {
         traits.ide.AddFile(file);
-        return 0;
+        return true;
     }
     else if(IsFileExtension(file.filext, "ipl") || IsFileExtension(file.filext, "zon"))
     {
         traits.ipl.AddFile(file);
-        return 0;
+        return true;
     }
-    return 1;
+    return false;
 }
 
 
@@ -339,7 +347,7 @@ CFileMixer<at_address, T> make_file_mixer(T& fs)
  *  Called after all files have been processed
  *  Hooks everything needed
  */
-int CThePlugin::PosProcess()
+bool CThePlugin::PosProcess()
 {
     // Process readme files before anything else!
     this->ProcessReadmeFiles();
@@ -359,5 +367,5 @@ int CThePlugin::PosProcess()
         OpenFixer<0x5B871A>();  // For IPL files
     }
     
-    return 0;
+    return true;
 }

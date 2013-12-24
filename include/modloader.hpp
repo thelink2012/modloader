@@ -6,6 +6,8 @@
  *  Modloader plugin interface for C++
  *      Just a wrapper around the C interface, please check it out at modloader.h!!!
  * 
+ *  Take a look at "doc/Creating Your Own Plugin.txt"
+ * 
  */
 
 #ifndef MODLOADER_HPP
@@ -29,15 +31,15 @@ namespace modloader
                 modloader_fLog          Log;
                 modloader_fError        Error;
             
-                // Checkout modloader.h for details on those callbacks
+                // Checkout modloader.h or "doc/Creating Your Own Plugin.txt" for details on those callbacks
                 virtual const char* GetName()=0;
                 virtual const char* GetAuthor()=0;
                 virtual const char* GetVersion()=0;
-                virtual int OnStartup() { return 0; }               /* default */
-                virtual int OnShutdown() { return 0; }              /* default */
-                virtual int CheckFile(const ModLoaderFile& file)=0;
-                virtual int ProcessFile(const ModLoaderFile& file)=0;
-                virtual int PosProcess()=0;
+                virtual bool OnStartup() { return true; }               /* default */
+                virtual bool OnShutdown() { return true; }              /* default */
+                virtual bool CheckFile(const ModLoaderFile& file)=0;
+                virtual bool ProcessFile(const ModLoaderFile& file)=0;
+                virtual bool PosProcess()=0;
                 
                 /* Returns the favorable file extensions for this plugin */
                 virtual const char** GetExtensionTable()=0;
@@ -68,33 +70,33 @@ namespace modloader
         
         static int OnStartup(modloader_plugin_t* data)
         {
-            return GetThis(data)->OnStartup();
+            return !GetThis(data)->OnStartup();
         }
         
         static int OnShutdown(modloader_plugin_t* data)
         {
-            return GetThis(data)->OnShutdown();
+            return !GetThis(data)->OnShutdown();
         }
         
         static int CheckFile(modloader_plugin_t* data, const modloader_file_t* file)
         {
-            return GetThis(data)->CheckFile(*file);
+            return !GetThis(data)->CheckFile(*file);
         }  
         
         static int ProcessFile(modloader_plugin_t* data, const modloader_file_t* file)
         {
-            return GetThis(data)->ProcessFile(*file);
+            return !GetThis(data)->ProcessFile(*file);
         }
         
         static int PosProcess(modloader_plugin_t* data)
         {
-            return GetThis(data)->PosProcess();
+            return !GetThis(data)->PosProcess();
         }
     };
 
     // Attaches the 'interface' with the plugin 'data'
     // This is intended to be called at GetPluginData export
-    inline void RegisterPluginData(CPlugin& interfc, modloader_plugin_t* data)
+    inline void RegisterPluginData(CPlugin& interfc, modloader_plugin_t* data, int priority = -1)
     {
         // Register version this plugin was built in
         data->major = MODLOADER_VERSION_MAJOR;
@@ -114,10 +116,19 @@ namespace modloader
         data->ProcessFile = &CPluginCallbacks::ProcessFile;
         data->PosProcess = &CPluginCallbacks::PosProcess;
         
+        // Custom priority
+        if(priority != -1) data->priority = priority;
+        
         // Get Extension Table
-        data->extable = interfc.GetExtensionTable();
-        for(const char** extable = data->extable; *extable; ++extable)
-            ++data->extable_len;
+        if(data->extable = interfc.GetExtensionTable())
+        {
+            for(const char** extable = data->extable; *extable; ++extable)
+                ++data->extable_len;
+        }
+        else
+        {
+            data->extable_len = 0;
+        }
         
         // Modloader
         interfc.data      = data;

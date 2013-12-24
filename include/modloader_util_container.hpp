@@ -54,6 +54,16 @@ namespace modloader
         return strcmp(str1.c_str(), str2.c_str(), num, case_sensitive);
     }
     
+    inline int compare(const char* str1, const char* str2, bool case_sensitive)
+    {
+        return strcmp(str1, str2, case_sensitive);
+    }
+    
+    inline int compare(const char* str1, const char* str2, size_t num, bool case_sensitive)
+    {
+        return strcmp(str1, str2, num, case_sensitive);
+    }
+    
     /*
      * pop_last_if
      *      Removes the last element from the @container if it is equal to @e

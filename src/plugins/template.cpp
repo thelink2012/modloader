@@ -13,16 +13,14 @@ using modloader::GetArrayLength;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 50;
-        
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        int OnStartup();
-        int OnShutdown();
-        int CheckFile(const modloader::ModLoaderFile& file);
-        int ProcessFile(const modloader::ModLoaderFile& file);
-        int PosProcess();
+        bool OnStartup();
+        bool OnShutdown();
+        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool PosProcess();
         
         const char** GetExtensionTable();
 
@@ -35,7 +33,6 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     modloader::RegisterPluginData(plugin, data);
-    plugin.data->priority = plugin.default_priority;
 }
 
 
@@ -68,12 +65,12 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Startup / Shutdown (do nothing)
  */
-int CThePlugin::OnStartup()
+bool CThePlugin::OnStartup()
 {
     /* return 0 for sucess */
 }
 
-int CThePlugin::OnShutdown()
+bool CThePlugin::OnShutdown()
 {
     /* return 0 for success */
 }
@@ -81,7 +78,7 @@ int CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     /* return MODLOADER_NO or MODLOADER_YES */
 }
@@ -89,7 +86,7 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 /*
  * Process the replacement
  */
-int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     /* return 0 for success and 1 for failure */
 }
@@ -97,7 +94,7 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 /*
  * Called after all files have been processed
  */
-int CThePlugin::PosProcess()
+bool CThePlugin::PosProcess()
 {
     /* return 0 for success and 1 for failure */
 }

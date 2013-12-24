@@ -1,16 +1,16 @@
 Here we have the main to do stuff, for more check out the source files.
 
 -----> Main
-* Finish the main plugins { needs: data; text; asi; audio; .cleo }
+* Finish the main plugins { needs: data; asi; audio; .cleo }
 
+* Mod priority
 * zip loading
 * MPACK plugin
 * Make the loader and the plugins compatible with all exe versions
 
+
 ----> On existing plugins
-* std-img: std-img.ini, to enable/disable: 
+* std-img: std-img.ini, to enable/disable:
     StreamName hook (see ApplyPatches at std-img: hooks.cpp)
     Reloading everything (see CALL_NewFile at std-img: streaming.cpp)
-    
-* std-img: loading .txd folders with images inside (.png, .jpg, .bmp, etc)
 

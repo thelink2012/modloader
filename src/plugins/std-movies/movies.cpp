@@ -19,16 +19,14 @@ using namespace modloader;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 50;
-
         std::string GTAtitles, Logo;
 
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        int CheckFile(const modloader::ModLoaderFile& file);
-        int ProcessFile(const modloader::ModLoaderFile& file);
-        int PosProcess();
+        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool PosProcess();
         
         const char** GetExtensionTable();
 
@@ -41,7 +39,6 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     modloader::RegisterPluginData(plugin, data);
-    plugin.data->priority = plugin.default_priority;
 }
 
 /*
@@ -71,20 +68,20 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Check if the file is the one we're looking for
  */
-int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     if( !file.is_dir && IsFileExtension(file.filext, "mpg") &&
         (  !strcmp(file.filename, "Logo.mpg",  false)                                                
         || !strcmp(file.filename, "GTAtitles.mpg", false))
       )
-        return MODLOADER_YES;
-    return MODLOADER_NO;
+        return true;
+    return false;
 }
 
 /*
  * Process the replacement
  */
-int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     std::string filepath = GetFilePath(file);
     
@@ -93,14 +90,14 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     else if(file.filename[0] == 'G')
         RegisterReplacementFile(*this, "GTAtitles.mpg", this->GTAtitles, filepath.c_str());
 
-    return 0;
+    return true;
 }
 
 /*
  *  Called after all files have been processed
  *  Hooks everything needed
  */
-int CThePlugin::PosProcess()
+bool CThePlugin::PosProcess()
 {
     // Replace Logo.mpg
     if(this->Logo.size())
@@ -115,6 +112,6 @@ int CThePlugin::PosProcess()
         WriteMemory<const char*>(0x748BF3 + 1, this->GTAtitles.data(), true);    // GER
     }
     
-    return 0;
+    return true;
 }
 

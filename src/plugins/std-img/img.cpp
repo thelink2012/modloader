@@ -31,8 +31,7 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     imgPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data);
-    plugin.data->priority = plugin.default_priority;
+    modloader::RegisterPluginData(plugin, data, plugin.default_priority);
 }
 
 
@@ -72,30 +71,30 @@ const char** CThePlugin::GetExtensionTable()
  *  OnStartup
  *      Setup hooks
  */
-int CThePlugin::OnStartup()
+bool CThePlugin::OnStartup()
 {
     ApplyPatches();
-    return 0;
+    return true;
 }
 
 /*
  *  OnShutdown
  *      Do nothing, what should I do?
  */
-int CThePlugin::OnShutdown()
+bool CThePlugin::OnShutdown()
 {
-    return 0;
+    return true;
 }
 
 /*
  *  Check if the file is the one we're looking for
  */
-int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     if(IsFileExtension(file.filext, "img"))
     {
         /* Supports both dir and file version */
-        return MODLOADER_YES;
+        return true;
     }
     else if(!file.is_dir)
     {
@@ -113,24 +112,24 @@ int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
                 else if(IsFileExtension(file.filext, "rrr"))
                     isOkay = (sscanf(tolower(str = file.filename).c_str(), "carrec%d", &dummy) == 1);
                     
-                if(isOkay) return MODLOADER_YES;
+                if(isOkay) return true;
             }
         }
     }
-    return MODLOADER_NO;
+    return false;
 }
 
 /*
  * Process the replacement
  */
-int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     if(IsFileExtension(file.filext, "img"))
     {
         if(file.is_dir)
-            return !this->ProcessImgFolder(file);
+            return this->ProcessImgFolder(file);
         else
-            return !this->ProcessImgFile(file);
+            return this->ProcessImgFile(file);
     }
     else /* Other extensions, dff, txd, etc */
     {
@@ -139,16 +138,16 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
         else
             AddFileToImg(mainContent, file);
         
-        return 0;
+        return true;
     }
-    return 1;
+    return false;
 }
 
 
 /*
  * Called after all files have been processed
  */
-int CThePlugin::PosProcess()
+bool CThePlugin::PosProcess()
 {
     // Process img contents
     mainContent.Process();
@@ -158,7 +157,7 @@ int CThePlugin::PosProcess()
     if(!this->pedIfp.empty())
         WriteMemory<const char*>(0x4D563D+1, this->pedIfp.data(), true);
     
-    return 0;
+    return true;
 }
 
 /*
@@ -187,12 +186,13 @@ bool CThePlugin::ProcessImgFolder(const modloader::ModLoaderFile& file)
     auto& img = this->mainContent;
     
     /* Recursivelly iterate on this img folder adding all files into the img list */
-    ForeachFile("*.*", true, [this, &img, &file](ModLoaderFile& ff)
+    ForeachFile(file.filepath, "*.*", true, [this, &img, &file](ModLoaderFile& ff)
     {
         /* ignore directories (recursion will take care of them) */
         if(ff.is_dir == false)
+        {
             this->AddFileToImg(img, file, ff.filename);
-
+        }
         return true;
     });
     
@@ -237,7 +237,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
      *          (that's, replaced game code strings with it's path string)
      * 
      */
-    if(IsFileInsideFolder(file.filepath, true, "models"))
+    if(true || IsFileInsideFolder(file.filepath, true, "models"))
     {
         if(!strcmp(file.filename, "gta3.img", false))
         {
@@ -266,7 +266,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
             ReplaceAddr(0x5A80F9 + 1, player);
         }
     }
-    else if(IsFileInsideFolder(file.filepath, true, "anim"))
+    else if(true || IsFileInsideFolder(file.filepath, true, "anim"))
     { 
         if(!strcmp(file.filename, "cuts.img", false))
         {
@@ -297,6 +297,6 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
              *gtaIntImgDescriptorNum = CStreaming__OpenImgFile(gtaIntPath, true);
          })));
     }
-             
+
     return true;
 }

@@ -5,6 +5,7 @@
  *  IPL Parser and Builder
  *  This code is not in the header because it's kinda huge and the header is already huge
  */
+#include "data.h"
 #include "data/ipl.h"
 #include <functional>
 #include <modloader_util_container.hpp>
@@ -71,10 +72,11 @@ struct KeyOnlyForIPL : public parser::KeyOnly<TraitsIPL>
         /* Writes an @inst object into the string @buf acumulating the @buf length at @lenaccum */
         bool WriteInstObject(char* buf, const SDataIPL_INST::SObject& inst, int lod, size_t& lenaccum)
         {
-            if(SDataIPL_INST::get(buf, inst, lod))
+            char getbuf[512];
+            if(SDataIPL_INST::get(getbuf, inst, lod))
             {
                 /* Write the content at the null terminator (seeing lenaccum) */
-                int result = sprintf(&buf[lenaccum], "%s", buf);
+                int result = sprintf(&buf[lenaccum], "%s", getbuf);
                 if(result >= 0)
                 {
                     ++instIndex;        // Increase the current inst being written index (for LODs)
@@ -155,6 +157,7 @@ bool TraitsIPL::Parser(const char* filename, container_type& map, bool isDefault
         {
             for(auto& obj : instList)
             {
+                obj.linked = false;
                 if(obj.lod != no_lod && obj.lod != is_lod)
                 {
                     instList.at(obj.lod).lod = is_lod;
@@ -174,8 +177,22 @@ bool TraitsIPL::Parser(const char* filename, container_type& map, bool isDefault
                 * (But it should not happen if the data is a default data because default line order matters!) */
                 if(data.has_lod = (obj.lod != no_lod && !isDefault))
                 {
-                    data.obj.lod = -1;
-                    data.lod = instList.at(obj.lod);
+                    // Check if lod is being linked twice or more
+                    auto& lod_obj = instList.at(obj.lod);
+
+                    if(lod_obj.linked)
+                    {
+                        data.obj.lod = -1;
+                        data.has_lod = false;
+                        dataPlugin->Log("Warning: LOD at index %d being used two or more times at scene file \"%s\"",
+                                        obj.lod, filename);
+                    }
+                    else
+                    {
+                        data.obj.lod = -1;
+                        lod_obj.linked = true;
+                        data.lod = lod_obj;
+                    }
                 }
 
                 key.isDefault = isDefault;

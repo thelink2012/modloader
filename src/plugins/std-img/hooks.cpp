@@ -137,8 +137,6 @@ void ReadPlayerImgEntries()
  */
 void HOOK_ReadImgFileFromDat(const char* path, char notPlayerImg)
 {
-    
-
     std::string normalizedPath = NormalizePath(path);
     size_t hash = modloader::hash(normalizedPath);
     
@@ -149,8 +147,10 @@ void HOOK_ReadImgFileFromDat(const char* path, char notPlayerImg)
             if(info.isCustomContent && !info.isOriginal)
             {
                 /* check if paths are equal... */
-                if(info.pathModHash == hash && info.pathMod == normalizedPath) 
+                std::string properlyPath = GetProperlyPath(info.pathMod, normalizedPath.c_str());
+                if(properlyPath ==  normalizedPath)
                     return true;
+                
             }
             return false;
         });

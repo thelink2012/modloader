@@ -9,6 +9,7 @@
 #define TRAITS_IDE_H
 
 #include "traits.h"
+#include "ranges.h"
 #include <map>
 
 namespace data
@@ -158,7 +159,7 @@ namespace data
                 /* Nothin' */
                 return false;
             }
-            
+
             /* Calculate hashes */
             model.recalc(::toupper);
             texture.recalc(::toupper);
@@ -487,10 +488,14 @@ namespace data
                               &id,
                               model.buf, texture.buf, type.buf, handling.buf, gamename.buf, anim.buf, xclass.buf,
                               &frq, &lvl, &compr, &wheel, &wheelScale1.f, &wheelScale2.f, &unk);
+
             
             // Has at least the non-optional arguments?
             if(nargs > 0)
             {
+                if(!is_vehicle(id))
+                    return false;
+                
                 // Calculate num optional arguments received
                 this->nopt = nargs - min_count();
                 
@@ -835,7 +840,9 @@ namespace data
             if(IsReadmeSection(info))
             {
                 // Check if line starts with a id before doing anything else
-                if(line[0] < '0' || line[0] > '9') return false;
+                for(const char* p = line; !modloader::parser::isspace(*p); ++p)
+                    if(*p < '0' || *p > '9') return false;
+                
                 this->section = IDE_CARS;
             }
             else

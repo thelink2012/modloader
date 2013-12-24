@@ -200,6 +200,7 @@ namespace modloader
                             // Force exclusion and include the specified mod
                             modsfolder.flags.bForceExclude = true;
                             modsfolder.AddIncludedMod(buf);
+                            modsfolder.AddPriority(buf, 80);
                             
                             //
                             Log("Command line argument received: -mod \"%s\"", buf);
@@ -440,7 +441,7 @@ namespace modloader
     void CModLoader::UnloadPlugins()
     {
         // Unload one by one, calling OnShutdown callback before the unload
-        for(auto it = this->plugins.begin(); it != this->plugins.end(); ++it)
+        for(auto it = this->plugins.begin(); it != this->plugins.end();   )
         {
             this->UnloadPlugin(*it, false);
             it = this->plugins.erase(it);
@@ -600,7 +601,7 @@ namespace modloader
      * CModLoader::StartupPlugins
      *      Call plugin OnStartup method
      */
-    void CModLoader::StartupPlugin(ModLoaderPlugin& data)
+    bool CModLoader::StartupPlugin(ModLoaderPlugin& data)
     {
         scoped_chdir xdir(this->loader.gamepath);
 
@@ -608,8 +609,10 @@ namespace modloader
         if(data.OnStartup && data.OnStartup(&data))
         {
             Log("Failed to startup plugin '%s', unloading it.", data.name);
-            this->UnloadPlugin(data, true);
+            this->UnloadPlugin(data, false);
+            return false;
         }
+        return true;
     }
             
     /*
@@ -619,8 +622,13 @@ namespace modloader
     void CModLoader::StartupPlugins()
     {
         Log("\nStarting up plugins...");
-        for(auto& plugin : this->plugins)
-            StartupPlugin(plugin);
+        for(auto it = this->plugins.begin(); it != this->plugins.end();   )
+        {
+            if(StartupPlugin(*it))
+                ++it;
+            else
+                it = this->plugins.erase(it);
+        }
     }
 
     
@@ -677,6 +685,8 @@ namespace modloader
         {
             PerformSearch(child);
         }
+        
+        modfolder.ProcessPriorities();
     }
 
     /*
@@ -732,13 +742,6 @@ namespace modloader
                     modx.flags.bExcludeAll = to_bool(value);
             }
             
-            // Read excluded mods list
-            for(auto& pair : data["EXCLUDE_MODS"])
-            {
-                auto& exclude = pair.first;
-                modx.AddIgnoredMod(exclude.c_str());
-            }
-            
             // Read excluded files and extensions list
             for(auto& pair : data["EXCLUDE_FILES"])
             {
@@ -751,6 +754,14 @@ namespace modloader
             {
                 auto& include = pair.first;
                 modx.AddIncludedMod(include.c_str());
+            }
+            
+            // Read priority list
+            for(auto& pair : data["PRIORITY"])
+            {
+                auto& mod      = pair.first;
+                auto& priority = pair.second;
+                modx.AddPriority(mod.c_str(), std::stoi(priority));
             }
             
         }

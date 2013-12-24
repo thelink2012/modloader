@@ -41,7 +41,7 @@ inline __int64 GetFileSize(const char* filename)
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 52;
+        static const int default_priority = 48;
         
         struct FileInfo
         {
@@ -103,15 +103,12 @@ class CThePlugin : public modloader::CPlugin
 
             ImgInfo(int i = 0)
             {
-                isReady         = true;
-                isMainContent   = (i & 1) != 0;
-                isPlayerContent = (i & 2) != 0;
-                isCustomContent = !isMainContent && !isPlayerContent;
-                isOriginal      = false;
+                Setup(i);
             }
             
             ImgInfo(const modloader::ModLoaderFile& file)
             {
+                Setup();
                 Setup(file);
             }
             
@@ -127,6 +124,15 @@ class CThePlugin : public modloader::CPlugin
                             imgFilesSorted[x.second.fileHash] = &x.second;
                     }
                 }
+            }
+            
+            void Setup(int i = 0)
+            {
+                isReady         = true;
+                isMainContent   = (i & 1) != 0;
+                isPlayerContent = (i & 2) != 0;
+                isCustomContent = !isMainContent && !isPlayerContent;
+                isOriginal      = false;
             }
             
             void Setup(const modloader::ModLoaderFile& file)
@@ -159,11 +165,11 @@ class CThePlugin : public modloader::CPlugin
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        int OnStartup();
-        int OnShutdown();
-        int CheckFile(const modloader::ModLoaderFile& file);
-        int ProcessFile(const modloader::ModLoaderFile& file);
-        int PosProcess();
+        bool OnStartup();
+        bool OnShutdown();
+        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool PosProcess();
         const char** GetExtensionTable();
         
         

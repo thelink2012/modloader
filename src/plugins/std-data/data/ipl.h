@@ -62,6 +62,7 @@ namespace data
             vec3    pos;
             vec4    rot;
             integer lod;
+            bool    linked;
 
             bool operator==(const SObject& b) const
             {
@@ -1132,7 +1133,6 @@ namespace data
         static const bool is_sorted     = false;
         static domflags_type domflags() { return domflags_type(); }
         static const char* what()       { return "scene file"; }
-        
         
         /* File loading methods */
         static bool Parser(const char* filename, DataTraits::container_type& map, bool isDefault);      // implemented at ipl.cpp

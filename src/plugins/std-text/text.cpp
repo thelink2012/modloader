@@ -20,14 +20,12 @@ class CThePlugin *textPlugin;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 50;
-
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        int CheckFile(const modloader::ModLoaderFile& file);
-        int ProcessFile(const modloader::ModLoaderFile& file);
-        int PosProcess();
+        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool PosProcess();
         
         const char** GetExtensionTable();
         
@@ -99,7 +97,6 @@ void GetPluginData(modloader_plugin_t* data)
 {
     textPlugin = &plugin;
     modloader::RegisterPluginData(plugin, data);
-    plugin.data->priority = plugin.default_priority;
 }
 
 
@@ -131,24 +128,24 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Check if the file is the one we're looking for
  */
-int CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
 {
     if(!file.is_dir && IsFileExtension(file.filext, "gxt"))
-        return MODLOADER_YES;
-    return MODLOADER_NO;
+        return true;
+    return false;
 }
 
 /*
  * Process the replacement
  */
-int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     if(auto* gxt = GetOverrider(file.filename))
     {
         if(gxt->Replace(GetFilePath(file).c_str()))
-            return 0;
+            return true;
     }
-    return 1;
+    return false;
 }
 
 
@@ -156,7 +153,7 @@ int CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  * Called after all files have been processed
  * Hook things up
  */
-int CThePlugin::PosProcess()
+bool CThePlugin::PosProcess()
 {
     typedef int(*fopen_type)(const char*, const char*);
     typedef int(*hook_type)(fopen_type fopen, const char*& file, const char*& mode);
@@ -186,5 +183,5 @@ int CThePlugin::PosProcess()
     make_function_hook<0x6A0228, int(const char*, const char*)>(hook);
     make_function_hook<0x69FD5A, int(const char*, const char*)>(hook);
 
-    return 0;
+    return true;
 }
