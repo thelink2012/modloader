@@ -10,6 +10,7 @@
  * 
  */
 #include <modloader.hpp>
+#include <modloader_util.hpp>
 #include <modloader_util_hash.hpp>
 #include <modloader_util_path.hpp>
 #include <modloader_util_file.hpp>
@@ -29,7 +30,7 @@ class CThePlugin : public modloader::CPlugin
         const char* GetVersion();
         bool OnStartup();
         bool OnShutdown();
-        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
         
@@ -195,6 +196,8 @@ const char** CThePlugin::GetExtensionTable()
  */
 bool CThePlugin::OnStartup()
 {
+    scoped_chdir(this->modloader->gamepath);
+    
     /* Setup vars */
     sprintf(cacheDirPath, "%s%s", this->modloader->cachepath, "std-cleo\\");
     sprintf(cacheFilePath, "%s%s", cacheDirPath, "cache.bin");
@@ -218,6 +221,7 @@ bool CThePlugin::OnShutdown()
 {
     if(bHaveCLEO)
     {
+        scoped_chdir(this->modloader->gamepath);
         FinishCacheFile();
     }
     return true;
@@ -226,7 +230,7 @@ bool CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
     if(bHaveCLEO)
     {
@@ -326,11 +330,23 @@ bool CThePlugin::StartCacheFile()
                 Log("Created directory \"%s\"", file.dstPath);
                 continue;
             }
-            else if(IsPathA(file.dstPath))
+            else 
             {
-                file.flags.bExists = true;
+                // Can't load .cleo plugins, they've been already loaded by CLEO
+                if(char* p = strrchr(file.srcPath, '.'))
+                {
+                    if(IsFileExtension(p+1, "cleo"))
+                    {
+                        Log("Can't load .cleo plugins \"%s\". Skipping it", file.srcPath);
+                        continue;
+                    }
+                }
+                
+                // Check if file already exist in the destination CLEO folder
+                if(IsPathA(file.dstPath))
+                    file.flags.bExists = true;
             }
-   
+            
             /* Take the file hash */
             if(!ReadEntireFile(file.srcPath, filebuf))
             {

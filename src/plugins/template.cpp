@@ -4,8 +4,6 @@
  * 
  */
 #include <modloader.hpp>
-#include <modloader_util.hpp>
-using modloader::GetArrayLength;
 
 /*
  *  The plugin object
@@ -18,7 +16,7 @@ class CThePlugin : public modloader::CPlugin
         const char* GetVersion();
         bool OnStartup();
         bool OnShutdown();
-        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
         
@@ -67,20 +65,20 @@ const char** CThePlugin::GetExtensionTable()
  */
 bool CThePlugin::OnStartup()
 {
-    /* return 0 for sucess */
+    /* return true for sucess */
 }
 
 bool CThePlugin::OnShutdown()
 {
-    /* return 0 for success */
+    /* return true for success */
 }
 
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
-    /* return MODLOADER_NO or MODLOADER_YES */
+    /* return true for yes and false for no */
 }
 
 /*
@@ -88,7 +86,7 @@ bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
  */
 bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
-    /* return 0 for success and 1 for failure */
+    /* return true for success and false for failure */
 }
 
 /*
@@ -96,5 +94,5 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  */
 bool CThePlugin::PosProcess()
 {
-    /* return 0 for success and 1 for failure */
+    /* return true for success and false for failure */
 }

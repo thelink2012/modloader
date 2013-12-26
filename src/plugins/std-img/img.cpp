@@ -89,7 +89,7 @@ bool CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
     if(IsFileExtension(file.filext, "img"))
     {
@@ -213,9 +213,9 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
     /*
      *  Registers the img path at buf, if buf is not empty (already has a path), return false and log the error.
      */
-    static auto RegisterImgPath = [](std::string& buf, const char* path)
+    static auto RegisterImgPath = [](std::string& buf, const char* path, const char* filename)
     {
-        return RegisterReplacementFile(*imgPlugin, "", buf, path);
+        return RegisterReplacementFile(*imgPlugin, filename, buf, path);
     };
     
     /* Replace an pointer at mem with pointer to buf data */
@@ -241,7 +241,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
     {
         if(!strcmp(file.filename, "gta3.img", false))
         {
-            if(!RegisterImgPath(gta3, GetFilePath(file).c_str())) return false;
+            if(!RegisterImgPath(gta3, GetFilePath(file).c_str(), "gta3.img")) return false;
 
             img.isOriginal = true;
             ReplaceAddr(0x408430 + 1, gta3);
@@ -250,7 +250,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
         }
         else if(!strcmp(file.filename, "gta_int.img", false))
         {
-            if(!RegisterImgPath(gta_int, GetFilePath(file).c_str())) return false;
+            if(!RegisterImgPath(gta_int, GetFilePath(file).c_str(), "gta_int.img")) return false;
             
             img.isOriginal = true;
             ReplaceAddr(0x40846E + 1, gta_int);
@@ -258,7 +258,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
         }
         else if(!strcmp(file.filename, "player.img", false))
         {
-            if(!RegisterImgPath(player, GetFilePath(file).c_str())) return false;
+            if(!RegisterImgPath(player, GetFilePath(file).c_str(), "player.img")) return false;
             
             img.isOriginal = true;
             ReplaceAddr(0x5A41A4 + 1, player);
@@ -270,7 +270,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
     { 
         if(!strcmp(file.filename, "cuts.img", false))
         {
-            if(!RegisterImgPath(cuts, GetFilePath(file).c_str())) return false;
+            if(!RegisterImgPath(cuts, GetFilePath(file).c_str(), "cuts.img")) return false;
             
             img.isOriginal = true;
             ReplaceAddr(0x4D5EB9 + 1, cuts);

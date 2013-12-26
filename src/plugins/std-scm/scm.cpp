@@ -25,7 +25,7 @@ class CThePlugin : public modloader::CPlugin
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
         
@@ -72,7 +72,7 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
     if(!file.is_dir
     && !strcmp(file.filename, "main.scm", false)

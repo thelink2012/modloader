@@ -23,6 +23,18 @@
 
 namespace modloader
 {
+    
+    /*
+     *  GetFilePath
+     *      Gets the filepath relative to the root game directory from the ModLoaderFile object @file
+     */
+    inline std::string GetFilePath(const ModLoaderFile& file)
+    {
+        return (std::string(file.modpath) + file.filepath);
+    }
+    
+    
+    
     /*
      *  Registers @path into @buf if it is empty.
      *  Returns true if registration is sucessfull and false otherwise.
@@ -50,6 +62,7 @@ namespace modloader
         
         return true;
     }
+
 }
 
 

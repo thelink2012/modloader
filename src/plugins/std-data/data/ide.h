@@ -493,9 +493,6 @@ namespace data
             // Has at least the non-optional arguments?
             if(nargs > 0)
             {
-                if(!is_vehicle(id))
-                    return false;
-                
                 // Calculate num optional arguments received
                 this->nopt = nargs - min_count();
                 
@@ -843,7 +840,14 @@ namespace data
                 for(const char* p = line; !modloader::parser::isspace(*p); ++p)
                     if(*p < '0' || *p > '9') return false;
                 
+                // Detect cars section
                 this->section = IDE_CARS;
+                if(DoIt<bool, call_set>(*this, line, false))
+                {
+                    // We're reading from a readme file, it might contain definitions for other GTA games
+                    // Let's check if the ids are in SA range
+                    return is_vehicle(this->cars.id);
+                }
             }
             else
             {
@@ -875,7 +879,7 @@ namespace data
             /* HasSection */    true, 
             /* HasKeyValue */   true,
             /* IsSorted */      true,
-            /* DomFlags */      DomFlags<0>
+            /* DomFlags */      DomFlags<flag_RemoveIfNotExistInOneCustomButInDefault>
                         >
     {
         static const char* what() { return "object types file"; }

@@ -57,13 +57,24 @@ typedef struct
      *      Used by the modloader core, don't touch this field
      */
     char recursion;
-    char _pad[2];
+      
+    /*
+     *  call_me 
+     *      Should be used by the CheckFile handler if it wish to receive the file in ProcessFile but you're not the actual handler for it
+     *      May be useful for example to read .txt files
+     */
+    char call_me;
     
     /*
      *  is_dir
      *          Contains 1 if the file is a directory or 0 otherwise.
      */
     char is_dir;
+    
+    /*
+     *  ...
+     */
+    char _pad[1];
     
     /*
      * filename
@@ -202,7 +213,7 @@ typedef int (*modloader_fPosProcess)(modloader_plugin_t* data);
  *      @data: The plugin data   
  *      @return MODLOADER_YES for 'yes' and MODLOADER_NO for 'no';
  */
-typedef int (*modloader_fCheckFile)(modloader_plugin_t* data, const modloader_file_t* file);
+typedef int (*modloader_fCheckFile)(modloader_plugin_t* data, modloader_file_t* file);
 
 /*
  * ProcessFile
@@ -276,6 +287,7 @@ struct modloader_data
     const char* gamepath;   // game path
     const char* modspath;   // modloader base path      -- currently set to NULL
     const char* cachepath;  // cache path, normally "modloader/.data/cache"
+    const char* pluginspath;// the path where the plugins (dll) are located
     
     modloader_fLog              Log;
     modloader_fError            Error;

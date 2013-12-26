@@ -26,15 +26,6 @@ namespace modloader
 {
     static const char* szNullFile = "NUL";          // "/dev/null" on POSIX systems
     static const char cNormalizedSlash = '\\';      // The slash used in the normalized path
-
-    /*
-     *  GetFilePath
-     *      Gets the filepath relative to the root game directory from the ModLoaderFile object @file
-     */
-    inline std::string GetFilePath(const ModLoaderFile& file)
-    {
-        return (std::string(file.modpath) + file.filepath);
-    }
     
     /*
      *  MakeSureStringIsDirectory

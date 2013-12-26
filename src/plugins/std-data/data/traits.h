@@ -52,6 +52,15 @@ struct DataTraitsBase : public DataTraits<ContainerType>
 /*****************************************************/
 
 /*
+*  Helper function to get dominance flags from a integer or a functor
+*/
+inline int GetDomFlags(int flags) { return flags; }
+template<class Functor>
+inline int GetDomFlags(Functor f) { return f(); /* Non-key overload */ }
+
+
+
+/*
  *  Functors to call SectionParser 
  */
 template<bool HasSection, class HandlerType>

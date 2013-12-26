@@ -289,7 +289,8 @@ namespace modloader
       */
     template<class ContainerType, class FindSectionByLine, class SetFromLineData>
     inline bool SectionParser(const char* filepath, ContainerType& map,
-                              FindSectionByLine find_section, SetFromLineData set)
+                              FindSectionByLine find_section, SetFromLineData set,
+                              bool bSkipLineAfterSectionFound = true)
     {
         char *line, linebuf[MaxLineSize];
         bool bHandling = false;
@@ -306,9 +307,13 @@ namespace modloader
                 if(bHandling == false)
                 {
                     if(section = find_section(line))
+                    {
                         bHandling = true;
+                        if(bSkipLineAfterSectionFound) continue;
+                    }
                 }
-                else
+                
+                if(bHandling)
                 {
                     /* End of section? */
                     if(line[0] == 'e' && line[1] == 'n' && line[2] == 'd')
@@ -359,7 +364,7 @@ namespace modloader
      */
     template<class VectorPairType, class FindSectionById, class GetFromLineData>
     inline bool SectionBuilder(const char* filepath, const VectorPairType& lines,
-                              FindSectionById find_section, GetFromLineData get)
+                              FindSectionById find_section, GetFromLineData get, bool bWriteSectionLine = true)
     {
         if(FILE* f = fopen(filepath, "w"))
         {
@@ -367,12 +372,15 @@ namespace modloader
             
             /* Function to switch from reading one section to another,
              * automatically puting a section start (and end) at the IPL file */
-            auto UpdateSection = [&f, &section](SectionInfo* newsec)
+            auto UpdateSection = [&f, &section, &bWriteSectionLine](SectionInfo* newsec)
             {
-                if(section != newsec)
+                if(bWriteSectionLine)
                 {
-                    fprintf(f, "%s%s\n", (section? "end\n" : ""), (newsec? newsec->name : ""));
-                    section = newsec;
+                    if(section != newsec)
+                    {
+                        fprintf(f, "%s%s\n", (section? "end\n" : ""), (newsec? newsec->name : ""));
+                        section = newsec;
+                    }
                 }
             };
 
@@ -554,15 +562,15 @@ namespace modloader
     /* Works directly with the above structures */
     
     template<class HandlerType, class ContainerType>
-    inline bool SectionParser(const char* filepath, ContainerType& map)
+    inline bool SectionParser(const char* filepath, ContainerType& map, bool bSkipSectionAfterFound = true)
     {
-        return SectionParser(filepath, map, typename HandlerType::Find(), typename HandlerType::Set());
+        return SectionParser(filepath, map, typename HandlerType::Find(), typename HandlerType::Set(), bSkipSectionAfterFound);
     }
     
     template<class HandlerType, class VectorPairType>
-    inline bool SectionBuilder(const char* filepath, const VectorPairType& lines)
+    inline bool SectionBuilder(const char* filepath, const VectorPairType& lines, bool bWriteSection = true)
     {
-        return SectionBuilder(filepath, lines, typename HandlerType::Find(), typename HandlerType::Get());
+        return SectionBuilder(filepath, lines, typename HandlerType::Find(), typename HandlerType::Get(), bWriteSection);
     }
     
     template<class HandlerType, class ContainerType>

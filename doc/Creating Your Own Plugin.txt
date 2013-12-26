@@ -41,35 +41,40 @@
         const char* GetVersion()
             You should return a static C string with the plugin version
             
-        [optional] bool OnStartup()
-            This is called when your plugin gets started up.
-            Return true for success and false for failure.
-            If you return failure, your plugin will be unloaded immediately.
-        
-        [optional] bool OnShutdown()
-            This is called when your plugin gets shutdown.
-            Return true for success and false for failure.
-            
-        bool CheckFile(const ModLoaderFile& file)
-            Checks if the file should be handled by this plugin.
-            Return true for yes and false for no.
-            Please don't process anything here and don't assume files you return yes will reach the next stage.
-            
-        bool ProcessFile(const ModLoaderFile& file)
-            Processes a file you returned yes on CheckFile
-            Return true if the file has been processed successfully or false otherwise.
-        
-        bool PosProcess()
-            This is called when all files from all mods have been processed.
-            Return true for success and false for failure.
-            Here is probably where you will install hooks on the game.
-        
-        const char** GetExtensionTable()
+        [optional] const char** GetExtensionTable()
             This is called very early (after OnStartup or something) and you should return
             a static array of C strings with the extensions your plugin will handle.
             That does not mean your plugin will only receive files with those extensions,
             this table will be used for optimization purposes.
             You can return a null pointer for no extension.
+            
+        [optional] bool OnStartup()
+            This is called when your plugin gets started up.
+            Return true for success and false for failure.
+            If you return failure, your plugin will be unloaded immediately.
+            When this event is triggered the working directory is the plugins folder
+        
+        [optional] bool OnShutdown()
+            This is called when your plugin gets shutdown.
+            Return true for success and false for failure.
+            When this event is triggered the working directory is the plugins folder
+            
+        bool CheckFile(const ModLoaderFile& file)
+            Checks if the file should be handled by this plugin.
+            Return true for yes and false for no.
+            Please don't process anything here and don't assume files you return yes will reach the next stage.
+            When this event is triggered the working directory is the mod folder that file belongs to
+            
+        bool ProcessFile(const ModLoaderFile& file)
+            Processes a file you returned yes on CheckFile
+            Return true if the file has been processed successfully or false otherwise.
+            When this event is triggered the working directory is the mod folder that file belongs to
+        
+        bool PosProcess()
+            This is called when all files from all mods have been processed.
+            Return true for success and false for failure.
+            Here is probably where you will install hooks on the game.
+            When this event is triggered the working directory is the mod folder that file belongs to
         
 
 ---------> Exporting your derived object

@@ -1126,7 +1126,11 @@ namespace data
                 if(key.section == IPL_INST) return 0;
                 return flag_RemoveIfNotExistInAnyCustom;
             }
-
+            
+            int operator()( ) const
+            {
+                return flag_RemoveIfNotExistInAnyCustom;
+            }
         };
         
         /* What is this? */

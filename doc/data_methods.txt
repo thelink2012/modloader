@@ -1,5 +1,8 @@
 Loading method to be used by each data\ file
 
+
+ **************************************** THIS FILE IS OUTDATED *************************************
+
 Methods:
 	by diff is look into the differences between the files in modloader dir and the original game file..
 	replace is to replace the entire file content (replacing the CFileMgr::Open string)
@@ -439,31 +442,5 @@ weapon.dat:
     TODO
     rule = <<<<<<<<<<<<<<<<<<
     
-    
-===========================================================================================================================================
-*.ipl and water.dat:
-
-    IPL Rule:
-        $ key = line
-        $ If there's only default, ignore rules:
-        $ If key exist only in one custom, add
-        $ If key do not exist in one custom but exist in default, remove    [ must check if exist in default ]
-        
- 
-===========================================================================================================================================
-*.ide:
-    format is variant
- 
-    IDE Rule:
-        $ key = Id
-        $ Key exist anywhere? Add
-        
-
-...............................................
-
-flags =
-
-
-
 
 

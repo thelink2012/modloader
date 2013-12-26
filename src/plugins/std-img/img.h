@@ -12,6 +12,7 @@
 #include <windows.h>
 
 #include <modloader.hpp>
+#include <modloader_util.hpp>
 #include <modloader_util_hash.hpp>
 #include <modloader_util_path.hpp>
 
@@ -167,7 +168,7 @@ class CThePlugin : public modloader::CPlugin
         const char* GetVersion();
         bool OnStartup();
         bool OnShutdown();
-        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
         const char** GetExtensionTable();

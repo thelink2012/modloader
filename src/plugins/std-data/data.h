@@ -13,7 +13,7 @@
 #include <type_traits>
 #include "traits.hpp"
 #include <modloader.hpp>
-#include <modloader_util_path.hpp>
+#include <modloader_util.hpp>
 using namespace modloader;
 using namespace data;           /* from traits.hpp */
 
@@ -37,7 +37,7 @@ class CThePlugin : public modloader::CPlugin
         const char* GetVersion();
         bool OnStartup();
         bool OnShutdown();
-        bool CheckFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
         
@@ -212,6 +212,7 @@ struct CAllTraits
     CDataFS<TraitsIDE>      ide;
     CDataFS<TraitsIPL>      ipl;
     CDataFS<TraitsGTA>      gta;
+    CDataFS<TraitsHandling> handling;
 };
 extern CAllTraits traits;
 

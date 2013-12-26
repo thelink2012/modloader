@@ -84,6 +84,8 @@ namespace modloader
                 std::string     fileExtension;  // ext
                 std::string     filePath;       // full
                 
+                std::vector<ModLoaderPlugin*> callMe;
+                
                 unsigned int    id;             // Note: This id is (probably) unique on each game call
                 bool            isDir;
             };
@@ -298,7 +300,7 @@ namespace modloader
             /* Mods searching methods */
             void PerformSearch();                       // Searchs for mods starting from base modloader folder
             void PerformSearch(ModFolderInfo& folder);  // Search folder for mods
-            ModLoaderPlugin* FindFileHandler(const ModLoaderFile& file); 
+            ModLoaderPlugin* FindFileHandler(ModLoaderFile& file,  decltype(FileInfo::callMe)&); 
             void ReadModf(ModFolderInfo&, const std::string& folder);
             void ReadFile(ModFolderInfo&, ModLoaderFile& file, CModLoader::ModInfo& mod);
             

@@ -93,7 +93,7 @@ bool CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
     /* Check if handlable extension */
     for(const char** p = GetExtensionTable(); *p; ++p)
@@ -105,8 +105,7 @@ bool CThePlugin::CheckFile(const modloader::ModLoaderFile& file)
     // Not found any extension compatible? If .txt (probably the readme), push it into the list of readmes for later procesing
     if(IsFileExtension(file.filext, "txt"))
     {
-        readme.emplace_back(GetFilePath(file));
-        // do not mark as handled !!
+        file.call_me = true;
     }
     
     return false;
@@ -119,6 +118,10 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
     const char* filename = file.filename;
     
+    if(IsFileExtension(file.filext, "txt"))
+    {
+        readme.emplace_back(GetFilePath(file));
+    }
     if(IsFileExtension(file.filext, "dat"))
     {
         if(!strcmp(filename, "gta.dat", false))
@@ -131,7 +134,8 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     }
     else if(IsFileExtension(file.filext, "cfg"))
     {
-        // TODO
+        if(!strcmp(filename, "handling.cfg", false))
+            traits.handling.AddFile(file, "data/handling.cfg");
     }
     else if(IsFileExtension(file.filext, "ide"))
     {
@@ -221,6 +225,20 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
     {
         return list.front().path;
     }
+    
+    /* If there's two members and one is default and the other isn't ... */
+    if(list.size() == 2 && list.front().isDefault && !list.back().isDefault)
+    {
+        /* And it's domflag says to delete entries from default file if doesn't exist in custom file... */
+        int flags = GetDomFlags(T::domflags());
+        if((flags & flag_RemoveIfNotExistInAnyCustom)
+        || (flags & flag_RemoveIfNotExistInOneCustomButInDefault))
+        {
+            /* ... then just return th custom file */
+            return list.back().path;
+        }
+    }
+    
     
     //
     std::string cacheFile;
@@ -354,9 +372,13 @@ bool CThePlugin::PosProcess()
     
     // Hook things
     {
+        //WriteMemory<const char*>(0x5BD838 + 1, "", true);   // Disable chdir("DATA") for handling.cfg
+        //WriteMemory<const char*>(0x5BD84B + 1, "data/handling.cfg", true);  // Change handling.cfg string
+        
         make_file_mixer<0x5B8428>(traits.ide);
         make_file_mixer<0x5B871A>(traits.ipl);
         make_file_mixer<0x5B905E>(traits.gta);
+        //make_file_mixer<0x5BD850>(traits.handling);
         
     }
     

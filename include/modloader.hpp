@@ -37,12 +37,12 @@ namespace modloader
                 virtual const char* GetVersion()=0;
                 virtual bool OnStartup() { return true; }               /* default */
                 virtual bool OnShutdown() { return true; }              /* default */
-                virtual bool CheckFile(const ModLoaderFile& file)=0;
+                virtual bool CheckFile(ModLoaderFile& file)=0;
                 virtual bool ProcessFile(const ModLoaderFile& file)=0;
                 virtual bool PosProcess()=0;
                 
                 /* Returns the favorable file extensions for this plugin */
-                virtual const char** GetExtensionTable()=0;
+                virtual const char** GetExtensionTable() { return nullptr; }
     };
     
     // Callbacks wrapper
@@ -78,7 +78,7 @@ namespace modloader
             return !GetThis(data)->OnShutdown();
         }
         
-        static int CheckFile(modloader_plugin_t* data, const modloader_file_t* file)
+        static int CheckFile(modloader_plugin_t* data, modloader_file_t* file)
         {
             return !GetThis(data)->CheckFile(*file);
         }  

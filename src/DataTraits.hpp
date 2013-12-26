@@ -25,7 +25,8 @@ namespace DataTraitsNamespace   /* well... ugly name but we expect you to do 'us
 /* Algorithm flags */
 
  /*
-  * Important: If you add more flags or something be sure to update the std-data plugin file readme.cpp 
+  * Important: If you add more flags or something be sure to update all the checks on those flags on modloader source code
+  *            Do a find (CTRL+F, grep, whatever) and you might find it
   */
 
 // If the key do not exist in at least one custom trait BUT exists in the default trait, just remove the value (return null)

@@ -9,6 +9,7 @@
  */
 
 #include <modloader.hpp>
+#include <modloader_util.hpp>
 #include <modloader_util_path.hpp>
 #include <modloader_util_container.hpp>
 #include <modloader_util_ini.hpp>
@@ -21,6 +22,7 @@
 #include "Injector.h"
 #include "GameInfo.h"
 #include "CModLoader.hpp"
+#include "modloader_util.hpp"
 
 #if 0 && !defined(NDEBUG)
 #define LOGFILE_AS_STDOUT
@@ -257,6 +259,7 @@ namespace modloader
                 
                 std::string modsPath = "modloader\\";
                 this->cachePath = modsPath + ".data\\cache\\";
+                this->pluginsPath = modsPath + ".data\\plugins\\";
                 
                 for(const char** folder = folders; *folder; ++folder)
                 {
@@ -270,6 +273,7 @@ namespace modloader
             //this->loader.modspath  = this->modsPath.c_str();
             this->loader.modspath = nullptr;
             this->loader.cachepath = this->cachePath.c_str();
+            this->loader.pluginspath = this->pluginsPath.c_str();
             this->loader.Log   = &Log;
             this->loader.Error = &Error;
             
@@ -583,7 +587,7 @@ namespace modloader
      */
     bool CModLoader::UnloadPlugin(ModLoaderPlugin& plugin, bool bRemoveFromList)
     {
-        scoped_chdir xdir(this->loader.gamepath);
+        scoped_chdir xdir(this->loader.pluginspath);
         
         Log("Unloading plugin \"%s\"", plugin.name);
         
@@ -603,7 +607,7 @@ namespace modloader
      */
     bool CModLoader::StartupPlugin(ModLoaderPlugin& data)
     {
-        scoped_chdir xdir(this->loader.gamepath);
+        scoped_chdir xdir(this->loader.pluginspath);
 
         Log("Starting up plugin \"%s\"", data.name);
         if(data.OnStartup && data.OnStartup(&data))
@@ -814,6 +818,8 @@ namespace modloader
      */
     void CModLoader::ReadFile(ModFolderInfo& modsbase, ModLoaderFile& file, CModLoader::ModInfo& mod)
     {
+        decltype(FileInfo::callMe) callMe;
+        
         /* Continue the 'file' setup */
         file.modname = mod.name.data();
         file.mod_id = mod.id;
@@ -822,13 +828,13 @@ namespace modloader
         file.modfullpath = mod.fullPath.data();      
         
         /* See if we can find a handler for this file */
-        ModLoaderPlugin* handler = this->FindFileHandler(file);
-        
-        if(handler)
+        ModLoaderPlugin* handler = this->FindFileHandler(file, callMe);
+
+        if(handler || callMe.size())
         {
             /* If this is a directory and a handler for it has been found,
             * don't go inside this folder (recursive search). */
-            file.recursion = false;
+            if(handler) file.recursion = false;
             
             /* Setup fileInfo */
             mod.files.emplace_back();
@@ -837,6 +843,7 @@ namespace modloader
             fileInfo.parentMod = &mod;
             fileInfo.handler = handler;
             fileInfo.isDir = file.is_dir;
+            fileInfo.callMe = std::move(callMe);
 
             /* Continue setupping fileInfo and resetup 'file' to contain pointers to fileInfo (static) */
             file.filename = (fileInfo.fileName = file.filename).data();
@@ -846,7 +853,8 @@ namespace modloader
             /* Copy C POD data into fileInfo */
             memcpy(&fileInfo.data, &file, sizeof(file));
             
-            Log("Handler for file \"%s\" (%d) is \"%s\"", file.filepath, file.file_id, handler->name);
+            if(handler)
+                Log("Handler for file \"%s\" (%d) is \"%s\"", file.filepath, file.file_id, handler->name);
         }
         else if(!strcmp(file.filepath, "modloader\\", false))
         {
@@ -868,6 +876,8 @@ namespace modloader
      */
     bool CModLoader::HandleFile(CModLoader::FileInfo& file)
     {
+        bool bResult = false;
+        
         // Process file using the handler
         if(auto* handler = file.handler)
         {
@@ -877,13 +887,24 @@ namespace modloader
             //Log("Handling file \"%s\\%s\" by plugin \"%s\"", file.parentMod->name.c_str(), filePath, pluginName);
             if(handler->ProcessFile && !handler->ProcessFile(handler, &file.data))
             {
-                return true;
+                bResult = true;
             }
             else
                 // That's not my fault, hen
                 Log("Handler \"%s\" failed to process file \"%s\"", pluginName, filePath);
         }
-        return false;
+        
+        // Call ProcessFile for the plugins that request it, even that hey don't handle the file itself
+        if(file.callMe.size())
+        {
+            for(auto* handler : file.callMe)
+            {
+                if(handler && handler->ProcessFile)
+                    handler->ProcessFile(handler, &file.data);
+            }
+        }
+        
+        return bResult;
     }
     
     /*
@@ -892,7 +913,7 @@ namespace modloader
      *      @plugin: The plugin to handle the file
      *      @file: File to be handled
      */
-    inline bool IsFileHandlerForFile(ModLoaderPlugin& plugin, const ModLoaderFile& file)
+    inline bool IsFileHandlerForFile(ModLoaderPlugin& plugin, ModLoaderFile& file)
     {
         return( !plugin.checked         /* Has not been checked yet */
              && (plugin.checked = true) /* Mark as checked */
@@ -911,22 +932,32 @@ namespace modloader
      *      This uses an algorithim that first searches for plugins that commonly use the @file extension
      *      and if no handler for file has been found, it checks on other plugins.
      */
-    ModLoaderPlugin* CModLoader::FindFileHandler(const ModLoaderFile& file)
+    ModLoaderPlugin* CModLoader::FindFileHandler(ModLoaderFile& file, decltype(FileInfo::callMe)& callMe)
     {
         ModLoaderPlugin* handler = 0;
 
+        auto CheckForHandler = [&file, &handler, &callMe](ModLoaderPlugin& plugin)
+        {
+            file.call_me = false;
+            if(IsFileHandlerForFile(plugin, file))
+            {
+                handler = &plugin;
+                return true;
+            }
+            else if(file.call_me == true)
+            {
+                callMe.push_back(&plugin);
+            }
+            return false;
+        };
+        
         /* First, search for the handler at the vector for the extension,
          * it is commonly possible that the handler for this file is here and we don't have to call CheckFile on all plugins
          * At this point all 'plugin.checked' are false.
          */
         for(auto& pPlugin : this->extMap[file.filext])
         {
-            auto& plugin = *pPlugin;    /* Turn into reference just for common coding style */
-            if(IsFileHandlerForFile(plugin, file))
-            {
-                handler = &plugin;
-                break;
-            }
+            if(CheckForHandler(*pPlugin)) break;
         }
 
         /*
@@ -935,9 +966,9 @@ namespace modloader
          */
         for(auto& plugin : this->plugins)
         {
-            if(!handler && IsFileHandlerForFile(plugin, file))
+            if(!handler)
             {
-                handler = &plugin;
+                CheckForHandler(plugin);
             }
                 
             /* Set the 'plugin.checked' state to false, so on the next call to FindFileHandler it is false */
