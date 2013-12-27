@@ -13,8 +13,8 @@
 #ifndef MODLOADER_HPP
 #define	MODLOADER_HPP
 #pragma once
-
 #include <modloader.h>
+#include <cstdio>
 
 namespace modloader
 {
@@ -27,15 +27,49 @@ namespace modloader
         private:
             friend struct CPluginCallbacks;
             
-            int nChunks;
-            int nChunksLoaded;
+            struct {    // Chunks information
+                int nLimiter;
+                int nTotalCalls;
+                int nStep;
+                int nChunks;
+                int nChunksLoaded;
+            };
+            
+            // Calculate necessary values and return the actual chunks we'll load
+            int GetChunks()
+            {
+                if(nChunks)
+                {
+                    if(nLimiter == 0 || nChunks < nLimiter)
+                    {
+                        nStep = 1;
+                        nLimiter = nChunks;
+                    }
+                    else
+                    {
+                        nStep = nChunks / nLimiter;
+                    }
+                    return nLimiter;
+                }
+                return 0;
+            }
             
             // This is called after the OnLoad to make sure nChunksLoaded == nChunks
             void MakeSureChunksHaveBeenLoaded()
             {
-                while(this->nChunksLoaded < this->nChunks)
+                while(nTotalCalls < nLimiter)
                 {
-                    this->NewChunkLoaded();
+                    ForwardNewChunkLoaded();
+                }
+            }
+            
+            // Forward the call to NewChunkLoaded to the game
+            void ForwardNewChunkLoaded()
+            {
+                if(nTotalCalls < nLimiter)
+                {
+                    ++nTotalCalls;
+                    modloader->NewChunkLoaded();
                 }
             }
 
@@ -45,6 +79,13 @@ namespace modloader
                 modloader_data*             modloader;
                 modloader_fLog              Log;
                 modloader_fError            Error;
+                
+                // Limits the number of times to call the real NewChunkLoaded
+                // It's recommended to use this function if you're going to touch the loading bar!
+                void SetChunkLimiter(int limiter = 10)
+                {
+                    nLimiter = limiter;
+                }
                 
                 // Call this to set the number of chunks this plugin got
                 void SetChunks(int num)
@@ -63,8 +104,10 @@ namespace modloader
                 {
                     if(nChunksLoaded < nChunks)
                     {
-                        ++nChunksLoaded;
-                        modloader->NewChunkLoaded();
+                        if((nChunksLoaded++ % nStep) == 0)
+                        {
+                            ForwardNewChunkLoaded();
+                        }
                     }
                 }
                 
@@ -82,7 +125,8 @@ namespace modloader
                 /* Returns the favorable file extensions for this plugin */
                 virtual const char** GetExtensionTable() { return nullptr; }
                 
-                CPlugin() : nChunks(0), nChunksLoaded(0)
+                CPlugin() :
+                    nChunks(0), nChunksLoaded(0), nLimiter(0), nTotalCalls(0), nStep(0)
                 {}
     };
     
@@ -132,7 +176,7 @@ namespace modloader
         static int PosProcess(modloader_plugin_t* data)
         {
             int result = !GetThis(data)->PosProcess();
-            data->loadbar_chunks = GetThis(data)->nChunks;
+            data->loadbar_chunks = GetThis(data)->GetChunks();
             return result;
         }
         

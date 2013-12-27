@@ -12,6 +12,8 @@
     First, let's understand the plugin interface, the interface is event-driven
     and there's the C and the C++ interface, the C++ interface is a wrapper (and good abstraction)
     of the C interface.
+    
+    Also, the C++ interface is much safer than the C interface since.
  
     I'll explain only the C++ interface (and some of the C interface), the C interface can be
     easilly understandable either reading it's header file or after understanding the C++ interface
@@ -177,7 +179,15 @@
                 Call this during OnLoad(true) to increase the loading bar progress.
                 Please note that calling this too much may cause the game to load slow.
 
-             
+             void SetChunkLimiter( int limiter = someRecommendedValue )
+                This comes to solve the problem above, about calling NewChunkLoaded too much causes slow loading.
+                Calling this function (before or during PosProcess event!) will make a limiter to the
+                NewChunkLoaded, so the call will be forwarded to the game only @limiter times.
+
+                So, use SetChunks/AddChunks with whatever number of times you want (100000!)
+                and call NewChunkLoaded those number of times too and then no slow loading will
+                be reproduced since this limiter will limit the number of calls forwarded to the
+                actual NewChunkLoaded ;)
 
 
 ---------> Utility headers

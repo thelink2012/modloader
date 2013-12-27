@@ -294,6 +294,7 @@ bool CThePlugin::PosProcess()
         {
             // One time for finishing and another for starting the cachefile
             this->SetChunks(this->files.size());
+            this->SetChunkLimiter();
         }
     }
     

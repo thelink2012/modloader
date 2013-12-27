@@ -368,6 +368,7 @@ CFileMixer<at_address, T> make_file_mixer(T& fs)
 bool CThePlugin::PosProcess()
 {    
     this->SetChunks(readme.size());
+    this->SetChunkLimiter();
     
     // Hook things
     {

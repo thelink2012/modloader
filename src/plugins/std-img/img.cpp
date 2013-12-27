@@ -76,6 +76,7 @@ const char** CThePlugin::GetExtensionTable()
  */
 bool CThePlugin::OnStartup()
 {
+    this->SetChunkLimiter();
     ApplyPatches();
     return true;
 }
@@ -189,7 +190,7 @@ void CThePlugin::AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const cha
     
     // Add item to imgFiles
     auto pair = img.imgFiles.emplace(xname, FileInfo());
-    //if(pair.second) this->AddChunks(); // If this item is new in the map, add chunk (TOO SLOW)
+    if(pair.second) this->AddChunks(); // If this item is new in the map, add chunk
     
     // Register replacement
     auto& f = pair.first->second;

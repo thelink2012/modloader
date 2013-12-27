@@ -1078,6 +1078,7 @@ namespace modloader
             if(plugin.OnLoad && plugin.OnLoad(&plugin, isLoadbar))
                 ;
         }
+        Log(isLoadbar? "Done plugins load" : "Done plugins reload");
     }
     
     /*

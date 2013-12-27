@@ -35,7 +35,7 @@ namespace modloader
     inline bool ReadEntireFile(const char* filepath, std::vector<char>& out, uint64_t sizeLimit = -1)
     {
         /* 64 bits file not supported */
-        
+
         bool bResult = false;
         uint64_t fsize;
         
@@ -44,14 +44,17 @@ namespace modloader
             /* Get file size */
             if(!fseek(f, 0, SEEK_END) && ((fsize = ftell(f)) != 1L) && !fseek(f, 0, SEEK_SET))
             {
-                /* Read the file data into the vector */
-                out.resize(fsize);
-                if(fread(out.data(), 1, fsize, f) == fsize)
-                    bResult = true; /* Success */
-                else
-                    out.clear();    /* Failure, clear output */
-                
-                bResult = true;
+                if(true)
+                { 
+                    /* Read the file data into the vector */
+                    out.resize(fsize);
+                    if(fread(out.data(), 1, fsize, f) == fsize)
+                        bResult = true; /* Success */
+                    else
+                        out.clear();    /* Failure, clear output */
+
+                    bResult = true;
+                }
             }
 
             fclose(f);
