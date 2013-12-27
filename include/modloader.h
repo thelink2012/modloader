@@ -198,15 +198,6 @@ typedef int (*modloader_fOnStartup)(modloader_plugin_t* data);
  */
 typedef int (*modloader_fOnShutdown)(modloader_plugin_t* data);
 
-
-/*
- *  PosProcess
- *      Called after all files have been processed (with ProcessFile)
- *      @data: The plugin data
- *      @return: 0 on success and 1 on failure
- */
-typedef int (*modloader_fPosProcess)(modloader_plugin_t* data);
-
 /*
  * CheckFile
  *      Called to check if a specific file is to be processed by this plugin.
@@ -225,6 +216,32 @@ typedef int (*modloader_fCheckFile)(modloader_plugin_t* data, modloader_file_t* 
 typedef int (*modloader_fProcessFile)(modloader_plugin_t* data, const modloader_file_t* file);
 
 
+/*
+ *  PosProcess
+ *      Called after all files have been processed (with ProcessFile)
+ *      @data: The plugin data
+ *      @return: 0 on success and 1 on failure
+ */
+typedef int (*modloader_fPosProcess)(modloader_plugin_t* data);
+
+/*
+ *  OnLoad
+ *      Called on any game load and on the start of the loading bar.
+ *      When it's the loading bar time, you must make your time-consuming tasks and calls to NewChunkLoaded
+ *      @data: The plugin data
+ *      @is_loadbar: If this parameter is non-zero that means it's loading-bar time and not load-game-click time
+ *      @return: 0 on success and 1 on failure
+ * 
+ *      PS:
+ *          On the first load-game-click this function will be called twice.
+ *          One with is_loadbar equal to 1 and another (a bit later) with is_loadbar equal to 0
+ *          After the first load-game-click it'll be called only with is_loadbar equal to 0
+ * 
+ */
+typedef int (*modloader_fOnLoad)(modloader_plugin_t* data, int is_loadbar);
+
+
+
 /* ---- Interface ---- */
 struct modloader_plugin_data
 {
@@ -232,10 +249,13 @@ struct modloader_plugin_data
     /* Those values will be helpful to know if your plugin is compatible with the current version of modloader */
     char major, minor, revision, _pad0;
     
-    void *pThis, *pModule;  /* this and HMODULE, read-only */
-    const char *name, *author, *version;       /* should be set only by the loader, read-only */
-    modloader_t* modloader; /* Modloader pointer, read-only */
-    char checked, _pad1[3];
+    struct  // Data to be set by modloader itself, read-only data for plugins!
+    {
+        void *pThis, *pModule;                      /* this pointer and HMODULE */
+        const char *name, *author, *version;        /* Plugin info */
+        modloader_t* modloader;                     /* Modloader pointer  */
+        char checked, _pad1[3];
+    };
     
     /* Userdata, set it to whatever you want, you probably won't set it to anything */
     void* userdata;
@@ -244,10 +264,17 @@ struct modloader_plugin_data
     const char** extable;
     /* The length of the extension table (@extable) - 0 for no extension ordering */
     size_t extable_len;
+    
     /* The plugin priority, normally this is set outside the plugin in a config file, I don't recommend you to touch this value.
      * Modloader sets this to the default priority "50"; "0" means ignore this plugin.
      */
     int priority;
+    
+    /*
+     *  How much the loader will call modloader.NewChunkLoaded for notifying loadbar changes
+     *  PS: This should be set before or during PosProcess event!
+     */
+    int loadbar_chunks;
     
     /* Callbacks */
     modloader_fGetName          GetName;
@@ -258,6 +285,7 @@ struct modloader_plugin_data
     modloader_fCheckFile        CheckFile;
     modloader_fProcessFile      ProcessFile;
     modloader_fPosProcess       PosProcess;
+    modloader_fOnLoad           OnLoad;
 };
 
 
@@ -280,6 +308,13 @@ typedef void (*modloader_fLog)(const char* logmsg, ...);
  */
 typedef void (*modloader_fError)(const char* errmsg, ...);
 
+/*
+ * NewChunkLoaded
+ *      Tells modloader to increase the loading bar a bit
+ *      PS: You must setup how much you will call it at modloader_plugin_data.loadbar_chunks
+ */
+typedef void (*modloader_fNewChunkLoaded)( );
+
 
 /* ---- Interface ---- */
 struct modloader_data
@@ -291,6 +326,7 @@ struct modloader_data
     
     modloader_fLog              Log;
     modloader_fError            Error;
+    modloader_fNewChunkLoaded   NewChunkLoaded;
 };
 
 

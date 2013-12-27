@@ -40,17 +40,11 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
+        bool OnLoad(bool bOnBar);
         
         const char** GetExtensionTable();
         
         void ProcessReadmeFile(const char* filename);
-        void ProcessReadmeFiles()
-        {
-            for(auto& readme : this->readme)
-            {
-                ProcessReadmeFile(readme.c_str());
-            }
-        }
         
 };
 

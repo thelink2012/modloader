@@ -366,9 +366,8 @@ CFileMixer<at_address, T> make_file_mixer(T& fs)
  *  Hooks everything needed
  */
 bool CThePlugin::PosProcess()
-{
-    // Process readme files before anything else!
-    this->ProcessReadmeFiles();
+{    
+    this->SetChunks(readme.size());
     
     // Hook things
     {
@@ -391,3 +390,18 @@ bool CThePlugin::PosProcess()
     
     return true;
 }
+
+bool CThePlugin::OnLoad(bool bOnBar)
+{
+    if(bOnBar)
+    {
+        // Process readme files
+        for(auto& readme : this->readme)
+        {
+            ProcessReadmeFile(readme.c_str());
+            this->NewChunkLoaded();
+        }
+    }
+    return true;
+}
+

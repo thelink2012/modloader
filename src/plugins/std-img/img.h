@@ -25,6 +25,8 @@
 
 using namespace modloader;
 
+extern class CThePlugin* imgPlugin;
+extern void ApplyPatches();
 
 /* Gets the file size from filename */
 inline __int64 GetFileSize(const char* filename)
@@ -123,6 +125,8 @@ class CThePlugin : public modloader::CPlugin
                         x.second.Process();
                         if(x.second.fileHash && x.second.fileHash != -1)
                             imgFilesSorted[x.second.fileHash] = &x.second;
+                        
+                        imgPlugin->NewChunkLoaded();
                     }
                 }
             }
@@ -170,7 +174,8 @@ class CThePlugin : public modloader::CPlugin
         bool OnShutdown();
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
-        bool PosProcess();
+        //bool PosProcess();
+        bool OnLoad(bool);
         const char** GetExtensionTable();
         
         
@@ -182,8 +187,7 @@ class CThePlugin : public modloader::CPlugin
  
 };
 
-extern CThePlugin* imgPlugin;
-extern void ApplyPatches();
+
 
 #endif
 

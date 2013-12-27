@@ -6,8 +6,9 @@
  *      Loads all compatible files with imgs (on game request),
  *      it loads directly from disk not by creating a cache or virtual img.
  * 
- *  TODO: This plugin needs rewriting,
+ *  TODO: This plugin (all files from std-img) needs rewriting,
  *        yeah, it works fine, but it looks like a prototype (and it is!) that works fine.
+ *        I mean seriosly, my eyes hurts when I read this plugin code.
  * 
  */
 #include "img.h"
@@ -17,6 +18,8 @@
 using namespace modloader;
 
 extern const char* noImgName;
+
+extern "C" void ImportObject(int index, CThePlugin::FileInfo& file);
 
 /*
  *  The plugin object
@@ -145,18 +148,32 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 
 
 /*
- * Called after all files have been processed
+ * Called on the loading bar
  */
-bool CThePlugin::PosProcess()
+bool CThePlugin::OnLoad(bool bIsBar)
 {
-    // Process img contents
-    mainContent.Process();
-    for(auto& x : this->imgFiles) x.Process();
-    
-    // Replace ped.ifp
-    if(!this->pedIfp.empty())
-        WriteMemory<const char*>(0x4D563D+1, this->pedIfp.data(), true);
-    
+    if(bIsBar)
+    {
+        // Process img contents
+        mainContent.Process();
+        for(auto& x : this->imgFiles)
+        {
+            x.Process();
+        }
+            
+        // Replace ped.ifp
+        if(!this->pedIfp.empty())
+            WriteMemory<const char*>(0x4D563D+1, this->pedIfp.data(), true);
+    }
+    else
+    {
+        // Reload all imported models info
+        for(auto& import : this->importList)
+        {
+            import.second->Process();
+            ImportObject(import.first, *import.second);
+        }
+    }
     return true;
 }
 
@@ -170,8 +187,12 @@ void CThePlugin::AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const cha
     const char* xname = filename2? filename2 : file.filename;   
     if(!filename2) filename2 = "";
     
-    //
-    auto& f = img.imgFiles[xname];
+    // Add item to imgFiles
+    auto pair = img.imgFiles.emplace(xname, FileInfo());
+    //if(pair.second) this->AddChunks(); // If this item is new in the map, add chunk (TOO SLOW)
+    
+    // Register replacement
+    auto& f = pair.first->second;
     if(RegisterReplacementFile(*this, xname, f.path, (GetFilePath(file) + filename2).c_str()))
     {
         f.name = xname;

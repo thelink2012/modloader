@@ -271,6 +271,7 @@ namespace modloader
             
             std::string gamePath;       // full game path
             std::string cachePath;      // cache path
+            std::string pluginsPath;    // plugins path
             
             // unique ids
             unsigned int currentModId;
@@ -286,6 +287,8 @@ namespace modloader
             /* Logging management */
             void OpenLog();
             void CloseLog();
+            
+            void SetupLoadbarChunks();
             
             /* Plugin management methods */
             void LoadPlugins();                     // Loads plugins from plugins folder
@@ -308,6 +311,7 @@ namespace modloader
             void HandleFiles();                     // Handles all the files with their respective plugins
             bool HandleFile(FileInfo& file);        // Handle file with it's respective plugin
             void PosProcess();                      // Pos process all the plugins
+            void DoLoadCall(bool isLoadBar);
 
             /* INI Config */
             void ReadBasicConfig(const char* filename);
@@ -353,7 +357,9 @@ namespace modloader
             void Patch();       // Patches the game, so it will be "aware" about modloader
             bool Startup();     // Startups modloader
             bool Shutdown();    // Shutdowns modloader
-            
+
+            void OnLoadBar();   // Called when the loadbars gets started
+            void OnReload();    // Called when the users loads a game (first time or not)
     };
 
 }

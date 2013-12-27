@@ -23,6 +23,7 @@
 #include "GameInfo.h"
 #include "CModLoader.hpp"
 #include "modloader_util.hpp"
+#include "modloader_util_injector.hpp"
 
 #if 0 && !defined(NDEBUG)
 #define LOGFILE_AS_STDOUT
@@ -276,6 +277,7 @@ namespace modloader
             this->loader.pluginspath = this->pluginsPath.c_str();
             this->loader.Log   = &Log;
             this->loader.Error = &Error;
+            this->loader.NewChunkLoaded = memory_pointer(0x590D00).get();
             
             
             // Do init
@@ -285,6 +287,7 @@ namespace modloader
             this->PerformSearch();      // Search for mods at /modloader, but do not install them yet
             this->HandleFiles();        // Install mods found on search above
             this->PosProcess();         // After mods are installed, notify all plugins, they may want to do some pos processing
+            this->SetupLoadbarChunks(); // Setups how much the game loading bar should go forward
             this->ClearFilesData();     // Clear files data (such as paths) freeing memory
             
             Log("\nGame is ready!\n");
@@ -373,6 +376,8 @@ namespace modloader
         gameInfo.DelayedDetect([](GameInfo& info)
         {
             // Shit, we still don't support a delayed style of detection, how to handle it? Help me!
+            // That's because we'll hook WinMain, a function that gets called by the game,
+            // and delayed detecting means we are in a different thread than the game's thread
             if(info.IsDelayed())
                 Error("Modloader does not support this executable version [DELAYED_DETECT_ERROR]");
             //--
@@ -382,7 +387,26 @@ namespace modloader
                 Error("Modloader still do not support game versions other than HOODLUM GTA SA 1.0 US");
             else
             {
+                /* Hook WinMain (it can't be hooked with make_function_hook because it's STDCALL) */
                 WinMainPtr = (WinMain_t) MakeCALL(WinMainIsCalledAt = (void*)(0x8246EC), (void*) WinMain).p;
+                
+                typedef function_hooker<0x53E58E, void(const char*)>    loadbar_hook;
+                typedef function_hooker<0x53C6DB, void(void)>           onreload_hook;
+                
+                /* Hook CGame::Initialise to notify about load bar being started */
+                make_function_hook<loadbar_hook>([](loadbar_hook::func_type func, const char*& gtadat)
+                {
+                    ::loader.OnLoadBar();
+                    return func(gtadat);
+                });
+                
+                /* Hook CGame::ReInitObjectVariables to notify a loadgame */
+                make_function_hook<onreload_hook>([](onreload_hook::func_type func)
+                {
+                    ::loader.OnReload();
+                    return func();
+                });
+                
             }
             
         }, true);
@@ -1017,10 +1041,62 @@ namespace modloader
         for(auto& plugin : this->plugins)
         {
             Log("Pos processing plugin \"%s\"", plugin.name);
-            if(plugin.PosProcess(&plugin))
+            if(plugin.PosProcess && plugin.PosProcess(&plugin))
                 Log("Plugin \"%s\" failed to pos process", plugin.name);
         }
     }
 
+    /*
+     * CModLoader::OnLoadBar
+     *      Call all 'plugin.OnLoad' methods with is_loadbar=true
+     */  
+    void CModLoader::OnLoadBar()
+    {
+        return this->DoLoadCall(true);
+    }
+    
+    /*
+     * CModLoader::OnReload
+     *      Call all 'plugin.OnLoad' methods with is_loadbar=false
+     */  
+    void CModLoader::OnReload()
+    {
+        return this->DoLoadCall(false);
+    }
+    
+    /*
+     * CModLoader::DoLoadCall
+     *      Called to notify plugins about OnLoad event
+     */  
+    void CModLoader::DoLoadCall(bool isLoadbar)
+    {
+        scoped_chdir xdir(this->gamePath.c_str());
+
+        Log(isLoadbar? "Loading time..." : "Reload time...");
+        for(auto& plugin : this->plugins)
+        {
+            if(plugin.OnLoad && plugin.OnLoad(&plugin, isLoadbar))
+                ;
+        }
+    }
+    
+    /*
+     *  CModLoader::SetupLoadbarChunks
+     *      Setup load bar count
+     */
+    void CModLoader::SetupLoadbarChunks()
+    {
+        // Get original number of chunks...
+        int totalChunks = ReadMemory<int>(0x590D67 + 1, true);
+        
+        // ...and add by the chunk count of each plugin
+        for(auto& plugin : this->plugins)
+            totalChunks += plugin.loadbar_chunks;
+        
+        // Patch it
+        WriteMemory<int>(0x590D67 + 1, totalChunks, true);
+        WriteMemory<int>(0x590D2A + 1, totalChunks, true);
+    }
+    
 }
 

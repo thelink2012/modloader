@@ -48,34 +48,60 @@
             this table will be used for optimization purposes.
             You can return a null pointer for no extension.
             
+            
         [optional] bool OnStartup()
             This is called when your plugin gets started up.
             Return true for success and false for failure.
             If you return failure, your plugin will be unloaded immediately.
+            
             When this event is triggered the working directory is the plugins folder
+        
         
         [optional] bool OnShutdown()
             This is called when your plugin gets shutdown.
             Return true for success and false for failure.
+           
             When this event is triggered the working directory is the plugins folder
+            
             
         bool CheckFile(const ModLoaderFile& file)
             Checks if the file should be handled by this plugin.
             Return true for yes and false for no.
             Please don't process anything here and don't assume files you return yes will reach the next stage.
+            
             When this event is triggered the working directory is the mod folder that file belongs to
+            
             
         bool ProcessFile(const ModLoaderFile& file)
             Processes a file you returned yes on CheckFile
             Return true if the file has been processed successfully or false otherwise.
+            
             When this event is triggered the working directory is the mod folder that file belongs to
         
-        bool PosProcess()
+        
+        [optional] bool PosProcess()
             This is called when all files from all mods have been processed.
             Return true for success and false for failure.
             Here is probably where you will install hooks on the game.
-            When this event is triggered the working directory is the mod folder that file belongs to
+            
+            When this event is triggered the working directory is the main game folder.
         
+
+        [optional] bool OnLoad(bool isLoadBar)
+            This is called either when the game enters in the loading screen (with the loading bar, etc)
+            or when the game gets reloaded (using New Game/Load Game).
+            
+            Please note on the first time the game loads, this event is called twice.
+            The first time with isLoadBar=true and the second time (a little bit later) with isLoadBar=false.
+            Then the next calls to it will all be with isLoadBar=false.
+
+            Here's probably where you will do your time consuming tasks.
+            In conjunction with the functions SetChunks and NewChunkLoaded you can
+            make the loading bar move according to your processing progress.
+
+            When this event is triggered the working directory is the main game folder.
+
+
 
 ---------> Exporting your derived object
         
@@ -137,6 +163,22 @@
                 You may not ever use it, but it's there.
                 It's prototype is similar to the Log function.
                 
+
+        There's also methods to control the loading bar during the OnLoad event:
+        
+            void SetChunks(int num)
+                Sets the number of times you'll call NewChunkLoaded to notify processing updates.
+                Please note this must be called before or during PosProcess event, otherwise it will be a bug.
+                
+            void AddChunks(int increaseBy = 1)
+                Exactly the same as above, except you'll add to the number of times you'll call NewChunkLoaded
+                
+            void NewChunkLoaded()
+                Call this during OnLoad(true) to increase the loading bar progress.
+                Please note that calling this too much may cause the game to load slow.
+
+             
+
 
 ---------> Utility headers
 

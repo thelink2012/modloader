@@ -24,13 +24,50 @@ namespace modloader
     // Base class for the plugin interface
     class CPlugin
     {
+        private:
+            friend struct CPluginCallbacks;
+            
+            int nChunks;
+            int nChunksLoaded;
+            
+            // This is called after the OnLoad to make sure nChunksLoaded == nChunks
+            void MakeSureChunksHaveBeenLoaded()
+            {
+                while(this->nChunksLoaded < this->nChunks)
+                {
+                    this->NewChunkLoaded();
+                }
+            }
+
         public:
                 // The loader data
-                modloader_plugin_data*  data;
-                modloader_data*         modloader;
-                modloader_fLog          Log;
-                modloader_fError        Error;
-            
+                modloader_plugin_data*      data;
+                modloader_data*             modloader;
+                modloader_fLog              Log;
+                modloader_fError            Error;
+                
+                // Call this to set the number of chunks this plugin got
+                void SetChunks(int num)
+                {
+                    nChunks = num;
+                }
+                
+                // Call this to increase the number of chunks this plugin got
+                void AddChunks(int increaseBy = 1)
+                {
+                    nChunks += increaseBy;
+                }
+                
+                // Safe wrapper around modloader->NewChunkLoaded
+                void NewChunkLoaded()
+                {
+                    if(nChunksLoaded < nChunks)
+                    {
+                        ++nChunksLoaded;
+                        modloader->NewChunkLoaded();
+                    }
+                }
+                
                 // Checkout modloader.h or "doc/Creating Your Own Plugin.txt" for details on those callbacks
                 virtual const char* GetName()=0;
                 virtual const char* GetAuthor()=0;
@@ -39,10 +76,14 @@ namespace modloader
                 virtual bool OnShutdown() { return true; }              /* default */
                 virtual bool CheckFile(ModLoaderFile& file)=0;
                 virtual bool ProcessFile(const ModLoaderFile& file)=0;
-                virtual bool PosProcess()=0;
+                virtual bool PosProcess() { return true; }              /* default */
+                virtual bool OnLoad(bool isLoadBar) { return true; }   /* default */
                 
                 /* Returns the favorable file extensions for this plugin */
                 virtual const char** GetExtensionTable() { return nullptr; }
+                
+                CPlugin() : nChunks(0), nChunksLoaded(0)
+                {}
     };
     
     // Callbacks wrapper
@@ -90,7 +131,19 @@ namespace modloader
         
         static int PosProcess(modloader_plugin_t* data)
         {
-            return !GetThis(data)->PosProcess();
+            int result = !GetThis(data)->PosProcess();
+            data->loadbar_chunks = GetThis(data)->nChunks;
+            return result;
+        }
+        
+        static int OnLoad(modloader_plugin_t* data, int isLoadBar)
+        {
+            int result = !GetThis(data)->OnLoad(isLoadBar);
+            if(isLoadBar)
+            {
+                GetThis(data)->MakeSureChunksHaveBeenLoaded();
+            }
+            return result;
         }
     };
 
@@ -115,6 +168,7 @@ namespace modloader
         data->CheckFile = &CPluginCallbacks::CheckFile;
         data->ProcessFile = &CPluginCallbacks::ProcessFile;
         data->PosProcess = &CPluginCallbacks::PosProcess;
+        data->OnLoad = &CPluginCallbacks::OnLoad;
         
         // Custom priority
         if(priority != -1) data->priority = priority;

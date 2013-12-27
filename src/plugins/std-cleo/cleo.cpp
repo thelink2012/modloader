@@ -33,6 +33,7 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
+        bool OnLoad(bool isBar);
         
         const char** GetExtensionTable();
 
@@ -129,7 +130,7 @@ class CThePlugin : public modloader::CPlugin
         char cacheDirPath[MAX_PATH];
         char cacheFilePath[MAX_PATH];
         char cacheCleoPath[MAX_PATH];
-        
+
         bool StartCacheFile();
         bool FinishCacheFile(bool bIsStartup = false);
         
@@ -196,18 +197,18 @@ const char** CThePlugin::GetExtensionTable()
  */
 bool CThePlugin::OnStartup()
 {
-    scoped_chdir(this->modloader->gamepath);
+    scoped_chdir xdir(this->modloader->gamepath);
     
     /* Setup vars */
     sprintf(cacheDirPath, "%s%s", this->modloader->cachepath, "std-cleo\\");
     sprintf(cacheFilePath, "%s%s", cacheDirPath, "cache.bin");
     sprintf(cacheCleoPath, "%s%s", cacheDirPath, "CLEO\\");
-    bHaveCLEO     = DoesHaveCLEO();
 
-    CreateImportantFolders();
-    
-    if(bHaveCLEO)
+    if(bHaveCLEO = DoesHaveCLEO())
     {
+        //
+        CreateImportantFolders();
+        
         /* Finish the cache if it still exist, probably because an abnormal termination of the game */
         FinishCacheFile(true);
     }
@@ -221,7 +222,7 @@ bool CThePlugin::OnShutdown()
 {
     if(bHaveCLEO)
     {
-        scoped_chdir(this->modloader->gamepath);
+        scoped_chdir xdir(this->modloader->gamepath);
         FinishCacheFile();
     }
     return true;
@@ -285,7 +286,25 @@ bool CThePlugin::PosProcess()
 {
     if(bHaveCLEO)
     {
-        return StartCacheFile();
+        if(false)   // Do it at OnLoad event
+        {
+            return StartCacheFile();
+        }
+        else
+        {
+            // One time for finishing and another for starting the cachefile
+            this->SetChunks(this->files.size());
+        }
+    }
+    
+    return true;
+}
+
+bool CThePlugin::OnLoad(bool isBar)
+{
+    if(isBar)
+    {
+        this->StartCacheFile();
     }
     return true;
 }
@@ -323,6 +342,8 @@ bool CThePlugin::StartCacheFile()
         /* For each file, write to the cache it's information */
         else for(auto& file : this->files)
         {
+            this->NewChunkLoaded();
+            
             if(file.flags.bIsDir)
             {
                 /* Just make sure we have that directory created */
@@ -402,7 +423,7 @@ bool CThePlugin::FinishCacheFile(bool bIsStartup)
         if(bIsStartup)
             Log("Nothing to finish");
         else
-            Log("Failed to open cache file for reading (%s)", cacheFilePath);
+            Log("Failed to open cache file for reading: %s", cacheFilePath);
         return false;
     }
     
