@@ -75,10 +75,13 @@ bool CThePlugin::OnShutdown()
  */
 bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
-    if(!strcmp(file.filename, "salimits.ini", false))
-        return true;
-    else if(!strcmp(file.filename, "salimits.sala", false))
-        return true;
+    if(!file.is_dir)
+    {
+        if(!strcmp(file.filename, "salimits.ini", false))
+            return true;
+        else if(!strcmp(file.filename, "salimits.sala", false))
+            return true;
+    }
     return false;
 }
 

@@ -19,6 +19,7 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
+        bool OnLoad(bool bIsBar);
         
         const char** GetExtensionTable();
 
