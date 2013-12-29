@@ -33,7 +33,7 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
-        bool OnLoad(bool isBar);
+        bool OnLoad();
         
         const char** GetExtensionTable();
 
@@ -301,12 +301,12 @@ bool CThePlugin::PosProcess()
     return true;
 }
 
-bool CThePlugin::OnLoad(bool isBar)
+/*
+ *  Called on the loading screen 
+ */
+bool CThePlugin::OnLoad()
 {
-    if(isBar)
-    {
-        this->StartCacheFile();
-    }
+    this->StartCacheFile();
     return true;
 }
 

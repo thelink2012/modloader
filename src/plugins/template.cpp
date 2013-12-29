@@ -14,12 +14,17 @@ class CThePlugin : public modloader::CPlugin
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
+        
         bool OnStartup();
         bool OnShutdown();
+        
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
-        bool OnLoad(bool bIsBar);
+        
+        bool OnSplash();
+        bool OnLoad();
+        bool OnReload();
         
         const char** GetExtensionTable();
 

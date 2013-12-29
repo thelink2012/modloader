@@ -4,8 +4,9 @@
  * 
  *  IPL Parser and Builder
  *  This code is not in the header because it's kinda huge and the header is already huge
+ *  Also the IPL parsing is a bit more complex than the usual.
+ * 
  */
-#include "data.h"
 #include "data/ipl.h"
 #include <functional>
 #include <modloader_util_container.hpp>
@@ -184,7 +185,8 @@ bool TraitsIPL::Parser(const char* filename, container_type& map, bool isDefault
                     {
                         data.obj.lod = -1;
                         data.has_lod = false;
-                        dataPlugin->Log("Warning: LOD at index %d being used two or more times at scene file \"%s\"",
+                        
+                        Log("Warning: LOD at index %d being used two or more times at scene file \"%s\"",
                                         obj.lod, filename);
                     }
                     else

@@ -29,6 +29,7 @@ class ordered_map//_temp
         typedef std::list<value_type>           container_type;
 
         typedef typename container_type::iterator        iterator;
+        typedef typename container_type::const_iterator  const_iterator;
         
         container_type list;
   
@@ -48,11 +49,21 @@ class ordered_map//_temp
                 return this->CompareKey(pair.first, k);
             });
         }
+
+        std::pair<iterator, bool> insert(iterator position, const value_type& val)
+        {
+            auto it = this->find(val.first);
+            if(it == this->end())
+            {
+                return std::pair<iterator, bool>(list.emplace(position, val.first, val.second), true);
+            }
+            return std::pair<iterator, bool>(it, false);
+        }
         
         mapped_type& operator[](const key_type& k)
         {
-            auto it = find(k);
-            if(it == end())
+            auto it = this->find(k);
+            if(it == this->end())
             {
                 list.emplace_back(k, mapped_type());
                 return list.back().second;

@@ -78,6 +78,7 @@ namespace modloader
                 modloader_plugin_data*      data;
                 modloader_data*             modloader;
                 modloader_fLog              Log;
+                modloader_fvLog             vLog;
                 modloader_fError            Error;
                 
                 // Limits the number of times to call the real NewChunkLoaded
@@ -115,12 +116,14 @@ namespace modloader
                 virtual const char* GetName()=0;
                 virtual const char* GetAuthor()=0;
                 virtual const char* GetVersion()=0;
-                virtual bool OnStartup() { return true; }               /* default */
-                virtual bool OnShutdown() { return true; }              /* default */
+                virtual bool OnStartup()    { return true; }
+                virtual bool OnShutdown()   { return true; }
                 virtual bool CheckFile(ModLoaderFile& file)=0;
                 virtual bool ProcessFile(const ModLoaderFile& file)=0;
-                virtual bool PosProcess() { return true; }              /* default */
-                virtual bool OnLoad(bool isLoadBar) { return true; }   /* default */
+                virtual bool PosProcess()   { return true; }
+                virtual bool OnSplash()     { return true; }
+                virtual bool OnLoad()       { return true; }
+                virtual bool OnReload()     { return true; }
                 
                 /* Returns the favorable file extensions for this plugin */
                 virtual const char** GetExtensionTable() { return nullptr; }
@@ -180,15 +183,23 @@ namespace modloader
             return result;
         }
         
-        static int OnLoad(modloader_plugin_t* data, int isLoadBar)
+        static int OnSplash(modloader_plugin_t* data)
         {
-            int result = !GetThis(data)->OnLoad(isLoadBar);
-            if(isLoadBar)
-            {
-                GetThis(data)->MakeSureChunksHaveBeenLoaded();
-            }
+            return !GetThis(data)->OnSplash();
+        }
+        
+        static int OnLoad(modloader_plugin_t* data)
+        {
+            int result = !GetThis(data)->OnLoad();
+            GetThis(data)->MakeSureChunksHaveBeenLoaded();
             return result;
         }
+        
+        static int OnReload(modloader_plugin_t* data)
+        {
+            return !GetThis(data)->OnReload();
+        }
+        
     };
 
     // Attaches the 'interface' with the plugin 'data'
@@ -212,7 +223,9 @@ namespace modloader
         data->CheckFile = &CPluginCallbacks::CheckFile;
         data->ProcessFile = &CPluginCallbacks::ProcessFile;
         data->PosProcess = &CPluginCallbacks::PosProcess;
+        data->OnSplash = &CPluginCallbacks::OnSplash;
         data->OnLoad = &CPluginCallbacks::OnLoad;
+        data->OnReload = &CPluginCallbacks::OnReload;
         
         // Custom priority
         if(priority != -1) data->priority = priority;
@@ -233,6 +246,7 @@ namespace modloader
         interfc.modloader = data->modloader;
         interfc.Error     = interfc.modloader->Error;
         interfc.Log       = interfc.modloader->Log;
+        interfc.vLog      = interfc.modloader->vLog;
     }
     
 };

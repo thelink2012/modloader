@@ -7,6 +7,7 @@
  *
  */
 #include "data.h"
+#include "readme.hpp"
 #include "Injector.h"
 #include <modloader_util_injector.hpp>    // Must be included after Injector.h
 #include <type_traits>
@@ -120,7 +121,8 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     
     if(IsFileExtension(file.filext, "txt"))
     {
-        readme.emplace_back(GetFilePath(file));
+        // Put in the front of the container, so the modloader overriding rule applies
+        readme.emplace_front(GetFilePath(file));
     }
     if(IsFileExtension(file.filext, "dat"))
     {
@@ -135,7 +137,10 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     else if(IsFileExtension(file.filext, "cfg"))
     {
         if(!strcmp(filename, "handling.cfg", false))
+        {
             traits.handling.AddFile(file, "data/handling.cfg");
+            return true;
+        }
     }
     else if(IsFileExtension(file.filext, "ide"))
     {
@@ -229,13 +234,14 @@ static std::string BuildDataFile(const char* defaultFile, CDataFS<T>& fs, DomFla
     /* If there's two members and one is default and the other isn't ... */
     if(list.size() == 2 && list.front().isDefault && !list.back().isDefault)
     {
-        /* And it's domflag says to delete entries from default file if doesn't exist in custom file... */
+        // And it's domflag says to delete entries from default file if doesn't exist in custom file...
         int flags = GetDomFlags(T::domflags());
         if((flags & flag_RemoveIfNotExistInAnyCustom)
         || (flags & flag_RemoveIfNotExistInOneCustomButInDefault))
         {
-            /* ... then just return th custom file */
-            return list.back().path;
+            // Let's see if the custom file doesn't point to the same place as the default file
+            if(NormalizePath(list.front().path) != NormalizePath(list.back().path))
+                return list.back().path;    // Then just return the custom file
         }
     }
     
@@ -367,42 +373,68 @@ CFileMixer<at_address, T> make_file_mixer(T& fs)
  */
 bool CThePlugin::PosProcess()
 {    
-    this->SetChunks(readme.size());
-    this->SetChunkLimiter();
+    //this->SetChunks(readme.size());
+    //this->SetChunkLimiter();
     
     // Hook things
     {
-        //WriteMemory<const char*>(0x5BD838 + 1, "", true);   // Disable chdir("DATA") for handling.cfg
-        //WriteMemory<const char*>(0x5BD84B + 1, "data/handling.cfg", true);  // Change handling.cfg string
+        WriteMemory<const char*>(0x5BD838 + 1, "", true);   // Disable chdir("DATA") for handling.cfg
+        WriteMemory<const char*>(0x5BD84B + 1, "data/handling.cfg", true);  // Change handling.cfg string
         
         make_file_mixer<0x5B8428>(traits.ide);
         make_file_mixer<0x5B871A>(traits.ipl);
         make_file_mixer<0x5B905E>(traits.gta);
-        //make_file_mixer<0x5BD850>(traits.handling);
-        
+        make_file_mixer<0x5BD850>(traits.handling);
     }
     
     // Ignore when files couldn't get open
     if(false)
     {
-        OpenFixer<0x5B8428>();  // For IDE files
-        OpenFixer<0x5B871A>();  // For IPL files
+        OpenAlways<0x5B8428>();  // For IDE files
+        OpenAlways<0x5B871A>();  // For IPL files
     }
     
+
+
     return true;
 }
 
-bool CThePlugin::OnLoad(bool bOnBar)
+/*
+ *  Called on the splash screen 
+ */
+bool CThePlugin::OnSplash()
 {
-    if(bOnBar)
+    // Read the readme files
+    if(true)
     {
-        // Process readme files
+        auto tpair = std::make_tuple(
+                        std::make_pair(std::ref(traits.gta), "data/gta.dat"),
+                        std::make_pair(std::ref(traits.ide), "data/vehicles.ide"),
+                        std::make_pair(std::ref(traits.handling), "data/handling.cfg")
+                    );
+        
+        // Read readme files and detect lines that are interesting for us
         for(auto& readme : this->readme)
         {
-            ProcessReadmeFile(readme.c_str());
-            this->NewChunkLoaded();
+            ReadmeReader reader;
+            reader(readme.c_str(),  tpair);
         }
+        
+        // Allow data finalization in handling traits (we're done with readme files)
+        TraitsHandling::CanFinalizeData() = true;
     }
     return true;
+}
+
+
+
+
+/////////
+
+void Log(const char* msg, ...)
+{
+    va_list va; va_start(va, msg);
+    plugin.vLog(msg, va);
+    va_end(va);
 }
 

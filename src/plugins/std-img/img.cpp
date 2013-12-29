@@ -151,32 +151,38 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 /*
  * Called on the loading bar
  */
-bool CThePlugin::OnLoad(bool bIsBar)
+bool CThePlugin::OnLoad()
 {
-    if(bIsBar)
+    // Process img contents
+    mainContent.Process();
+    for(auto& x : this->imgFiles)
     {
-        // Process img contents
-        mainContent.Process();
-        for(auto& x : this->imgFiles)
-        {
-            x.Process();
-        }
-            
-        // Replace ped.ifp
-        if(!this->pedIfp.empty())
-            WriteMemory<const char*>(0x4D563D+1, this->pedIfp.data(), true);
+        x.Process();
     }
-    else
+            
+    // Replace ped.ifp
+    if(!this->pedIfp.empty())
+        WriteMemory<const char*>(0x4D563D+1, this->pedIfp.data(), true);
+
+    return true;
+}
+
+/*
+ * Called when the user loads a new game
+ */
+bool CThePlugin::OnReload()
+{
+    // Reload all imported models info
+    for(auto& import : this->importList)
     {
-        // Reload all imported models info
-        for(auto& import : this->importList)
-        {
-            import.second->Process();
-            ImportObject(import.first, *import.second);
-        }
+        import.second->Process();
+        ImportObject(import.first, *import.second);
     }
     return true;
 }
+
+
+
 
 /*
  *  Adds a new file into the img 'img'
@@ -246,9 +252,13 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
         WriteMemory<const char*>(mem, buf.data(), true);
     };
 
-    /* Push new img item into container and setup it */
-    this->imgFiles.emplace_back(file);
-    auto& img = this->imgFiles.back();
+    /* Push new img item into container and setup it
+     * (Must push front to apply the modloader overriding rule) */
+    std::string filepath = GetFilePath(file);
+    this->imgFiles.emplace_front(file);
+    auto& img = this->imgFiles.front();
+    
+    Log("Pushing img file to front of the query: %s", filepath.c_str());
     
     /* Bufs */
     static std::string gta3, gta_int, player, cuts;
@@ -263,7 +273,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
     {
         if(!strcmp(file.filename, "gta3.img", false))
         {
-            if(!RegisterImgPath(gta3, GetFilePath(file).c_str(), "gta3.img")) return false;
+            if(!RegisterImgPath(gta3, filepath.c_str(), "gta3.img")) return false;
 
             img.isOriginal = true;
             ReplaceAddr(0x408430 + 1, gta3);
@@ -272,7 +282,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
         }
         else if(!strcmp(file.filename, "gta_int.img", false))
         {
-            if(!RegisterImgPath(gta_int, GetFilePath(file).c_str(), "gta_int.img")) return false;
+            if(!RegisterImgPath(gta_int, filepath.c_str(), "gta_int.img")) return false;
             
             img.isOriginal = true;
             ReplaceAddr(0x40846E + 1, gta_int);
@@ -280,7 +290,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
         }
         else if(!strcmp(file.filename, "player.img", false))
         {
-            if(!RegisterImgPath(player, GetFilePath(file).c_str(), "player.img")) return false;
+            if(!RegisterImgPath(player, filepath.c_str(), "player.img")) return false;
             
             img.isOriginal = true;
             ReplaceAddr(0x5A41A4 + 1, player);
@@ -292,7 +302,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
     { 
         if(!strcmp(file.filename, "cuts.img", false))
         {
-            if(!RegisterImgPath(cuts, GetFilePath(file).c_str(), "cuts.img")) return false;
+            if(!RegisterImgPath(cuts, filepath.c_str(), "cuts.img")) return false;
             
             img.isOriginal = true;
             ReplaceAddr(0x4D5EB9 + 1, cuts);
@@ -313,7 +323,7 @@ bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
              char* gta3Path   = ReadMemory<char*>(0x40844C + 1, true);
              char* gtaIntPath = ReadMemory<char*>(0x40848C + 1, true);;
 
-             imgPlugin->Log("Overridden gta3 img: %s\nOverridden gta_int img: %s", gta3Path, gtaIntPath);
+             imgPlugin->Log("Opening gta3 img: %s\nOpening gta_int img: %s", gta3Path, gtaIntPath);
 
              *gta3ImgDescriptorNum = CStreaming__OpenImgFile(gta3Path, true);
              *gtaIntImgDescriptorNum = CStreaming__OpenImgFile(gtaIntPath, true);

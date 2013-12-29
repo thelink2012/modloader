@@ -8,9 +8,7 @@
 #ifndef TRAITS_H
 #define	TRAITS_H
 
-#include <DataTraits.hpp>
-using namespace DataTraitsNamespace;
-
+#include <algorithm>
 #include <string>
 #include <cstdint>
 #include <modloader_util_hash.hpp>
@@ -18,6 +16,9 @@ using namespace DataTraitsNamespace;
 using modloader::SectionInfo;
 using modloader::ScanConfigLine;
 using modloader::PrintConfigLine;
+
+#include <DataTraits.hpp>
+using namespace DataTraitsNamespace;
 
 
 /* Base trait for our purposes... we need to have a path */
@@ -28,6 +29,7 @@ struct DataTraitsBase : public DataTraits<ContainerType>
     typedef typename DataTraits<ContainerType>::pair_ref_type   pair_ref_type;
     
     std::string path;
+
     
     /*
      *  The child must implement the following:
@@ -414,6 +416,10 @@ namespace data
 #define OPI(item, op)   (a.item op b.item)
 #define EQ(item)        OPI(item, ==)
 #define LE(item)        OPI(item, <)
+#define EQ_ARRAY(item)  (std::equal(std::begin(a.item), std::end(a.item), std::begin(b.item)))
+
+
+extern void Log(const char* msg, ...);
 
 
 #endif	/* TRAITS_H */

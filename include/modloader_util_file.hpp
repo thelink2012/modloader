@@ -23,7 +23,7 @@
 
 namespace modloader
 {
-    static const size_t MaxLineSize = 512;
+    static const size_t MaxLineSize = 2048;
     
     /*
      *  ReadEntireFile

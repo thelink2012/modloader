@@ -40,12 +40,9 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
-        bool OnLoad(bool bOnBar);
+        bool OnSplash();
         
         const char** GetExtensionTable();
-        
-        void ProcessReadmeFile(const char* filename);
-        
 };
 
 
@@ -120,13 +117,24 @@ class CDataFS
             /* Get space in the list */
             if(isDefault)
             {
+                // Default traits must be at the front of the list
                 l.emplace_front();
                 p = &l.front();
             }
             else
             {
-                l.emplace_back();
-                p = &l.back();
+                // Custom traits must after the default traits
+                // And following the modloader override rule, put the new trait before the other traits
+                
+                // Find position to insert the new trait
+                typename TraitsList::iterator ipos;
+                for(ipos = l.begin(); ipos != l.end(); ++ipos)
+                {
+                    if(ipos->isDefault == false) break;
+                }
+                
+                // Push the new trait at the desired position and get it's pointer
+                p = &(*l.emplace(ipos));
             }
             
             /* Assign information and return */
@@ -182,6 +190,10 @@ class CDataFS
             return files.size();
         }
         
+        /*
+         *  Returns the reference to the additional data object
+         *  Additional data objects are usually used to store readme files data
+         */
         DataTraitsType& Additional(const char* fsPath = nullptr)
         {
             if(fsPath == nullptr && bAdditional == false)
@@ -195,6 +207,15 @@ class CDataFS
                 bAdditional = true;
             }
             return *additional;
+        }
+        
+        /*
+         *  Returns whether there's a additional data object created
+         *  This is true when any readme file contains data for this trait type
+         */
+        bool HasAddditional()
+        {
+            return bAdditional;
         }
         
 };

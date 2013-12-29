@@ -37,6 +37,23 @@ namespace modloader
     static FILE* logfile = 0;
     static bool bImmediateFlush = true;     // Flushes the logfile everything something is written to it
     
+    
+    /*
+     * vLog
+     *      Logs something into the log file 'logfile'
+     *      @msg: (Format) Message to log
+     *      @va: Additional args to format in va_list
+     */
+    void vLog(const char* msg, va_list va)
+    {
+        if(logfile)
+        {
+            vfprintf(logfile, msg, va);
+            fputc('\n', logfile);
+            if(bImmediateFlush) fflush(logfile);
+        }
+    }
+    
     /*
      * Log
      *      Logs something into the log file 'logfile'
@@ -48,9 +65,7 @@ namespace modloader
         if(logfile)
         {
             va_list va; va_start(va, msg);
-            vfprintf(logfile, msg, va);
-            fputc('\n', logfile);
-            if(bImmediateFlush) fflush(logfile);
+            vLog(msg, va);
             va_end(va);
         }
     }
@@ -276,6 +291,7 @@ namespace modloader
             this->loader.cachepath = this->cachePath.c_str();
             this->loader.pluginspath = this->pluginsPath.c_str();
             this->loader.Log   = &Log;
+            this->loader.vLog  = &vLog;
             this->loader.Error = &Error;
             this->loader.NewChunkLoaded = memory_pointer(0x590D00).get();
             
@@ -392,6 +408,14 @@ namespace modloader
                 
                 typedef function_hooker<0x53E58E, void(const char*)>    loadbar_hook;
                 typedef function_hooker<0x53C6DB, void(void)>           onreload_hook;
+                typedef function_hooker<0x748C30, char(void)>           onsplash_hook;
+                
+                /* Hook CGame::InitialiseEssentialsAfterRW to notify about the main splash */
+                make_function_hook<onsplash_hook>([](onsplash_hook::func_type func)
+                {
+                    ::loader.OnSplash();
+                    return func();
+                });
                 
                 /* Hook CGame::Initialise to notify about load bar being started */
                 make_function_hook<loadbar_hook>([](loadbar_hook::func_type func, const char*& gtadat)
@@ -1048,39 +1072,55 @@ namespace modloader
 
     /*
      * CModLoader::OnLoadBar
-     *      Call all 'plugin.OnLoad' methods with is_loadbar=true
+     *      Call all 'plugin.OnSplash' methods
+     */  
+    void CModLoader::OnSplash()
+    {
+        scoped_chdir xdir(this->gamePath.c_str());
+
+        Log("\nSplash screen events...");
+        for(auto& plugin : this->plugins)
+        {
+            if(plugin.OnSplash && plugin.OnSplash(&plugin))
+                ;
+        }
+        Log("Done splash screen events.\n");
+    }
+    
+    /*
+     * CModLoader::OnLoadBar
+     *      Call all 'plugin.OnLoad' methods
      */  
     void CModLoader::OnLoadBar()
     {
-        return this->DoLoadCall(true);
+        scoped_chdir xdir(this->gamePath.c_str());
+
+        Log("\nLoad time events...");
+        for(auto& plugin : this->plugins)
+        {
+            if(plugin.OnLoad && plugin.OnLoad(&plugin))
+                ;
+        }
+        Log("Done load time events.\n");
     }
     
     /*
      * CModLoader::OnReload
-     *      Call all 'plugin.OnLoad' methods with is_loadbar=false
+     *      Call all 'plugin.OnReload' methods
      */  
     void CModLoader::OnReload()
     {
-        return this->DoLoadCall(false);
-    }
-    
-    /*
-     * CModLoader::DoLoadCall
-     *      Called to notify plugins about OnLoad event
-     */  
-    void CModLoader::DoLoadCall(bool isLoadbar)
-    {
         scoped_chdir xdir(this->gamePath.c_str());
 
-        Log(isLoadbar? "Loading time..." : "Reload time...");
+        Log("\nReload time events...");
         for(auto& plugin : this->plugins)
         {
-            if(plugin.OnLoad && plugin.OnLoad(&plugin, isLoadbar))
+            if(plugin.OnReload && plugin.OnReload(&plugin))
                 ;
         }
-        Log(isLoadbar? "Done plugins load" : "Done plugins reload");
+        Log("Done reload time events.\n");
     }
-    
+
     /*
      *  CModLoader::SetupLoadbarChunks
      *      Setup load bar count

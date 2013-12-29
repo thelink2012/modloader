@@ -47,7 +47,7 @@ namespace modloader
         // If buffer is not empty, there's a replacement present, log it
         if(!buf.empty())
         {
-            plugin.Log("Warning: Overriding replacement for file %s, from \"%s\" with \"%s\"",
+            plugin.Log("Info: Overriding replacement for file %s, from \"%s\" with \"%s\"",
                        name, buf.c_str(), path);
         }
         

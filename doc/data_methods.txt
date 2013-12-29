@@ -291,7 +291,7 @@ handling.cfg:
             {
                 integer xid;
                 integer a[20];
-                float   b[13];
+                complex   b[13];
                 integer xflags;
             };
         };

@@ -175,7 +175,8 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         //bool PosProcess();
-        bool OnLoad(bool);
+        bool OnLoad();
+        bool OnReload();
         const char** GetExtensionTable();
         
         

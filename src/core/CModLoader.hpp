@@ -358,6 +358,7 @@ namespace modloader
             bool Startup();     // Startups modloader
             bool Shutdown();    // Shutdowns modloader
 
+            void OnSplash();    // Called on the "GTA San Andreas" splash screen
             void OnLoadBar();   // Called when the loadbars gets started
             void OnReload();    // Called when the users loads a game (first time or not)
     };

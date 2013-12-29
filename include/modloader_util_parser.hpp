@@ -303,6 +303,10 @@ namespace modloader
             {
                 if(*line == 0) continue;
                 
+                // Each line is a new section wehn bSkipLineAfterSectionFound=false
+                if(bSkipLineAfterSectionFound == false)
+                    bHandling = false;
+                
                 /* No section bein handled? */
                 if(bHandling == false)
                 {
@@ -316,7 +320,7 @@ namespace modloader
                 if(bHandling)
                 {
                     /* End of section? */
-                    if(line[0] == 'e' && line[1] == 'n' && line[2] == 'd')
+                    if(bSkipLineAfterSectionFound && (line[0] == 'e' && line[1] == 'n' && line[2] == 'd'))
                         bHandling = false;
                     else
                         set(section, line, map);

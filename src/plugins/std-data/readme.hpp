@@ -3,7 +3,9 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  Readme reader -- the magic is simple
- *
+ * 
+ * --> this file should be included in data.cpp
+ * 
  */
 #include "data.h"
 
@@ -15,6 +17,9 @@
  *      Please, create the additional container for each trait only if necessary
  *          (when there's at least one readme with data for the specific trait)
  *      that will allow optimizations.
+ * 
+ * 
+ *      PS: For the modloader overriding rule to apply, the files must be sent in the opposite order they've found/received at ProcessFile
  * 
  */
 struct ReadmeReader
@@ -40,13 +45,13 @@ struct ReadmeReader
     
     template<size_t N = 0, class... Tp>
     typename std::enable_if<N == sizeof...(Tp)>::type    // Use this version if reached the tuple ending
-    try_to_handle_line(std::tuple<Tp...>&)
+    try_to_handle_line(const std::tuple<Tp...>&)
     {
     }
 
     template<size_t N = 0, class... Tp>
     typename std::enable_if<(N < sizeof...(Tp))>::type   // Use this version if still didn't reach the tuple end
-    try_to_handle_line(std::tuple<Tp...>& t)
+    try_to_handle_line(const std::tuple<Tp...>& t)
     {
         // Useful typedefs
         typedef typename std::tuple<Tp...>                          tuple_type;
@@ -93,7 +98,10 @@ struct ReadmeReader
             }
             
             // Move contents from the map on this scope to the trait map
-            std::move(map.begin(), map.end(), std::inserter(trait.map, trait.map.end()));
+            for(auto& x : map)
+            {
+                trait.map[std::move(x.first)] = std::move(x.second);
+            }
             
             // Successful! Log it.
             dataPlugin->Log("\tFound %s line at %d: %s", trait_type::what(), line_number, line);
@@ -104,8 +112,12 @@ struct ReadmeReader
     /*
      *  This object is a functor!
      *  Call me to read a readme file @filename
+     * 
+     *  @tuple_pair is a tuple of std::pair, the first element on the pair must be the fs trait and the second element the filename
+     * 
      */
-    void operator()(const char* filename)
+    template<class Tuple>
+    void operator()(const char* filename, const Tuple& tuple_pair)
     {
         /*
          * XXX MAYBE (just maybe) it would be faster to read the entire file and parse from it... 
@@ -118,12 +130,6 @@ struct ReadmeReader
         this->filename = filename;
         this->line_number = 0;
         
-        // Setup the traits tuple
-        auto  all_traits = std::make_tuple(
-                                std::make_pair(std::ref(traits.gta), "data/gta.dat"),
-                                std::make_pair(std::ref(traits.ide), "data/vehicles.ide")
-                              );
-        
         // Finally, open the file for reading...
         if(FILE* f = fopen(filename, "r"))
         {
@@ -131,7 +137,7 @@ struct ReadmeReader
             for(; line = ParseConfigLine(fgets(buf, sizeof(buf), f)); ++line_number)
             {
                 if(*line == 0) continue;
-                try_to_handle_line(all_traits);
+                try_to_handle_line(tuple_pair);
             }
             fclose(f);
         }
@@ -140,14 +146,3 @@ struct ReadmeReader
     }
     
 };
-
-
-/*
- *  Reads the readme file @filename 
- */
-void CThePlugin::ProcessReadmeFile(const char* filename)
-{
-    //return;
-    ReadmeReader reader;
-    return reader(filename);
-}

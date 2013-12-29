@@ -79,7 +79,7 @@ struct DataTraits
  *          [*] When there's a value at the default trait that's not present in a custom trait, the remotion is dominant;
  *          [*] When the value at the custom trait is different from the value at the default trait, the custom trait value is dominant;
  *          [*] When the value at two or more custom traits are different, the most different will be used; Most different means: Not equal to the default value and less common;
- *          [*] When the value at two or more custom traits are different and there's no "most different", the custom trait that gets returned is unspecified.
+ *          [*] When the value at two or more custom traits are different and there's no "most different", the custom trait that gets returned is the first "most different".
  *
  */
 template<class T, class ForwardIterator> inline
@@ -137,7 +137,7 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
         
         // If this value is at the default trait, mark as default
         bExistInDefault |= it->isDefault;
-        iCount.isDefault |= bExistInDefault;
+        iCount.isDefault |= it->isDefault;
     }
     
     // Nothing? uh
@@ -152,7 +152,7 @@ auto FindDominantData(const typename T::key_type& key, ForwardIterator begin, Fo
                 return nullptr;
         }
     }
-
+    
     // Find the dominant based on the information gathered in the iteration above
     auto xdom = std::min_element(count.begin(), count.end(), [](const CounterPair& a, const CounterPair& b)
     {

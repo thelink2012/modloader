@@ -20,12 +20,13 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdarg.h>
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-/* Version 0.1.0 */
+/* Version */
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         0
 #define MODLOADER_VERSION_REVISION      0
@@ -225,20 +226,35 @@ typedef int (*modloader_fProcessFile)(modloader_plugin_t* data, const modloader_
 typedef int (*modloader_fPosProcess)(modloader_plugin_t* data);
 
 /*
- *  OnLoad
- *      Called on any game load and on the start of the loading bar.
- *      When it's the loading bar time, you must make your time-consuming tasks and calls to NewChunkLoaded
+ *  OnSplash
+ *      Called when the splash screen written "GTA San Andreas" and copyright notices shows up.
+ *      This will be the first call after the splash screen.
  *      @data: The plugin data
- *      @is_loadbar: If this parameter is non-zero that means it's loading-bar time and not load-game-click time
  *      @return: 0 on success and 1 on failure
  * 
- *      PS:
- *          On the first load-game-click this function will be called twice.
- *          One with is_loadbar equal to 1 and another (a bit later) with is_loadbar equal to 0
- *          After the first load-game-click it'll be called only with is_loadbar equal to 0
+ */
+typedef int (*modloader_fOnSplash)(modloader_plugin_t* data);
+
+/*
+ *  OnLoad
+ *      Called on the loading screen (with a loading bar, etc).
+ *      This will be the first call after the loading screen starts.
+ *      You must make your time-consuming tasks and calls to NewChunkLoaded here on this callback
+ *      @data: The plugin data
+ *      @return: 0 on success and 1 on failure
  * 
  */
-typedef int (*modloader_fOnLoad)(modloader_plugin_t* data, int is_loadbar);
+typedef int (*modloader_fOnLoad)(modloader_plugin_t* data);
+
+
+/*
+ *  OnReload
+ *      Called when the user enters the game (on newgame/loadgame)
+ *      @data: The plugin data
+ *      @return: 0 on success and 1 on failure
+ * 
+ */
+typedef int (*modloader_fOnReload)(modloader_plugin_t* data);
 
 
 
@@ -285,7 +301,9 @@ struct modloader_plugin_data
     modloader_fCheckFile        CheckFile;
     modloader_fProcessFile      ProcessFile;
     modloader_fPosProcess       PosProcess;
+    modloader_fOnSplash         OnSplash;
     modloader_fOnLoad           OnLoad;
+    modloader_fOnReload         OnReload;
 };
 
 
@@ -299,6 +317,7 @@ struct modloader_plugin_data
  *      Logs something into the modloader log file
  */
 typedef void (*modloader_fLog)(const char* logmsg, ...);
+typedef void (*modloader_fvLog)(const char* logmsg, va_list va);
 
 /*
  * Error
@@ -325,6 +344,7 @@ struct modloader_data
     const char* pluginspath;// the path where the plugins (dll) are located
     
     modloader_fLog              Log;
+    modloader_fvLog             vLog;
     modloader_fError            Error;
     modloader_fNewChunkLoaded   NewChunkLoaded;
 };

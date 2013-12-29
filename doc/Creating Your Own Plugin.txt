@@ -88,22 +88,27 @@
             
             When this event is triggered the working directory is the main game folder.
         
-
-        [optional] bool OnLoad(bool isLoadBar)
-            This is called either when the game enters in the loading screen (with the loading bar, etc)
-            or when the game gets reloaded (using New Game/Load Game).
+        [optional] bool OnSplash()
+            This event gets called when the splash screen with a big "GTA San Andreas" and copyright notices
+            shows up.
             
-            Please note on the first time the game loads, this event is called twice.
-            The first time with isLoadBar=true and the second time (a little bit later) with isLoadBar=false.
-            Then the next calls to it will all be with isLoadBar=false.
+            When this event is triggered the working directory is the main game folder.
 
+        [optional] bool OnLoad()
+            This event gets called when the loading screen (with a loadbar) shows up
+        
             Here's probably where you will do your time consuming tasks.
             In conjunction with the functions SetChunks and NewChunkLoaded you can
             make the loading bar move according to your processing progress.
 
             When this event is triggered the working directory is the main game folder.
 
-
+        [optional] bool OnReload()
+            This event gets called when the user reloads a game (newgame/loadgame)
+            Note this is called even on the first time the user does that.
+        
+            When this event is triggered the working directory is the main game folder.
+        
 
 ---------> Exporting your derived object
         
@@ -194,5 +199,17 @@
 
         Beyond API headers (<modloader.h> and <modloader.hpp>) there's utility headers on the include directory.
         Those utility headers are there to help you, so take a look at them, you might use stuff there :)
+
+
+---------> ModLoader override rule
+
+        If you're creating a plugin, it might be good to follow the modloader overriding rule.
+        What does that rule say?
+        If (on ProcessFile) you received file A that replaces file X and then you received file B that replaces X too,
+        then B should be used as the replacement. Got it?
+
+
+
+
 
 

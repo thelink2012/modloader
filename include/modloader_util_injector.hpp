@@ -26,12 +26,12 @@
 namespace modloader
 {
     /* 
-     *  fopen fixer for GTA San Andreas
+     *  fopen failure ignorer for GTA San Andreas
      *      This hook hooks a call to fopen (or CFileMgr__OpenFile, whatever)
      *     in San Andreas to open the file always, that's, if couldn't open the request file, open null device.
      */
     template<uintptr_t addr>
-    struct OpenFixer
+    struct OpenAlways
     {
         typedef void* (*fopen_func)(const char*, const char*);
         
@@ -41,18 +41,21 @@ namespace modloader
             return x;
         }
 
-        static void* OpenAlways(const char* filename, const char* mode)
+        static void* FOPEN_OpenAlways(const char* filename, const char* mode)
         {
             if(void* f = fopen()(filename, mode)) return f;
             return fopen()(szNullFile, mode);
         }
     
-        OpenFixer()
+        OpenAlways()
         {
-            fopen() = MakeCALL(addr, (void*) OpenAlways).get();
+            fopen() = MakeCALL(addr, (void*) FOPEN_OpenAlways).get();
         }
     };
  
+    /*
+     * 
+     */
     template<uintptr_t addr, class Prototype>
     struct function_hooker;
 
