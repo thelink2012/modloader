@@ -721,6 +721,16 @@ namespace data
             return SectionInfo::FindByIndex(GetTable(), id);
         }
         
+        /*
+         *  Just two dummy objects to represent if the set() method was called
+         *  to detect a vehmods.ide line or vehicles.ide line from a readme file 
+         */
+        static SectionInfo* ReadmeVehmods()
+        { static SectionInfo dummy; return &dummy; }
+        static SectionInfo* ReadmeVehicles()
+        { static SectionInfo dummy; return &dummy; }
+        
+        
 #if 1
             /* Executes DoFunction operator on current section field */
             template<class ResultType, template<class> class DoFunction>
@@ -830,24 +840,47 @@ namespace data
             return section >= IDE_OBJS && section <= IDE_2DFX;
         }
         
-        /* Sets the current data to the data at @line, knowing that the section to handle is @section */
+        /* Sets the current data to the data at @line, knowing that the section to handle is @info */
         bool set(SectionInfo* info, const char* line)
         {
-            // We only support IDE CARS section detection from a readme file...
-            if(IsReadmeSection(info))
+            bool bVehiclesReadme = (info == ReadmeVehicles());
+            bool bVehmodsReadme  = (info == ReadmeVehmods());
+            
+            // We only support IDE CARS (vehicles.ide) and IDE OBJS (veh_mods) section detection from a readme file...
+            if(bVehmodsReadme || bVehiclesReadme)
             {
-                // Check if line starts with a id before doing anything else
-                for(const char* p = line; !modloader::parser::isspace(*p); ++p)
-                    if(*p < '0' || *p > '9') return false;
+                using namespace modloader::parser;
+
+                this->section = IDE_NONE;
                 
-                // Detect cars section
-                this->section = IDE_CARS;
-                if(DoIt<bool, call_set>(*this, line, false))
+                // Line must start with a numeric identifier to be a IDE line
+                if(isdigit(*line))
                 {
-                    // We're reading from a readme file, it might contain definitions for other GTA games
-                    // Let's check if the ids are in SA range
-                    return is_vehicle(this->cars.id);
+                    const char* fmt = bVehiclesReadme? "%d" : "%d %23s";
+                    int fmt_count   = bVehiclesReadme?   1  : 2;
+                    
+                    int id; char buf[24];
+                    if(sscanf(line, fmt, &id, buf) == fmt_count)
+                    {
+                        if(bVehiclesReadme)
+                        {
+                            // Check if vehicle id is in the right bounds
+                            // because it may be a line for GTA III/VC
+                            if(is_vehicle(id))
+                                this->section = IDE_CARS;
+                        }
+                        else if(bVehmodsReadme)
+                        {
+                            // On vehmods, check if the second token is a upgrade model
+                            if(IsUpgradeModel(buf))
+                                this->section = IDE_OBJS;
+                        }
+                    }
                 }
+                
+                // Did found something to handle?
+                if(this->section == IDE_NONE)
+                    return false;   // he, nope
             }
             else
             {
@@ -883,6 +916,34 @@ namespace data
                         >
     {
         static const char* what() { return "object types file"; }
+        
+        // Specialize handler_type
+        struct handler_type : DataTraitsImplSimple::handler_type
+        {
+            typedef typename DataTraitsImplSimple::handler_type super; 
+            
+            // Specialize because we need to know if we're dealing with a veh_mods or vehicles detection.
+            struct Set
+            {
+                bool operator()(SectionType section, const char* line, container_type& map, const char* fileov = 0)
+                {
+                    // If trying to detect from readme, we need to know if want to detect a veh_mods.ide or a vehicles.ide file
+                    if(section == modloader::ReadmeSection() && fileov)
+                    {
+                        // The paths we use are "data/maps/veh_mods.ide" and "data/vehicles.ide"
+                        // Naturally the first different char is the char at index 5, so let's look into it
+                        
+                        char c = fileov[5];
+                        if(c == 'v')  section = SDataIDE::ReadmeVehicles();
+                        else if(c == 'm') section = SDataIDE::ReadmeVehmods();
+                    }
+                    
+                    // Continue to normal course
+                    return super::Set()(section, line, map);
+                }
+            };
+        };
+        
     };
 }
 

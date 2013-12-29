@@ -1,0 +1,14 @@
+*************************************************************************
+	Name: std-sala
+	Version: SALA-0.7
+	Author: Sacky (me, LINK/2012 just ported it into a modloader plugin)
+	Default Priority: 45
+*************************************************************************
+
+Description:
+    This plugin is just SA Limit Adjuster.
+    See http://www.gtamodding.com/index.php?title=SA_Limit_Adjuster
+
+Usage:
+    Just place salimits.ini or salimits.sala inside a mod folder.
+

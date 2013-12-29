@@ -9,7 +9,8 @@ Description:
 	The standard main.scm loader is the standard plugin to handle the main.scm file
 
 Usage:
-	Place the main.scm file into a mod folder/data/script
-	For example "GTA San Andreas Directory/modloader/mymod/data/script/main.scm"
+	Place the main.scm file into a mod folder
+	For example "GTA San Andreas Directory/modloader/mymod/main.scm",
+	however it's recommended to put it into a "data/script" folder
 	This plugin do not handle script.img, this is handled by the img plugin.
 

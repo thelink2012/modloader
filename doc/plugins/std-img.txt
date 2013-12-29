@@ -1,6 +1,6 @@
 *************************************************************************
 	Name: std-img --- (Standard IMG Loader Plugin)
-	Version: 0.5
+	Version: 0.7
 	Author: LINK/2012 <dma_2012@hotmail.com>
 	Default Priority: 52
 *************************************************************************
@@ -26,6 +26,7 @@ Usage:
 	that has a loading line in the .dat files (yes, script.img does), your file will be loaded instead.
 
 NEEDS:
-	[*] Testing, mainly with RRR and SCM files 
+	[*] Testing, mainly with RRR and stream IPL files
+	[*] Rewriting
 	
 

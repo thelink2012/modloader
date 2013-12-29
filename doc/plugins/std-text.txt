@@ -1,0 +1,15 @@
+*************************************************************************
+	Name: std-text
+	Version: Release Candidate 1
+	Author: LINK/2012 <dma_2012@hotmail.com>
+	Default Priority: 50
+*************************************************************************
+
+Description:
+	The standard text loader is the standard plugin to handle gta text files (gxt) in modloader.
+	It overrides the loading of the standard gxt files at text folder
+
+Usage:
+    Just place your gxt file wherever you want
+    (Of course inside a mod folder)
+    

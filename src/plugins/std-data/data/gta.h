@@ -215,7 +215,7 @@ namespace data
             // Map setter, overriden for our purposes to set a index for the key
             struct Set
             {
-                bool operator()(SectionType section, const char* line, container_type& map)
+                bool operator()(SectionType section, const char* line, container_type& map, const char* fileov = 0)
                 {
                     key_type key;
                     if(key.set(section, line))

@@ -1092,7 +1092,7 @@ namespace data
                 return false;
             }
             
-            /* Sets the current data to the data at @line, knowing that the section to handle is @section */
+            /* Sets the current data to the data at @line, knowing that the section to handle is @info */
             bool set(const SectionInfo* pSection, const char* line)
             {
                 this->section = pSection->id;

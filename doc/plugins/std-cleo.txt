@@ -19,9 +19,15 @@ Weakness and Limitations:
 	    This plugin copies CLEO specific files into the CLEO\ folder at the main path.
 	   	But yeah, it does a cleanup when the game closes. On abnormal game termination, the cleanup is done on game startup.
 	   	
-	   	For that reason, I'd recommend the use of CLEO mods at the CLEO\ folder in the main game path.
-	   	But the choice is yours.
-	   	
+	   	For that reason, I'd recommend you to chooce between installing all your CLEO mods in one of the two ways:
+	   	    Option 1:
+	   	        Disable the std-cleo loader (see plugins.ini) and keep your CLEO files inside the main CLEO/ folder
+	   	        
+	   	    Option 2:
+	   	        Put all, I mean all you CLEO mods and files (except .cleo plugins) in modloader bounds.
+	   	        
+        Choosing one of the options above will guarantee a better performance in the CLEO loading, but that's not a requisite.
+
 	[*] Can't load .cleo plugins, the reason?
 	    Because when the .cleo plugin file is finally copied into the CLEO\ folder, CLEO.asi has already take care of the .cleo plugins.
 

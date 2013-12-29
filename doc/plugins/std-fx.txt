@@ -53,5 +53,5 @@ Description:
 
 Usage:
 	To use you just have to place one or more of the supported files (see list above)
-	in a folder "models" or "models/generic" or "models/grass" inside your mod folder.
+	inside your mod folder.
 

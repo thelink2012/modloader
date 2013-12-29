@@ -32,9 +32,9 @@ struct ReadmeReader
      *  Helper function to get the readme trait (the Additional trait in other words) from a fs object 
      */
     template<class T>
-    auto get_trait(T& fs, const char* file_override) -> decltype(fs.Additional(0))
+    auto get_trait(T& fs, const char* file_override) -> decltype(fs.GetReadmeTrait(0))
     {
-        return fs.Additional(file_override);
+        return fs.GetReadmeTrait(file_override);
     }
     
     
@@ -69,7 +69,7 @@ struct ReadmeReader
        
         
         // Try to add this line into the map from the trait...
-        if(typename handler_type::Set()(ReadmeSection(), line, map) == false)
+        if(typename handler_type::Set()(ReadmeSection(), line, map, overrideFile) == false)
         {
             // Failed, the formating isn't compatible, try with the next trait in the tuple
             return try_to_handle_line<N + 1, Tp...>(t);

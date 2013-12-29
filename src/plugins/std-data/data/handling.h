@@ -2,14 +2,13 @@
  * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  IDE structures
+ *  Handling structures
  *
  */
 #ifndef TRAITS_HANDLING_H
 #define TRAITS_HANDLING_H
 
 #include "traits.h"
-#include "ranges.h"
 #include <map>
 
 namespace data
@@ -370,7 +369,7 @@ namespace data
     
     // Finalization section structure
     struct SDataHandling_FINAL // : public SDataHandling_BASE
-    {   // This structure is HUGE!
+    {   // This structure is HUGE! Around 400 bytes.
         
         SDataHandling_DATA  data;
         SDataHandling_ANIM  anim;
@@ -649,7 +648,7 @@ namespace data
             return section >= HANDLING_FINAL && section <= HANDLING_ANIM;
         }
         
-        /* Sets the current data to the data at @line, knowing that the section to handle is @section */
+        /* Sets the current data to the data at @line, knowing that the section to handle is @info */
         bool set(SectionInfo* info, const char* line)
         {
             if(IsReadmeSection(info))

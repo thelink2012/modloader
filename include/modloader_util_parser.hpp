@@ -493,7 +493,7 @@ namespace modloader
             // Map setter
             struct Set
             {
-                bool operator()(SectionType section, const char* line, container_type& map)
+                bool operator()(SectionType section, const char* line, container_type& map, const char* fileov = 0)
                 {
                     value_type value;
                     key_type   key;
@@ -539,7 +539,7 @@ namespace modloader
             // Map setter
             struct Set
             {
-                bool operator()(SectionType section, const char* line, container_type& map)
+                bool operator()(SectionType section, const char* line, container_type& map, const char* fileov = 0)
                 {
                     key_type key;
                     if(key.set(section, line))

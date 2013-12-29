@@ -7,9 +7,7 @@
 
 Description:
 	The standard movies loader is the standard plugin to handle movies files (mpg) in modloader.
-	It replaces¹ the files GTAtitles.mpg / Logo.mpg
-	
-	¹ Replace means, replace on-the-fly, it won't touch the original files!
+	It overrides the loading of the files GTAtitles.mpg / Logo.mpg
 
 Usage:
 	Just place your GTAtitles.mpg or Logo.mpg into a mod folder, that simple.

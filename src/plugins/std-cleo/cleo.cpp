@@ -359,7 +359,7 @@ bool CThePlugin::StartCacheFile()
                 {
                     if(IsFileExtension(p+1, "cleo"))
                     {
-                        Log("Can't load .cleo plugins \"%s\". Skipping it", file.srcPath);
+                        Log("Warning: Cannot load .cleo plugins \"%s\". Skipping it", file.srcPath);
                         continue;
                     }
                 }

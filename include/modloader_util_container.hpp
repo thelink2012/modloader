@@ -64,6 +64,22 @@ namespace modloader
         return strcmp(str1, str2, num, case_sensitive);
     }
     
+    inline bool starts_with(const char* str, const char* prefix, bool case_sensitive)
+    {
+        while(*prefix)
+        {
+            bool equal;
+            if(case_sensitive)
+                equal = (*str++ == *prefix++);
+            else
+                equal = (tolower(*str++) == tolower(*prefix++));
+            
+            if(!equal) return false;
+        }
+        return true;
+    }
+    
+    
     /*
      * pop_last_if
      *      Removes the last element from the @container if it is equal to @e

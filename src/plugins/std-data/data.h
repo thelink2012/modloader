@@ -2,7 +2,6 @@
  * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *
  */
 #ifndef DATA_H
 #define	DATA_H
@@ -83,10 +82,11 @@ class CDataFS
         /* map< hash_FSPath, ListOfPhysicalPaths > */
         std::map< size_t, TraitsList > files;
         
-        bool bAdditional;
-        DataTraitsType* additional;
+        // List of all readme traits, normally the size of this list is either 1 or 0
+        // The list contains pointers to traits in @files map
+        std::list<DataTraitsType*> readmeTraits;
 
-        CDataFS() : bAdditional(false), additional(0)
+        CDataFS()
         {}
         
     public:
@@ -193,41 +193,51 @@ class CDataFS
         /*
          *  Returns the reference to the additional data object
          *  Additional data objects are usually used to store readme files data
+         * 
+         *  PS: @fsPath is path-sensitive, case-sensitive, everything sensitive...
          */
-        DataTraitsType& Additional(const char* fsPath = nullptr)
+        DataTraitsType& GetReadmeTrait(const char* fsPath)
         {
-            if(fsPath == nullptr && bAdditional == false)
+            // Try to find existing trait with fsPath
+            for(DataTraitsType* a : this->readmeTraits)
             {
-                // We've got a problem
-                assert(0);
+                if(!strcmp(fsPath, a->path.c_str()))
+                    return *a;
             }
-            if(bAdditional == false)
-            {
-                additional = &AddFile(fsPath, fsPath, false);
-                bAdditional = true;
-            }
-            return *additional;
+            
+            // If not found, create new
+            return **(this->readmeTraits.emplace(
+                        this->readmeTraits.end(),
+                        &AddFile(fsPath, fsPath, false)
+                    ));
         }
-        
-        /*
-         *  Returns whether there's a additional data object created
-         *  This is true when any readme file contains data for this trait type
-         */
-        bool HasAddditional()
-        {
-            return bAdditional;
-        }
-        
+
 };
 
 
 /* All data traits we're going to use are inside this structure */
 struct CAllTraits
 {
+    // The following are really traited and runs throught a complex algorithm
     CDataFS<TraitsIDE>      ide;
     CDataFS<TraitsIPL>      ipl;
     CDataFS<TraitsGTA>      gta;
     CDataFS<TraitsHandling> handling;
+    CDataFS<TraitsCarmods>  carmods;
+    
+    // The following are not traited, just overrides
+    std::string timecyc;
+    std::string popcycle;
+    
+    
+    //
+    CAllTraits() :
+                timecyc("data/timecyc.dat"),
+                popcycle("data/popcycle.dat")
+                
+    { }
+    
+    
 };
 extern CAllTraits traits;
 

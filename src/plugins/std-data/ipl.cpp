@@ -39,7 +39,7 @@ struct KeyOnlyForIPL : public parser::KeyOnly<TraitsIPL>
         Set(InstListType& instList) : instList(instList)
         {}
             
-        bool operator()(SectionInfo* section, const char* line, container_type& map)
+        bool operator()(SectionInfo* section, const char* line, container_type& map, const char* fileov = 0)
         {
             /* Inst section must be handled in a special way... */
             if(section->id == IPL_INST)
