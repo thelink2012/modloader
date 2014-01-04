@@ -17,7 +17,7 @@
 #define	MODLOADER_UTIL_INJECTOR_SUPL_HPP
 
 #include <cstdio>
-#include "modloader_util_file.hpp"
+//#include "modloader_util_path.hpp"
 
 /*
  *  Injector.h suplement... So, Injector.h must be included before this file
@@ -25,34 +25,6 @@
 
 namespace modloader
 {
-    /* 
-     *  fopen failure ignorer for GTA San Andreas
-     *      This hook hooks a call to fopen (or CFileMgr__OpenFile, whatever)
-     *     in San Andreas to open the file always, that's, if couldn't open the request file, open null device.
-     */
-    template<uintptr_t addr>
-    struct OpenAlways
-    {
-        typedef void* (*fopen_func)(const char*, const char*);
-        
-        static fopen_func& fopen()
-        {
-            static fopen_func x;
-            return x;
-        }
-
-        static void* FOPEN_OpenAlways(const char* filename, const char* mode)
-        {
-            if(void* f = fopen()(filename, mode)) return f;
-            return fopen()(szNullFile, mode);
-        }
-    
-        OpenAlways()
-        {
-            fopen() = MakeCALL(addr, (void*) FOPEN_OpenAlways).get();
-        }
-    };
- 
     /*
      * 
      */
@@ -67,31 +39,81 @@ namespace modloader
             typedef Ret(*hook_type)(func_type, Args&...);
 
         protected:
+            
+            // Stores the previous function pointer
             static func_type& original()
-            {
-                static func_type f;
-                return f;
-            }
-
+            { static func_type f; return f; }
+            
+            // Stores our hook pointer
             static hook_type& hook()
-            {
-                static hook_type h;
-                return h;
-            }
+            { static hook_type h; return h; }
 
+            // The hook caller
             static Ret call(Args... a)
             {
                 return hook()(original(), a...);
             }
 
         public:
+            // Constructs passing information to the static variables
             function_hooker(hook_type hooker)
             {
                 hook() = hooker;
                 original() = MakeCALL(addr, (void*) call).get();
             }
-
+            
+            // Restores the previous call before the hook happened
+            static void restore()
+            {
+                MakeCALL(addr, (void*) original());
+            }
     };
+    
+    
+    
+    template<uintptr_t addr, class Prototype>
+    struct function_hooker_fastcall;
+
+    template<uintptr_t addr, class Ret, class ...Args>
+    struct function_hooker_fastcall<addr, Ret(Args...)>
+    {
+        public:
+            typedef Ret(__fastcall *func_type)(Args...);
+            typedef Ret(*hook_type)(func_type, Args&...);
+
+        protected:
+            
+            // Stores the previous function pointer
+            static func_type& original()
+            { static func_type f; return f; }
+            
+            // Stores our hook pointer
+            static hook_type& hook()
+            { static hook_type h; return h; }
+
+            // The hook caller
+            static Ret __fastcall call(Args... a)
+            {
+                return hook()(original(), a...);
+            }
+
+        public:
+            // Constructs passing information to the static variables
+            function_hooker_fastcall(hook_type hooker)
+            {
+                hook() = hooker;
+                original() = MakeCALL(addr, (void*) call).get();
+            }
+            
+            // Restores the previous call before the hook happened
+            static void restore()
+            {
+                MakeCALL(addr, (void*) original());
+            }
+    };
+    
+    
+    
     
     template<class T> inline
     T make_function_hook(typename T::hook_type hooker)

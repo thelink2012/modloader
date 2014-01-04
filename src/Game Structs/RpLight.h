@@ -2,9 +2,9 @@
 #pragma once
 #include <windows.h>
 #include "RwLLLink.h"
-#include "RwLinkList.h"
-#include "RwRGBAReal.h"
 #include "RwObjectHasFrame.h"
+#include "RwRGBAReal.h"
+#include "RwLinkList.h"
 
 
 #pragma pack(push, 1)

@@ -71,6 +71,9 @@ union memory_pointer    // use for general purposes
     /* Use to get pointer and automatically cast to another type */
     memory_pointer_a get()  { return memory_pointer_a(p); }
     
+    template<class T>
+    T* get() { return get(); }
+    
 	operator void*()		{ return p; }
 	operator uintptr_t()	{ return a; }
 

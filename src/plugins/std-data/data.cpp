@@ -67,6 +67,7 @@ const char** CThePlugin::GetExtensionTable()
 bool CThePlugin::OnStartup()
 {
     // Create std-data cache path
+    scoped_chdir xdir(this->modloader->gamepath);
     {
         char buf[128], data0[128];
         sprintf(buf, "%s%s\\", this->modloader->cachepath, "std-data");

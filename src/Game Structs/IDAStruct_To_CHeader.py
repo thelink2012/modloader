@@ -2,9 +2,10 @@
 # IDAStruct_To_CHeader.py
 #   By LINK/2012
 fname = "IDA.TXT"
-exceptions = ["CParticle", "CPool", "ScriptVar", "CRunningScript", "RwSphere", "RwV3D", "RxObjSPace3dVertex",
-
-              "CGarage"]
+exceptions = [
+              "CParticle", "CPool", "ScriptVar", "CRunningScript", "RwSphere", "RwV3D", "RxObjSPace3dVertex",
+              "CGarage", "Queue", "CdStream", "CdStreamInfo", "CStreamingInfo"
+             ]
 undefcount = 0
 
 def GetLineTokens(line):

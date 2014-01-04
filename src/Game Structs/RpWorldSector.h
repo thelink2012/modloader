@@ -2,8 +2,8 @@
 #pragma once
 #include <windows.h>
 #include "RwRGBA.h"
-#include "RwBBox.h"
 #include "RwLLLink.h"
+#include "RwBBox.h"
 
 
 #pragma pack(push, 1)

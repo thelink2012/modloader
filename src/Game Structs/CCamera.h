@@ -2,8 +2,8 @@
 #pragma once
 #include <windows.h>
 #include "RwV3D.h"
-#include "CMatrix.h"
 #include "CCam.h"
+#include "CMatrix.h"
 #include "CCamera_obj2.h"
 #include "CPlaceable.h"
 

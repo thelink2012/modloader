@@ -6,26 +6,22 @@
  *      Loads all compatible files with imgs (on game request),
  *      it loads directly from disk not by creating a cache or virtual img.
  * 
- *  TODO: This plugin (all files from std-img) needs rewriting,
- *        yeah, it works fine, but it looks like a prototype (and it is!) that works fine.
- *        I mean seriosly, my eyes hurts when I read this plugin code.
- * 
  */
 #include "img.h"
-#include "Injector.h"
+#include <modloader.hpp>
 #include <modloader_util.hpp>
-#include <functional>
+#include <modloader_util_path.hpp>
+#include <modloader_util_hash.hpp>
+#include <list>
+#include <map>
+
+#include "Injector.h"
+#include "CdStreamInfo.h"
+
 using namespace modloader;
 
-extern const char* noImgName;
-
-extern "C" void ImportObject(int index, CThePlugin::FileInfo& file);
-
-/*
- *  The plugin object
- */
-static CThePlugin plugin;
 CThePlugin* imgPlugin;
+static CThePlugin plugin;
 
 /*
  *  Export plugin object data
@@ -34,7 +30,7 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     imgPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data, plugin.default_priority);
+    modloader::RegisterPluginData(plugin, data);
 }
 
 
@@ -54,7 +50,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.7";
+    return "RC1";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -67,24 +63,13 @@ const char** CThePlugin::GetExtensionTable()
 }
 
 /*
- *  Startup / Shutdown
- */
-
-/*
- *  OnStartup
- *      Setup hooks
+ *  Startup / Shutdown (do nothing)
  */
 bool CThePlugin::OnStartup()
 {
-    this->SetChunkLimiter();
-    ApplyPatches();
     return true;
 }
 
-/*
- *  OnShutdown
- *      Do nothing, what should I do?
- */
 bool CThePlugin::OnShutdown()
 {
     return true;
@@ -95,28 +80,24 @@ bool CThePlugin::OnShutdown()
  */
 bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
-    if(IsFileExtension(file.filext, "img"))
-    {
-        /* Supports both dir and file version */
+    if(IsFileExtension(file.filext, "img")) // For directories or actual files
         return true;
-    }
-    else if(!file.is_dir)
+    else if(file.is_dir == false)
     {
         /* Check on extension table if the extension is supported */
         for(const char** p = this->GetExtensionTable(); *p; ++p)
         {
             if(IsFileExtension(file.filext, *p))
             {
-                bool isOkay = true; int dummy;
-                std::string str;
+                int dummy; std::string str;
                 
                 /* If dat or r3 file, we need to make sure that they're nodes%d.dat or carrec%d.rrr */
                 if(IsFileExtension(file.filext, "dat"))
-                    isOkay = (sscanf(tolower(str = file.filename).c_str(), "nodes%d", &dummy) == 1);
+                    return (sscanf(tolower(str=file.filename).c_str(), "nodes%d", &dummy) == 1);
                 else if(IsFileExtension(file.filext, "rrr"))
-                    isOkay = (sscanf(tolower(str = file.filename).c_str(), "carrec%d", &dummy) == 1);
-                    
-                if(isOkay) return true;
+                    return (sscanf(tolower(str=file.filename).c_str(), "carrec%d", &dummy) == 1);
+                else
+                    return true;
             }
         }
     }
@@ -128,207 +109,171 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
  */
 bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
+    std::string filepath = GetFilePath(file);
+    
     if(IsFileExtension(file.filext, "img"))
     {
-        if(file.is_dir)
-            return this->ProcessImgFolder(file);
-        else
-            return this->ProcessImgFile(file);
+        if(file.is_dir)     // If it's a directory, go inside it and take all files
+            ReadImgFolder(file);
+        else                // Otherwise just push this file into imgFiles list
+                            // Put on the front for modloader overriding rule
+            imgFiles.emplace_front(file.filename, filepath.c_str());
     }
-    else /* Other extensions, dff, txd, etc */
+    else if(!strcmp(file.filename, "ped.ifp", false))
     {
-        if(!strcmp(file.filename, "ped.ifp", false))
-            RegisterReplacementFile(*this, "ped.ifp", this->pedIfp, GetFilePath(file).c_str());
-        else
-            AddFileToImg(mainContent, file);
-        
-        return true;
+        // Ped.ifp replacement
+        RegisterReplacementFile(*this, "ped.ifp", this->pedIfp, filepath.c_str());
     }
-    return false;
-}
-
-
-/*
- * Called on the loading bar
- */
-bool CThePlugin::OnLoad()
-{
-    // Process img contents
-    mainContent.Process();
-    for(auto& x : this->imgFiles)
+    else
     {
-        x.Process();
+        // So it's any kind of handleable file (.dff, .txd, .col, etc)
+        // Let's push it into our list for later post processing
+        this->modelsFiles.emplace_back(file.filename, filepath.c_str());
     }
-            
-    // Replace ped.ifp
-    if(!this->pedIfp.empty())
-        WriteMemory<const char*>(0x4D563D+1, this->pedIfp.data(), true);
-
     return true;
 }
 
 /*
- * Called when the user loads a new game
+ * Called after all files have been processed
  */
-bool CThePlugin::OnReload()
+bool CThePlugin::PosProcess()
 {
-    // Reload all imported models info
-    for(auto& import : this->importList)
-    {
-        import.second->Process();
-        ImportObject(import.first, *import.second);
-    }
+    // Hook ped.ifp string if necessary
+    if(this->pedIfp.empty() == false)
+        WriteMemory<const char*>(0x4D563D+1, this->pedIfp.c_str(), true);
+    
+    // Build fast lookup map for models files
+    this->BuildModelsMap();
+    
+    // Replace standard img files if necessary
+    this->ReplaceStandardImg();
+    
+    // Patch the game
+    this->StreamingPatch();
+    
     return true;
 }
 
 
 
 
-/*
- *  Adds a new file into the img 'img'
- *  filename2 is used on recursion processes (see ProcessImgFolder), for other purposes it may be nullptr
- */
-void CThePlugin::AddFileToImg(ImgInfo& img, const ModLoaderFile& file, const char* filename2)
-{
-    // See function description commentary
-    const char* xname = filename2? filename2 : file.filename;   
-    if(!filename2) filename2 = "";
-    
-    // Add item to imgFiles
-    auto pair = img.imgFiles.emplace(xname, FileInfo());
-    if(pair.second) this->AddChunks(); // If this item is new in the map, add chunk
-    
-    // Register replacement
-    auto& f = pair.first->second;
-    if(RegisterReplacementFile(*this, xname, f.path, (GetFilePath(file) + filename2).c_str()))
-    {
-        f.name = xname;
-    }
-}
+
 
 /*
- *  Process the content inside a folder with extension '.img'
+ *  Read all files from the folder @file and puts on @modelsFiles list 
  */
-bool CThePlugin::ProcessImgFolder(const modloader::ModLoaderFile& file)
+void CThePlugin::ReadImgFolder(const modloader::ModLoaderFile& cfile)
 {
-    auto& img = this->mainContent;
+    ModLoaderFile file = cfile; // Modifiable file structure
     
-    /* Recursivelly iterate on this img folder adding all files into the img list */
-    ForeachFile(file.filepath, "*.*", true, [this, &img, &file](ModLoaderFile& ff)
+    ForeachFile(file.filepath, "*.*", [this, &file](const ModLoaderFile& forfile)
     {
-        /* ignore directories (recursion will take care of them) */
-        if(ff.is_dir == false)
+        if(file.is_dir == false)
         {
-            this->AddFileToImg(img, file, ff.filename);
+            file.filename = forfile.filename;  // Just for convenience
+            file.filepath = forfile.filepath;  // Change filepath pointer for proper GetFilePath
+            imgFiles.emplace_front(file.filename, GetFilePath(file).c_str());
         }
         return true;
     });
-    
-    return true;
 }
 
-extern "C" {
-    extern int* gta3ImgDescriptorNum;
-    extern int* gtaIntImgDescriptorNum;
-    extern int (*CStreaming__OpenImgFile)(const char* filename, char notPlayerImg);
-};
+/*
+ * Builds @models map based on @modelsFiles list
+ */
+void CThePlugin::BuildModelsMap()
+{
+    for(auto& file : this->modelsFiles)
+    {
+        std::string oldpath;    // Trick
+                
+        auto it = models.find(file.hash);
+        if(it != models.end())
+        {
+            // If already exist on the models list, override
+            oldpath = it->second.get().path;
+            it->second = std::ref(file);
+        }
+        else
+        {
+            // Don't exist on the list, push it now
+            models.emplace(file.hash, std::ref(file));
+        }
+                
+        // Register our replacement
+        RegisterReplacementFile(*this, file.name.c_str(), oldpath, file.path.c_str());
+    }
+}
 
 /*
- *  Takes care of .img files placed in the mod folder
+ * Replaces standard img files if necessary, such as gta3.img 
  */
-bool CThePlugin::ProcessImgFile(const modloader::ModLoaderFile& file)
+void CThePlugin::ReplaceStandardImg()
 {
-    /*
-     *  Registers the img path at buf, if buf is not empty (already has a path), return false and log the error.
-     */
-    static auto RegisterImgPath = [](std::string& buf, const char* path, const char* filename)
-    {
-        return RegisterReplacementFile(*imgPlugin, filename, buf, path);
-    };
-    
-    /* Replace an pointer at mem with pointer to buf data */
-    static auto ReplaceAddr = [](memory_pointer mem, const std::string& buf)
-    {
-        WriteMemory<const char*>(mem, buf.data(), true);
-    };
-
-    /* Push new img item into container and setup it
-     * (Must push front to apply the modloader overriding rule) */
-    std::string filepath = GetFilePath(file);
-    this->imgFiles.emplace_front(file);
-    auto& img = this->imgFiles.front();
-    
-    Log("Pushing img file to front of the query: %s", filepath.c_str());
-    
-    /* Bufs */
+    // Buffers
     static std::string gta3, gta_int, player, cuts;
-
-    /*
-     *  If any of the original img files (loaded from game code strings), replace the strings
-     *  Note we'll set isOriginal flag from 'img' only if it's path could be registered
-     *          (that's, replaced game code strings with it's path string)
-     * 
-     */
-    if(true || IsFileInsideFolder(file.filepath, true, "models"))
+    
+    struct TableItem
     {
-        if(!strcmp(file.filename, "gta3.img", false))
-        {
-            if(!RegisterImgPath(gta3, filepath.c_str(), "gta3.img")) return false;
+        const char* name;       // img name
+        std::string& buf;       // path buf
+        uintptr_t pushes[5];    // 'push'es to replace address
+    };
 
-            img.isOriginal = true;
-            ReplaceAddr(0x408430 + 1, gta3);
-            ReplaceAddr(0x406C2A + 1, gta3);
-            ReplaceAddr(0x40844C + 1, gta3);
-        }
-        else if(!strcmp(file.filename, "gta_int.img", false))
+    TableItem table[] =
+    {
+        { "gta3.img",       gta3,    { 0x408430, 0x406C2A, 0x40844C }                       },
+        { "gta_int.img",    gta_int, { 0x40846E, 0x40848C }                                 },
+        { "player.img",     player,  { 0x5A41A4, 0x5A69F7, 0x5A80F9 }                       },
+        { "cuts.img",       cuts,    { 0x4D5EB9, 0x5AFBCB, 0x5AFC98, 0x5B07DA, 0x5B1423 }   }
+    };
+    
+    
+    // Iterate in reverse order because of the overriding rule
+    for(auto it = this->imgFiles.rbegin(); it != this->imgFiles.rend(); ++it)
+    {
+        for(TableItem& item : table)
         {
-            if(!RegisterImgPath(gta_int, filepath.c_str(), "gta_int.img")) return false;
-            
-            img.isOriginal = true;
-            ReplaceAddr(0x40846E + 1, gta_int);
-            ReplaceAddr(0x40848C + 1, gta_int);
-        }
-        else if(!strcmp(file.filename, "player.img", false))
-        {
-            if(!RegisterImgPath(player, filepath.c_str(), "player.img")) return false;
-            
-            img.isOriginal = true;
-            ReplaceAddr(0x5A41A4 + 1, player);
-            ReplaceAddr(0x5A69F7 + 1, player);
-            ReplaceAddr(0x5A80F9 + 1, player);
+            if(!compare(item.buf, it->name, false))
+            {
+                RegisterReplacementFile(*this, item.name, item.buf, it->path.c_str());
+                break;
+            }
         }
     }
-    else if(true || IsFileInsideFolder(file.filepath, true, "anim"))
-    { 
-        if(!strcmp(file.filename, "cuts.img", false))
+    
+    // Replace all 'push'es for img paths
+    for(TableItem& item : table)
+    {
+        if(item.buf.size()) // Has replacement path...
         {
-            if(!RegisterImgPath(cuts, filepath.c_str(), "cuts.img")) return false;
-            
-            img.isOriginal = true;
-            ReplaceAddr(0x4D5EB9 + 1, cuts);
-            ReplaceAddr(0x5AFBCB + 1, cuts);
-            ReplaceAddr(0x5AFC98 + 1, cuts);
-            ReplaceAddr(0x5B07DA + 1, cuts);
-            ReplaceAddr(0x5B1423 + 1, cuts);
+            // Replace all addresses from push instructions indicated by the pushes array
+            for(uintptr_t p : item.pushes)
+            {
+                if(p == 0x0) break;
+                WriteMemory<const char*>(p + 1, item.buf.c_str(), true);
+            }
         }
     }
     
     // If replacing gta3 or gta_int, hook it's loading proc
-    if(!gta3.empty() || ! gta_int.empty())
+    if(!gta3.empty() || !gta_int.empty())
     {
         // We need to do this hook to not hook too much code
          MakeNOP(0x4083E4 + 5, 4);
          MakeJMP(0x4083E4, (void*)((void (*)(void))([]()  // mid replacement for CStreaming::OpenGtaImg
          {
-             char* gta3Path   = ReadMemory<char*>(0x40844C + 1, true);
-             char* gtaIntPath = ReadMemory<char*>(0x40848C + 1, true);;
+             int (*CStreaming__AddImageToList)(const char* filename, char notPlayerImg)
+                        = memory_pointer(0x407610).get();
+             
+             CdStreamInfo& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfo>();
+             char* gta3Path       = ReadMemory<char*>(0x40844C + 1, true);
+             char* gtaIntPath     = ReadMemory<char*>(0x40848C + 1, true);;
 
              imgPlugin->Log("Opening gta3 img: %s\nOpening gta_int img: %s", gta3Path, gtaIntPath);
 
-             *gta3ImgDescriptorNum = CStreaming__OpenImgFile(gta3Path, true);
-             *gtaIntImgDescriptorNum = CStreaming__OpenImgFile(gtaIntPath, true);
+             cdinfo.gta3_id   = CStreaming__AddImageToList(gta3Path, true);
+             cdinfo.gtaint_id = CStreaming__AddImageToList(gtaIntPath, true);
          })));
     }
-
-    return true;
 }

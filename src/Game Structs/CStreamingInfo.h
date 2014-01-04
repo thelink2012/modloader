@@ -4,7 +4,7 @@
 
 
 #pragma pack(push, 1)
-struct SImgGTAItemInfo	// sizeof = 0x14
+struct CStreamingInfo	// sizeof = 0x14
 {
 	WORD usNext;
 	WORD usPrev;
@@ -18,4 +18,4 @@ struct SImgGTAItemInfo	// sizeof = 0x14
 };
 #pragma pack(pop)
 
-static_assert(sizeof(SImgGTAItemInfo) == 0x14, "Incorrect struct size: SImgGTAItemInfo");
+static_assert(sizeof(CStreamingInfo) == 0x14, "Incorrect struct size: SImgGTAItemInfo");

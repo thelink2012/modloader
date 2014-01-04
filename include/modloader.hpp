@@ -1,12 +1,21 @@
 /* 
  * San Andreas modloader
- * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
- * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * Created by LINK/2012 <dma_2012@hotmail.com>
+ * Part of modloader
  * 
  *  Modloader plugin interface for C++
  *      Just a wrapper around the C interface, please check it out at modloader.h!!!
  * 
  *  Take a look at "doc/Creating Your Own Plugin.txt"
+ * 
+ * 
+ *  This source code is offered for use in the public domain. You may
+ *  use, modify or distribute it freely.
+ *
+ *  This code is distributed in the hope that it will be useful but
+ *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
+ *  DISCLAIMED. This includes but is not limited to warranties of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
  * 
  */
 

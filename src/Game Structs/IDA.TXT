@@ -1121,7 +1121,7 @@
 00000000 ; [00000014 BYTES. COLLAPSED STRUCT D3DINDEXBUFFER_DESC. PRESS KEYPAD "+" TO EXPAND]
 00000000 ; ---------------------------------------------------------------------------
 00000000
-00000000 GTA_STREAM      struc ; (sizeof=0x30)
+00000000 CdStream        struc ; (sizeof=0x30)
 00000000 nSectorOffset   dd ?
 00000004 nSectorsToRead  dd ?                    ; sector = 2048 bytes
 00000008 lpBuffer        dd ?                    ; offset
@@ -1130,10 +1130,10 @@
 0000000E bInUse          db ?
 0000000F field_F         db ?
 00000010 status          dd ?
-00000014 hSemaphore      dd ?
+00000014 hSemaphore      dd ?                    ; offset
 00000018 hFile           dd ?                    ; offset
 0000001C overlapped      OVERLAPPED ?
-00000030 GTA_STREAM      ends
+00000030 CdStream        ends
 00000030
 00000000 ; ---------------------------------------------------------------------------
 00000000
@@ -1836,7 +1836,7 @@
 00000030
 00000000 ; ---------------------------------------------------------------------------
 00000000
-00000000 SImgGTAItemInfo struc ; (sizeof=0x14)
+00000000 CStreamingInfo struc ; (sizeof=0x14)
 00000000 usNext          dw ?
 00000002 usPrev          dw ?
 00000004 uiUnknown1      dw ?
@@ -1844,9 +1844,9 @@
 00000007 ucImgId         db ?
 00000008 iBlockOffset    dd ?
 0000000C iBlockCount     dd ?
-00000010 uiLoadFlag      db ?                    ; 0-not loaded 2-requested  3-loaded  1-processed
+00000010 uiLoadFlag      db ?                    ; 0-not loaded 2-requested  3-loaded  1-processed (it's loaded yea)
 00000011 field_11        db 3 dup(?)
-00000014 SImgGTAItemInfo ends
+00000014 CStreamingInfo ends
 00000014
 00000000 ; ---------------------------------------------------------------------------
 00000000
@@ -6936,10 +6936,10 @@
 00000000 ; [0000021C BYTES. COLLAPSED STRUCT CAudioManager. PRESS KEYPAD "+" TO EXPAND]
 00000000 ; ---------------------------------------------------------------------------
 00000000
-00000000 CAudio          struc ; (sizeof=0x4BC)
+00000000 CAudioEngine    struc ; (sizeof=0x4BC)
 00000000 field_0         db 672 dup(?)
 000002A0 audioManager    CAudioManager ?
-000004BC CAudio          ends
+000004BC CAudioEngine    ends
 000004BC
 00000000 ; ---------------------------------------------------------------------------
 00000000
@@ -7921,7 +7921,7 @@
 0000000C
 00000000 ; ---------------------------------------------------------------------------
 00000000
-00000000 struc_360       struc ; (sizeof=0x98)
+00000000 CStreamingChannel struc ; (sizeof=0x98)
 00000000 aStreamStatus   dd ?
 00000004 ?iLoadingLevel  dd ?
 00000008 iBlockOffset    dd ?
@@ -7960,5 +7960,34 @@
 0000008C field_8C        dd ?
 00000090 field_90        dd ?
 00000094 field_94        dd ?
-00000098 struc_360       ends
+00000098 CStreamingChannel ends
 00000098
+00000000 ; ---------------------------------------------------------------------------
+00000000
+00000000 Queue           struc ; (sizeof=0x10)
+00000000 queue           dd ?                    ; offset
+00000004 head            dd ?
+00000008 tail            dd ?
+0000000C size            dd ?
+00000010 Queue           ends
+00000010
+00000000 ; ---------------------------------------------------------------------------
+00000000
+00000000 CdStreamInfo    struc ; (sizeof=0x8C0)
+00000000 queue           Queue ?
+00000010 pStreams        dd ?                    ; offset
+00000014 thread_id       dd ?
+00000018 semaphore       dd ?                    ; offset
+0000001C thread          dd ?                    ; offset
+00000020 streamHandles   dd 32 dup(?)            ; offset
+000000A0 streamCount     dd ?
+000000A4 openStreamCount dd ?
+000000A8 streamNames     db 2048 dup(?)
+000008A8 field_8A8       dd ?
+000008AC lastPosn        dd ?
+000008B0 field_8B0       dd ?
+000008B4 field_8B4       dd ?
+000008B8 gtaint_id       dd ?
+000008BC gta3_id         dd ?
+000008C0 CdStreamInfo    ends
+000008C0

@@ -2,8 +2,6 @@
  * San Andreas Mod Loader Exception Description
  * Created by LINK/2012 <dma_2012@hotmail.com>
  * 
- *  This file provides helpful functions for plugins creators.
- * 
  *  This source code is offered for use in the public domain. You may
  *  use, modify or distribute it freely.
  *

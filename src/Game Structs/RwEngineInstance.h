@@ -3,8 +3,8 @@
 #include <windows.h>
 #include "RwFileFunction.h"
 #include "RwLinkList.h"
-#include "RwStringFunctions.h"
 #include "RwMemoryFunctions.h"
+#include "RwStringFunctions.h"
 #include "RwDevice.h"
 
 

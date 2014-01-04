@@ -185,7 +185,7 @@ namespace modloader
                             }
 
                             // Put the key/value into the current keys object, or into the section "" if no section has been found
-                            (keys? *keys : data.at(null_string)).emplace(std::move(key), std::move(value));
+                            (keys? *keys : data[null_string]).emplace(std::move(key), std::move(value));
                         }
                     }
                     

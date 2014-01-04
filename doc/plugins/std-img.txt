@@ -1,6 +1,6 @@
 *************************************************************************
 	Name: std-img --- (Standard IMG Loader Plugin)
-	Version: 0.7
+	Version: Release Candidate 1
 	Author: LINK/2012 <dma_2012@hotmail.com>
 	Default Priority: 52
 *************************************************************************
@@ -27,6 +27,5 @@ Usage:
 
 NEEDS:
 	[*] Testing, mainly with RRR and stream IPL files
-	[*] Rewriting
-	
+
 

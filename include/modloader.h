@@ -1,12 +1,20 @@
 /* 
  * San Andreas modloader
- * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
- * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * Created by LINK/2012 <dma_2012@hotmail.com>
+ * Part of modloader
  * 
  *  Modloader plugin interface
  *      The interface is extremly simple, you don't even have to link with modloader.
  *      The only thing you are requiered to do is export a 'GetPluginData' function (see below for the prototype).
  *      Put your plugin at '/modloader/.data/plugins' folder
+ * 
+ *  This source code is offered for use in the public domain. You may
+ *  use, modify or distribute it freely.
+ *
+ *  This code is distributed in the hope that it will be useful but
+ *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
+ *  DISCLAIMED. This includes but is not limited to warranties of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
  * 
  */
 
@@ -28,7 +36,7 @@ extern "C" {
 
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
-#define MODLOADER_VERSION_MINOR         0
+#define MODLOADER_VERSION_MINOR         1
 #define MODLOADER_VERSION_REVISION      0
 #ifdef NDEBUG
 #define MODLOADER_VERSION_ISDEV         0

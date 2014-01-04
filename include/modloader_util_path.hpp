@@ -92,7 +92,7 @@ namespace modloader
      *      @dir: Directory to search at
      *      @mask: Search mask
      *      @bRecursive: Recursive search?
-     *      @cb: Callback to call on each file
+     *      @cb: Callback to call on each file (bool(ModLoaderFile& file))
      */
     template<class T>
     inline bool ForeachFile(std::string dir, std::string mask, bool bRecursive, T cb)
@@ -310,10 +310,24 @@ namespace modloader
             return TRUE;
         });
         
-        RemoveDirectoryA(szPath);
-        return TRUE;
+        return RemoveDirectoryA(szPath);
     }
     
+    /*
+     *  GetFileSize
+     *      WinAPI-like function that gets the file size of @szPath
+     */
+    inline LONGLONG GetFileSize(LPCTSTR szPath)
+    {
+        WIN32_FILE_ATTRIBUTE_DATA fad; LARGE_INTEGER size;
+
+        if(!GetFileAttributesExA(szPath, GetFileExInfoStandard, &fad))
+                return 0;
+
+        size.HighPart = fad.nFileSizeHigh;
+        size.LowPart = fad.nFileSizeLow;
+        return size.QuadPart;
+    }
     
     
     /* RAII for SetCurrentDirectory */

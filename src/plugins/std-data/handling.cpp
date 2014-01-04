@@ -73,8 +73,6 @@ bool TraitsHandling::Build(const char* filename, const std::vector<typename supe
         all_lines.push_back(pair_ref_type(animKey, data));
     }
     
-    
-    
     // And finally call the builder
     return modloader::SectionBuilder<handler_type>(filename, all_lines, false);
 }

@@ -160,8 +160,8 @@ bool CThePlugin::PosProcess()
         
         bool bLoaded = asi.Load();
         Log("%s \"%s\"",
-            (bLoaded? "ASI file has been loaded:" : "Failed to load ASI file"),
-            asi.path.c_str());
+            (bLoaded? "ASI file has been loaded:" : "Failed to load ASI file. Error code: 0x%X"),
+            asi.path.c_str(), GetLastError());
     }
     return true;
 }
