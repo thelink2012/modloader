@@ -111,7 +111,6 @@ namespace modloader
         // Opens the search
         if((hSearch = FindFirstFileA((dir + mask).c_str(), &fd)) == INVALID_HANDLE_VALUE)
             return true;
-        
 
         // Iterate on all files on this directory
         do

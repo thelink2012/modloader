@@ -11,9 +11,7 @@
 #include "CdStreamInfo.h"
 #include "CStreamingInfo.h"
 #include "CDirectory.h"
-#include "CDirectoryEntry.h"
 #include "img.h"
-#include "Injector.h"
 #include "CImgDescriptor.h"
 #include <modloader_util_injector.hpp>
 #include <modloader_util_path.hpp>
@@ -39,6 +37,13 @@ extern "C"
     CStreamingInfo* ms_aInfoForModel;
     DWORD *pStreamCreateFlags;
     CImgDescriptor* images;
+    int *CVehicleRecording__NumPlayBackFiles;
+    int *CVehicleRecording__StreamingArray;
+    int (__fastcall *FindStreamedScript)(void*, int, const char* name);
+    int (__fastcall *CDirectory__CDirectory)(CDirectory*, int, size_t count, CDirectoryEntry*);
+    int (__fastcall *CDirectory__ReadDirFile)(CDirectory*, int, const char* file);
+    CDirectory* playerImgDirectory;
+    CDirectoryEntry* playerImgEntries;
     
     // Hooks
     int  iNextModelBeingLoaded = -1;            // Set by HOOK_RegisterNextModelRead, will then be sent to iModelBeingLoaded
@@ -51,7 +56,7 @@ extern "C"
     // Used by HOOK_SetImgDscName
     const char* AllocBufferForString(const char* str)
     {
-        std::list<std::string> buffers;
+        static std::list<std::string> buffers;
         return buffers.emplace(buffers.end(), str)->c_str();
     }
     
@@ -72,6 +77,8 @@ extern "C"
 /*
  *  CAbstractStreaming
  *      Streaming of files on disk
+ * 
+ *      We could do some optimizations to file loads from disk, but well, don't optimize until it's necessary to.
  */
 class CAbstractStreaming
 {
@@ -103,31 +110,49 @@ class CAbstractStreaming
         };
        
     protected:
+        bool bIs2048AlignedSector;                      // not used, maybe in the future
         CRITICAL_SECTION cs;                            // this must be used together with @files list for thread-safety
         std::list<SFile> files;                         // list of files currently open for reading
         
     public:
         std::map<unsigned int, ModelFileRef> imports;   // map of imported models index and it's reference
         std::map<unsigned int, ModelFileRef> clothes;   // map of clothes offset at player.img and it's reference in-disk
-        
+
     public:
         
-        CAbstractStreaming()
-        { InitializeCriticalSection(&cs); }
+        CAbstractStreaming();
+        ~CAbstractStreaming();
         
-        ~CAbstractStreaming()
-        { DeleteCriticalSection(&cs); }
+        void LoadAbstractCdDirectory();                 // Simulates the loading of a cdimage directory
         
-        void LoadAbstractCdDirectory();                     // Simulates the loading of a cdimage directory
+        SFile* OpenModel(ModelFile& file, int index);   // Opens a new file for the model
+        void CloseModel(SFile* file);                   // Closes the previosly open model
         
-        SFile* OpenModel(ModelFile& file, int index);       // Opens a new file for the model
-        void CloseModel(SFile* file);                       // Closes the previosly open model
-        
-        void Import(ModelFile&, int index);                 // Imports a model into index
-        void Reimport(int index);                           // Reimports model at index, reupdating it's information from disk
+        void Import(ModelFile&, int index);             // Imports a model into index, if there's any model at index, nothing gets imported
+        void Reimport(int index);                       // Reimports model at index, reupdating it's information from disk
+        void Reimport(ModelFile&, bool bLock = true);   // Does the same as above
+        void Reimport(ModelFile&, int index);           // Imports a model into index, overriding any model proviosly there
+        void RemoveImport(int index);                   // Removes a import. Note this won't restore modelinfo!
 
+        void BuildClothesMap();                         // Builds clothes information (clothes map)
+        void RequestClothes(int index);                 // Imports a cloth based on aInfoForModel[index] block offset
+
+        // Reloads all models information
+        void ReloadModels()
+        {
+            scoped_lock xlock(this->cs);
+            for(auto& pair : this->imports) this->Reimport(pair.second.get(), false);
+        }
+
+        // Removes model import at @index if @pModel is nullptr
+        // or reimport @index if @pModel isn't nullptr
+        void RemoveOrReimport(ModelFile* pModel, int index)
+        {
+            if(pModel) this->Reimport(*pModel, index);
+            else       this->RemoveImport(index);
+        }
+        
 } abstract;
-
 
 
 /*
@@ -150,13 +175,66 @@ static HANDLE GetAbstractHandle(int index, HANDLE hFile)
 }
 
 /*
+ *  Constructs the abstract streaming object 
+ */
+CAbstractStreaming::CAbstractStreaming()
+{
+    DWORD SectorsPerCluster, BytesPerSector, NumberOfFreeClusters, TotalNumberOfClusters;
+
+    InitializeCriticalSection(&cs);
+    
+    /*
+     *  Findout if the number of bytes per sector from this disk is 2048 aligned, this allows no-buffering for 2048 bytes aligned files.
+     *
+     *  FIXME: The game might not work if it is installed in another disk other than the main disk because of the NULL parameter
+     *  in GetDiskFreeSpace(). R* did this mistake and I'm doing it again because I'm too lazy to fix R* mistake.
+     * 
+     */
+    if(GetDiskFreeSpaceA(0, &SectorsPerCluster, &BytesPerSector, &NumberOfFreeClusters, &TotalNumberOfClusters)
+    && BytesPerSector)
+    {
+        this->bIs2048AlignedSector  = (2048 % BytesPerSector) == 0;
+    }
+    else this->bIs2048AlignedSector = false;
+}
+
+/*
+ *  Destructor for the abstract streaming object
+ */
+CAbstractStreaming::~CAbstractStreaming()
+{
+    DeleteCriticalSection(&cs);
+}
+
+
+/*
  *  Import
  *      Imports a model into @index
  */
 void CAbstractStreaming::Import(ModelFile& file, int index)
 {
+    imgPlugin->Log("Importing model file for index %d at \"%s\"", index, file.path.c_str());
+    
     file.MakeSureHasProcessed();
     this->imports.emplace(index, file);
+    
+}
+
+/*
+ *  Reimport
+ *      Imports a new model into @index
+ */
+void CAbstractStreaming::Reimport(ModelFile& file, int index)
+{
+    scoped_lock xlock(this->cs);
+    
+    auto it = this->imports.find(index);
+    if(it != this->imports.end())
+        it->second = file;
+    else
+        this->imports.emplace(index, file);
+
+    file.ProcessFileData();
 }
 
 /*
@@ -166,15 +244,38 @@ void CAbstractStreaming::Import(ModelFile& file, int index)
 void CAbstractStreaming::Reimport(int index)
 {
     auto it = imports.find(index);
-    if(it != imports.end())
+    if(it != imports.end()) this->Reimport(it->second.get());
+}
+
+/*
+ *  Reimport
+ *      Reloads the model data (such as the size of it)
+ */
+void CAbstractStreaming::Reimport(ModelFile& file, bool bLock)
+{
+    if(bLock)
     {
         // Lock just to be sure we're not in concurrency with the streaming thread
         scoped_lock xlock(this->cs);
-        
         // Reprocess the file data
-        it->second.get().ProcessFileData();
+        file.ProcessFileData();
+    }
+    else
+    {
+        file.ProcessFileData();
     }
 }
+
+/*
+ * RemoveImport
+ *      Erases a item from the import table 
+ */
+void CAbstractStreaming::RemoveImport(int index)
+{
+    scoped_lock xlock(this->cs);
+    imports.erase(index);
+}
+
 
 /*
  *  OpenModel
@@ -182,8 +283,10 @@ void CAbstractStreaming::Reimport(int index)
  */
 auto CAbstractStreaming::OpenModel(ModelFile& file, int index) -> SFile*
 {
+    DWORD flags = FILE_FLAG_SEQUENTIAL_SCAN | (*pStreamCreateFlags & FILE_FLAG_OVERLAPPED);
+    
     HANDLE hFile = CreateFileA(file.path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                               OPEN_EXISTING, *pStreamCreateFlags, NULL);
+                               OPEN_EXISTING, flags, NULL);
     
     if(hFile == INVALID_HANDLE_VALUE)
     {
@@ -213,6 +316,68 @@ void CAbstractStreaming::CloseModel(SFile* file)
     this->files.remove(*file);
 }
 
+/*
+ *  RequestClothes
+ *      Clothes object indices are in range 384-393, one index for each part of the body
+ *      So when a cloth gets requested it must import "the file" into the specified index
+ */
+void CAbstractStreaming::RequestClothes(int index)
+{
+    // If index is a texture or body-id we can take our time to see if there's the need to import a file
+    if(index >= 20000 || (index >= 384 && index <= 393))
+    {
+        auto it = this->clothes.find(ms_aInfoForModel[index].iBlockOffset);
+        if(it != this->clothes.end())
+        {
+            // We have a replacement for this cloth! Reimport our file into index @index
+            this->Reimport(it->second, index);
+        }
+        else
+        {
+            // Clear import at index 'cuz it is not our file
+            this->RemoveImport(index);
+        }
+    }
+    else
+        imgPlugin->Log("Warning: RequestClothes failed for index %d", index);
+}
+
+
+/*
+ * BuildClothesMap
+ *      Finds out which model files under our control are clothes.
+ */
+void CAbstractStreaming::BuildClothesMap()
+{
+    // Findout about some pointers...
+    char* playerImgPath         = ReadMemory<char*>(0x5A69F7 + 1, true);
+    int   playerImgNumEntries   = ReadMemory<int>  (0x5A69E8 + 1, true);
+    
+    // Build game's cd directory entries for player.img cdimage
+    CDirectory__CDirectory(playerImgDirectory, 0, playerImgNumEntries, playerImgEntries);
+    CDirectory__ReadDirFile(playerImgDirectory, 0, playerImgPath);
+
+    this->clothes.clear();
+    
+    // Find files on modloader folder that is present in player.img cdimage too
+    for(size_t i = 0; i < playerImgDirectory->m_dwCount; ++i)
+    {
+        CDirectoryEntry& entry = playerImgDirectory->m_pEntries[i];
+        
+        auto it = imgPlugin->models.find( modloader::hash(entry.filename, ::toupper) );
+        if(it != imgPlugin->models.end())
+        {
+            ModelFile& model = it->second;
+            
+            // Register the clothes file we've just found...
+            this->clothes.emplace(entry.fileOffset, model);
+            model.isClothes = true;
+            
+            imgPlugin->Log("Found clothes file \"%s\"", model.path.c_str());
+        }
+    }
+}
+
 
 /*
  *  LoadAbstractCdDirectory
@@ -225,8 +390,6 @@ void CAbstractStreaming::LoadAbstractCdDirectory()
     typedef function_hooker<0x5B61E1, size_t(void*, void*, size_t)> rentry_hook;
     typedef function_hooker_fastcall<0x5B6449, char(CStreamingInfo*, int, int*, int*)> rreg_hook;
 
-    // TODO BUILD STUFF
-    
     // Basic vars:
     static decltype(imgPlugin->models)::iterator models_it;
     static decltype(imgPlugin->models)::iterator curr_model_it;
@@ -235,6 +398,9 @@ void CAbstractStreaming::LoadAbstractCdDirectory()
     
     Log("Loading abstract cd directory...");
 
+    // Build the clothes map right now so we know how much "real models" we have in hands
+    this->BuildClothesMap();
+    
     // Make the models iterator point to the beggining
     models_it = imgPlugin->models.begin();
     
@@ -255,8 +421,8 @@ void CAbstractStreaming::LoadAbstractCdDirectory()
     {
         CThePlugin::ModelFile* file = nullptr;
         CDirectoryEntry* entry = (CDirectoryEntry*)(buf);
-        
-        // Advance models iterator until a non-cloth model is found
+
+        // Advance models iterator until a non-clothes model is found
         while(models_it->second.get().isClothes) ++models_it;
         file = &models_it->second.get();
         
@@ -266,7 +432,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory()
         entry->fileOffset    = 0;
         entry->sizePriority1 = 0;
         entry->sizePriority2 = file->GetSizeInBlocks();
-        
+
         curr_model_it = models_it++;
         return sizeof(entry);
     });
@@ -289,6 +455,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory()
     rreg.restore();
     
     // We're done simulating a cd directory
+    Log("Abstract cd directory has been loaded");
 }
 
 
@@ -376,8 +543,10 @@ int __stdcall CdStreamThread()
             // There's some real problem if we can't load a abstract model
             if(bIsAbstract && !bResult)
             {
-                imgPlugin->Log("Warning: Failed to load abstract model file %s", filename);
+                imgPlugin->Log("Warning: Failed to load abstract model file %s; error code: 0x%X", filename, GetLastError());
             }
+            
+            // TODO should I fill the "trash" part of the 2KiB aligned buffer (cd->lpBuffer) with null bytes ?
             
             // Set the cdstream status, 0 for "okay" and 254 for "failed to read"
             cd->status = bResult? 0 : 254;
@@ -400,34 +569,78 @@ int __stdcall CdStreamThread()
 
 
 
+/*
+ *  Reload models information
+ */
+void CThePlugin::ReloadModels()
+{
+    abstract.ReloadModels();
+}
 
-
-
-
+/*
+ *  Patches the game streaming methods to load files from disk 
+ */
 void CThePlugin::StreamingPatch()
 {
     typedef function_hooker<0x40CF34, int(int streamNum, void* buf, int sectorOffset, int sectorCount)> cdread_hook;
     typedef function_hooker<0x5B8E1B, size_t()> loadcd_hook;
+    typedef function_hooker<0x5B915B, int(const char*, char)> datcd_hook;
+    typedef function_hooker<0x40A106, char(int, int)> rqcloth_hook;
+    typedef function_hooker<0x5B63E8, int(const char*)> addrrr_hook;
+    typedef function_hooker<0x5B630B, int(const char*)> addcol_hook;
+    typedef function_hooker_fastcall<0x5B6419, int(void*, int, const char*)> addscm_hook;
+    typedef function_hooker_fastcall<0x409F76, char(void*, int, const char*, int*, int*)> findspecial_hook;
+    typedef function_hooker<0x409FD9, char(int, int)> rqspecial_hook;
     
-    uintptr_t addr;
-    bool isHoodlum = ReadMemory<uint8_t>(0x406A20, true) == 0xE9;
+    static CAbstractStreaming::ModelFile* pSpecial = nullptr;
     
     // Setup some references
     ms_aInfoForModel   = memory_pointer(0x8E4CC0).get();
     pStreamCreateFlags = memory_pointer(0x8E3FE0).get();
+    FindStreamedScript = memory_pointer(0x4706F0).get();
     images             = ReadMemory<CImgDescriptor*>(0x407613 + 1, true);
+    CVehicleRecording__NumPlayBackFiles = ReadMemory<int*>(0x45A001 + 1, true);
+    CVehicleRecording__StreamingArray   = ReadMemory<int*>(0x459FF0 + 2, true);
+    CDirectory__CDirectory              = memory_pointer(0x5322F0).get();
+    CDirectory__ReadDirFile             = memory_pointer(0x532350).get();
+    playerImgDirectory                  = ReadMemory<CDirectory*>(0x5A69ED + 1, true);
+    playerImgEntries                    = ReadMemory<CDirectoryEntry*>(0x5A69E3 + 1, true);
+    
     
     // Making our our code for the stream thread would make things so much better
-    MakeJMP(0x406560, (void*) CdStreamThread);
+    MakeJMP(0x406560, raw_ptr(CdStreamThread));
     
     // We need to know the next model to be read before the CdStreamRead call happens
-    MakeCALL(0x40CCA6, (void*) HOOK_RegisterNextModelRead);
+    MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
     MakeNOP(0x40CCA6 + 5, 2);
     
     // We need to return a new hFile if the file is on disk
-    addr = isHoodlum? 0x156C2FB : 0x406A5B; // isHOODLUM? HOODLUM : ORIGINAL
-    MakeCALL(addr, (void*) HOOK_NewFile);
-    MakeNOP(addr+5, 1);
+    MakeCALL(0x406A5B, raw_ptr(HOOK_NewFile));
+    MakeNOP(0x406A5B+5, 1);
+    
+    
+    // Hook the CStreaming::AddImageToList from the CFileLoader::LoadLevel (gta.dat reader) to open custom images in modloader folder
+    make_function_hook<datcd_hook>([](datcd_hook::func_type AddImageToList, const char*& path, char& bIsNotClothesImage)
+    {
+        std::string normalized = NormalizePath(path);
+        
+        // Try to find a custom image file that has almost the same path as @path
+        for(auto& img : imgPlugin->imgFiles)
+        {
+            // Find part of the path similar to @normalized and see if it's equal to @normalized
+            std::string properly = GetProperlyPath(img.path, normalized.c_str());
+            if(properly == normalized)
+            {
+                // Yep, we found the replacement
+                path = img.path.c_str();
+                break;
+            }
+        }
+        
+        // Open the image file as before
+        imgPlugin->Log("Opening level image file \"%s\"", path);
+        return AddImageToList(path, bIsNotClothesImage);
+    });
     
     // Load our on-disk information as it was inside a cdimage
     make_function_hook<loadcd_hook>([](loadcd_hook::func_type LoadCdDirectory1)
@@ -440,7 +653,9 @@ void CThePlugin::StreamingPatch()
         }
         return LoadCdDirectory1();
     });
-
+    
+    
+    
     // We need to know the model index that will pass throught CallGetAbstractHandle
     make_function_hook<cdread_hook>([](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
     {
@@ -450,30 +665,105 @@ void CThePlugin::StreamingPatch()
         return result;
     });
     
+    
+    
+    
+    // We need to reimport model files for clothes body-parts
+    make_function_hook<rqcloth_hook>([](rqcloth_hook::func_type RequestModel, int& index, int& type)
+    {
+        if(type == 18)    // Clothes object
+        {
+            // Tell the abstract streaming that we're about to request a model that's a cloth object
+            abstract.RequestClothes(index);
+        }
+        return RequestModel(index, type);
+    });
+    
+    
+    // Before rqspecial_hook, we need to know which model is being loaded into the special model index.
+    // To do it, we'll hook the CDirectory::FindItem call and set the static var pSpecial to contain a pointer to our local model.
+    make_function_hook<findspecial_hook>([](findspecial_hook::func_type FindItem, void*& dir, int&, const char*& name, int*& pOff , int*& pCount)
+    {
+        char result; pSpecial = nullptr;
+        
+        if(result = FindItem(dir, 0, name, pOff, pCount))
+        {
+            if(*pOff == 0)  // If the offset is 0, it may be one of our local models...
+            {
+                // Find model with name and put it's pointer at pSpecial
+                auto it = imgPlugin->models.find(modloader::hash(std::string(name) + ".dff", ::toupper));
+                pSpecial = (it == imgPlugin->models.end()? nullptr : &it->second.get());
+            }
+        }
+        return result;
+    });
+
+    // Hook call to CStreaming::RequestModel at CStreaming::RequestSpecialChar, so we can load the new file into the abstract streaming
+    make_function_hook<rqspecial_hook>([](rqspecial_hook::func_type RequestModel, int& index, int& type)
+    {
+        // Imports the special model into the abstract streaming index, or remove previous import at index
+        abstract.RemoveOrReimport(pSpecial, index);
+        
+        // Do the request
+        return RequestModel(index, type);
+    });
+    
 
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    /*
-        readImgFileFromDat = MakeCALL(0x5B915B, (void*) HOOK_ReadImgFileFromDat).get();
+    // Let's make the function CVehicleRecording::RegisterRecordingFile not re-register paths that have been already registered.
+    // That will let us have a rrr at the modloader folder and the other at the carrecs.img
+    make_function_hook<addrrr_hook>([](addrrr_hook::func_type RegisterRecordingFile, const char*& r3name)
+    {
+        // Let's see if there's already any carrec path with the specified number
+        if(true)
+        {
+            int r3number;
+            
+            // Extract recording number
+            if(sscanf(r3name, "carrec%d", &r3number) || sscanf(r3name, "CARREC%d", &r3number))
+            {
+                // Check out if this number is already created
+                for(int i = 0; i < *CVehicleRecording__NumPlayBackFiles; ++i)
+                {
+                    if(CVehicleRecording__StreamingArray[i * 4] == r3number)
+                        return i;    // Returning previosly registered recording
+                }
+            }
+        }
         
-        addPath = MakeCALL(0x5B63E8, (void*)(HOOK_AllocateOrFindPath)).get();
-        CExternalScripts__Allocate = MakeCALL(0x5B6419, (void*)(HOOK_AllocateOrFindExternalScript)).get();
-     * 
-     * ------> CLOTHES
-     *  CLOSE FILE
-     *  CLOTHES PLAYER BUG
-     *  SPECIAL MODEL BUG
-     *  RELOAD
-    */
+        // Return newly registered recording
+        return RegisterRecordingFile(r3name);
+    });
+    
+
+    // Let's make the function CStreamedScript::RegisterScript check if the script has been already registered.
+    // That will let us have a scm at the modloader folder and the other at the script.img
+    make_function_hook<addscm_hook>([](addscm_hook::func_type RegisterScript, void*& self, int&, const char*& name)
+    {
+        int script = FindStreamedScript(self, 0, name);
+        if(script != -1) return script;
+        return RegisterScript(self, 0, name);
+    });
+    
+    // The CColStore class does not register the col names so it can't tell if the col was
+    // registered before or not. Let's fix it, at CColStore::AddColSlot itself
+    make_function_hook<addcol_hook>([](addcol_hook::func_type AddColSlot, const char*& name)
+    {
+        static std::map<std::string, int> store;
+        
+        // Find lower case name for comparision
+        std::string lname = name;
+        modloader::tolower(lname);
+        
+        // Check if col filename has been already registered
+        auto it = store.find(lname);
+        if(it != store.end()) return it->second;
+
+        // Register col filename and tell the game to add it into CColStore
+        return store.emplace(std::move(lname), AddColSlot(name)).first->second;
+    });
+    
+    
         
     /*
      *  We need to hook some game code where imgDescriptor[x].name and SteamNames[x][y] is set because they have a limit in filename size,
@@ -511,15 +801,15 @@ void CThePlugin::StreamingPatch()
      */
     if(true)
     {
-        addr = isHoodlum? 0x1564B90 : 0x406886;         // streamNames hook
-        MakeNOP(addr, 10);  // on Steam this 10 changes
-        MakeCALL(addr, (void*) HOOK_SetStreamName);
-        
-        addr = isHoodlum? 0x01567BC2 : 0x407642;        // imgDescriptor hook
-        MakeNOP(addr, 10);  // on Steam this 10 changes
-        MakeCALL(addr, (void*) HOOK_SetImgDscName);
-        
         typedef function_hooker<0x5B6183, void*(const char*, const char*)>  ldcd_hook;
+        
+        size_t nopcount = injector::address_manager::singleton().IsSteam()? 0xC : 0xA;
+        
+        MakeNOP(0x406886, nopcount);
+        MakeCALL(0x406886, raw_ptr(HOOK_SetStreamName));
+        
+        MakeNOP(0x407642, nopcount);
+        MakeCALL(0x407642, raw_ptr(HOOK_SetImgDscName));
         
         // hook to read new field at img descriptor
         make_function_hook<ldcd_hook>([](ldcd_hook::func_type fopen, const char*& filename, const char*& mode)

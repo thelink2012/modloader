@@ -9,14 +9,14 @@
 //----------------------------------------------------------
 #include "sala.h"
 #include "sacky.hpp"
-#include "Injector.h"
+#include <modloader_util_injector.hpp>
 
 // Some defines to make sacky's code compatible with modloader
 #define saVersion       VERSION_US_1
 #define Log             salaPlugin->Log
-#define patch(a,b)      WriteMemoryRaw((a), (b), sizeof((b)), true)
-#define patchFloat(a,b) WriteMemory<float>((a), (b), true)
-#define nop(a,b)        MakeNOP((a), (b))
+#define patch(a,b)      WriteMemoryRaw(raw_ptr(a), (b), sizeof((b)), true)
+#define patchFloat(a,b) WriteMemory<float>(raw_ptr(a), (b), true)
+#define nop(a,b)        MakeNOP(raw_ptr(a), (b))
 #define Patch(a,b)      patch(a,b)
 #define Nop(a,b)        nop(a,b)
 #define Patch_Float(a,b) patchFloat(a,b)

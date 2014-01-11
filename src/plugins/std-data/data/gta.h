@@ -195,19 +195,26 @@ namespace data
                 static int index = 0;
                 return ++index;
             }
+            
+            // Indices from readmes must start at higher values to not come before normal indices
+            static int get_readme_index()
+            {
+                static int index = 1000000000;
+                return ++index;
+            }
 
             /*
-             * Get index based on normalized path (must be a rvalue)
+             * Get index based on normalized path hash
              * If index already exist in index map, return it, otherwise return a new index
              * 
              */
-            static int get_index(size_t hash)
+            static int get_index(size_t hash, bool bIsReadmeSection)
             {
                 index_map& map = get_index_map();
                 auto it = map.find(hash);
                 if(it == map.end())
                 {
-                    return (map[hash] = get_index());
+                    return (map[hash] = (bIsReadmeSection? get_readme_index() : get_index()));
                 }
                 return it->second;
             }
@@ -220,7 +227,7 @@ namespace data
                     key_type key;
                     if(key.set(section, line))
                     {
-                        key.index = get_index(key.path.hash);
+                        key.index = get_index(key.path.hash, IsReadmeSection(section));
                         map[key];
                         return true;
                     }

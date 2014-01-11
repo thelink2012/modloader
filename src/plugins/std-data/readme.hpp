@@ -89,6 +89,7 @@ struct ReadmeReader
                 {
                     // We need to load the original data
                     if(!trait.isReady) trait.LoadData();
+                    
                 }
                 else
                 {

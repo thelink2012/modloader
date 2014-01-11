@@ -15,187 +15,574 @@
  */
 #pragma once
 #include <windows.h>
-#include <type_traits>
 #include <cstdint>
-#include <cassert>
 
-#ifdef _DEBUG
-#include <cstdio>
-#include <cstdarg>
-#endif
+namespace injector
+{
+
+/*
+ *  game_version_manager
+ *      Detects the game, the game version and the game region
+ *      This assumes the executable is decrypted, so, Silent's ASI Loader is recommended.
+ */
+class game_version_manager
+{
+	public:
+		// Set this if you would like that MessagesBox contain PluginName as caption
+		const char* PluginName;
+        
+	private:
+        char game, region, major, minor, cracker, steam;
+
+	public:
+		game_version_manager()
+		{
+            PluginName = "Unknown Plugin Name";
+			game = region = major = minor = cracker = steam = 0;
+		}
+
+        void Unpack(char* info) // info[8]
+        {
+            game        = info[0]; region   = info[1];
+            major       = info[2]; minor    = info[3];
+            cracker     = info[4]; steam    = info[5];
+        }
+        
+        void Pack(char* info) // info[8]
+        {
+            info[0] = game;     info[1] = region;
+            info[2] = major;    info[3] = minor;
+            info[4] = cracker;  info[5] = steam;
+            info[6] = 0;        info[7] = 0;
+        }
+        
+		// Checks if I don't know the game we are attached to
+		bool IsUnknown()		{ return game == 0; }
+		// Checks if this is the steam version
+		bool IsSteam()			{ return steam; }
+		// Gets the game we are attached to (0, '3', 'V', 'S')
+		char GetGame()			{ return game; }
+		// Gets the region from the game we are attached to (0, 'U', 'E');
+		char GetRegion()		{ return region; }
+		// Get major and minor version of the game (e.g. [major = 1, minor = 0] = 1.0)
+		int GetMajorVersion()	{ return major; }
+		int GetMinorVersion()	{ return minor; }
+        
+        bool IsHoodlum()        { return cracker == 'H'; }
+        
+        // Region conditions
+        bool IsUS() { return region == 'U'; }
+        bool IsEU() { return region == 'E'; }
+
+        // Game Conditions
+        bool IsIII() { return game == '3'; }
+        bool IsVC () { return game == 'V'; }
+        bool IsSA () { return game == 'S'; }
+
+		// Detects game, region and version; returns false if could not detect it
+		bool Detect()
+		{
+            game = region = major = minor = cracker = steam = 0;
+            
+			// Look for game and version thought the entry-point
+            return (DetectSA() || DetectVC() || DetectIII());
+		}
+        
+        
+		// Thanks Silent for the DetectXXX() functions
+		// DetectXXX():
+		//		The DetectXXX Methods tries to detect the region and version for game XXX
+		//		If it could not be detect, no changes are made to the object and the func returns false
+        bool DetectIII();
+        bool DetectVC();
+        bool DetectSA();
+        
+		// Gets the game version as text, the buffer must contain at least 32 bytes of space.
+        char* GetVersionText(char* buffer)
+        {
+            const char* g = this->IsIII()? "III" : this->IsVC()? "VC" : this->IsSA()? "SA" : "UNK";
+            const char* r = this->IsUS()? "US" : this->IsEU()? "EURO" : "UNK_REGION";
+            const char* s = this->IsSteam()? "Steam" : "";
+            sprintf(buffer, "GTA %s %d.%d %s%s", g, major, minor, r, s);
+            return buffer;
+        }
 
 
-//
-//	ASM EPILOG and ASM PROLOG macros for MSVC/MASM
-//
-#define ASM_PROLOG() _asm					\
-	{										\
-		_asm push	ebp						\
-		_asm mov	ebp, esp				\
-		_asm sub	esp, __LOCAL_SIZE		\
-	}
+	public:
+		// Raises a error saying that you could not detect the game version
+		void RaiseCouldNotDetect()
+		{
+			MessageBoxA(0,
+				"Could not detect the game version\nContact the mod creator!",
+				PluginName, MB_ICONERROR
+			);
+		}
 
-#define ASM_EPILOG() _asm					\
-	{										\
-		_asm mov	esp, ebp				\
-		_asm pop	ebp						\
-	}
+		// Raises a error saying that the exe version is incompatible (and output the exe name)
+		void RaiseIncompatibleVersion()
+		{
+			char buf[128], v[32];
+			sprintf(buf,
+				"An incompatible exe version has been detected! (%s)\nContact the mod creator!",
+				GetVersionText(v)
+				);
+			MessageBoxA(0, buf, PluginName, MB_ICONERROR);
+		}
+};
 
 
-//
-//
-//
+/*
+ *  address_manager
+ *      Address translator from 1.0 executables to other executables offsets
+ *      Inherits from game_version_manager ;)
+ */
+class address_manager : public game_version_manager
+{
+    private:
+        bool translator_initialized;        // Reserved for the translator function
+        bool gvm_initialized;
+        
+        address_manager()
+        {
+            translator_initialized = gvm_initialized = false;
+        }
+        
+        // You could implement your translator for the address your plugin uses
+        // If not implemented, the translator won't translate anything, just return the samething as before
+        #ifdef INJECTOR_GVM_HAS_TRANSLATOR
+                void* translator(void* p);
+        #else
+                void* translator(void* p) { return p; }
+        #endif
 
-union memory_pointer_a	// used to hack the compiler, don't use for general purposes
+    public:
+        
+        // Initialize the game_version_manager, detecting the game version
+        // Returns false if could not detect the game version
+        bool init_gvm()
+        {
+            if(gvm_initialized == false) gvm_initialized = this->Detect();
+            return gvm_initialized;
+        }
+        
+        // Translates address p to the running executable pointer
+        void* translate(void* p)
+        {
+            init_gvm();
+            return translator(p);
+        }
+        
+    public:
+        // Address manager singleton
+        static address_manager& singleton()
+        {
+            static address_manager m;
+            return m;
+        }
+        
+        // Static version of translate()
+        static void* translate_address(void* p)
+        {
+            return singleton().translate(p);
+        }
+        
+        //
+        static void set_name(const char* modname)
+        {
+            singleton().PluginName = modname;
+        }
+        
+    public:
+        // Functors for memory translation:
+        
+        // Translates nothing translator
+        struct fn_mem_translator_nop
+        {
+            void* operator()(void* p) const
+            { return p; }
+        };
+        
+        // Real translator
+        struct fn_mem_translator
+        {
+            void* operator()(void* p) const
+            { return translate_address(p); }
+        };
+};
+
+
+
+
+
+
+
+/*
+ *  auto_ptr_cast 
+ *      Casts itself to another pointer type in the lhs
+ */
+union auto_ptr_cast
 {
 	void*	 p;
 	uintptr_t a;
 
-	memory_pointer_a()				{ p = nullptr; }
-	memory_pointer_a(void* x) : p(x)		{}
-	memory_pointer_a(uint32_t x) : a(x)		{}
+	auto_ptr_cast() : p(0)                          {}
+    auto_ptr_cast(const auto_ptr_cast& x) : p(x.p)  {}
+	explicit auto_ptr_cast(void* x)    : p(x)       {}
+	explicit auto_ptr_cast(uint32_t x) : a(x)       {}
 
 	template<class T>
 	operator T*() { return reinterpret_cast<T*>(p); }
 };
 
-union memory_pointer    // use for general purposes
+/*
+ *  basic_memory_pointer
+ *      A memory pointer class that is capable of many operations, including address translation
+ *      MemTranslator is the translator functor
+ */
+template<class MemTranslator>
+union basic_memory_pointer
 {
-	void*	 p;
-	uintptr_t a;
+    private:
+        void*	  p;
+        uintptr_t a;
+        
+        // Translates address p to the running executable pointer
+        static auto_ptr_cast memory_translate(void* p)
+        {
+            return auto_ptr_cast(MemTranslator()(p));
+        }
 
-	memory_pointer()						{ p = nullptr; }
-	memory_pointer(void* x) : p(x)			{}
-	memory_pointer(uint32_t x) : a(x)		{}
+    public:
+        basic_memory_pointer()            : p(0)                           {}
+        basic_memory_pointer(void* x)     : p(x)                           {}
+        basic_memory_pointer(uintptr_t x) : a(x)                           {}
+        basic_memory_pointer(const auto_ptr_cast& x) : p(x.p)              {}
+        basic_memory_pointer(const basic_memory_pointer& rhs) : p(rhs.p)  {}
 
-    /* Use to get pointer and automatically cast to another type */
-    memory_pointer_a get()  { return memory_pointer_a(p); }
+        template<class T>
+        explicit basic_memory_pointer(T* x) : p((void*)x) {}
+        
+        // Gets the translated pointer (plus automatic casting to lhs)
+        auto_ptr_cast get() const               { return memory_translate(p); }
+        
+        // Gets the translated pointer (casted to T*)
+        template<class T> T* get() const        { return get(); }
+        
+        // Gets the raw pointer, without translation (casted to T*)
+        template<class T> T* get_raw() const    { return auto_ptr_cast(p); }
+        
+        // This type can get assigned from void* and uintptr_t
+        basic_memory_pointer& operator=(void* x)		{ return p = x, *this; }
+        basic_memory_pointer& operator=(uintptr_t x)	{ return a = x, *this; }
+        
+        /* Arithmetic */
+        basic_memory_pointer operator+(const basic_memory_pointer& rhs) const
+        { return basic_memory_pointer(this->a + rhs.a); }
+        
+        basic_memory_pointer operator-(const basic_memory_pointer& rhs) const
+        { return basic_memory_pointer(this->a - rhs.a); }
+        
+        basic_memory_pointer operator*(const basic_memory_pointer& rhs) const
+        { return basic_memory_pointer(this->a * rhs.a); }
+        
+        basic_memory_pointer operator/(const basic_memory_pointer& rhs) const
+        { return basic_memory_pointer(this->a / rhs.a); }
+        
+        
+        /* Comparision */
+        bool operator==(const basic_memory_pointer& rhs) const
+        { return this->a == rhs.a; }
+        
+        bool operator!=(const basic_memory_pointer& rhs) const
+        { return this->a != rhs.a; }
+        
+        bool operator<(const basic_memory_pointer& rhs) const
+        { return this->a < rhs.a; }
+        
+        bool operator<=(const basic_memory_pointer& rhs) const
+        { return this->a <= rhs.a; }
+        
+        bool operator>(const basic_memory_pointer& rhs) const
+        { return this->a > rhs.a; }
+        
+        bool operator>=(const basic_memory_pointer& rhs) const
+        { return this->a >=rhs.a; }
+        
+        /* Conversion to other types */
+        explicit operator uintptr_t()
+        { return this->a; }
+        explicit operator bool()
+        { return this->p != nullptr; }
+};
+
+// Typedefs including memory translator for the above type
+typedef basic_memory_pointer<address_manager::fn_mem_translator>       memory_pointer;
+typedef basic_memory_pointer<address_manager::fn_mem_translator_nop>   memory_pointer_raw;
+
+// Makes a memory_pointer_raw from another random type
+template<class T>
+inline memory_pointer_raw  raw_ptr(T p)
+{
+    return memory_pointer_raw(p);
+}
+
+
+
+/*
+ *  memory_pointer_tr
+ *      Stores a basic_memory_pointer<Tr> as a raw pointer from translated pointer
+ */
+union memory_pointer_tr
+{
+    private:
+        void*     p;
+        uintptr_t a;
     
-    template<class T>
-    T* get() { return get(); }
-    
-	operator void*()		{ return p; }
-	operator uintptr_t()	{ return a; }
+    public:
+        template<class Tr>
+        memory_pointer_tr(const basic_memory_pointer<Tr>& ptr)
+            : p(ptr.get())
+        {}      // Constructs from a basic_memory_pointer
+      
+        memory_pointer_tr(const auto_ptr_cast& ptr)
+            : p(ptr.p)
+        {}  // Constructs from a auto_ptr_cast, probably comming from basic_memory_pointer::get
+        
+        memory_pointer_tr(const memory_pointer_tr& rhs)
+            : p(rhs.p)
+        {}  // Constructs from my own type, copy constructor
+        
+        memory_pointer_tr(uintptr_t x)
+            : p(memory_pointer(x).get())
+        {}  // Constructs from a integer, translating the address
+      
+        memory_pointer_tr(void* x)
+            : p(memory_pointer(x).get())
+        {}  // Constructs from a void pointer, translating the address
+        
+        // Just to be method-compatible with basic_memory_pointer ...
+        auto_ptr_cast        get()      { return auto_ptr_cast(p);     }
+        template<class T> T* get()      { return get(); }
+        template<class T> T* get_raw()  { return get(); }
 
-	memory_pointer& operator=(void* x)		{ return p = x, *this; }
-	memory_pointer& operator=(uintptr_t x)	{ return a = x, *this; }
+        memory_pointer_tr operator+(const uintptr_t& rhs) const
+        { return memory_pointer_raw(this->a + rhs); }
+        
+        memory_pointer_tr operator-(const uintptr_t& rhs) const
+        { return memory_pointer_raw(this->a - rhs); }
+        
+        memory_pointer_tr operator*(const uintptr_t& rhs) const
+        { return memory_pointer_raw(this->a * rhs); }
+        
+        memory_pointer_tr operator/(const uintptr_t& rhs) const
+        { return memory_pointer_raw(this->a / rhs); }
+        
+       explicit operator uintptr_t()
+       { return this->a; }
 };
 
 
-//
-//
-//
-inline bool ProtectMemory(memory_pointer Address, size_t size, DWORD Protect)
+
+
+
+
+
+
+/*
+ *  ProtectMemory
+ *      Makes the address @addr have a protection of @protection
+ */
+inline bool ProtectMemory(memory_pointer_tr addr, size_t size, DWORD protection)
 {
-	return VirtualProtect(Address, size, Protect, &Protect) != 0;
+	return VirtualProtect(addr.get(), size, protection, &protection) != 0;
 }
 
-inline bool UnprotectMemory(memory_pointer Address, size_t size, DWORD& Out_OldProtect)
+/*
+ *  UnprotectMemory
+ *      Unprotect the memory at @addr with size @size so it have all accesses (execute, read and write)
+ *      Returns the old protection to out_oldprotect
+ */
+inline bool UnprotectMemory(memory_pointer_tr addr, size_t size, DWORD& out_oldprotect)
 {
-	return VirtualProtect(Address, size, PAGE_EXECUTE_READWRITE, &Out_OldProtect) != 0;
+	return VirtualProtect(addr.get(), size, PAGE_EXECUTE_READWRITE, &out_oldprotect) != 0;
 }
 
-inline void WriteMemoryRaw(memory_pointer Address, void* value, size_t size, bool vp)
+/*
+ *  scoped_unprotect
+ *      RAII wrapper for UnprotectMemory
+ *      On construction unprotects the memory, on destruction reprotects the memory
+ */
+struct scoped_unprotect
 {
-	DWORD oldProtect;
-	if(vp) UnprotectMemory(Address, size, oldProtect);
- 
-	memcpy(Address, value, size);
- 
-	if(vp) ProtectMemory(Address, size, oldProtect);
+    memory_pointer_raw  addr;
+    size_t              size;
+    DWORD               dwOldProtect;
+    bool                bUnprotected;
+
+    scoped_unprotect(memory_pointer_tr addr, size_t size)
+    {
+        if(size == 0) bUnprotected = false;
+        else          bUnprotected = UnprotectMemory(this->addr = addr.get<void>(), this->size = size, dwOldProtect);
+    }
+    
+    ~scoped_unprotect()
+    {
+        if(bUnprotected) ProtectMemory(this->addr.get(), this->size, this->dwOldProtect);
+    }
+};
+
+
+
+
+
+
+
+
+/*
+ *  WriteMemoryRaw 
+ *      Writes into memory @addr the content of @value with a sizeof @size
+ *      Does memory unprotection if @vp is true
+ */
+inline void WriteMemoryRaw(memory_pointer_tr addr, void* value, size_t size, bool vp)
+{
+    scoped_unprotect xprotect(addr, vp? size : 0);
+    memcpy(addr.get(), value, size);
 }
 
-inline void ReadMemoryRaw(memory_pointer Address, void* ret, size_t size, bool vp)
+/*
+ *  ReadMemoryRaw 
+ *      Reads the memory at @addr with a sizeof @size into address @ret
+ *      Does memory unprotection if @vp is true
+ */
+inline void ReadMemoryRaw(memory_pointer_tr addr, void* ret, size_t size, bool vp)
 {
-	DWORD oldProtect;
-	if(vp) UnprotectMemory(Address, size, oldProtect);
- 
-	if(size == 1) *(uint8_t*)ret = *(uint8_t*)Address.p;
-	else if(size == 2) *(uint16_t*)ret = *(uint16_t*)Address.p;
-	else if(size == 4) *(uint32_t*)ret = *(uint32_t*)Address.p;
-	else memcpy(ret, Address, size);
-	
-	if(vp) ProtectMemory(Address, size, oldProtect);
+    scoped_unprotect xprotect(addr, vp? size : 0);
+    memcpy(ret, addr.get(), size);
+}
+
+/*
+ *  MemoryFill 
+ *      Fills the memory at @addr with the byte @value doing it @size times
+ *      Does memory unprotection if @vp is true
+ */
+inline void MemoryFill(memory_pointer_tr addr, uint8_t value, size_t size, bool vp)
+{
+    scoped_unprotect xprotect(addr, vp? size : 0);
+    memset(addr.get(), value, size);
+}
+
+/*
+ *  WriteObject
+ *      Assigns the object @value into the same object type at @addr
+ *      Does memory unprotection if @vp is true
+ */
+template<class T>
+inline T& WriteObject(memory_pointer_tr addr, const T& value, bool vp = false)
+{
+    scoped_unprotect xprotect(addr, vp? sizeof(value) : 0);
+    return (*addr.get<T>() = value);
+}
+
+/*
+ *  ReadObject
+ *      Assigns the object @value with the value of the same object type at @addr
+ *      Does memory unprotection if @vp is true
+ */
+template<class T>
+inline T& ReadObject(memory_pointer_tr addr, T& value, bool vp = false)
+{
+    scoped_unprotect xprotect(addr, vp? sizeof(value) : 0);
+    return (value = *addr.get<T>());
+}
+
+
+/*
+ *  WriteMemory
+ *      Writes the object of type T into the address @addr
+ *      Does memory unprotection if @vp is true
+ */
+template<class T>
+inline void WriteMemory(memory_pointer_tr addr, T value, bool vp = false)
+{
+    WriteObject(addr, value, vp);
+}
+
+/*
+ *  ReadMemory
+ *      Reads the object type T at address @addr
+ *      Does memory unprotection if @vp is true
+ */
+template<class T>
+inline T ReadMemory(memory_pointer_tr addr, bool vp = false)
+{
+    T value;
+    return ReadObject(addr, value, vp);
 }
 
 
 
-template<class T> inline
-	void WriteMemoryTo(memory_pointer Address, const T& value, bool vp = false)
-	{
-		DWORD oldProtect;
-		if(vp) UnprotectMemory(Address, sizeof(T), oldProtect);
-		*(T*)Address.p = value;
-		if(vp) VirtualProtect(Address, sizeof(T), oldProtect, &oldProtect);
-	}
-
-template<class T> inline
-	T& ReadMemoryTo(memory_pointer Address, T& value, bool vp = false)
-	{
-		DWORD oldProtect;
-		if(vp) UnprotectMemory(Address, sizeof(T), oldProtect);
-		value = *(T*)Address.p;
-		if(vp) VirtualProtect(Address, sizeof(T), oldProtect, &oldProtect);
-		return value;
-	}
-
-template<class T> inline
-	void WriteMemory(memory_pointer Address, T value, bool vp = false)
-	{
-		WriteMemoryTo(Address, value, vp);
-	}
-
-template<class T> inline
-	T ReadMemory(memory_pointer Address, bool vp = false)
-	{
-		T value;
-		return ReadMemoryTo(Address, value, vp), value;
-	}
 
 
 
 
 
-
-//
-//
-//
-inline memory_pointer GetAbsoluteOffset(int rel_value, memory_pointer end_of_instruction)
+/*
+ *  GetAbsoluteOffset
+ *      Gets absolute address based on relative offset @rel_value from instruction that ends at @end_of_instruction
+ */
+inline memory_pointer_raw GetAbsoluteOffset(int rel_value, memory_pointer_tr end_of_instruction)
 {
-	return end_of_instruction + rel_value;
+	return (uintptr_t)(end_of_instruction) + rel_value;
 }
 
-inline long GetRelativeOffset(int abs_value, memory_pointer end_of_instruction)
+/*
+ *  GetRelativeOffset
+ *      Gets relative offset based on absolute address @abs_value for instruction that ends at @end_of_instruction
+ */
+inline int GetRelativeOffset(memory_pointer_tr abs_value, memory_pointer_tr end_of_instruction)
 {
-	return abs_value - end_of_instruction;
+	return uintptr_t(abs_value.get<char>() - end_of_instruction.get<char>());
 }
 
-inline memory_pointer ReadRelativeOffset(memory_pointer at, size_t sizeof_addr = 4)
+/*
+ *  ReadRelativeOffset
+ *      Reads relative offset from address @at
+ */
+inline memory_pointer_raw ReadRelativeOffset(memory_pointer_tr at, size_t sizeof_addr = 4)
 {
 	switch(sizeof_addr)
 	{
-		case 1: return (GetAbsoluteOffset(ReadMemory<int8_t>(at, true), at+sizeof_addr));
+		case 1: return (GetAbsoluteOffset(ReadMemory<int8_t> (at, true), at+sizeof_addr));
 		case 2: return (GetAbsoluteOffset(ReadMemory<int16_t>(at, true), at+sizeof_addr));
 		case 4: return (GetAbsoluteOffset(ReadMemory<int32_t>(at, true), at+sizeof_addr));
 	}
 	return nullptr;
 }
 
-inline void MakeRelativeOffset(memory_pointer at, memory_pointer dest, size_t sizeof_addr = 4)
+/*
+ *  MakeRelativeOffset
+ *      Writes relative offset into @at based on absolute destination @dest
+ */
+inline void MakeRelativeOffset(memory_pointer_tr at, memory_pointer_tr dest, size_t sizeof_addr = 4)
 {
 	switch(sizeof_addr)
 	{
-		case 1: WriteMemory<int8_t>(at, static_cast<int8_t>(GetRelativeOffset(dest, at+sizeof_addr)), true);
+		case 1: WriteMemory<int8_t> (at, static_cast<int8_t> (GetRelativeOffset(dest, at+sizeof_addr)), true);
 		case 2: WriteMemory<int16_t>(at, static_cast<int16_t>(GetRelativeOffset(dest, at+sizeof_addr)), true);
 		case 4: WriteMemory<int32_t>(at, static_cast<int32_t>(GetRelativeOffset(dest, at+sizeof_addr)), true);
 	}
 }
 
-inline memory_pointer GetAbsoluteOffsetInOpcode(memory_pointer at)
+/*
+ *  GetBranchDestination
+ *      Gets the destination of a branch instruction at address @at
+ *      *** Works only with JMP and CALL for now ***
+ */
+inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at)
 {
 	switch(ReadMemory<uint8_t>(at, true))
 	{
-        // We need to handle other instructions (and prefixes)...
+        // We need to handle other instructions (and prefixes) later...
 		case 0xE8:	// call rel
 		case 0xE9:	// jmp rel
 			return ReadRelativeOffset(at+1, 4);
@@ -203,35 +590,270 @@ inline memory_pointer GetAbsoluteOffsetInOpcode(memory_pointer at)
 	return nullptr;
 }
 
-
-
-inline memory_pointer MakeJMP(memory_pointer at, memory_pointer dest)
+/*
+ *  MakeJMP
+ *      Creates a JMP instruction at address @at that jumps into address @dest
+ *      If there was already a branch instruction there, returns the previosly destination of the branch
+ */
+inline memory_pointer_raw MakeJMP(memory_pointer_tr at, memory_pointer_tr dest)
 {
-	memory_pointer p = GetAbsoluteOffsetInOpcode(at);
+	auto p = GetBranchDestination(at);
 	WriteMemory<uint8_t>(at, 0xE9, true);
 	MakeRelativeOffset(at+1, dest);
 	return p;
 }
 
-inline memory_pointer MakeCALL(memory_pointer at, memory_pointer dest)
+/*
+ *  MakeCALL
+ *      Creates a CALL instruction at address @at that jumps into address @dest
+ *      If there was already a branch instruction there, returns the previosly destination of the branch
+ */
+inline memory_pointer_raw MakeCALL(memory_pointer_tr at, memory_pointer_tr dest)
 {
-	memory_pointer p = GetAbsoluteOffsetInOpcode(at);
+	auto p = GetBranchDestination(at);
 	WriteMemory<uint8_t>(at, 0xE8, true);
 	MakeRelativeOffset(at+1, dest);
 	return p;
 }
 
-inline void MakeJA(memory_pointer at, memory_pointer dest)
+/*
+ *  MakeJA
+ *      Creates a JA instruction at address @at that jumps if above into address @dest
+ *      If there was already a branch instruction there, returns the previosly destination of the branch
+ */
+inline void MakeJA(memory_pointer_tr at, memory_pointer_tr dest)
 {
 	WriteMemory<uint16_t>(at, 0x87F0, true);
 	MakeRelativeOffset(at+2, dest);
 }
 
-inline void MakeNOP(memory_pointer at, size_t size)
+/*
+ *  MakeNOP
+ *      Creates a bunch of NOP instructions at address @at
+ */
+inline void MakeNOP(memory_pointer_tr at, size_t count = 1)
 {
-	DWORD oldProtect;
-	UnprotectMemory(at, size, oldProtect);
-	memset(at.p, 0x90, size);
-	VirtualProtect(at, size, oldProtect, &oldProtect);
+    MemoryFill(at, 0x90, count, true);
 }
 
+
+
+#if __cplusplus >= 201103L || defined(INJECTOR_USE_VARIADIC_TEMPLATES)
+
+    /*
+     * 
+     */
+    template<uintptr_t addr1, class Prototype>
+    struct function_hooker;
+
+    template<uintptr_t addr1, class Ret, class ...Args>
+    struct function_hooker<addr1, Ret(Args...)>
+    {
+        public:
+            static const uintptr_t addr = addr1;
+            typedef Ret(*func_type)(Args...);
+            typedef Ret(*hook_type)(func_type, Args&...);
+
+        protected:
+            
+            // Stores the previous function pointer
+            static func_type& original()
+            { static func_type f; return f; }
+            
+            // Stores our hook pointer
+            static hook_type& hook()
+            { static hook_type h; return h; }
+
+            // The hook caller
+            static Ret call(Args... a)
+            {
+                return hook()(original(), a...);
+            }
+
+        public:
+            // Constructs passing information to the static variables
+            function_hooker(hook_type hooker)
+            {
+                hook() = hooker;
+                original() = MakeCALL(addr, raw_ptr(call)).get();
+            }
+            
+            // Restores the previous call before the hook happened
+            static void restore()
+            {
+                MakeCALL(addr, raw_ptr(original()));
+            }
+    };
+    
+    
+    
+    template<uintptr_t addr1, class Prototype>
+    struct function_hooker_fastcall;
+
+    template<uintptr_t addr1, class Ret, class ...Args>
+    struct function_hooker_fastcall<addr1, Ret(Args...)>
+    {
+        public:
+            static const uintptr_t addr = addr1;
+            typedef Ret(__fastcall *func_type)(Args...);
+            typedef Ret(*hook_type)(func_type, Args&...);
+
+        protected:
+            
+            // Stores the previous function pointer
+            static func_type& original()
+            { static func_type f; return f; }
+            
+            // Stores our hook pointer
+            static hook_type& hook()
+            { static hook_type h; return h; }
+
+            // The hook caller
+            static Ret __fastcall call(Args... a)
+            {
+                return hook()(original(), a...);
+            }
+
+        public:
+            // Constructs passing information to the static variables
+            function_hooker_fastcall(hook_type hooker)
+            {
+                hook() = hooker;
+                original() = MakeCALL(addr, raw_ptr(call)).get();
+            }
+            
+            // Restores the previous call before the hook happened
+            static void restore()
+            {
+                MakeCALL(addr, raw_ptr(original()));
+            }
+    };
+    
+    template<uintptr_t addr1, class Prototype>
+    struct function_hooker_stdcall;
+
+    template<uintptr_t addr1, class Ret, class ...Args>
+    struct function_hooker_stdcall<addr1, Ret(Args...)>
+    {
+        public:
+            static const uintptr_t addr = addr1;
+            typedef Ret(__stdcall *func_type)(Args...);
+            typedef Ret(*hook_type)(func_type, Args&...);
+
+        protected:
+            
+            // Stores the previous function pointer
+            static func_type& original()
+            { static func_type f; return f; }
+            
+            // Stores our hook pointer
+            static hook_type& hook()
+            { static hook_type h; return h; }
+
+            // The hook caller
+            static Ret __stdcall call(Args... a)
+            {
+                return hook()(original(), a...);
+            }
+
+        public:
+            // Constructs passing information to the static variables
+            function_hooker_stdcall(hook_type hooker)
+            {
+                hook() = hooker;
+                original() = MakeCALL(addr, raw_ptr(call)).get();
+            }
+            
+            // Restores the previous call before the hook happened
+            static void restore()
+            {
+                MakeCALL(addr, raw_ptr(original()));
+            }
+    };
+    
+    
+    template<class T> inline
+    T make_function_hook(typename T::hook_type hooker)
+    {
+        return T(hooker);
+    }
+    
+    template<uintptr_t addr, class T, class U> inline
+    function_hooker<addr, T> make_function_hook(U hooker)
+    {
+        typedef function_hooker<addr, T> type;
+        return make_function_hook<type>(hooker);
+    }
+
+#endif
+
+    
+    
+inline bool game_version_manager::DetectIII()
+{
+    if(this->IsUnknown() || this->IsIII())
+    {
+        if(ReadMemory<uint32_t>(raw_ptr(0x5C1E70), true) == 0x53E58955)
+            game = '3', major = 1, minor = 0, region = 0, steam = false;
+        else if(ReadMemory<uint32_t>(raw_ptr(0x5C2130), true) == 0x53E58955)
+            game = '3', major = 1, minor = 1, region = 0, steam = false;
+        else if(ReadMemory<uint32_t>(raw_ptr(0x5C6FD0), true) == 0x53E58955)
+            game = '3', major = 1, minor = 1, region = 0, steam = true;
+        else
+            return false;
+        
+        return true;
+    }
+	return false;
+}
+
+inline bool game_version_manager::DetectVC()
+{
+    if(this->IsUnknown() || this->IsVC())
+    {
+        if(ReadMemory<uint32_t>(raw_ptr(0x667BF0), true) == 0x53E58955)
+            game = 'V', major = 1, minor = 0, region = 0, steam = false;
+        else if(ReadMemory<uint32_t>(raw_ptr(0x667C40), true) == 0x53E58955)
+            game = 'V', major = 1, minor = 1, region = 0, steam = false;
+        else if(ReadMemory<uint32_t>(raw_ptr(0xA402ED), true) == 0x56525153)
+            game = 'V', major = 1, minor = 1, region = 0, steam = true;
+        else
+            return false;
+        
+        return true;
+    }
+    return false;
+}
+
+inline bool game_version_manager::DetectSA()
+{
+    if(this->IsUnknown() || this->IsSA())
+    {
+        if(ReadMemory<uint32_t>(raw_ptr(0x82457C), true) == 0x94BF)
+        {
+            game = 'S', major = 1, minor = 0, region = 'U', steam = false;
+            cracker = injector::ReadMemory<uint8_t>(raw_ptr(0x406A20), true) == 0xE9? 'H' : 0;
+        }
+        else if(ReadMemory<uint32_t>(raw_ptr(0x8245BC), true) == 0x94BF)
+            game = 'S', major = 1, minor = 0, region = 'E', steam = false;
+        else if(ReadMemory<uint32_t>(raw_ptr(0x8252FC), true) == 0x94BF)
+            game = 'S', major = 1, minor = 1, region = 'U', steam = false;
+        else if(ReadMemory<uint32_t>(raw_ptr(0x82533C), true) == 0x94BF)
+            game = 'S', major = 1, minor = 1, region = 'E', steam = false;
+        else if(ReadMemory<uint32_t>(raw_ptr(0x85EC4A), true) == 0x94BF)
+            game = 'S', major = 3, minor = 0, region = 0, steam = true;
+        else
+            return false;
+
+        return true;
+    }
+	return false;
+}
+    
+    
+    
+} // namespace 
+
+#ifdef INJECTOR_DO_USING_NAMESPACE
+using namespace injector;
+#endif

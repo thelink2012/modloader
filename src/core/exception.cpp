@@ -57,48 +57,44 @@ int LogException(char* buffer, LPEXCEPTION_POINTERS pException)
     char szModuleName[MAX_PATH];
     MEMORY_BASIC_INFORMATION mbi;
     LPEXCEPTION_RECORD pRecord;
-
-    
     
     // Acquiere common information that we'll access
     pRecord = pException->ExceptionRecord;
     DWORD dwExceptionCode = pRecord->ExceptionCode;
     
-    // Findout the module that the exception address is at...
-    if(VirtualQuery(pRecord->ExceptionAddress, &mbi, sizeof(mbi)) == sizeof(mbi))
-    {
-        // ...and findout that module name.
-        if(GetModuleFileNameA((HMODULE)mbi.AllocationBase, szModuleName, sizeof(szModuleName)))
-        {
-            // Log the exception in a similar format similar to debuggers format
-            len += sprintf(&buffer[len], "\nUnhandled exception at 0x%p in \"%s\": 0x%X: %s",
-                          pRecord->ExceptionAddress, szModuleName, dwExceptionCode,
-                          GetExceptionCodeString(dwExceptionCode));
+    // Findout the module that the exception address is at and it's name
+    if(!
+        (VirtualQuery(pRecord->ExceptionAddress, &mbi, sizeof(mbi)) == sizeof(mbi)
+      &&(GetModuleFileNameA((HMODULE)mbi.AllocationBase, szModuleName, sizeof(szModuleName))))
+      )
+        // Couldn't find the module name
+        strcpy(szModuleName, "???");
+    
+    // Log the exception in a similar format similar to debuggers format
+    len += sprintf(&buffer[len], "\nUnhandled exception at 0x%p in \"%s\": 0x%X: %s",
+                    pRecord->ExceptionAddress, szModuleName, dwExceptionCode,
+                    GetExceptionCodeString(dwExceptionCode));
             
-            // If exception is IN_PAGE_ERROR or ACCESS_VIOLATION, we have additional information such as an address
-            if(dwExceptionCode == EXCEPTION_IN_PAGE_ERROR || dwExceptionCode == EXCEPTION_ACCESS_VIOLATION)
-            {
-                DWORD rw       = (DWORD) pRecord->ExceptionInformation[0];  // read or write?
-                ULONG_PTR addr = (DWORD) pRecord->ExceptionInformation[1];  // which address?
+    // If exception is IN_PAGE_ERROR or ACCESS_VIOLATION, we have additional information such as an address
+    if(dwExceptionCode == EXCEPTION_IN_PAGE_ERROR || dwExceptionCode == EXCEPTION_ACCESS_VIOLATION)
+    {
+        DWORD rw       = (DWORD) pRecord->ExceptionInformation[0];  // read or write?
+        ULONG_PTR addr = (DWORD) pRecord->ExceptionInformation[1];  // which address?
                 
-                len += sprintf(&buffer[len], " %s 0x%p",
+        len += sprintf(&buffer[len], " %s 0x%p",
                                rw == 0? "reading location" : rw == 1? "writing location" : rw == 8? "DEP at" : "",
                                addr);
                     
-                // IN_PAGE_ERROR have another information...
-                if(dwExceptionCode == EXCEPTION_IN_PAGE_ERROR)
-                {
-                    len += sprintf(&buffer[len], ".\nUnderlying NTSTATUS code that resulted in the exception is 0x%p",
-                                   pRecord->ExceptionInformation[2]);
-                }
-            }
-
-            // Terminate the log with a period
-            len += sprintf(&buffer[len], ".");
+        // IN_PAGE_ERROR have another information...
+        if(dwExceptionCode == EXCEPTION_IN_PAGE_ERROR)
+        {
+            len += sprintf(&buffer[len], ".\nUnderlying NTSTATUS code that resulted in the exception is 0x%p",
+                        pRecord->ExceptionInformation[2]);
         }
     }
-    
+
+    // Terminate the log with a period
+    len += sprintf(&buffer[len], ".");
+
     return buffer[0] != 0;
 }
-
-

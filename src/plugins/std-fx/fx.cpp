@@ -10,11 +10,10 @@
 #include <modloader_util.hpp>
 #include <modloader_util_hash.hpp>
 #include <modloader_util_path.hpp>
+#include <modloader_util_injector.hpp>
 using namespace modloader;
 
 #include <map>
-#include "Injector.h"
-#include "modloader_util_injector.hpp"
 
 
 /*

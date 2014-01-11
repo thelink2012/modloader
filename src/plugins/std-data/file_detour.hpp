@@ -10,8 +10,7 @@
 
 extern void Log(const char* msg, ...);
 
-#include "Injector.h"
-#include <modloader_util_injector.hpp>    // Must be included after Injector.h
+#include <modloader_util_injector.hpp>
 
 
 /*

@@ -9,7 +9,7 @@ struct CDirectoryEntry	// sizeof = 0x20
 	DWORD fileOffset;
 	WORD sizePriority2;
 	WORD sizePriority1;
-	BYTE filename[24];
+	char filename[24];
 };
 #pragma pack(pop)
 

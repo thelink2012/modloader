@@ -28,6 +28,3 @@ Weakness and Limitations:
 	   	        
         Choosing one of the options above will guarantee a better performance in the CLEO loading, but that's not a requisite.
 
-	[*] Can't load .cleo plugins, the reason?
-	    Because when the .cleo plugin file is finally copied into the CLEO\ folder, CLEO.asi has already take care of the .cleo plugins.
-

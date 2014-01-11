@@ -2,7 +2,7 @@
 	Name: std-img --- (Standard IMG Loader Plugin)
 	Version: Release Candidate 1
 	Author: LINK/2012 <dma_2012@hotmail.com>
-	Default Priority: 52
+	Default Priority: 48
 *************************************************************************
 
 Description:

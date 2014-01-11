@@ -4,7 +4,8 @@
 fname = "IDA.TXT"
 exceptions = [
               "CParticle", "CPool", "ScriptVar", "CRunningScript", "RwSphere", "RwV3D", "RxObjSPace3dVertex",
-              "CGarage", "Queue", "CdStream", "CdStreamInfo", "CStreamingInfo"
+              "CGarage",
+              "Queue", "CdStream", "CdStreamInfo", "CStreamingInfo", "CDirectory", "CDirectoryEntry"
              ]
 undefcount = 0
 

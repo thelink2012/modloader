@@ -1,3 +1,13 @@
+v0.1.5
+    Feature: std-cleo now handles .cleo plugins by itself
+    Feature: std-cleo now handles .fxt files by itself
+    Bug fix: Data mixing is working fine now
+    Bug fix: Files are now read properly when there's a UTF-8 BOM in it
+    Bug fix: Special character models now loads properly
+    Bug fix: Clothes models now works properly
+    Bug fix: Collision files now works properly
+    Bug fix: Other minor fixes
+
 v0.1
     First public release
 

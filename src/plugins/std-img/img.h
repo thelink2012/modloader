@@ -20,7 +20,8 @@ extern class CThePlugin* imgPlugin;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-
+        static const int default_priority = 48;
+        
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
@@ -31,10 +32,7 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
-        
-        //bool OnSplash();
-        //bool OnLoad();
-        //bool OnReload();
+        bool OnReload();
         
         const char** GetExtensionTable();
 
@@ -112,6 +110,7 @@ class CThePlugin : public modloader::CPlugin
         
         void StreamingPatch();
         
+        void ReloadModels();
         
 };
 

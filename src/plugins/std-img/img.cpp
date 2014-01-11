@@ -12,10 +12,9 @@
 #include <modloader_util.hpp>
 #include <modloader_util_path.hpp>
 #include <modloader_util_hash.hpp>
+#include <modloader_util_injector.hpp>
 #include <list>
 #include <map>
-
-#include "Injector.h"
 #include "CdStreamInfo.h"
 
 using namespace modloader;
@@ -30,7 +29,7 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     imgPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data);
+    modloader::RegisterPluginData(plugin, data, plugin.default_priority);
 }
 
 
@@ -154,6 +153,16 @@ bool CThePlugin::PosProcess()
     return true;
 }
 
+/*
+ *  Called when the user does a new game or load game
+ */
+bool CThePlugin::OnReload()
+{
+    static bool bFirstTime = true;
+    if(!bFirstTime) this->ReloadModels();
+    bFirstTime = false;
+}
+
 
 
 
@@ -165,14 +174,15 @@ bool CThePlugin::PosProcess()
 void CThePlugin::ReadImgFolder(const modloader::ModLoaderFile& cfile)
 {
     ModLoaderFile file = cfile; // Modifiable file structure
-    
-    ForeachFile(file.filepath, "*.*", [this, &file](const ModLoaderFile& forfile)
+
+    //
+    ForeachFile(file.filepath, "*.*", true, [this, &file](const ModLoaderFile& forfile)
     {
-        if(file.is_dir == false)
+        if(forfile.is_dir == false)
         {
             file.filename = forfile.filename;  // Just for convenience
             file.filepath = forfile.filepath;  // Change filepath pointer for proper GetFilePath
-            imgFiles.emplace_front(file.filename, GetFilePath(file).c_str());
+            this->modelsFiles.emplace_back(file.filename, GetFilePath(file).c_str());
         }
         return true;
     });
@@ -201,7 +211,7 @@ void CThePlugin::BuildModelsMap()
         }
                 
         // Register our replacement
-        RegisterReplacementFile(*this, file.name.c_str(), oldpath, file.path.c_str());
+        RegisterReplacementFile(*this, file.name.c_str(), oldpath, file.path.c_str(), false);
     }
 }
 
@@ -261,7 +271,7 @@ void CThePlugin::ReplaceStandardImg()
     {
         // We need to do this hook to not hook too much code
          MakeNOP(0x4083E4 + 5, 4);
-         MakeJMP(0x4083E4, (void*)((void (*)(void))([]()  // mid replacement for CStreaming::OpenGtaImg
+         MakeJMP(0x4083E4, raw_ptr((void*)((void (*)(void))([]()  // mid replacement for CStreaming::OpenGtaImg
          {
              int (*CStreaming__AddImageToList)(const char* filename, char notPlayerImg)
                         = memory_pointer(0x407610).get();
@@ -274,6 +284,6 @@ void CThePlugin::ReplaceStandardImg()
 
              cdinfo.gta3_id   = CStreaming__AddImageToList(gta3Path, true);
              cdinfo.gtaint_id = CStreaming__AddImageToList(gtaIntPath, true);
-         })));
+         }))));
     }
 }

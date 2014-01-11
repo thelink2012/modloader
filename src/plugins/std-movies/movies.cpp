@@ -8,9 +8,9 @@
  * 
  */
 #include <modloader.hpp>
+#include <modloader_util.hpp>
 #include <modloader_util_path.hpp>
-#include "Injector.h"
-#include "modloader_util.hpp"
+#include <modloader_util_injector.hpp>
 using namespace modloader;
 
 /*

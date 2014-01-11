@@ -13,6 +13,7 @@
 #include <modloader_util_hash.hpp>
 #include <modloader_util_path.hpp>
 #include <modloader_util_file.hpp>
+#include <modloader_util_injector.hpp>
 using namespace modloader;
 
 #include <list>
@@ -363,10 +364,10 @@ bool CThePlugin::PosProcess()
         if(ReadMemory<uint8_t>(0x6A0050, true) == 0xE9) 
         {
             // CLEO already did it's GXT hook here, good!
-            this->CLEO_GxtHook() = ReadRelativeOffset(0x6A0050 + 1).get();
+            this->CLEO_GxtHook() = GetBranchDestination(0x6A0050).get();
             
             // Do ours now
-            MakeJMP(0x6A0050, (void*) CThePlugin::GxtHook);
+            MakeJMP(0x6A0050, raw_ptr(CThePlugin::GxtHook));
         }
         else
             Log("Failed to install std-cleo gxt hook because CLEO.asi didn't install it's hook yet");

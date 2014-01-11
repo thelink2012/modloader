@@ -19,8 +19,6 @@
 #include <cstring>
 #include <string>
 
-#include "Injector.h"
-#include "GameInfo.h"
 #include "CModLoader.hpp"
 #include "modloader_util.hpp"
 #include "modloader_util_injector.hpp"
@@ -124,6 +122,9 @@ namespace modloader
 {
     static LPTOP_LEVEL_EXCEPTION_FILTER PrevFilter = 0;
     
+    /*
+     *  Our unhandled exception handler 
+     */
     static LONG CALLBACK modloader_UnhandledExceptionFilter(LPEXCEPTION_POINTERS pException)
     {
         LogException(pException);
@@ -135,37 +136,6 @@ namespace modloader
         // Continue exception propagation
         return (PrevFilter? PrevFilter(pException) : EXCEPTION_CONTINUE_SEARCH);  // I'm not really sure about this return
     }
-    
-    typedef int (CALLBACK *WinMain_t)(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow); 
-    static WinMain_t WinMainPtr;        // address original WinMain function is at
-    static void* WinMainIsCalledAt;     // address the instruction "call WinMain" is at
-    
-    /*
-     *  Our hook at game's WinMain call, modloader startup happens here
-     */
-    static int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-    {
-        /* Setup exception filter, we need (whenever possible) to call shutdown before a crash or something */
-        PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
-
-        /* Startup the loader */
-        loader.Startup();
-
-        /*
-         *  Call the original call
-         *  Use the original address if after loader.Startup() the instruction "call WinMain" hasn't changed it's call address.
-         *  An ASI may have changed it
-         */
-        WinMain_t call = (WinMain_t) ReadRelativeOffset((char*)WinMainIsCalledAt + 1).p;
-        call = (call != WinMain? call : WinMainPtr);
-        int result = call(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
-        
-        /* Shutdown the loader */
-        loader.Shutdown();
-        
-        return result;
-    }
-    
     
     /*
      * CModLoader::ParseCommandLine
@@ -385,30 +355,44 @@ namespace modloader
      */
     void CModLoader::Patch()
     {
-        static GameInfo gameInfo;
-        gameInfo.PluginName = "modloader";
+        injector::address_manager::set_name("modloader");
         
         // I can't use LoadLibrary at DllMain, so use it somewhere at the beggining, before the startup of the game engine
-        gameInfo.DelayedDetect([](GameInfo& info)
+        if(true)
         {
-            // Shit, we still don't support a delayed style of detection, how to handle it? Help me!
-            // That's because we'll hook WinMain, a function that gets called by the game,
-            // and delayed detecting means we are in a different thread than the game's thread
-            if(info.IsDelayed())
-                Error("Modloader does not support this executable version [DELAYED_DETECT_ERROR]");
-            //--
-            else if(info.GetGame() != info.SA)
+            auto& gvm = injector::address_manager::singleton();
+            
+            // Find the game version
+            gvm.init_gvm();
+            
+            // Check if we're going into the right game version
+            if(gvm.IsUnknown())
+                Error("Modloader could not detect your game executable version.");
+            else if(gvm.IsSA() == false)
                 Error("Modloader was built for GTA San Andreas! This game is not supported.");
-            else if(info.GetMajorVersion() != 1 && info.GetMinorVersion() != 0 && info.GetRegion() != info.US)
+            else if(gvm.GetMajorVersion() != 1 || gvm.GetMinorVersion() != 0 || gvm.IsUS() == false)
                 Error("Modloader still do not support game versions other than HOODLUM GTA SA 1.0 US");
             else
             {
-                /* Hook WinMain (it can't be hooked with make_function_hook because it's STDCALL) */
-                WinMainPtr = (WinMain_t) MakeCALL(WinMainIsCalledAt = (void*)(0x8246EC), (void*) WinMain).p;
-                
+                typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
                 typedef function_hooker<0x53E58E, void(const char*)>    loadbar_hook;
                 typedef function_hooker<0x53C6DB, void(void)>           onreload_hook;
                 typedef function_hooker<0x748C30, char(void)>           onsplash_hook;
+                
+                /* Hook WinMain to do modloader stuff */
+                make_function_hook<winmain_hook>([](winmain_hook::func_type WinMain,
+                                                    HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
+                {
+                    // Setup exception filter, we need (whenever possible) to call shutdown before a crash or something
+                    PrevFilter = SetUnhandledExceptionFilter(modloader_UnhandledExceptionFilter);
+
+                    // Startup the loader and call original WinMain... Shutdown the loader after WinMain.
+                    ::loader.Startup();
+                    int result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+                    ::loader.Shutdown();
+
+                    return result;
+                });
                 
                 /* Hook CGame::InitialiseEssentialsAfterRW to notify about the main splash */
                 make_function_hook<onsplash_hook>([](onsplash_hook::func_type func)
@@ -432,8 +416,7 @@ namespace modloader
                 });
                 
             }
-            
-        }, true);
+        }
     }
 
 

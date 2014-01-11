@@ -22,14 +22,23 @@ add_subdirectory(src)
 # ----------------------------> Install
 set(CMAKE_INSTALL_PREFIX "")
 
-# Find all files with specific extensions
+# Find all plugins readme files
 file(GLOB plugins_doc "${DOC_DIRECTORY}/plugins/*.txt")
+
+# Find all readme files
+file(GLOB readme_doc  "${DOC_DIRECTORY}/readme/*.txt")
+
 # Install plugins documentation into modloader plugins folder
 install(FILES ${plugins_doc} DESTINATION "./modloader/.data/plugins")
-# Install README.md, LICENSE and CHANGELOG into modloader/.data
-install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
-# Install config files
 
+# Install readme files, README.md, LICENSE and CHANGELOG into modloader/.data
+install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
+install(FILES ${readme_doc}  DESTINATION "./modloader/.data")
+
+# Put readme files on base, so the user can see it
+install(FILES ${readme_doc}  DESTINATION "./")  
+
+# Install config files
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Don't copy configs in Debug
 else()
