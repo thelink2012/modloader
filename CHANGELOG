@@ -1,3 +1,7 @@
+v0.1.6
+    Feature: Implemented file mixer for plants.dat
+    Bug fix: Clothes models now works properly... Really...
+
 v0.1.5
     Feature: std-cleo now handles .cleo plugins by itself
     Feature: std-cleo now handles .fxt files by itself

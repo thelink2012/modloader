@@ -141,6 +141,6 @@ But the following is invalid:
 
     Uses pieces from SA Limit Adjuster by Sacky
     Thanks for takin' your time to alpha-test: ArtututuVidor$, Andryo, Junior_Djjr, JNRois12
-    Thnaks for reporting real bugs: paulinho2108, R4GN0R0K, TheJAMESGM, methodunderg, Marceu Augusto
+    Thanks for reporting real bugs: paulinho2108, R4GN0R0K, TheJAMESGM, methodunderg, Marceu Augusto
 
 

@@ -35,9 +35,6 @@ install(FILES ${plugins_doc} DESTINATION "./modloader/.data/plugins")
 install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
 install(FILES ${readme_doc}  DESTINATION "./modloader/.data")
 
-# Put readme files on base, so the user can see it
-install(FILES ${readme_doc}  DESTINATION "./")  
-
 # Install config files
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Don't copy configs in Debug

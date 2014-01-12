@@ -51,7 +51,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.2";
+    return "0.2 blue";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -143,6 +143,8 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
             RegisterReplacementFile(*this, "timecyc.dat", traits.timecyc, filepath);
         else if(!strcmp(filename, "popcycle.dat", false))
             RegisterReplacementFile(*this, "popcycle.dat", traits.popcycle, filepath);
+        else if(!strcmp(filename, "plants.dat", false))
+            traits.plants.AddFile(file, "data/plants.dat");
         else
             return false;
 
@@ -179,14 +181,18 @@ bool CThePlugin::PosProcess()
     WriteMemory<const char*>(0x5BC09A + 1, "", true);   // Disable chdir("DATA") for popcycle.dat
     WriteMemory<const char*>(0x5BBACA + 1, "", true);   // Disable chdir("DATA") for timecyc.dat
     WriteMemory<const char*>(0x5BD838 + 1, "", true);   // Disable chdir("DATA") for handling.cfg
+    WriteMemory<const char*>(0x5DD3BA + 1, "", true);   // Disable chdir("DATA") for plants.dat
     WriteMemory<const char*>(0x5BD84B + 1, "data/handling.cfg", true);  // Change "handling.cfg" string
-        
-        // Mixers
+    WriteMemory<const char*>(0x5DD75F + 1, "data/plants.dat", true);    // Change "plants.dat" string
+    
+    
+    // Mixers
     make_file_mixer<0x5B8428>(traits.ide);
     make_file_mixer<0x5B871A>(traits.ipl);
     make_file_mixer<0x5B905E>(traits.gta);
     make_file_mixer<0x5BD850>(traits.handling);
     make_file_mixer<0x5B65BE>(traits.carmods);
+    make_file_mixer<0x5DD3D1>(traits.plants);
         
     // Detours
     make_file_detour<0x5BBADE>(traits.timecyc.c_str(),   "time cycle file");

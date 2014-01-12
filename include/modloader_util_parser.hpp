@@ -479,7 +479,8 @@ namespace modloader
             typedef typename TraitsType::key_type                key_type;
             typedef typename TraitsType::mapped_type             value_type;
             typedef typename TraitsType::container_type          container_type;
-            typedef decltype(value_type::FindSectionByLine(""))  SectionType;
+            //typedef decltype(value_type::FindSectionByLine(""))  SectionType;
+            typedef SectionInfo*  SectionType;
 
             // Section finder
             struct Find
@@ -525,7 +526,8 @@ namespace modloader
             typedef typename TraitsType::key_type                key_type;
             typedef typename TraitsType::mapped_type             value_type;
             typedef typename TraitsType::container_type          container_type;
-            typedef decltype(key_type::FindSectionByLine(""))    SectionType;
+            //typedef decltype(key_type::FindSectionByLine(""))    SectionType;
+            typedef SectionInfo*  SectionType;
             
             // Section finder
             struct Find

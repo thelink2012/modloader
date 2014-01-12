@@ -25,6 +25,7 @@
 
 #include "data/handling.h"
 #include "data/carmods.h"
+#include "data/plants.h"
 
 #endif
 

@@ -136,7 +136,8 @@ class CAbstractStreaming
 
         void BuildClothesMap();                         // Builds clothes information (clothes map)
         void RequestClothes(int index);                 // Imports a cloth based on aInfoForModel[index] block offset
-
+        void FixClothesDirectory(CDirectory&);          // Fixes clothes directory with our sizes
+        
         // Reloads all models information
         void ReloadModels()
         {
@@ -339,9 +340,35 @@ void CAbstractStreaming::RequestClothes(int index)
         }
     }
     else
+    {
         imgPlugin->Log("Warning: RequestClothes failed for index %d", index);
+    }
 }
 
+/*
+ *  FixClothesDirectory
+ *      Fix CDirectory size fields for imported clothes 
+ */
+void CAbstractStreaming::FixClothesDirectory(CDirectory& dir)
+{
+    scoped_lock xlock(this->cs);
+    
+    // For each entry in the cd directory...
+    for(size_t i = 0; i < dir.m_dwCount; ++i)
+    {
+        auto& entry = dir.m_pEntries[i];
+        
+        // See if we have a replacement for the cloth at entry
+        auto  it = this->clothes.find(entry.fileOffset);
+        if(it != this->clothes.end())
+        {
+            // Yes, let's fix the cloth size at the cd directory
+            entry.sizePriority1 = 0;
+            entry.sizePriority2 = it->second.get().GetSizeInBlocks();
+        }
+    }
+    
+}
 
 /*
  * BuildClothesMap
@@ -517,6 +544,7 @@ int __stdcall CdStreamThread()
                 }
             }
             
+            
             // Setup overlapped structure
             cd->overlapped.Offset     = offset;
             cd->overlapped.OffsetHigh = 0;
@@ -533,11 +561,6 @@ int __stdcall CdStreamThread()
                     // This happens when the stream was open for async operations, let's wait until everything has been read
                     bResult = GetOverlappedResult(hFile, &cd->overlapped, &nBytesReaden, true) != 0;
                 }
-                // Ignore EOF because the files on disk (not on cdimage files) won't be 2KiB aligned
-                else if(GetLastError() == ERROR_HANDLE_EOF)
-                {
-                    bResult = true;
-                }
             }
             
             // There's some real problem if we can't load a abstract model
@@ -545,7 +568,7 @@ int __stdcall CdStreamThread()
             {
                 imgPlugin->Log("Warning: Failed to load abstract model file %s; error code: 0x%X", filename, GetLastError());
             }
-            
+
             // TODO should I fill the "trash" part of the 2KiB aligned buffer (cd->lpBuffer) with null bytes ?
             
             // Set the cdstream status, 0 for "okay" and 254 for "failed to read"
@@ -586,6 +609,7 @@ void CThePlugin::StreamingPatch()
     typedef function_hooker<0x5B8E1B, size_t()> loadcd_hook;
     typedef function_hooker<0x5B915B, int(const char*, char)> datcd_hook;
     typedef function_hooker<0x40A106, char(int, int)> rqcloth_hook;
+    typedef function_hooker_fastcall<0x5A6A01, void(CDirectory*, int, const char*)> clothdir_hook;
     typedef function_hooker<0x5B63E8, int(const char*)> addrrr_hook;
     typedef function_hooker<0x5B630B, int(const char*)> addcol_hook;
     typedef function_hooker_fastcall<0x5B6419, int(void*, int, const char*)> addscm_hook;
@@ -679,6 +703,12 @@ void CThePlugin::StreamingPatch()
         return RequestModel(index, type);
     });
     
+    // We should fix the directory entries form player.img to have the same size as our clothes imports
+    make_function_hook<clothdir_hook>([](clothdir_hook::func_type ReadDirFile, CDirectory*& dir, int&, const char*& filename)
+    {
+        ReadDirFile(dir, 0, filename);
+        abstract.FixClothesDirectory(*dir);
+    });
     
     // Before rqspecial_hook, we need to know which model is being loaded into the special model index.
     // To do it, we'll hook the CDirectory::FindItem call and set the static var pSpecial to contain a pointer to our local model.

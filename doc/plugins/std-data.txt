@@ -26,6 +26,7 @@ Description:
 	    veh_mods.ide
 	    handling.cfg
 	    carmods.dat
+	    plants.dat
 	    [more later, working on it]
 
 Usage:

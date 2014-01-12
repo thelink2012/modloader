@@ -224,6 +224,7 @@ struct CAllTraits
     CDataFS<TraitsGTA>      gta;
     CDataFS<TraitsHandling> handling;
     CDataFS<TraitsCarmods>  carmods;
+    CDataFS<TraitsPlants>   plants;
     
     // The following are not traited, just overrides
     std::string timecyc;

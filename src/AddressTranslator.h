@@ -170,6 +170,7 @@ namespace modloader
                 map[0x00409fd9] = 0x00409fd9;
                 map[0x0048418a] = 0x0048418a;
                 map[0x005b630b] = 0x005b630b;
+                map[0x005A6A01] = 0x005A6A01;
                 
                 // ^ The above table must be restructured
                 // Pointers there may be repeating below:
@@ -201,6 +202,22 @@ namespace modloader
                 map[0x748AFA] = 0x748AFA;
                 map[0x748BEC] = 0x748BEC;
                 map[0x748BF3] = 0x748BF3;
+                
+                // Data pointers
+                map[0x5BC09A] = 0x5BC09A;
+                map[0x5BBACA] = 0x5BBACA;
+                map[0x5BD838] = 0x5BD838;
+                map[0x5DD3BA] = 0x5DD3BA;
+                map[0x5BD84B] = 0x5BD84B;
+                map[0x5DD75F] = 0x5DD75F;
+                map[0x5B8428] = 0x5B8428;
+                map[0x5B871A] = 0x5B871A;
+                map[0x5B905E] = 0x5B905E;
+                map[0x5BD850] = 0x5BD850;
+                map[0x5B65BE] = 0x5B65BE;
+                map[0x5BBADE] = 0x5BBADE;
+                map[0x5BC0AE] = 0x5BC0AE;
+                map[0x5DD3D1] = 0x5DD3D1;
             }
 
 
