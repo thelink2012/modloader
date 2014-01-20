@@ -16,6 +16,9 @@
 #pragma once
 #include <windows.h>
 #include <cstdint>
+#include <cstdio>
+#include <functional>
+#include <utility>
 
 namespace injector
 {
@@ -165,12 +168,21 @@ class address_manager : public game_version_manager
             return gvm_initialized;
         }
         
+#ifdef INJECTOR_GVM_HAS_TRANSLATOR
         // Translates address p to the running executable pointer
         void* translate(void* p)
         {
             init_gvm();
             return translator(p);
         }
+#else
+        // Translates address p to the running executable pointer
+        void* translate(void* p)
+        {
+            return p;
+        }
+#endif
+        
         
     public:
         // Address manager singleton
@@ -232,6 +244,8 @@ union auto_ptr_cast
 
 	template<class T>
 	operator T*() { return reinterpret_cast<T*>(p); }
+	template<class T>
+	operator const T*() { return reinterpret_cast<const T*>(p); }
 };
 
 /*
@@ -640,6 +654,36 @@ inline void MakeNOP(memory_pointer_tr at, size_t count = 1)
 
 #if __cplusplus >= 201103L || defined(INJECTOR_USE_VARIADIC_TEMPLATES)
 
+    // Call function at @p returning @Ret with args @Args
+    template<class Ret, class ...Args>
+    inline Ret Call(memory_pointer_tr p, Args&&... a)
+    {
+        Ret(*fn)(Args...) = p.get();
+        return fn(std::forward<Args>(a)...);
+    }
+    
+    template<class Ret, class ...Args>
+    inline Ret StdCall(memory_pointer_tr p, Args&&... a)
+    {
+        Ret(__stdcall *fn)(Args...) = p.get();
+        return fn(std::forward<Args>(a)...);
+    }
+    
+    template<class Ret, class ...Args>
+    inline Ret ThisCall(memory_pointer_tr p, Args&&... a)
+    {
+        Ret(__thiscall *fn)(Args...) = p.get();
+        return fn(std::forward<Args>(a)...);
+    }
+
+    template<class Ret, class ...Args>
+    inline Ret FastCall(memory_pointer_tr p, Args&&... a)
+    {
+        Ret(__fastcall *fn)(Args...) = p.get();
+        return fn(std::forward<Args>(a)...);
+    }
+
+
     /*
      * 
      */
@@ -685,8 +729,8 @@ inline void MakeNOP(memory_pointer_tr at, size_t count = 1)
             }
     };
     
-    
-    
+    //
+    //
     template<uintptr_t addr1, class Prototype>
     struct function_hooker_fastcall;
 
@@ -784,6 +828,136 @@ inline void MakeNOP(memory_pointer_tr at, size_t count = 1)
         typedef function_hooker<addr, T> type;
         return make_function_hook<type>(hooker);
     }
+
+    template<class T>
+    struct scoped_hook
+    {
+        scoped_hook(typename T::hook_type hooker)   { make_function_hook<T>(hooker); }
+        scoped_hook()                               {}
+        scoped_hook(const T&)                       {}
+        ~scoped_hook()                              { T::restore(); }
+    };
+
+    template<uintptr_t addr1, size_t size = 5>
+    struct scoped_nop
+    {
+        memory_pointer_raw addr;
+        char buf[size];
+        
+        scoped_nop(memory_pointer_tr addrx = -1)
+        {
+            this->addr = (uintptr_t)((uintptr_t)(addrx) == (uintptr_t)(-1)? addr1 : addrx);
+            ReadMemoryRaw(this->addr, this->buf, size, true);
+            MakeNOP(this->addr, size);
+        }
+        
+        ~scoped_nop()
+        {
+            WriteMemoryRaw(this->addr, this->buf, size, true);
+        }
+    };
+
+
+    class save_manager
+    {
+        private:
+            // Hooks
+            typedef function_hooker<0x53E59B, char(void)> fnew_hook;
+            typedef function_hooker<0x53C6EA, void(void)> ldng_hook;
+            typedef function_hooker<0x53C70B, char(char*)> ldngb_hook;
+            typedef function_hooker_fastcall<0x578DFA, int(void*, int, int)> onsav_hook;
+            
+            // Prototypes
+            typedef std::function<void(int)> OnLoadType;
+            typedef std::function<void(int)> OnSaveType;
+        
+            // Callbacks storage
+            static OnLoadType& OnLoadCallback()
+            { static OnLoadType cb; return cb; }
+        
+            static OnSaveType& OnSaveCallback()
+            { static OnSaveType cb; return cb; }
+        
+            // Necessary game vars
+            static bool IsLoad()
+            { return ReadMemory<char>(0xBA6748+0x60) != 0; }
+            static char GetSlot()
+            { return ReadMemory<char>(0xBA6748+0x15F); }
+            static bool SetDirMyDocuments()
+            {
+                return (memory_pointer(0x538860).get<int()>()  ());
+            }
+            
+            // Calls on load callback if possible
+            static void CallOnLoad(int slot)
+            { if(auto& cb = OnLoadCallback()) cb(slot); }
+            
+            // Calls on save callback if possible
+            static void CallOnSave(int slot)
+            { if(auto& cb = OnSaveCallback()) cb(slot); }
+
+            // Patches the game to notify callbacks
+            static void Patch()
+            {
+                static bool bPatched = false;
+                if(bPatched == true) return;
+                bPatched = true;
+                
+                // On the first time the user does a new-game/load-game...
+                make_function_hook<fnew_hook>([](fnew_hook::func_type func)
+                {
+                    if(IsLoad() == false) CallOnLoad(-1);
+                    return func();
+                });
+            
+                // On the second time+ a new game happens or whenever a load game happens...
+                make_function_hook<ldng_hook>([](ldng_hook::func_type func)
+                {
+                    if(IsLoad() == false)  CallOnLoad(-1);
+                    return func();
+                });
+                
+                // Whenever a load game happens
+                make_function_hook<ldngb_hook>([](ldngb_hook::func_type GenericLoad, char*& e)
+                {
+                    auto result = GenericLoad(e);
+                    if(result) CallOnLoad(GetSlot());
+                    return result;
+                });
+                
+                // Whenever a save game happens
+                make_function_hook<onsav_hook>([](onsav_hook::func_type GenericSave, void*& self, int&, int& savenum)
+                {
+                    auto result = GenericSave(self, 0, savenum);
+                    if(!result) CallOnSave(GetSlot());
+                    return result;
+                });
+            }
+            
+        public:
+            // RAII wrapper to SetDirMyDocuments, scoped change to user directory
+            struct scoped_userdir
+            {
+                char buffer[MAX_PATH];
+                
+                scoped_userdir()
+                {
+                    GetCurrentDirectoryA(sizeof(buffer), buffer);
+                    SetDirMyDocuments();
+                }
+                
+                ~scoped_userdir()
+                { SetCurrentDirectoryA(buffer); }
+            };
+            
+            // Setup a callback to call whenever a new game or load game happens
+            static void on_load(const OnLoadType& fn)
+            { Patch(); OnLoadCallback() = fn; }
+            
+            // Setup a callback to call whenever a save game happens
+            static void on_save(const OnSaveType& fn)
+            { Patch(); OnSaveCallback() = fn; }
+    };
 
 #endif
 

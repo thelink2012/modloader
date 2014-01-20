@@ -44,10 +44,6 @@ But the following is invalid:
         And all content from any CLEO folder found (like modloader/nome do mod/CLEO/...) will get copied to the CLEO folder in the base game dir.
         
         PS: The files with extension .cleo and .fxt will get handled by modloader instead of CLEO because of technicals reasons.
- 
-    [*] ASI Plugins (.asi)
-        ASI mods still have a limited used in modloader, they will fail to work if they need to touch
-        any external file while the game is running. That will be fixed in the future.
 
     [*] File mixing
         When it comes to data files (.dat, .cfg,. ide, .ipl) modloader will work in a interesting way.
@@ -72,12 +68,6 @@ But the following is invalid:
         One thing to note is the "overriding rule" where files that got loaded late will override mods loaded first.
         For example, if you have mod A with a priority 100 and mod B with priority 1 and both replace LOADSCS.txd file,
         the LOADSCS that will get loaded is the one form B because it replaced what A did.
-        
-    [*] Integrated with SA Limit Adjuster by Sacky
-        Whenever any file named salimits.ini or salimits.sala are found, it will be readen by modloader.
-        More exactly because of a integration between SA Limit Adjuster by Sacky and modloader.
-        This integration was made because there's mods (gtaunited) that uses SALA without asi or similar files to take care of it.
-        We'll be in search of a way to remove this integration and make things independent.
 
     [*] Command line support
         Modloader support command line passed throught the game executable.
@@ -138,9 +128,7 @@ But the following is invalid:
 ---> Credits
 
     Main programming: LINK/2012 (dma_2012@hotmail.com)
-
-    Uses pieces from SA Limit Adjuster by Sacky
-    Thanks for takin' your time to alpha-test: ArtututuVidor$, Andryo, Junior_Djjr, JNRois12
-    Thanks for reporting real bugs: paulinho2108, R4GN0R0K, TheJAMESGM, methodunderg, Marceu Augusto
+    
+    Thanks for takin' your time to test: ArtututuVidor$, Andryo, Junior_Djjr, JNRois12, TheJAMESGM
 
 

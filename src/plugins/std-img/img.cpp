@@ -244,7 +244,7 @@ void CThePlugin::ReplaceStandardImg()
     {
         for(TableItem& item : table)
         {
-            if(!compare(item.buf, it->name, false))
+            if(!compare(item.name, it->name, false))
             {
                 RegisterReplacementFile(*this, item.name, item.buf, it->path.c_str());
                 break;
@@ -260,7 +260,7 @@ void CThePlugin::ReplaceStandardImg()
             // Replace all addresses from push instructions indicated by the pushes array
             for(uintptr_t p : item.pushes)
             {
-                if(p == 0x0) break;
+                if(p == 0) break;
                 WriteMemory<const char*>(p + 1, item.buf.c_str(), true);
             }
         }

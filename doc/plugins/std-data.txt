@@ -19,6 +19,7 @@ Description:
 	    default.dat / gta.dat
 	    handling.cfg
 	    carmods.dat
+	    plants.dat
 	
 	It also can detect lines from the following files in a readme text file:
 	    gta.dat
@@ -26,7 +27,6 @@ Description:
 	    veh_mods.ide
 	    handling.cfg
 	    carmods.dat
-	    plants.dat
 	    [more later, working on it]
 
 Usage:

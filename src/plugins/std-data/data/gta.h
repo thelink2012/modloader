@@ -196,6 +196,14 @@ namespace data
                 return ++index;
             }
             
+            // Gets index that will priority it instead of normal index
+            // Good for maps that want to load before the original map
+            static int get_index_priorize()
+            {
+                static int index = 0;
+                return --index;
+            }
+            
             // Indices from readmes must start at higher values to not come before normal indices
             static int get_readme_index()
             {
@@ -208,13 +216,23 @@ namespace data
              * If index already exist in index map, return it, otherwise return a new index
              * 
              */
-            static int get_index(size_t hash, bool bIsReadmeSection)
+            static int get_index(const string64& path, bool bIsReadmeSection)
             {
                 index_map& map = get_index_map();
-                auto it = map.find(hash);
+                auto it = map.find(path.hash);
                 if(it == map.end())
                 {
-                    return (map[hash] = (bIsReadmeSection? get_readme_index() : get_index()));
+                    int index;
+                    
+                    // If file is inside priorize folder, give it priority over original IPL files
+                    if(modloader::starts_with(path.buf, "data\\maps\\priorize", true))    // path and string path is normalized!!
+                        index = get_index_priorize();
+                    else if(bIsReadmeSection)   // Readme lines must come much after other lines
+                        index = get_readme_index();
+                    else                       // Normal...
+                        index = get_index();
+   
+                    return (map[path.hash] = index);
                 }
                 return it->second;
             }
@@ -227,7 +245,7 @@ namespace data
                     key_type key;
                     if(key.set(section, line))
                     {
-                        key.index = get_index(key.path.hash, IsReadmeSection(section));
+                        key.index = get_index(key.path, IsReadmeSection(section));
                         map[key];
                         return true;
                     }

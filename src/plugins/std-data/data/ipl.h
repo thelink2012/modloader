@@ -3,19 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  IPL structures
- * 
- *  TODO Automatic LOD placing, that would be a nice feature!
- *        Possible implementations:
- *              1. This one looks to be better...
- *                 Each LOD readen from a IPL is stored in a data structure
- *                 When a object has no LOD, try to find a LOD for it in that data structure
- *                 This would be fast and work well because custom IPLs are placed at the end of the load-list
- * 
- *              2. This one is interesting, but slower... In my opnion the first option is better!
- *                  When a object has no LOD, try to find a LOD for it based in LOD name standards
- *                  using the game function to find a object by name.
- *                  Simple? No, the first one is simpler than that, really.
- * 
+ *
  */
 #ifndef TRAITS_IPL_H
 #define	TRAITS_IPL_H

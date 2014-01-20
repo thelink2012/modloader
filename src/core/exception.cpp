@@ -55,7 +55,7 @@ int LogException(char* buffer, LPEXCEPTION_POINTERS pException)
     buffer[0] = 0;
     size_t len = 0;
     char szModuleName[MAX_PATH];
-    MEMORY_BASIC_INFORMATION mbi;
+    HMODULE hModule;
     LPEXCEPTION_RECORD pRecord;
     
     // Acquiere common information that we'll access
@@ -63,10 +63,11 @@ int LogException(char* buffer, LPEXCEPTION_POINTERS pException)
     DWORD dwExceptionCode = pRecord->ExceptionCode;
     
     // Findout the module that the exception address is at and it's name
-    if(!
-        (VirtualQuery(pRecord->ExceptionAddress, &mbi, sizeof(mbi)) == sizeof(mbi)
-      &&(GetModuleFileNameA((HMODULE)mbi.AllocationBase, szModuleName, sizeof(szModuleName))))
-      )
+    if(!(
+       GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           (char*)pRecord->ExceptionAddress, &hModule)
+      && GetModuleFileNameA(hModule, szModuleName, sizeof(szModuleName))
+      ))
         // Couldn't find the module name
         strcpy(szModuleName, "???");
     

@@ -46,10 +46,6 @@ Mas o seguinte é errado:
         E todo o conteudo de qualquer pasta CLEO encontrada (tipo modloader/nome do mod/CLEO/...) será copiada para a CLEO na base do jogo.
         
         PS: Os arquivos .cleo e .fxt vão ser tratados pelo modloader em vez da CLEO por questões tecnicas.
- 
-    [*] ASI Plugins (.asi)
-        Mods asi ainda tem uma utilização limita no modloader, eles vão falhar a funcionar se eles tocam
-        em algum arquivo do jogo enquanto o jogo esta rodando. Isso vai ser contornado no futuro!
 
     [*] Mistura de arquivos
         Quando se trata dos arquivos data (.dat, .cfg, .ide, .ipl) o modloader trabalha de uma forma muito interessante.
@@ -75,13 +71,6 @@ Mas o seguinte é errado:
         Por exemplo, se você tem o mod A com prioridade 100 e o mod B com prioridade 1 e ambos substituem o LOADSCS.txd,
         o LOADSCS que vai ser carregado vai ser o do B pois ele substituiu o que o A fez.
     
-
-    [*] SA Limit Adjuster do Sacky integrado
-        Quando qualquer arquivo chamado salimits.ini ou salimits.sala for encontrado, ele vai ser lido pelo modloader.
-        Mais exatamente por uma integração entre o SA Limit Adjuster do Sacky e o modloader.
-        Essa integração foi feito pois existem mods (gtaunited) que utilizam o SALA sem arquivos asi ou coisa similar.
-        Estarei em busca de uma forma de remover essa integração e tornar as coisas indendentes.
-
     [*] Suporte a linha de comando
         O modloader suporta linhas de comando pelo executavel do jogo.
         A linha de comando é -mod PastaDoMod
@@ -143,8 +132,6 @@ Mas o seguinte é errado:
 
     Programação principal: LINK/2012 (dma_2012@hotmail.com)
 
-    Usa partes do SA Limit Adjuster do Sacky
-    Obrigado por tomarem o tempo para alpha-testar: ArtututuVidor$, Andryo, Junior_Djjr, JNRois12
-    Obrigado tambem por reportar bugs de verdade: paulinho2108, R4GN0R0K, TheJAMESGM, methodunderg, Marceu Augusto
-
+    Obrigado por tomarem o tempo para testar: ArtututuVidor$, Andryo, Junior_Djjr, JNRois12, TheJAMESGM
+    
 

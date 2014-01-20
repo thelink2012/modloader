@@ -171,6 +171,8 @@ namespace modloader
                 map[0x0048418a] = 0x0048418a;
                 map[0x005b630b] = 0x005b630b;
                 map[0x005A6A01] = 0x005A6A01;
+                map[0x008E3ED4] = 0x008E3ED4;
+                map[0x00820EBA] = 0x00820EBA;
                 
                 // ^ The above table must be restructured
                 // Pointers there may be repeating below:
@@ -218,11 +220,28 @@ namespace modloader
                 map[0x5BBADE] = 0x5BBADE;
                 map[0x5BC0AE] = 0x5BC0AE;
                 map[0x5DD3D1] = 0x5DD3D1;
+                
+                // Streaming pointers
+                map[0x4D563D] = 0x4D563D;
+                map[0x408430] = 0x408430;
+                map[0x406C2A] = 0x406C2A;
+                map[0x40844C] = 0x40844C;
+                map[0x40846E] = 0x40846E;
+                map[0x40848C] = 0x40848C;
+                map[0x5A41A4] = 0x5A41A4;
+                map[0x5A69F7] = 0x5A69F7;
+                map[0x5A80F9] = 0x5A80F9;
+                map[0x4D5EB9] = 0x4D5EB9;
+                map[0x5AFBCB] = 0x5AFBCB;
+                map[0x5AFC98] = 0x5AFC98;
+                map[0x5B07DA] = 0x5B07DA;
+                map[0x5B1423] = 0x5B1423;
+                map[0x4083E4] = 0x4083E4;
+                map[0x407610] = 0x407610;
+                map[0x8E3FEC] = 0x8E3FEC;
+                map[0x40844C] = 0x40844C;
+                map[0x40848C] = 0x40848C;
             }
-
-
-
-            
 
     };
 

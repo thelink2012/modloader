@@ -238,10 +238,28 @@ namespace modloader
      */
     inline BOOL IsPathA(LPCTSTR szPath)
     {
-      DWORD dwAttrib = GetFileAttributes(szPath);
+      DWORD dwAttrib = GetFileAttributesA(szPath);
       return (dwAttrib != INVALID_FILE_ATTRIBUTES);
     }
 
+    inline BOOL IsPathW(LPCWSTR szPath)
+    {
+      DWORD dwAttrib = GetFileAttributesW(szPath);
+      return (dwAttrib != INVALID_FILE_ATTRIBUTES);
+    }
+    
+    template<class T> inline BOOL IsPath(const T* szPath)
+    {
+        return IsPathA(szPath);
+    }
+    
+    template<> inline BOOL IsPath(const wchar_t* szPath)
+    {
+        return IsPathW(szPath);
+    }
+    
+    
+    
     /*
      * MakeSureDirectoryExistA
      *      WinAPI-like function to make sure a directory exists, if not, create it
@@ -326,6 +344,16 @@ namespace modloader
         size.HighPart = fad.nFileSizeHigh;
         size.LowPart = fad.nFileSizeLow;
         return size.QuadPart;
+    }
+    
+    
+    template<class T>
+    static bool IsAbsolutePath(const T* str)
+    {
+        return (
+                (str[0] == '\\' || str[0] == '/')
+            ||  (isalpha(str[0]) && str[1] == ':' && (str[2] == '\\' || str[2] == '/'))
+          );
     }
     
     

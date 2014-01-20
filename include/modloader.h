@@ -37,7 +37,7 @@ extern "C" {
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         1
-#define MODLOADER_VERSION_REVISION      6
+#define MODLOADER_VERSION_REVISION      7
 #ifdef NDEBUG
 #define MODLOADER_VERSION_ISDEV         0
 #else
