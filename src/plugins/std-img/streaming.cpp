@@ -391,10 +391,23 @@ void CAbstractStreaming::BuildClothesMap()
     {
         CDirectoryEntry& entry = playerImgDirectory->m_pEntries[i];
         
-        auto it = imgPlugin->models.find( modloader::hash(entry.filename, ::toupper) );
+        auto hash = modloader::hash(entry.filename, ::toupper);
+        auto it = imgPlugin->models.find(hash);
         if(it != imgPlugin->models.end())
         {
+            static const auto coach_dff_hash = modloader::hash("COACH.DFF");
+            static const auto coach_txd_hash = modloader::hash("COACH.TXD");
+            
             ModelFile& model = it->second;
+            
+            std::string model_path = model.path;
+            modloader::tolower(model_path);
+            
+            // If model is coach.dff/coach.txd that can be both a cloth or a vehicle
+            // check if the path have a player in it, if yes, consider as a cloth
+            if((hash == coach_dff_hash || hash == coach_txd_hash)
+            && (model_path.find("player") == model_path.npos)
+             ) continue;
             
             // Register the clothes file we've just found...
             this->clothes.emplace(entry.fileOffset, model);

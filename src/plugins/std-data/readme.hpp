@@ -67,7 +67,6 @@ struct ReadmeReader
         fs_type& fs = xpair.first;
         const char* overrideFile = xpair.second;
        
-        
         // Try to add this line into the map from the trait...
         if(typename handler_type::Set()(ReadmeSection(), line, map, overrideFile) == false)
         {

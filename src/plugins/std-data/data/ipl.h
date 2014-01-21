@@ -1112,12 +1112,14 @@ namespace data
             int operator()(const SDataIPL::key_type& key) const
             {
                 if(key.section == IPL_INST) return 0;
-                return flag_RemoveIfNotExistInAnyCustom;
+                //return flag_RemoveIfNotExistInAnyCustom;
+                return flag_RemoveIfNotExistInOneCustomButInDefault;
             }
             
             int operator()( ) const
             {
-                return flag_RemoveIfNotExistInAnyCustom;
+                //return flag_RemoveIfNotExistInAnyCustom;
+                return flag_RemoveIfNotExistInOneCustomButInDefault;
             }
         };
         

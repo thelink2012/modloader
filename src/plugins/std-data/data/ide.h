@@ -878,6 +878,7 @@ namespace data
                     }
                 }
                 
+                
                 // Did found something to handle?
                 if(this->section == IDE_NONE)
                     return false;   // he, nope
@@ -932,7 +933,7 @@ namespace data
                     {
                         // The paths we use are "data/maps/veh_mods.ide" and "data/vehicles.ide"
                         // Naturally the first different char is the char at index 5, so let's look into it
-                        
+
                         char c = fileov[5];
                         if(c == 'v')  section = SDataIDE::ReadmeVehicles();
                         else if(c == 'm') section = SDataIDE::ReadmeVehmods();

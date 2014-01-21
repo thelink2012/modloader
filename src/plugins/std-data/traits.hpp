@@ -14,6 +14,8 @@
  *             this will make line detection from readme files.
  *          7. It's done, it looks complex, but it's not!
  * 
+ *          If you are going to use any address don't forget to add it to the address translator ;)
+ * 
  */
 #ifndef TRAITS_HPP
 #define	TRAITS_HPP
@@ -26,6 +28,7 @@
 #include "data/handling.h"
 #include "data/carmods.h"
 #include "data/plants.h"
+#include "data/water.h"
 
 #endif
 

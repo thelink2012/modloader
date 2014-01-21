@@ -51,7 +51,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.2 blue";
+    return "0.2 green";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -145,6 +145,18 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
             RegisterReplacementFile(*this, "popcycle.dat", traits.popcycle, filepath);
         else if(!strcmp(filename, "plants.dat", false))
             traits.plants.AddFile(file, "data/plants.dat");
+        else if(!strcmp(filename, "water.dat", false))
+            traits.water.AddFile(file, "data/water.dat");
+        else if(!strcmp(filename, "roadblox.dat", false))
+            RegisterReplacementFile(*this, "roadblox.dat", traits.roadblox, filepath);
+        else if(!strcmp(filename, "tracks.dat", false))
+            RegisterReplacementFile(*this, "tracks.dat", traits.tracks[0], filepath);
+        else if(!strcmp(filename, "tracks2.dat", false))
+            RegisterReplacementFile(*this, "tracks2.dat", traits.tracks[1], filepath);
+        else if(!strcmp(filename, "tracks3.dat", false))
+            RegisterReplacementFile(*this, "tracks3.dat", traits.tracks[2], filepath);
+        else if(!strcmp(filename, "tracks4.dat", false))
+            RegisterReplacementFile(*this, "tracks4.dat", traits.tracks[3], filepath);
         else
             return false;
 
@@ -160,6 +172,22 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     }
     else if(IsFileExtension(file.filext, "ide"))
     {
+        const char* fsPath = nullptr;
+        std::string fsPathAux;
+        
+        // In case of any of the basics ide file, let the user put it outside data folder
+        // and it will be still detected as it should
+        if(!strcmp(file.filename, "vehicles.ide", false)
+        || !strcmp(file.filename, "default.ide", false)
+        || !strcmp(file.filename, "peds.ide", false))
+        {
+            if(!IsFileInsideFolder(file.filepath, false, "data"))
+            {
+                fsPath = fsPathAux.assign("data/").append(file.filename).c_str();
+            }
+        }
+        
+        //
         traits.ide.AddFile(file);
         return true;
     }
@@ -193,11 +221,17 @@ bool CThePlugin::PosProcess()
     make_file_mixer<0x5BD850>(traits.handling);
     make_file_mixer<0x5B65BE>(traits.carmods);
     make_file_mixer<0x5DD3D1>(traits.plants);
+    make_file_mixer<0x6EAF4D>(traits.water);
         
     // Detours
-    make_file_detour<0x5BBADE>(traits.timecyc.c_str(),   "time cycle file");
-    make_file_detour<0x5BC0AE>(traits.popcycle.c_str(),  "population cycle file");
-
+    make_file_detour<0x5BBADE>(traits.timecyc.c_str(),   "time cycle");
+    make_file_detour<0x5BC0AE>(traits.popcycle.c_str(),  "population cycle");
+    make_file_detour<0x461125>(traits.roadblox.c_str(),  "road blocks");
+    make_file_detour_tracks<0x6F7470>(traits.tracks[0].c_str());
+    make_file_detour_tracks<0x6F74BC>(traits.tracks[1].c_str());
+    make_file_detour_tracks<0x6F7496>(traits.tracks[2].c_str());
+    make_file_detour_tracks<0x6F74E2>(traits.tracks[3].c_str());
+    
     return true;
 }
 
@@ -213,7 +247,7 @@ bool CThePlugin::OnSplash()
         // You might also consider the cost of the detection
         auto tpair = std::make_tuple(
                         std::make_pair(std::ref(traits.ide),        "data/vehicles.ide"),
-                        std::make_pair(std::ref(traits.ide),        "data/maps/veh_mods.ide"),
+                        std::make_pair(std::ref(traits.ide),        "data/maps/veh_mods/veh_mods.ide"),
                         std::make_pair(std::ref(traits.handling),   "data/handling.cfg"),
                         std::make_pair(std::ref(traits.gta),        "data/gta.dat"),
                         std::make_pair(std::ref(traits.carmods),    "data/carmods.dat")

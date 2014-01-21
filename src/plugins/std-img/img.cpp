@@ -49,7 +49,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "RC1";
+    return "RC2";
 }
 
 const char** CThePlugin::GetExtensionTable()

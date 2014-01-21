@@ -225,10 +225,13 @@ struct CAllTraits
     CDataFS<TraitsHandling> handling;
     CDataFS<TraitsCarmods>  carmods;
     CDataFS<TraitsPlants>   plants;
+    CDataFS<TraitsWater>    water;
     
     // The following are not traited, just overrides
     std::string timecyc;
     std::string popcycle;
+    std::string roadblox;
+    std::string tracks[4];
     
     
     //

@@ -48,7 +48,7 @@ inline bool IsUpgradeModel(const char* modelname)
 {
     static const char* uptable[] =
     {
-        "nto_", "exh_", "bnt_", "chss_", "bntl_", "bntr_", "spl_",
+        "wheel_", "nto_", "exh_", "bnt_", "chss_", "bntl_", "bntr_", "spl_",
         "hydralics", "stereo", "wg_l_", "wg_r_", "lgt_",
         "fbb_", "bbb_", "rf_", "fbmp_", "rbmp_",
         "misc_a_", "misc_b_", "misc_c_",

@@ -1,3 +1,16 @@
+v0.1.7
+    Feature: ASI plugins that rely on external files on run-time works fine now, except for a few exceptions.
+    Feature: The loader can handle D3D9 hooks
+    Feature: Sacky's Limit Adjuster removed from modloader
+    Feature: Implemented file mixer for water.dat
+    Feature: Implemented file overrider for roadblox.dat and tracks%d.dat
+    Feature: The basic IDE files (vehicles.ide, peds.ide, default.ide) do not need to be inside a data folder anymore to be detected
+    Bug fix: Fixed a immediate crash that happens when a .img files gets overridden
+    Bug fix: Fixed wheels line for veh_mods.ide not getting read properly on a readme file
+    Bug fix: Fixed the conflict between the clothing file COACH and the vehicle file COACH
+    Bug fix: Other minor fixes
+    
+
 v0.1.6
     Feature: Implemented file mixer for plants.dat
     Bug fix: Clothes models now works properly... Really...

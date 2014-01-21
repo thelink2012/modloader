@@ -1,6 +1,6 @@
 *************************************************************************
 	Name: std-data
-	Version: 0.2
+	Version: 0.2 green
 	Author: LINK/2012 <dma_2012@hotmail.com>
 	Default Priority: 50
 *************************************************************************
@@ -20,7 +20,13 @@ Description:
 	    handling.cfg
 	    carmods.dat
 	    plants.dat
-	
+	    
+    And the following without mixing but overriding:
+        timecyc.dat
+        popcycle.dat
+	    tracks%d.dat
+	    roadblox.dat
+
 	It also can detect lines from the following files in a readme text file:
 	    gta.dat
 	    vehicles.ide

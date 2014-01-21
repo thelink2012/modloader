@@ -220,6 +220,12 @@ namespace modloader
                 map[0x5BBADE] = 0x5BBADE;
                 map[0x5BC0AE] = 0x5BC0AE;
                 map[0x5DD3D1] = 0x5DD3D1;
+                map[0x6EAF4D] = 0x6EAF4D;
+                map[0x461125] = 0x461125;
+                map[0x6F7470] = 0x6F7470;
+                map[0x6F74BC] = 0x6F74BC;
+                map[0x6F7496] = 0x6F7496;
+                map[0x6F74E2] = 0x6F74E2;
                 
                 // Streaming pointers
                 map[0x4D563D] = 0x4D563D;

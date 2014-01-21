@@ -1,6 +1,6 @@
 *************************************************************************
 	Name: std-img --- (Standard IMG Loader Plugin)
-	Version: Release Candidate 1
+	Version: Release Candidate 2
 	Author: LINK/2012 <dma_2012@hotmail.com>
 	Default Priority: 48
 *************************************************************************
@@ -24,6 +24,10 @@ Usage:
 	It also has integration with img files loaded from gta.dat/default.dat files ("IMG" command).
 	If you place any .img file in the mod folder (example: "modloader/mymod/data/script/script.img")
 	that has a loading line in the .dat files (yes, script.img does), your file will be loaded instead.
+
+    PS: There is a coach model (coach.dff and coach.txd) that names a vehicle and another that names a cloth.
+        That may cause confusion on modloader and to resolve this confusion it will detect the file as a
+        vehicle except when the file is inside any kind of "player" folder.
 
 NEEDS:
 	[*] Testing, mainly with RRR and stream IPL files
