@@ -226,6 +226,7 @@ namespace modloader
                 map[0x6F74BC] = 0x6F74BC;
                 map[0x6F7496] = 0x6F7496;
                 map[0x6F74E2] = 0x6F74E2;
+                map[0x7187DB] = 0x7187DB;
                 
                 // Streaming pointers
                 map[0x4D563D] = 0x4D563D;

@@ -98,6 +98,30 @@ namespace modloader
         return result;
     }
 
+    template<class ForwardIterator, class Functor>
+    void foreach_line(ForwardIterator begin, ForwardIterator end, Functor func)
+    {
+        ForwardIterator sol, eol, pos = begin;
+        
+        while(pos != end)
+        {
+            sol = pos;
+            eol = end;
+            
+            for(; pos != end; ++pos)
+            {
+                if(*pos == '\n' || *pos == 0)
+                {
+                    eol = pos++;
+                    break;
+                }
+            }
+            
+            func(sol, eol);
+        }
+    }
+    
+    
 }
 
 #endif	/* MODLOADER_UTIL_FILE_HPP */

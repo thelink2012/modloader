@@ -6,6 +6,7 @@
 #ifndef DATA_H
 #define	DATA_H
 
+#include <set>
 #include <map>
 #include <list>
 #include <cassert>
@@ -26,7 +27,8 @@ class CThePlugin : public modloader::CPlugin
 {
     public:
         std::string cachePath;
-        std::list<std::string>  readme;
+        std::list<std::string>      readme;
+        std::map<int, std::set<std::string>>  cacheFiles;
         
         CThePlugin()
         {}
@@ -42,6 +44,46 @@ class CThePlugin : public modloader::CPlugin
         bool OnSplash();
         
         const char** GetExtensionTable();
+        
+        
+        std::string GetCacheFileFor(const char* path)
+        {
+            // Initialize the cacheFiles map if it wasn't initialized yet
+            if(cacheFiles.size() == 0) cacheFiles[0];
+            
+            // Get path last component (filename) and turn into lower case for case insensitiveness...
+            std::string filename = &path[GetLastPathComponent(path)];
+            modloader::tolower(filename);
+            
+            // Get current working cache id and it's files
+            auto id = cacheFiles.size() - 1;
+            auto& cache = cacheFiles[id];
+            
+            // Check if file exists in this cache...
+            auto it = cache.find(filename);
+            if(it == cache.end())
+            {
+                // It does not!!! Let's push this file into this cache.
+                cache.emplace(filename);
+                
+                // Find out this cache path...
+                char buf[MAX_PATH];
+                sprintf(buf, "%s\\data_%d\\", cachePath.c_str(), id);
+                
+                // If the cache is being initialized (first file pushed into it),
+                // then Create the cache folder
+                if(cache.size() == 1) MakeSureDirectoryExistA(buf);
+                
+                // Return the path for the cache file...
+                return std::move(filename.insert(0, buf));
+            }
+            else
+            {
+                // Oh well, this cache already contains this specific filename, let's create another empty cache
+                cacheFiles[++id];
+                return GetCacheFileFor(path);
+            }
+        }
 };
 
 
@@ -160,29 +202,7 @@ class CDataFS
          * (e.g. "DATA/MAPS/VEGAS/VEGASS.IPL" will return something like "$CACHE_PATH/data_10/VEGASS.IPL" */
         std::string GetCacheFileFor(const char* path)
         {
-            /*
-             *  data_0  is reserved for .dat and .cfg files - this folder already exist, created together with cachePath
-             *  data_%d is reserved for .ipl and .ide files (randomly, they don't need to be pairs!)
-             *  TODO this system could be better!
-             */
-            
-            static int CacheId = IsIdeOrIpl? 1 : 0;
-
-            char dataPath[MAX_PATH];
-            
-            /* Create path to store the cache file,
-             * it's like that because the original filename (last @path component) must be preserved */
-            sprintf(dataPath, "%sdata_%d\\", dataPlugin->cachePath.c_str(), CacheId);
-            
-            // Increase cache id if the trait is for ide or ipl
-            if(IsIdeOrIpl)
-            {
-                ++CacheId;
-                MakeSureDirectoryExistA(dataPath);
-            }
-            
-            /* Append the cache path with the file name */
-            return std::string(dataPath) + &path[GetLastPathComponent(path)];
+            return dataPlugin->GetCacheFileFor(path);
         }
         
         bool size()
@@ -230,6 +250,7 @@ struct CAllTraits
     // The following are not traited, just overrides
     std::string timecyc;
     std::string popcycle;
+    std::string fonts;
     std::string roadblox;
     std::string tracks[4];
     

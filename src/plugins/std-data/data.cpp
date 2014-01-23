@@ -51,7 +51,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.2 green";
+    return "0.2 red";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -131,8 +131,7 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     {
         std::string filepath_buffer = GetFilePath(file);
         const char* filepath = filepath_buffer.c_str();
-        // TODO
-        
+
         if(!strcmp(filename, "gta.dat", false))
             traits.gta.AddFile(file, "data/gta.dat");
         else if(!strcmp(filename, "default.dat", false))
@@ -143,6 +142,8 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
             RegisterReplacementFile(*this, "timecyc.dat", traits.timecyc, filepath);
         else if(!strcmp(filename, "popcycle.dat", false))
             RegisterReplacementFile(*this, "popcycle.dat", traits.popcycle, filepath);
+        else if(!strcmp(filename, "fonts.dat", false))
+            RegisterReplacementFile(*this, "fonts.dat", traits.fonts, filepath);
         else if(!strcmp(filename, "plants.dat", false))
             traits.plants.AddFile(file, "data/plants.dat");
         else if(!strcmp(filename, "water.dat", false))
@@ -224,6 +225,7 @@ bool CThePlugin::PosProcess()
     make_file_mixer<0x6EAF4D>(traits.water);
         
     // Detours
+    make_file_detour<0x7187DB>(traits.fonts.c_str(),     "fonts values");
     make_file_detour<0x5BBADE>(traits.timecyc.c_str(),   "time cycle");
     make_file_detour<0x5BC0AE>(traits.popcycle.c_str(),  "population cycle");
     make_file_detour<0x461125>(traits.roadblox.c_str(),  "road blocks");
@@ -243,6 +245,8 @@ bool CThePlugin::OnSplash()
     // Read the readme files
     if(true)
     {
+        ReadmeReader reader;
+        
         // Please organize the following tuple in a order from the most used to the least used
         // You might also consider the cost of the detection
         auto tpair = std::make_tuple(
@@ -256,7 +260,6 @@ bool CThePlugin::OnSplash()
         // Read readme files and detect lines that are interesting for us
         for(auto& readme : this->readme)
         {
-            ReadmeReader reader;
             reader(readme.c_str(),  tpair);
         }
         

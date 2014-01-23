@@ -28,6 +28,9 @@ struct ReadmeReader
     char buf[2048], *line;
     size_t line_number;
   
+    std::vector<char> readme_data;
+    
+    
     /*
      *  Helper function to get the readme trait (the Additional trait in other words) from a fs object 
      */
@@ -119,29 +122,51 @@ struct ReadmeReader
     template<class Tuple>
     void operator()(const char* filename, const Tuple& tuple_pair)
     {
-        /*
-         * XXX MAYBE (just maybe) it would be faster to read the entire file and parse from it... 
-         * ...needs benchmark
-         */
-        
-        dataPlugin->Log("Reading readme file %s", filename);
+        static const int max_readme_size = 10000;   // ~10KB
+        typedef std::vector<char>::iterator iterator;
         
         // Setup my fields
         this->filename = filename;
         this->line_number = 0;
         
-        // Finally, open the file for reading...
-        if(FILE* f = fopen(filename, "r"))
+        // Read the text file only if it's not too big...
+        if(GetFileSize(filename) <= max_readme_size)
         {
-            // ...read...
-            for(; line = ParseConfigLine(fgets(buf, sizeof(buf), f)); ++line_number)
+            dataPlugin->Log("Reading readme file %s", filename);
+            
+            // Reserve the data on the buf-vector (plus the null terminator)
+            this->readme_data.reserve(max_readme_size + 1);
+            
+            // Read the entire file into our buffer
+            if(ReadEntireFile(filename, this->readme_data, max_readme_size))
             {
-                if(*line == 0) continue;
-                try_to_handle_line(tuple_pair);
+                // Put a null terminator at the end
+                this->readme_data.emplace_back(0);
+                
+                // Iterate on each line from the file
+                foreach_line(readme_data.begin(), readme_data.end(), [&tuple_pair, this](iterator sol, iterator eol)
+                {
+                    if(eol != this->readme_data.end())  // This condition should never be false!
+                    {
+                        *eol = 0;           // Make the end-of-line ('\n') be a null terminator ('\0')
+                        ++line_number;      // Add to line count...
+                        
+                        line = ParseConfigLine(&(*sol));
+                        if(*line != 0)      // Line should not be empty...
+                        {
+                            // Try to detect a configuration line on the readme...
+                            try_to_handle_line(tuple_pair);
+                        }
+                    }
+                });
             }
-            fclose(f);
         }
-        
+        else
+        {
+            //
+            dataPlugin->Log("Ignoring text file \"%s\" because it's too big.", filename);
+        }
+
         // The magic is done ;)
     }
     

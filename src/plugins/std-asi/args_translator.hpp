@@ -83,25 +83,38 @@ struct path_translator_base
                                                         // for safeness, so we have a safe spot to hide ourselfs when
                                                         // we fail to capture the stack frame to find the caller.
 
+    // Type
+    bool bIsSingleton;
+    bool bGetModuleFileName;        // Must be set by child
+    
     // Almost static vars (he), the value is always the same in all objects
     int npath;              // Num args that uses a path
     char argtype[32];       // eArgsType for [Ret + Args]
     
     // Object-dependent vars
+    void* iat;              // Pointer to this func on IAT
     void* fun;              // Original function pointer
-    bool bGetModuleFileName;
+    
     
     
     //
-    path_translator_base() : npath(0), fun(0)
+    path_translator_base() : npath(0), fun(0), iat(0), bIsSingleton(false)
     { }
 
+    //
+    ~path_translator_base()
+    {
+        Restore();
+    }
+    
     // Patch address @addr at IAT to point into our wrapper
     void Patch(void* addr)
     {
+        this->iat = addr;
+        
         // Replace IAT pointers and get original function pointer into @fun
-        this->fun = ReadMemory<void*>(raw_ptr(addr), true);
-        WriteMemory<const void*>(raw_ptr(addr), this->GetWrapper(), true);
+        this->fun = ReadMemory<void*>(raw_ptr(iat), true);
+        WriteMemory<const void*>(raw_ptr(iat), this->GetWrapper(), true);
         
         // If the singleton has no function assigned to it yet, assign one
         // This will be our safe exit when we can't capture stack frames ;)
@@ -109,12 +122,25 @@ struct path_translator_base
         if(s->fun == nullptr) s->fun = this->fun;
     }
 
+    // Unpatches the IAT
+    void Restore()
+    {
+        if(this->iat)
+        {
+            WriteMemory<void*>(raw_ptr(iat), this->fun, true);
+            this->iat = 0;
+        }
+    }
+    
+    
+    
     // Tries to make this object part of the singleton list
     // Must be called by the child's constructor!!!!
     void SetupSingleton()
     {
         if(InitializationDone() == false)
         {
+            this->bIsSingleton = true;
             List().push_back(GetSingleton() = this);
         }
     }
@@ -401,6 +427,8 @@ struct path_translator_xbase : public path_translator_base
         // Gets information from pointer @pReturn inside a module
         bool FindInfo(void* pCaller)
         {
+            static bool bAntiFlood = false;
+            
             if(pCaller) // Succesfully got caller pointer?
             {
                 if(SetupASI(asiPlugin->FindModuleFromAddress(pCaller), Symbol, LibName))
@@ -414,9 +442,13 @@ struct path_translator_xbase : public path_translator_base
                 // Let's calm down, and use our singleton instead ;)
                 this->base = StaticGetSingleton();
                 
-                // Let's log about this situation we have here...
-                asiPlugin->Log("Warning: std-asi failed to CaptureStackBackTrace for %s:%s! Trying singleton!",
-                               LibName, Symbol);
+                if(!bAntiFlood)
+                {
+                    // Let's log about this situation we have here...
+                    asiPlugin->Log("Warning: std-asi failed to CaptureStackBackTrace for %s:%s! Trying singleton!",
+                                   LibName, Symbol);
+                    bAntiFlood = true;
+                }
             }
             return false;
         }

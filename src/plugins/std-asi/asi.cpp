@@ -27,7 +27,7 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     asiPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data);
+    modloader::RegisterPluginData(plugin, data, plugin.default_priority);
 }
 
 /*
@@ -207,7 +207,7 @@ bool CThePlugin::ModuleInfo::Load()
         if(GetFullPathNameA(name.c_str(), sizeof(fullpath), fullpath, 0))
         {
             // Let Windows search for dependencies in this folder too
-            SetDllDirectoryA(".\\");
+            //SetDllDirectoryA(test.c_str());       -- Doesn't work on some older Wine version... grh...
             {
                 // Load the library module into our module field
                 this->module = bIsMainExecutable? GetModuleHandleA(0) : LoadLibraryA(fullpath);
@@ -215,7 +215,7 @@ bool CThePlugin::ModuleInfo::Load()
                 // Patch the module imports to pass throught args translation.
                 if(this->module) this->PatchImports();
             }
-            SetDllDirectoryA(NULL);
+            //SetDllDirectoryA(NULL);
         }
     }
     return this->module != 0;
@@ -226,10 +226,15 @@ bool CThePlugin::ModuleInfo::Load()
  */
 void CThePlugin::ModuleInfo::Free()
 {
-    if(this->module && !bIsMainExecutable)
+    if(this->module)
     {
-        FreeLibrary(module);
-        this->module = 0;
+        this->RestoreImports();
+        
+        if(!bIsMainExecutable)
+        {
+            FreeLibrary(module);
+            this->module = 0;
+        }
     }
  }
 
@@ -364,6 +369,16 @@ void CThePlugin::ModuleInfo::PatchImports()
     }
 }
 
+/*
+ *  Unpatches all patches made in this module IAT 
+ */
+void CThePlugin::ModuleInfo::RestoreImports()
+{
+    this->translators.clear();
+}
+
+
+/* ----------------------------------------------------------------------------------------------------------------------- */
 
 // TODO wchar version of everything below
 

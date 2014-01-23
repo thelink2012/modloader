@@ -2,7 +2,7 @@
 	Name: std-asi
 	Version: 0.8
 	Author: LINK/2012 <dma_2012@hotmail.com>
-	Default Priority: 50
+	Default Priority: 45
 *************************************************************************
 
 Description:

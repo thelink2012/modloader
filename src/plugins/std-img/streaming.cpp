@@ -581,8 +581,6 @@ int __stdcall CdStreamThread()
             {
                 imgPlugin->Log("Warning: Failed to load abstract model file %s; error code: 0x%X", filename, GetLastError());
             }
-
-            // TODO should I fill the "trash" part of the 2KiB aligned buffer (cd->lpBuffer) with null bytes ?
             
             // Set the cdstream status, 0 for "okay" and 254 for "failed to read"
             cd->status = bResult? 0 : 254;

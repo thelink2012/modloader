@@ -30,6 +30,7 @@ extern class CThePlugin* asiPlugin;
 class CThePlugin : public modloader::CPlugin
 {
     public:
+        static const int default_priority = 45;
         
         //
         const char* GetName();
@@ -68,6 +69,7 @@ class CThePlugin : public modloader::CPlugin
             void Free();
             
             void PatchImports();
+            void RestoreImports();
             path_translator_base* FindTranslatorFrom(const char* symbol, const char* libname);
         };
         

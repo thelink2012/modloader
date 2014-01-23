@@ -1,3 +1,9 @@
+v0.1.8
+    Feature: Implemented overrider for fonts.dat
+    Feature: Text files (.txt) greater than 10KB will not be detect as readme files
+    Bug fix: Anti-flooding for logging the failure on CaptureStackBackTrace
+    Other stuff I don't remember of.
+
 v0.1.7
     Feature: ASI plugins that rely on external files on run-time works fine now, except for a few exceptions.
     Feature: The loader can handle D3D9 hooks
