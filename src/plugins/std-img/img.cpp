@@ -57,7 +57,7 @@ const char** CThePlugin::GetExtensionTable()
     /* Put the extensions  this plugin handles on @table
      * SCM disabled because, well, script.img is the standard file for it and is like a 'new' thing
      * May disable RRR too? */
-    static const char* table[] = { "img", "dff", "txd", "col", "ipl", "dat", "ifp", "rrr", /*"scm",*/ 0 };
+    static const char* table[] = { "img", "dff", "txd", "col", "ipl", "dat", "ifp", "rrr", "scm", 0 };
     return table;
 }
 
@@ -92,7 +92,10 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
                 
                 /* If dat or r3 file, we need to make sure that they're nodes%d.dat or carrec%d.rrr */
                 if(IsFileExtension(file.filext, "dat"))
+                {
+                    return false;       // Disable, may conflict with NODES on data folder
                     return (sscanf(tolower(str=file.filename).c_str(), "nodes%d", &dummy) == 1);
+                }
                 else if(IsFileExtension(file.filext, "rrr"))
                     return (sscanf(tolower(str=file.filename).c_str(), "carrec%d", &dummy) == 1);
                 else

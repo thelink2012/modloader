@@ -45,7 +45,7 @@ namespace modloader
                 if(bInitialized == false)
                 {
                     auto& gvm = get_gvm();
-                    if(bInitialized = gvm.init_gvm())   // Try to initialize gvm if it wasn't initialized yet
+                    if(true)
                     {
                         if(gvm.IsSA())  // We're only working with SA addresses on here
                         {
@@ -248,6 +248,19 @@ namespace modloader
                 map[0x8E3FEC] = 0x8E3FEC;
                 map[0x40844C] = 0x40844C;
                 map[0x40848C] = 0x40848C;
+                
+                // Bank loader
+                map[0x5B9D68] = 0x5B9D68;
+                map[0x4E0597] = 0x4E0597;
+                map[0x4DFBD7] = 0x4DFBD7;
+                map[0x4DFC7D] = 0x4DFC7D;
+                map[0x4D99B3] = 0x4D99B3;
+                map[0x4D9800] = 0x4D9800;
+                map[0x4DFE30] = 0x4DFE30;
+                map[0x4E065B] = 0x4E065B;
+                map[0x4DFD9D] = 0x4DFD9D;
+                map[0x4DFDC3] = 0x4DFDC3;
+                map[0x4DFDCE] = 0x4DFDCE;
             }
 
     };

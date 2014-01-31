@@ -413,26 +413,57 @@ bool CThePlugin::StartCacheFile()
     else
     {
         Log("Creating backup CLEO folder");
+        bool bFailedToCreateCLEO = false;
+        int errorCode;
+        std::string cacheDir = cacheDirPath;
         
         // Destroy old backup
         if(!DestroyDirectoryA(cacheCleoPath))
         {
             Log("Failed to destroy backup CLEO folder in-cache. Error code: 0x%X.", GetLastError());
         }
-        
-        // Create new backup
-        if(!CopyDirectoryA("CLEO\\", cacheCleoPath))
+
+        // Create only folders at the CLEO backup folder
+        if(CreateDirectoryA(cacheCleoPath, 0))
         {
-            Log("Failed to create backup CLEO folder. Error code: 0x%X. Aborting.", GetLastError());
+            // Iterate on CLEO folder finding each folder to create a reflection on the backup folder
+            ForeachFile("CLEO\\", "*.*", true, [&](ModLoaderFile& f)
+            {
+                if(f.is_dir)
+                {
+                    // Create directory with same name on backup folder...
+                    if(!CreateDirectoryA((cacheDir + f.filepath).c_str(), 0))
+                    {
+                        // Ops.. something bad happened!
+                        errorCode = GetLastError();
+                        bFailedToCreateCLEO = true;
+                        f.recursion = false;
+                        return false;
+                    }
+                }
+                return true;
+            });
         }
-        /* For each file, write to the cache it's information */
+        else
+        {
+            // bad...
+            errorCode = GetLastError();
+            bFailedToCreateCLEO = true;
+        }
+        
+        //
+        if(bFailedToCreateCLEO)
+        {
+            Log("Failed to create backup CLEO folder. Error code: 0x%X. Aborting.", errorCode);
+        }
+        // For each file, write to the cache it's information
         else for(auto& file : this->files)
         {
             this->NewChunkLoaded();
             
             if(file.flags.bIsDir)
             {
-                /* Just make sure we have that directory created */
+                // Just make sure we have that directory created
                 MakeSureDirectoryExistA(file.dstPath);
                 Log("Created directory \"%s\"", file.dstPath);
                 continue;
@@ -448,10 +479,24 @@ bool CThePlugin::StartCacheFile()
                 
                 // Check if file already exist in the destination CLEO folder
                 if(IsPathA(file.dstPath))
+                {
+                    // Mark...
                     file.flags.bExists = true;
+                    
+                    // Copy it as a safe backup
+                    if(!CopyFileA(file.dstPath, (cacheDir + file.dstPath).c_str(), FALSE))
+                    {
+                        Log("Failed to create backup for file \"%s\". Skipping it.", file.srcPath);
+                        continue;
+                    }
+                    else
+                    {
+                        Log("Created backup for file \"%s\"", file.dstPath);
+                    }
+                }
             }
             
-            /* Take the file hash */
+            // Take the file hash
             if(!ReadEntireFile(file.srcPath, filebuf))
             {
                 Log("Failed to read source file for hashing (\"%s\"). Skipping it.", file.srcPath);

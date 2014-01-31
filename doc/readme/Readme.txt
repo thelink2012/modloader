@@ -89,9 +89,7 @@ But the following is invalid:
 ---> Under progress
 
     Modloader is still under progress, thus not everything is loadable yet.
-    
-    For example, audio files are not yet loadable.
-    Some data files are not loadable yet too, take a look at the list of supported data files at modloader/.data/plugins/std-data.txt
+    Some data files are not loadable yet, take a look at the list of supported data files at modloader/.data/plugins/std-data.txt
     
 ---> You've found a bug?
 
@@ -116,19 +114,24 @@ But the following is invalid:
 
     The place I'll surely let modloader always updated is on GTAGarage.
     So I'd really recommend that you redirect the user there instead of uploading modloader elsewhere.
-    
         http://www.gtagarage.com/mods/show.php?id=25377
 
 ---> Source code
 
     Modloader's source code is available under GPL license.
-    
         https://github.com/thelink2012/sa-modloader/
 
 ---> Credits
 
     Main programming: LINK/2012 (dma_2012@hotmail.com)
     
-    Thanks for takin' your time to test: ArtututuVidor$, Andryo, Junior_Djjr, JNRois12, TheJAMESGM
-
+    Special thanks to:
+        ArtututuVidor$
+        Andryo
+        Junior_Djjr
+        JNRois12
+        methodunderg
+        R4GN0R0K
+        SilentPL
+        TheJAMESGM
 

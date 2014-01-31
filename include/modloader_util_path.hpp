@@ -196,12 +196,22 @@ namespace modloader
      *      @path: Path to get the last component from
      *      @return: Returns the last path component position in the string
      */
-    inline std::string::size_type GetLastPathComponent(std::string path)
+    inline std::string::size_type GetLastPathComponent(std::string path, size_t count = 1)
     {
+        size_t pos = path.npos;
+        size_t x = path.npos;
+        
         // Remove any slash at the end of the string, so our finding can be safe
         while(path.back() == '/' || path.back() == '\\') path.pop_back();
+        
         // Do the search
-        size_t pos = path.find_last_of("/\\");
+        for(size_t i = 0; i < count; ++i)
+        {
+            pos = path.find_last_of("/\\", x);
+            x = pos - 1;
+            if(pos == 0 || pos == path.npos) break;
+        }
+        
         return (pos == path.npos? 0 : pos + 1);
     }
     
@@ -372,6 +382,18 @@ namespace modloader
         {
             SetCurrentDirectoryA(buffer);
         }
+    };
+ 
+    
+    struct scoped_lock
+    {
+        CRITICAL_SECTION* c;
+
+        /* Enter on ctor, Leave on dtor */
+        scoped_lock(CRITICAL_SECTION& cs)
+        { c = &cs; EnterCriticalSection(&cs); }
+        ~scoped_lock()
+        { LeaveCriticalSection(c); }
     };
     
 }

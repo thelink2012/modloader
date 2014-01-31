@@ -45,7 +45,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.8";
+    return "0.8.2";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -74,6 +74,7 @@ bool CThePlugin::OnStartup()
     incompatible.emplace("airlimit.asi", 79872);
     incompatible.emplace("killlog.asi", 98816);
     incompatible.emplace("weaponlimit.asi", 99840);
+    incompatible.emplace("maplimit.asi", 50688);
     
     return true;
 }
@@ -101,7 +102,7 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
                 return false;
             }
         }
-        else if(strcmp(file.filename, "d3d9.dll", false) != 0)
+        else if(strcmp(file.filename, "d3d9.dll", false))
             return false;
         
         // Check out if the file is incompatible
@@ -228,13 +229,25 @@ void CThePlugin::ModuleInfo::Free()
 {
     if(this->module)
     {
-        this->RestoreImports();
+        HMODULE hMod;
         
+        // Free module (if not main executable)
         if(!bIsMainExecutable)
-        {
             FreeLibrary(module);
-            this->module = 0;
+        
+        // Test if module has been freed or is still referenced by someone else...
+        if(GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            (char*)this->module,
+                            &hMod))
+        {
+            // ...
+            if(hMod == this->module)    // If still referenced by someone else, remove our IAT hooks
+                this->RestoreImports();
         }
+        
+        //
+        this->module = 0;
+        this->translators.clear();
     }
  }
 
@@ -308,6 +321,22 @@ void CThePlugin::ModuleInfo::PatchImports()
         return strcmp(a->GetSymbol(), b) < 0;
     };
     
+    static std::map<uintptr_t, std::string> iat_cache;
+    
+    // We need a list of pointers to some functions since some linkers (the Borland Linker)
+    // doesn't produce a ILT
+    if(iat_cache.empty())
+    {
+        for(auto& x : GetTranslators())
+        {
+            if(auto module = GetModuleHandleA(x->GetLibName()))
+            {
+                if(auto sym = GetProcAddress(module, x->GetSymbol()))
+                    iat_cache[(uintptr_t)sym] = x->GetSymbol();
+            }
+        }
+    }
+    
     // Get list of singletoned translators
     auto& list = GetTranslators();
     
@@ -342,19 +371,31 @@ void CThePlugin::ModuleInfo::PatchImports()
         {
             // Find upper bound for this library
             auto it_lib_end = std::upper_bound(it_lib, list.end(),  (*it_lib)->GetLibName(), fn_compare_translator_with_lib_ub);
-            
+
             // Get pointer to thunks aka function names and function address tables
+            bool bHasILT = lib->OriginalFirstThunk != 0;
             fname = rva_to_ptr(lib->OriginalFirstThunk);
             faddr = rva_to_ptr(lib->FirstThunk);
-            
+
             // Iterate on each name to see if we should patch it
-            for(; fname->u1.Function; ++fname, ++faddr)
+            for(; faddr->u1.Function; ++fname, ++faddr)
             {
-                // Is this just a ordinal import? Skip it, we don't have a symbol name!
-                if(fname->u1.Ordinal & IMAGE_ORDINAL_FLAG) continue;
+                const char* symbolName;
                 
-                // Get the symbol name
-                const char* symbolName = (char*)(((IMAGE_IMPORT_BY_NAME*)(rva_to_ptr(fname->u1.AddressOfData)))->Name);
+                if(bHasILT)
+                {
+                    // Is this just a ordinal import? Skip it, we don't have a symbol name!
+                    if(fname->u1.Ordinal & IMAGE_ORDINAL_FLAG) continue;
+
+                    // Get the symbol name
+                    symbolName = (char*)(((IMAGE_IMPORT_BY_NAME*)(rva_to_ptr(fname->u1.AddressOfData)))->Name);
+                }
+                else
+                {
+                    auto sym = iat_cache.find(faddr->u1.Function);
+                    if(sym == iat_cache.end()) continue;
+                    symbolName = sym->second.c_str();
+                }
                 
                 // Find arg translator from symbol...
                 auto it_sym = std::lower_bound(it_lib, it_lib_end, symbolName, fn_compare_translator_with_symbol);
@@ -364,7 +405,6 @@ void CThePlugin::ModuleInfo::PatchImports()
                     (*this->translators.emplace(translators.end(), (*it_sym)->clone()))->Patch(&faddr->u1.Function);
                 }
             }
-            
         }
     }
 }
@@ -374,14 +414,18 @@ void CThePlugin::ModuleInfo::PatchImports()
  */
 void CThePlugin::ModuleInfo::RestoreImports()
 {
-    this->translators.clear();
+    for(auto& t : this->translators)
+    {
+        if(t) t->Restore();
+    }
 }
 
 
 /* ----------------------------------------------------------------------------------------------------------------------- */
 
-// TODO wchar version of everything below
-
+/*
+ *  TODO more symbols & wchar version of everything below 
+ */
 
 /*
  *  Kernel32 
@@ -405,7 +449,6 @@ extern const char aWritePrivateProfileSectionA[] = "WritePrivateProfileSectionA"
 extern const char aWritePrivateProfileStringA[] = "WritePrivateProfileStringA";
 extern const char aWritePrivateProfileStructA[] = "WritePrivateProfileStructA";
 
-// TODO MORE SYMBOLS
 
 // Operations
 static path_translator_stdcall<aCreateFileA, aKernel32, HANDLE(LPCTSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
@@ -483,6 +526,11 @@ extern const char aD3DXCreateVolumeTextureFromFileA[] = "D3DXCreateVolumeTexture
 extern const char aD3DXCreateCubeTextureFromFileA[] = "D3DXCreateCubeTextureFromFileA";
 extern const char aD3DXLoadMeshFromXA[] = "D3DXLoadMeshFromXA";
 extern const char aD3DXCreateEffectFromFileA[] = "D3DXCreateEffectFromFileA";
+extern const char aD3DXSaveSurfaceToFileA[] = "D3DXSaveSurfaceToFileA";
+
+extern const char aD3DXCreateEffectFromFileW[] = "D3DXCreateEffectFromFileW";
+
+
 
 // Translators for DirectX
 static path_translator_stdcall<aD3DXCreateTextureFromFileA, aD3DX, HRESULT(void*, const char*, void*)>
@@ -500,8 +548,11 @@ static path_translator_stdcall<aD3DXLoadMeshFromXA, aD3DX, HRESULT(const char*, 
         psD3DXLoadMeshFromXA(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0, 0);
 static path_translator_stdcall<aD3DXCreateEffectFromFileA, aD3DX, HRESULT(void*, const char*, void*, void*, DWORD, void*, void*, void*)>
         psD3DXCreateEffectFromFileA(0, 0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
+static path_translator_stdcall<aD3DXSaveSurfaceToFileA, aD3DX, HRESULT(const char*, DWORD, void*, void*, void*)>
+        psD3DXSaveSurfaceToFileA(0, AR_PATH_IN, 0, 0, 0, 0);
+
+static path_translator_stdcall<aD3DXCreateEffectFromFileW, aD3DX, HRESULT(void*, const wchar_t*, void*, void*, DWORD, void*, void*, void*)>
+        psD3DXCreateEffectFromFileW(0, 0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
 
 
-
-// TODO MORE ^ 
 

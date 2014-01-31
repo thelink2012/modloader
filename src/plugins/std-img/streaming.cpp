@@ -22,17 +22,6 @@ static HANDLE GetAbstractHandle(int, HANDLE);
 // Hooks and other util stuff
 extern "C"
 {
-    struct scoped_lock
-    {
-        CRITICAL_SECTION* c;
-
-        /* Enter on ctor, Leave on dtor */
-        scoped_lock(CRITICAL_SECTION& cs)
-        { c = &cs; EnterCriticalSection(&cs); }
-        ~scoped_lock()
-        { LeaveCriticalSection(c); }
-    };
-    
     // Some vars connected within the game
     CStreamingInfo* ms_aInfoForModel;
     DWORD *pStreamCreateFlags;

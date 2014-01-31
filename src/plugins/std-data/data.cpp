@@ -51,7 +51,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.2 red";
+    return "0.3";
 }
 
 const char** CThePlugin::GetExtensionTable()

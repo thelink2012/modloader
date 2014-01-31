@@ -37,14 +37,14 @@ extern "C" {
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         1
-#define MODLOADER_VERSION_REVISION      8
+#define MODLOADER_VERSION_REVISION      10
 #ifdef NDEBUG
 #define MODLOADER_VERSION_ISDEV         0
 #else
 #define MODLOADER_VERSION_ISDEV         1
 #endif
 
-    
+
 /**************************************
  *    COMMON DATA TYPES
  **************************************/
@@ -143,19 +143,6 @@ enum
     MODLOADER_YES = 0,
     MODLOADER_NO  = 1
 };
-
-enum
-{
-    MODLOADER_REGION_UNK   = 0,
-    MODLOADER_REGION_EURO  = 1,
-    MODLOADER_REGION_USA   = 2
-};
-
-typedef struct
-{
-    
-    
-} modloader_gv_t;
 
 
 /*

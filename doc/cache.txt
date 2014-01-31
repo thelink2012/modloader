@@ -1,0 +1,39 @@
+************** THIS IS UNDER PROGRESS THUS NOT IMPLEMENTED YET ON THE LOADER ************************
+
+============================================= Mod Loader Cache ============================================
+
+The Mod Loader Cache file is used to store information about files in the previous modloader usage.
+That may be useful to see if a file changed
+
+--> Header
+    char[4]     Magic Number    ("\0MLC")
+    uint32_t    Format Version
+    uint64_t    Offset to array of 'File Information'
+    uint64_t    reserved1   (0)
+    uint64_t    reserved2   (0)
+
+---> File Information
+    uint8_t     Flags                                   : 1=Is Directory
+    uint8_t     Filepath length
+    uint8_t     Index to the filename in the filepath
+    uint8_t     Index to the extension in the filepath
+    char*       Pointer to the file normalized filepath (see NormalizePath function)
+    uint64_t    File size
+    uint64_t    File time (Windows FILETIME, that's 100-nanosecond intervals since January 1, 1601 (UTC))
+    uint64_t    reserved1 (0)
+
+
+============================================= std-stream cache ============================================
+
+This is similar to the MLC format except the magic number is "\0SSS" and the header and file information is extended.
+
+---> Header Extension
+    uint32_t    Sector Size
+
+with the following information:
+
+---> File Information Extension
+    uint64_t    Absolute offset on cd image file
+
+The cd image file for the std-stream cache is headless and just contains the files aligned in Sector Size.
+Sector Size is the sector size of the mounted partition for San Andreas

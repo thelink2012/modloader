@@ -101,12 +101,6 @@ struct path_translator_base
     path_translator_base() : npath(0), fun(0), iat(0), bIsSingleton(false)
     { }
 
-    //
-    ~path_translator_base()
-    {
-        Restore();
-    }
-    
     // Patch address @addr at IAT to point into our wrapper
     void Patch(void* addr)
     {

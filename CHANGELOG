@@ -1,3 +1,8 @@
+v0.1.10
+    Feature: The known bug on modded sound effects has been fixed
+    Feature: Sound effects loader implemented (.wav)
+    Bug fix: ASI files linked using the Borland linker won't crash modloader anymore (Thanks to SilentPL).
+
 v0.1.8
     Feature: Implemented overrider for fonts.dat
     Feature: Text files (.txt) greater than 10KB will not be detect as readme files

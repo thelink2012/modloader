@@ -25,9 +25,12 @@ Usage:
 	If you place any .img file in the mod folder (example: "modloader/mymod/data/script/script.img")
 	that has a loading line in the .dat files (yes, script.img does), your file will be loaded instead.
 
-    PS: There is a coach model (coach.dff and coach.txd) that names a vehicle and another that names a cloth.
+    PS¹: There is a coach model (coach.dff and coach.txd) that names a vehicle and another that names a cloth.
         That may cause confusion on modloader and to resolve this confusion it will detect the file as a
         vehicle except when the file is inside any kind of "player" folder.
+
+    PS²: NODES%d.dat files will be handled only if they're inside a folder with '.img' extension
+         For example: modloader/aaa/bbb.img/nodes1.dat
 
 NEEDS:
 	[*] Testing, mainly with RRR and stream IPL files

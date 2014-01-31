@@ -363,7 +363,7 @@ namespace modloader
             auto& gvm = injector::address_manager::singleton();
             
             // Find the game version
-            gvm.init_gvm();
+            //gvm.init_gvm();
             
             // Check if we're going into the right game version
             if(gvm.IsUnknown())
@@ -499,6 +499,13 @@ namespace modloader
         HMODULE module;
         int priority = -1;
 
+        // --> DELETE OLD PLUGINS <--
+        if(!strcmp(modulename, "std-img.dll"))
+        {
+            DeleteFileA(modulename);
+            return false;
+        }
+        
         // Check if module is on plugins overriding priority list
         {
             auto it = this->plugins_priority.find(NormalizePath(pluginPath));

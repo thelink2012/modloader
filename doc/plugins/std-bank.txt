@@ -1,0 +1,32 @@
+*************************************************************************
+	Name: std-bank --- (Standard Bank Loader Plugin)
+	Version: 0.1
+	Author: LINK/2012 <dma_2012@hotmail.com>
+	Default Priority: 52
+*************************************************************************
+
+Description:
+    The standard bank loader handles SFX files (such as GENRL, BankLkup.dat, etc).
+    It can also load wave files directly from disk.
+
+Usage:
+    The usage is a bit more complicated than other cases.
+    
+    To replace a sound with a .wav file you need to have a folder structure like this:
+        SFXPAK_FOLDER/BANK_%d/SOUND_%d.wav
+    or just
+        BANK_%d/SOUND_%d.wav
+        In this case SFXPAK_FOLDER will be assumed as GENRL
+    Where SFXPAK_FOLDER is a folder with the same name as a SFXPak file (GENRL, FEET, SPC_GA, etc)
+    
+    An actual example that loads a wave instead of the standard sound at GENRL/BANK_001/sound_001:
+        modloader/aaaa/GENRL/BANK_001/sound_001.wav
+    
+    It can also override the loading of the following files:
+        BankLkup.dat
+        BankSlot.dat
+        EventVol.dat
+        PakFiles.dat
+        Original SFXPaks (GENRL, FEET, SPC_GA, SCRIPT, etc)
+        Anything without extension inside a SFX/ folder will be detected as a SFXPak
+

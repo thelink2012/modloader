@@ -1,8 +1,9 @@
 /*
- *  LINK/2012's Injectors - Light Version
+ *  Injectors - Light Version
  *	Header with helpful stuff for ASI memory hacking
  *
- *	by LINK/2012 <dma_2012@hotmail.com>
+ *	(C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
+ *  (C) 2014 Deji <the_zone@hotmail.co.uk>
  * 
  *  This source code is offered for use in the public domain. You may
  *  use, modify or distribute it freely.
@@ -23,6 +24,8 @@
 namespace injector
 {
 
+#if 1       // GVM and Address Translator, Not very interesting for the users, so skip reading those...
+    
 /*
  *  game_version_manager
  *      Detects the game, the game version and the game region
@@ -43,21 +46,6 @@ class game_version_manager
             PluginName = "Unknown Plugin Name";
 			game = region = major = minor = cracker = steam = 0;
 		}
-
-        void Unpack(char* info) // info[8]
-        {
-            game        = info[0]; region   = info[1];
-            major       = info[2]; minor    = info[3];
-            cracker     = info[4]; steam    = info[5];
-        }
-        
-        void Pack(char* info) // info[8]
-        {
-            info[0] = game;     info[1] = region;
-            info[2] = major;    info[3] = minor;
-            info[4] = cracker;  info[5] = steam;
-            info[6] = 0;        info[7] = 0;
-        }
         
 		// Checks if I don't know the game we are attached to
 		bool IsUnknown()		{ return game == 0; }
@@ -142,12 +130,9 @@ class game_version_manager
 class address_manager : public game_version_manager
 {
     private:
-        bool translator_initialized;        // Reserved for the translator function
-        bool gvm_initialized;
-        
         address_manager()
         {
-            translator_initialized = gvm_initialized = false;
+            this->Detect();
         }
         
         // You could implement your translator for the address your plugin uses
@@ -159,29 +144,11 @@ class address_manager : public game_version_manager
         #endif
 
     public:
-        
-        // Initialize the game_version_manager, detecting the game version
-        // Returns false if could not detect the game version
-        bool init_gvm()
-        {
-            if(gvm_initialized == false) gvm_initialized = this->Detect();
-            return gvm_initialized;
-        }
-        
-#ifdef INJECTOR_GVM_HAS_TRANSLATOR
         // Translates address p to the running executable pointer
         void* translate(void* p)
         {
-            init_gvm();
             return translator(p);
         }
-#else
-        // Translates address p to the running executable pointer
-        void* translate(void* p)
-        {
-            return p;
-        }
-#endif
         
         
     public:
@@ -221,7 +188,7 @@ class address_manager : public game_version_manager
             { return translate_address(p); }
         };
 };
-
+#endif
 
 
 
@@ -322,11 +289,17 @@ union basic_memory_pointer
         bool operator>=(const basic_memory_pointer& rhs) const
         { return this->a >=rhs.a; }
         
+#if __cplusplus >= 201103L && 1
         /* Conversion to other types */
         explicit operator uintptr_t()
         { return this->a; }
         explicit operator bool()
         { return this->p != nullptr; }
+#else
+        operator bool()
+        { return this->p != nullptr; }
+#endif
+
 };
 
 // Typedefs including memory translator for the above type
@@ -391,8 +364,12 @@ union memory_pointer_tr
         memory_pointer_tr operator/(const uintptr_t& rhs) const
         { return memory_pointer_raw(this->a / rhs); }
         
+#if __cplusplus >= 201103L && 1
        explicit operator uintptr_t()
        { return this->a; }
+#else
+#endif
+
 };
 
 
@@ -546,7 +523,7 @@ inline T ReadMemory(memory_pointer_tr addr, bool vp = false)
  */
 inline memory_pointer_raw GetAbsoluteOffset(int rel_value, memory_pointer_tr end_of_instruction)
 {
-	return (uintptr_t)(end_of_instruction) + rel_value;
+    return end_of_instruction.get<char>() + rel_value;
 }
 
 /*
@@ -599,7 +576,7 @@ inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at)
         // We need to handle other instructions (and prefixes) later...
 		case 0xE8:	// call rel
 		case 0xE9:	// jmp rel
-			return ReadRelativeOffset(at+1, 4);
+			return ReadRelativeOffset(at + 1, 4);
 	}
 	return nullptr;
 }
@@ -648,6 +625,12 @@ inline void MakeJA(memory_pointer_tr at, memory_pointer_tr dest)
 inline void MakeNOP(memory_pointer_tr at, size_t count = 1)
 {
     MemoryFill(at, 0x90, count, true);
+}
+
+inline void MakeRET(memory_pointer_tr at, int pop = 0)
+{
+    WriteMemory(at, pop ? 0xC2 : 0xC3, true);
+    if(pop) WriteMemory(at + 1, pop, true);
 }
 
 

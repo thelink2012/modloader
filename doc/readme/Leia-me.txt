@@ -93,8 +93,7 @@ Mas o seguinte é errado:
 ---> Em progresso
 
     O modloader ainda esta em fase de progresso, portanto nem tudo é carregavel ainda.
-    Por exemplo arquivos de audio ainda não são carregaveis.
-    Alguns arquivos data tambem não, dé uma olhada nos arquivos data suportados atualmente em modloader/.data/plugins/std-data.txt
+    Alguns arquivos data não são instalaveis, dé uma olhada nos arquivos data suportados atualmente em modloader/.data/plugins/std-data.txt
     
 ---> Achou um bug?
 
@@ -125,13 +124,19 @@ Mas o seguinte é errado:
 ---> Codigo-fonte
 
     O codigo fonte do modloader esta disponivel sob a licença GPL.
-    
         https://github.com/thelink2012/sa-modloader/
 
 ---> Creditos
 
     Programação principal: LINK/2012 (dma_2012@hotmail.com)
 
-    Obrigado por tomarem o tempo para testar: ArtututuVidor$, Andryo, Junior_Djjr, JNRois12, TheJAMESGM
-    
+    Muito obrigado á:
+        ArtututuVidor$
+        Andryo
+        Junior_Djjr
+        JNRois12
+        methodunderg
+        R4GN0R0K
+        SilentPL
+        TheJAMESGM
 
