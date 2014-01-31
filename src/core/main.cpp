@@ -499,13 +499,6 @@ namespace modloader
         HMODULE module;
         int priority = -1;
 
-        // --> DELETE OLD PLUGINS <--
-        if(!strcmp(modulename, "std-img.dll"))
-        {
-            DeleteFileA(modulename);
-            return false;
-        }
-        
         // Check if module is on plugins overriding priority list
         {
             auto it = this->plugins_priority.find(NormalizePath(pluginPath));
