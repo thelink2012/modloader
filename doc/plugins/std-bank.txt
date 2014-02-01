@@ -1,6 +1,6 @@
 *************************************************************************
 	Name: std-bank --- (Standard Bank Loader Plugin)
-	Version: 0.1
+	Version: 0.2
 	Author: LINK/2012 <dma_2012@hotmail.com>
 	Default Priority: 52
 *************************************************************************

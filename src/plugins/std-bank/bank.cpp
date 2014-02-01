@@ -4,7 +4,6 @@
  * 
  */
 #include "bank.h"
-#include "CWaveLoader.hpp"
 #include <modloader_util.hpp>
 #include <modloader_util_path.hpp>
 using namespace modloader;
@@ -41,7 +40,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.1";
+    return "0.2";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -108,14 +107,7 @@ bool CThePlugin::ProcessFile(const ModLoaderFile& file)
     }
     else if(IsFileExtension(file.filext, "wav"))
     {
-        CWavePCM wave(file.filepath);
-        if(wave.IsOpen())
-        {
-            if(wave.GetNumChannels() == 1 && wave.GetBPS() == 16)
-                return this->AddWave(file);
-            else
-                Log("Warning: Wave file \"%s\" is not 'mono PCM-16'", GetFilePath(file).c_str());
-        }
+        return this->AddWave(file);
     }
     else if(IsFileExtension(file.filext, "dat"))
     {
@@ -141,6 +133,8 @@ bool CThePlugin::PosProcess()
     this->Patch();
     return true;
 }
+
+
 
 
 bool CThePlugin::AddWave(const modloader::ModLoaderFile& file)

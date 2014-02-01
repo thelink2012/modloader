@@ -110,25 +110,26 @@ struct CAEBankHeader
                 return m_Header.m_aSounds[(usSound+1) % 400].m_dwOffset - m_Header.m_aSounds[usSound].m_dwOffset;
         }
         
-        void* AllocateBankSlot(CAEBankSlot& b, unsigned short usSound, unsigned int& dwOffset, unsigned int& dwSize)
+        void* AllocateBankSlot(CAEBankSlot& b, CAESoundRequest& r, unsigned int& dwOffset, unsigned int& dwSize)
         {
+            unsigned short usSound = r.m_usSound;
             bool bSingleSound = usSound != 0xFFFF;
             
             // Setup output data
-            void* pBuffer = (void*) b.m_dwOffsetOnBuffer;
+            void* pBuffer = r.m_pBuffer;
             dwOffset = bSingleSound? GetSoundOffset(usSound) : GetSoundOffset();
             dwSize   = bSingleSound? GetSoundSize(usSound)   : GetSoundSize();
-            
+
             // Cleanup the old buffer
             if(pBuffer) operator delete(pBuffer);
             // Allocate new sound buffer
             pBuffer = operator new(dwSize);
             
             // Setup the bankslot data
-            b.m_dwOffsetOnBuffer = (uintptr_t)(pBuffer);
             b.m_dwSlotBufferSize = dwSize;
             b.m_nSoundsOnBank    = GetNumSounds();
-            memcpy(b.m_aBankItems, m_Header.m_aSounds, sizeof(b.m_aBankItems));
+            r.m_pBuffer          = pBuffer;
+            r.m_pBufferData      = m_Header.m_aSounds;
             
             return pBuffer;
         }
@@ -145,8 +146,21 @@ class CAEBankInfo
         friend DWORD __stdcall BankLoadingThread(void*);
         friend class CAECustomBankLoader;
 
+        struct WaveInfo
+        {
+            std::string filename;
+            uint32_t    sound_offset;
+            uint32_t    sound_size;
+            uint16_t    bps;
+            uint16_t    sample_rate;
+            
+            WaveInfo(const char* filename) : filename(filename)
+            {}
+        };
+        
+        
         // External wave files
-        std::map<unsigned short, std::string>  m_Waves;
+        std::map<unsigned short, WaveInfo>  m_Waves;
         
         std::string           m_szFilepath; // BANK file
         bool                  m_bHasBank;   // Structure has been initialized?
@@ -168,7 +182,7 @@ class CAEBankInfo
         { return !m_Waves.empty(); }
 
         // Adds a Wave file into the bank
-        void AddWaveFile(const char* szWavepath, unsigned short iSound);
+        void AddWaveFile(const char* szWavepath, unsigned short iSound, CWavePCM& wave);
         
         // Calculates the offsets for m_VirtualHeader
         void ProcessVirtualBank();
@@ -180,6 +194,7 @@ class CAEBankInfo
  *  CAECustomBankLoader
  *      Custom bank loader for the game
  */
+static class CAECustomBankLoader* bankLoader;
 class CAECustomBankLoader : public CAEBankLoader
 {
     public:
@@ -203,7 +218,7 @@ class CAECustomBankLoader : public CAEBankLoader
         void LoadRequestLinear(int i);
         void LoadRequestSplit(int i);
         
-        SPlan** GetRequestPlan(unsigned short usBank, unsigned short usSound, unsigned short usBankSlot);
+        SPlan** GetRequestPlan(CAESoundRequest&);
         
         
         // Get SFXPak filename from it's index
@@ -224,7 +239,7 @@ class CAECustomBankLoader : public CAEBankLoader
         
 };
 
-static CAECustomBankLoader* bankLoader;
+
 
 
 
@@ -299,6 +314,8 @@ bool CAECustomBankLoader::PostInitialise()
     // Now, pre-allocate bank information, that's better ;)
     pBankInfo = new CAEBankInfo[this->m_usNumBanks];
     this->InitialiseBankInfo();
+    
+    return true;
 }
 
 /*
@@ -334,7 +351,27 @@ void CAECustomBankLoader::InitialiseBankInfo()
         for(int s = 0; s < nsnd; ++s)
         {
             if(std::string* p = bankPlugin->FindWave(pak, bank, s))
-                pBankInfo[i].AddWaveFile(p->c_str(), s);
+            {
+                CWavePCM wave(p->c_str());
+                if(wave.HasChunks())
+                {
+                    // Check if it is mono and 16 bits per sample, the game only supports this pattern
+                    if(wave.GetNumChannels() == 1 && wave.GetBPS() == 16)
+                    {
+                        pBankInfo[i].AddWaveFile(p->c_str(), s, wave);
+                    }
+                    else
+                    {
+                        // Oh, nope, format is somewhat wrong
+                        bankPlugin->Log("Failed to add wave file \"%s\". Format is not 'mono PCM-16'", p->c_str());
+                    }
+                }
+                else
+                {
+                    // Not PCM
+                    bankPlugin->Log("Failed to add wave file \"%s\". Missing file or format is not PCM.", p->c_str());
+                }
+            }
         }
         
         // Build virtual bank header
@@ -377,7 +414,7 @@ bool CAEBankInfo::GetBankFile(CAEBankLookupItem* pLookup, int iBankId,
             this->m_szFilepath = szFullPath;
             pLookup->m_dwOffset = dwOffset;
             pLookup->m_dwSize = dwSize;
-
+            
             // Setup lookups
             this->m_BankId  = iBankId;
             memcpy(&this->m_OriginalLookup, pLookup, sizeof(CAEBankLookupItem));
@@ -408,10 +445,15 @@ void CAECustomBankLoader::Service()
             // The request has just been sent
             case REQUEST_STATUS_BEGIN:
             {
+                auto& b = this->m_pBankSlots[bankslot];
+                
                 // Mark the bankslot as free, we don't want anyone using it while we're touching it!
+                r.m_pBuffer = (void*) b.m_dwOffsetOnBuffer;
+                this->m_pBankSlots[bankslot].m_dwOffsetOnBuffer = 0;
+                memset(this->m_pBankSlots[bankslot].m_aBankItems, 0, sizeof(this->m_pBankSlots[bankslot].m_aBankItems));
                 this->m_pBankSlots[bankslot].m_usBankNum = 0xFFFF;
                 this->m_aBankSlotSound[bankslot] = 0xFFFF;
-
+                
                 // Request the sound to the bank loading thread
                 r.m_iLoadingStatus = REQUEST_STATUS_IN_PROGRESS;
                 AddToQueue(&queue, i);
@@ -423,10 +465,21 @@ void CAECustomBankLoader::Service()
             // The request has been completed, finish it
             case REQUEST_STATUS_DONE:
             {
+                auto& b = this->m_pBankSlots[bankslot];
+                
                 // Mark the bankslot with the loaded bank/sound
                 this->m_pBankSlots[bankslot].m_usBankNum = r.m_usBank;
                 this->m_aBankSlotSound[bankslot] = r.m_usSound;
-
+                b.m_dwOffsetOnBuffer = (uintptr_t)(r.m_pBuffer);
+                memcpy(b.m_aBankItems, r.m_pBufferData, sizeof(b.m_aBankItems));
+                
+                // Special setup for single sounds
+                if(r.m_usSound != 0xFFFF)
+                {
+                    b.m_aBankItems[r.m_usSound].m_dwOffset = 0;
+                    b.m_aBankItems[(r.m_usSound + 1) % 400].m_dwOffset = b.m_dwSlotBufferSize;
+                }
+                
                 // Cleanup request object
                 r.m_iLoadingStatus = REQUEST_STATUS_NULL;
                 r.m_usBankSlot = 0xFFFF;
@@ -449,18 +502,26 @@ void CAECustomBankLoader::Service()
  *  CAEBankInfo::AddWaveFile
  *      Adds a virtual wave
  */
-void CAEBankInfo::AddWaveFile(const char* szWavepath, unsigned short iSound)
+void CAEBankInfo::AddWaveFile(const char* szWavepath, unsigned short iSound, CWavePCM& wave)
 {
     char szFullPath[MAX_PATH];
     
     if(GetFullPathNameA(szWavepath, sizeof(szFullPath), szFullPath, 0))
     {
+        WaveInfo* w;
+        
         // If a wave already exist in this position, replace it, otherwise emplace
         auto it = m_Waves.find(iSound);
         if(it == m_Waves.end())
-            m_Waves.emplace(iSound, szWavepath);
+            w = &(m_Waves.emplace(iSound, szWavepath).first->second);
         else
-            it->second = szWavepath;
+            w = &(it->second = szWavepath);
+
+        // Setup wave data
+        w->sound_offset = wave.GetSoundBufferOffset();
+        w->sound_size   = wave.GetSoundBufferSize();
+        w->bps          = wave.GetBPS();
+        w->sample_rate  = wave.GetSampleRate();
     }
 }
 
@@ -478,8 +539,8 @@ void CAEBankInfo::ProcessVirtualBank()
         CAEBankHeader& h  = this->m_VirtualHeader;
         
         // Offset accumulator
-        unsigned int accumulator = 0;
-        unsigned int accumulator_bef = 0;
+        int accumulator = 0;
+        int accumulator_bef = 0;
         
         // Copy original information into the virtual header
         memcpy(h.m_pLookup, oh.m_pLookup, sizeof(*h.m_pLookup));
@@ -498,15 +559,11 @@ void CAEBankInfo::ProcessVirtualBank()
                 auto it = m_Waves.find(i);
                 if(it != m_Waves.end())
                 {
-                    CWavePCM wave(it->second.c_str());
-                    if(wave.IsOpen())
-                    {
-                        // Accumulate the difference in size between the wave and the original sound
-                        accumulator += wave.GetSoundBufferSize() - h.GetSoundSize(i);
-                        
-                        // Setup the wave information on the virtual header
-                        v.m_usSampleRate = wave.GetSampleRate();
-                    }
+                    // Accumulate the difference in size between the wave and the original sound
+                    accumulator += int(it->second.sound_size - h.GetSoundSize(i));
+
+                    // Setup the wave information on the virtual header
+                    v.m_usSampleRate = it->second.sample_rate;
                 }
 
                 // Add accumulator into offset
@@ -561,10 +618,7 @@ void CAECustomBankLoader::LoadRequest(int i)
     // On single sound request some data must be changed...
     if(r.m_usSound != 0xFFFF)
     {
-        auto  iSound = r.m_usSound;
         b.m_nSoundsOnBank = 0xFFFF;
-        b.m_aBankItems[iSound].m_dwOffset = 0;
-        b.m_aBankItems[(iSound + 1) % 400].m_dwOffset = b.m_dwSlotBufferSize;
     }
 }
 
@@ -592,11 +646,11 @@ void CAECustomBankLoader::LoadRequestSplit(int i)
     };
     
     // Setup references for helping us, neh
-    auto& r = this->m_aSoundRequests[i];            // The sound request
+    auto& r = this->m_aSoundRequests[i];
     auto& f = pBankInfo[r.m_usBank];                // The bank information
 
     // Allocate the sound buffer and get a request plan
-    SPlan** pPlan = this->GetRequestPlan(r.m_usBank, r.m_usSound, r.m_usBankSlot);
+    SPlan** pPlan = this->GetRequestPlan(r);
     
     // Execute the request plan
     for(SPlan** x = pPlan; *x; ++x)
@@ -631,11 +685,15 @@ void CAECustomBankLoader::LoadRequestSplit(int i)
  *  CAECustomBankLoader::GetRequestPlan 
  *      Plans the best loading method for a bank or sound file
  */
-auto CAECustomBankLoader::GetRequestPlan(unsigned short usBank, unsigned short usSound, unsigned short usBankSlot) -> SPlan**
+auto CAECustomBankLoader::GetRequestPlan(CAESoundRequest& r) -> SPlan**
 {
     // Planning arrays
     static SPlan  aPlan[400];
     static SPlan* aSortedPlan[400];
+    
+    unsigned short usBank       = r.m_usBank;
+    unsigned short usBankSlot   = r.m_usBankSlot;
+    unsigned short usSound      = r.m_usSound;
     
     unsigned int nRequests = 0;
     bool bSingleSound = usSound != 0xFFFF;
@@ -657,8 +715,8 @@ auto CAECustomBankLoader::GetRequestPlan(unsigned short usBank, unsigned short u
     
     // Allocate bank slot...
     unsigned int dwOffset, dwSize;
-    char* pBuffer = (char*) h.AllocateBankSlot(b, usSound, dwOffset, dwSize);
-
+    char* pBuffer = (char*) h.AllocateBankSlot(b, r, dwOffset, dwSize);
+    
     if(!f.HasAnyWave())
     {
         // If there's no custom wave file on this bank, just read the bank normally
@@ -686,8 +744,8 @@ auto CAECustomBankLoader::GetRequestPlan(unsigned short usBank, unsigned short u
                 if(it != f.m_Waves.end())   // Has wave for this sound?
                 {
                     // Start reading after the wave header
-                    item.dwOffset = sizeof(CWavePCM::Header);
-                    item.szFilename = it->second.c_str();
+                    item.dwOffset = it->second.sound_offset;
+                    item.szFilename = it->second.filename.c_str();
                 }
                 else
                 {
@@ -804,7 +862,7 @@ void CThePlugin::Patch()
     if(BankSlot.size()) WriteMemory<const char*>(0x4E0597 + 1, BankSlot.c_str(), true);
     if(BankLkup.size()) WriteMemory<const char*>(0x4DFBD7 + 1, BankLkup.c_str(), true);
     if(PakFiles.size()) WriteMemory<const char*>(0x4DFC7D + 1, PakFiles.c_str(), true);
-    
+
     // Patch the bank loader
     CAECustomBankLoader::Patch();
 }

@@ -1,3 +1,10 @@
+v0.1.12
+    Bug fix: Random crashes caused by std-bank fixed
+    Bug fix: The wave loader accepts the extended wave format header now
+
+v0.1.11
+    Bug fix: std-img being auto-deleted fixed
+
 v0.1.10
     Feature: The known bug on modded sound effects has been fixed
     Feature: Sound effects loader implemented (.wav)
