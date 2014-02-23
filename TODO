@@ -5,6 +5,7 @@ Primary:
 
 Secondary:
 [ ] Porting to other executables
+[ ] MPACK loader
 
 Tertiary:
 [ ] Integration with the game menu
