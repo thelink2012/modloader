@@ -26,6 +26,34 @@ namespace modloader
     static const size_t MaxLineSize = 2048;
     
     /*
+     *  GetFileMagic
+     *      Gets the first 4 bytes from the file @filename 
+     */
+    inline char* GetFileMagic(const char* filename, char* buf)
+    {
+        char* result = nullptr;
+        if(FILE* f = fopen(filename, "rb"))
+        {
+            if(fread(buf, 1, 4, f) == 4) result = buf;
+            fclose(f);
+        }
+        return result;
+    }
+    
+    /*
+     *  IsFileMagic
+     *      Checks if the first 4 bytes from the file @filename is equal to @magic
+     */
+    inline bool IsFileMagic(const char* filename, const char* magic)
+    {
+        char buf[4];
+        if(GetFileMagic(filename, buf))
+            return !strncmp(buf, magic, 4);
+        return false;
+    }
+    
+    
+    /*
      *  ReadEntireFile
      *      Reads a file into memory
      *      @filepath: File to be read

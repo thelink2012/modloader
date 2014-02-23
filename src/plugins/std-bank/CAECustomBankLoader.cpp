@@ -612,7 +612,7 @@ void CAECustomBankLoader::LoadRequest(int i)
 {
     auto& r = this->m_aSoundRequests[i];
     auto& b = this->m_pBankSlots[r.m_usBankSlot];
-    
+
     this->LoadRequestSplit(i);
     
     // On single sound request some data must be changed...

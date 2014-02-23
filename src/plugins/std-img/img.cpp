@@ -11,6 +11,7 @@
 #include <modloader.hpp>
 #include <modloader_util.hpp>
 #include <modloader_util_path.hpp>
+#include <modloader_util_file.hpp>
 #include <modloader_util_hash.hpp>
 #include <modloader_util_injector.hpp>
 #include <list>
@@ -98,6 +99,16 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
                 }
                 else if(IsFileExtension(file.filext, "rrr"))
                     return (sscanf(tolower(str=file.filename).c_str(), "carrec%d", &dummy) == 1);
+                else if(IsFileExtension(file.filext, "ipl"))
+                {
+                    // If the IPL file have '_stream' on it's name it's probably a stream IPL
+                    if((tolower(str=file.filename).find("_stream")) != str.npos)
+                    {
+                        // Make sure by reading the file magic and comparing with 'bnry'
+                        if(IsFileMagic(file.filepath, "bnry"))
+                            return true;
+                    }
+                }
                 else
                     return true;
             }

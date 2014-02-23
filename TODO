@@ -1,8 +1,20 @@
-Here we have the main to do stuff, for more check out the source files.
+Primary:
+[ ] Track loader (.ogg)
+[ ] Loading CLEO scripts without copy-paste (using std-asi IAT hooking to accomplish that)
+[ ] Support for more data files (std-data)
 
------> Main
-* Finish the main plugins { needs: data; asi; audio; }
-* zip files
-* MPACK
-* Make the loader and the plugins compatible with all exe versions
+Secondary:
+[ ] Porting to other executables
+
+Tertiary:
+[ ] Integration with the game menu
+[ ] Installing and uninstalling stuff by game menu
+[ ] Loading files directly from zipped files
+
+
+The primary objectives need to be done at all cost, since it's needed to support all game files.
+The secondary objectives will be done but aren't primary
+The tertiary objectives would be good
+
+All tertiary objectives need the rewrite of the modloader.asi core with them in mind.
 

@@ -261,6 +261,16 @@ namespace modloader
                 map[0x4DFD9D] = 0x4DFD9D;
                 map[0x4DFDC3] = 0x4DFDC3;
                 map[0x4DFDCE] = 0x4DFDCE;
+                
+                // Track loader
+                map[0x4E0E25] = 0x4E0E25;
+                map[0x4E0982] = 0x4E0982;
+                map[0x4E0A02] = 0x4E0A02;
+                map[0x4E0DA2] = 0x4E0DA2;
+                map[0x4E0AF2] = 0x4E0AF2;
+                map[0x4E0DA7] = 0x4E0DA7;
+                map[0x4E0AF7] = 0x4E0AF7;
+                
             }
 
     };

@@ -223,7 +223,6 @@ class CWavePCM
                 }
             }
             
-            puts("----------------------_> AAAAAAAAA FAILURE");
             return false;
         }
         

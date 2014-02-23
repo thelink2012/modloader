@@ -560,7 +560,7 @@ int __stdcall CdStreamThread()
             {
                 if(GetLastError() == ERROR_IO_PENDING)
                 {
-                    // This happens when the stream was open for async operations, let's wait until everything has been read
+                    // This happens when the stream was open for async operat   ions, let's wait until everything has been read
                     bResult = GetOverlappedResult(hFile, &cd->overlapped, &nBytesReaden, true) != 0;
                 }
             }

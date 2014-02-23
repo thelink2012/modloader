@@ -11,8 +11,7 @@ mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i686-w64-mingw32-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ../
 make #VERBOSE=1
-make install "DESTDIR=/home/link2012/Projects/modloader/release/gamedir"
-
+make install "DESTDIR=../release/gamedir"
 cd ../release/gamedir
 
 echo "Stripping binaries..."

@@ -32,7 +32,7 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     dataPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data);
+    modloader::RegisterPluginData(plugin, data, plugin.default_priority);
 }
 
 

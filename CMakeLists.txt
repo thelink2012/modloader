@@ -1,6 +1,13 @@
 project(modloader)
 cmake_minimum_required(VERSION 2.8)
 
+# When no build type specified, use Release
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+    message("Using default build type that is Release")
+endif()
+
+
 set(DOC_DIRECTORY "${CMAKE_SOURCE_DIR}/doc")
 set(CONFIGS_DIR "${DOC_DIRECTORY}/config")
 

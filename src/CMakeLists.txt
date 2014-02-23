@@ -9,11 +9,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # Enable ASM files
 enable_language(C CXX ASM)
 
-# When no build type specified, use Release
-if (NOT DEFINED CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE CACHE Release)
-endif()
-
 
 
 # Visual Studio specific stuff

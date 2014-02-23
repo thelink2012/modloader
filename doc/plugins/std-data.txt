@@ -2,7 +2,7 @@
 	Name: std-data
 	Version: 0.2 red
 	Author: LINK/2012 <dma_2012@hotmail.com>
-	Default Priority: 50
+	Default Priority: 46
 *************************************************************************
 
 Description:
@@ -13,15 +13,15 @@ Description:
 	So don't worry in putting many files of the same type for the loader to handle.
 	For example, 5 handling.cfg files will be mixed based on which line changes between it and the default file, etc.
 	
-	Currently it can handle the following files:
-	    *.ide
-	    *.ipl
-	    default.dat / gta.dat
-	    handling.cfg
-	    carmods.dat
+    Currently it can handle the following files:
+        *.ide
+        *.ipl
+        default.dat / gta.dat
+        handling.cfg
+        carmods.dat
+        plants.dat
 	    
     And the following without mixing but overriding:
-        plants.dat
         timecyc.dat
         popcycle.dat
 	    tracks%d.dat
@@ -29,8 +29,8 @@ Description:
 	    fonts.dat
 
 	It also can detect lines from the following files in a readme text file:
-	    gta.dat
-	    vehicles.ide
+        gta.dat
+        vehicles.ide
 	    veh_mods.ide
 	    handling.cfg
 	    carmods.dat

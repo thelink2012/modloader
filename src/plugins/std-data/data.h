@@ -26,6 +26,8 @@ extern class CThePlugin* dataPlugin;
 class CThePlugin : public modloader::CPlugin
 {
     public:
+        static const int default_priority = 46;
+        
         std::string cachePath;
         std::list<std::string>      readme;
         std::map<int, std::set<std::string>>  cacheFiles;

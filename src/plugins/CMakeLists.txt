@@ -5,7 +5,8 @@ add_subdirectory(std-scm)
 add_subdirectory(std-sprites)
 add_subdirectory(std-fx)
 add_subdirectory(std-text)
-#add_subdirectory(std-sala)
+#add_subdirectory(std-sala)     - DEPRECATED
+#add_subdirectory(std-tracks)   - TODO
 add_subdirectory(std-bank)
 add_subdirectory(std-asi)
 add_subdirectory(std-cleo)
