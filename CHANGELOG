@@ -1,3 +1,8 @@
+v0.1.13 (IN DEVELOPMENT)
+    Feature: Binary IPLs are automatically detected
+    Bug fix: Fixed crash on exit if playing SA:MP
+
+
 v0.1.12
     Bug fix: Random crashes caused by std-bank fixed
     Bug fix: The wave loader accepts the extended wave format header now

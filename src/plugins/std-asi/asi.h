@@ -30,8 +30,7 @@ extern class CThePlugin* asiPlugin;
 class CThePlugin : public modloader::CPlugin
 {
     public:
-        static const int default_priority = 45;
-        
+
         //
         const char* GetName();
         const char* GetAuthor();

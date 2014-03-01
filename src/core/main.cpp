@@ -109,10 +109,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
         case DLL_PROCESS_ATTACH:
             loader.Patch();
             break;
-            
-        case DLL_PROCESS_DETACH:
-            bResult = loader.Shutdown();    /* Shutdown the loader if it hasn't shutdown yet */
-            break;
     }
     return bResult;
 }
@@ -297,7 +293,7 @@ namespace modloader
         if(this->bWorking == false)
             return true;
         
-        Log("\nShutdowing modloader...");
+        Log("\nShutting down modloader...");
         this->UnloadPlugins();
         Log("modloader has been shutdown.");
         this->CloseLog();
@@ -494,10 +490,12 @@ namespace modloader
     {
         const char* modulename = pluginPath;
         modloader_fGetPluginData GetPluginData;
-        modloader_plugin_t data;
         bool bFail = false;
         HMODULE module;
         int priority = -1;
+
+        this->plugins.emplace_back();
+        modloader_plugin_t& data = this->plugins.back();
 
         // Check if module is on plugins overriding priority list
         {
@@ -575,8 +573,6 @@ namespace modloader
                 FreeLibrary(module);
             else
             {
-                // Push plugin to list
-                this->plugins.emplace_back(std::move(data));
                 if(bDoStuffNow) // Start plugin and sort modloader extension table?
                 {
                     this->StartupPlugin(this->plugins.back());
@@ -586,6 +582,11 @@ namespace modloader
         }
         else
             Log("Could not load plugin module '%s'", modulename);
+
+        if(bFail)
+        {
+            this->plugins.pop_back();
+        }
 
         return !bFail;
     }

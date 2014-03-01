@@ -27,7 +27,7 @@ extern "C" __declspec(dllexport)
 void GetPluginData(modloader_plugin_t* data)
 {
     asiPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data, plugin.default_priority);
+    modloader::RegisterPluginData(plugin, data);
 }
 
 /*

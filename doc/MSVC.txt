@@ -1,3 +1,4 @@
 ---> Microsoft Visual C++ Port
 
-	src/plugins/std-data/readme.hpp do not compile on Visual Studio (2013 and below) because of a compiler bug.
+        std-data plugin do not compile under MSVC:
+              src/plugins/std-data/readme.hpp do not compile on Visual Studio (2013 and below) because of a compiler bug.

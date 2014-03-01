@@ -84,8 +84,7 @@ void __declspec(naked) HOOK_SetImgDscName()
         lea ebx, [eax + edx]  /* ebx = img.name */
 
         push eax
-        call 
-        llocBufferForString
+        call AllocBufferForString
         add esp, 4
         /* eax = szImgNameBuffer */
 

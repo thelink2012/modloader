@@ -58,12 +58,14 @@ namespace modloader
      */
     inline std::string NormalizePath(std::string path)
     {
-        
-        std::replace(path.begin(), path.end(), '/', '\\');  // Replace all '/' with '\\'
-        tolower(path);                                      // tolower the strings (Windows paths are case insensitive)
-        while(path.back() == '/' || path.back() == '\\')    // We don't want a slash at the end of the folder path
-            path.pop_back();                                // ..
-        trim(path);                                         // Trim the string...
+        if(path.size())
+        {
+            std::replace(path.begin(), path.end(), '/', '\\');  // Replace all '/' with '\\'
+            tolower(path);                                      // tolower the strings (Windows paths are case insensitive)
+            while(path.back() == '/' || path.back() == '\\')    // We don't want a slash at the end of the folder path
+                path.pop_back();                                // ..
+            trim(path);                                         // Trim the string...
+        }
         return path;
     }
     
@@ -201,17 +203,20 @@ namespace modloader
         size_t pos = path.npos;
         size_t x = path.npos;
         
-        // Remove any slash at the end of the string, so our finding can be safe
-        while(path.back() == '/' || path.back() == '\\') path.pop_back();
-        
-        // Do the search
-        for(size_t i = 0; i < count; ++i)
+        if(path.size())
         {
-            pos = path.find_last_of("/\\", x);
-            x = pos - 1;
-            if(pos == 0 || pos == path.npos) break;
-        }
+            // Remove any slash at the end of the string, so our finding can be safe
+            while(path.back() == '/' || path.back() == '\\') path.pop_back();
         
+            // Do the search
+            for(size_t i = 0; i < count; ++i)
+            {
+                pos = path.find_last_of("/\\", x);
+                x = pos - 1;
+                if(pos == 0 || pos == path.npos) break;
+            }
+        }
+
         return (pos == path.npos? 0 : pos + 1);
     }
     
