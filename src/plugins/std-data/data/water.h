@@ -80,8 +80,8 @@ namespace data
                 return false;
             }
 
-            static size_t min_count()  { return 21; }
-            static size_t max_count()  { return 29; }
+            static int min_count()  { return 21; }
+            static int max_count()  { return 29; }
             
             const char* format() const
             {

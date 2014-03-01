@@ -185,7 +185,7 @@ class CWavePCM
                 if(!strncmp(header.RIFF, "RIFF", 4) && !strncmp(header.WAVE, "WAVE", 4))
                 {
                     // Keep reading chunks until the end of the WAVE
-                    while(ftell(f) < (header.chunk_size - 8))
+                    while(uint32_t(ftell(f)) < (header.chunk_size - 8))
                     {
                         // We don't need to continue iterating if we already found data and fmt
                         if(this->data_offset && this->fmt_offset)

@@ -9,6 +9,7 @@
 #define	CMODLOADER_HPP
 
 #include <windows.h>
+#include <vector>
 #include <list>
 #include <map>
 #include <string>

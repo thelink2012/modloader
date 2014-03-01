@@ -11,6 +11,7 @@
 #include <modloader_util_container.hpp>
 #include <map>
 #include <list>
+#include <cstdint>
 
 /*
  *  The plugin object

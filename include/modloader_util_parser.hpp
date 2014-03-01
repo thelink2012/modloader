@@ -227,8 +227,8 @@ namespace modloader
             result = vsscanf(str, s, va);
             va_end(va);
             
-            if(result < min) result = -1;
-            else if(result > max) result = -1;
+            if((unsigned int)(result) < min) result = -1;
+            else if ((unsigned int)(result) > max) result = -1;
         }
         return result == EOF? -1 : result;  // make sure EOF is -1 on this target platform
     }

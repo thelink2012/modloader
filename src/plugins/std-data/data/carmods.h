@@ -84,9 +84,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"; }
-        size_t count()       const { return min_count() + nmods; }
-        static size_t min_count()  { return 1; }
-        static size_t max_count()  { return 1 + 18; }
+        int count()       const { return min_count() + nmods; }
+        static int min_count()  { return 1; }
+        static int max_count()  { return 1 + 18; }
         
         // Compare two MODS sections
         bool operator==(const SDataCarmods_MODS& b) const
@@ -147,9 +147,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%d %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s"; }
-        size_t count()       const { return min_count() + nwheels; }
-        static size_t min_count()  { return 1; }
-        static size_t max_count()  { return 1 + 15; }
+        int count()       const { return min_count() + nwheels; }
+        static int min_count()  { return 1; }
+        static int max_count()  { return 1 + 15; }
         
         // Compare two wheels sections
         bool operator==(const SDataCarmods_WHEEL& b) const

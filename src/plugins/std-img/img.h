@@ -60,7 +60,7 @@ class CThePlugin : public modloader::CPlugin
             {
                 this->bProcessed = true;
                 
-                this->size   = modloader::GetFileSize(path.c_str());
+                this->size   = (size_t) modloader::GetFileSize(path.c_str());
                 auto div     = std::div(this->size, 2048);
                 this->blocks = div.quot + (div.rem? 1 : 0);
             }

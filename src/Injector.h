@@ -50,7 +50,7 @@ class game_version_manager
 		// Checks if I don't know the game we are attached to
 		bool IsUnknown()		{ return game == 0; }
 		// Checks if this is the steam version
-		bool IsSteam()			{ return steam; }
+		bool IsSteam()			{ return steam != 0; }
 		// Gets the game we are attached to (0, '3', 'V', 'S')
 		char GetGame()			{ return game; }
 		// Gets the region from the game we are attached to (0, 'U', 'E');
@@ -289,7 +289,7 @@ union basic_memory_pointer
         bool operator>=(const basic_memory_pointer& rhs) const
         { return this->a >=rhs.a; }
         
-#if __cplusplus >= 201103L && 1
+#if __cplusplus >= 201103L
         /* Conversion to other types */
         explicit operator uintptr_t()
         { return this->a; }
@@ -868,7 +868,7 @@ inline void MakeRET(memory_pointer_tr at, int pop = 0)
             { return ReadMemory<char>(0xBA6748+0x15F); }
             static bool SetDirMyDocuments()
             {
-                return (memory_pointer(0x538860).get<int()>()  ());
+                return (memory_pointer(0x538860).get<int()>()  ()) != 0;
             }
             
             // Calls on load callback if possible

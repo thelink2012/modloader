@@ -631,7 +631,7 @@ namespace data
         bool get(char* line) const
         {
             return PrintConfigLine(line, count(), format(),
-                                   id, model.buf, texture.buf, anim.buf, drawdist.f);
+                                   id, model.buf, texture.buf, anim.buf, drawdist.f) > 0;
         }
     };
  
@@ -921,7 +921,7 @@ namespace data
         // Specialize handler_type
         struct handler_type : DataTraitsImplSimple::handler_type
         {
-            typedef typename DataTraitsImplSimple::handler_type super; 
+            typedef DataTraitsImplSimple::handler_type super; 
             
             // Specialize because we need to know if we're dealing with a veh_mods or vehicles detection.
             struct Set

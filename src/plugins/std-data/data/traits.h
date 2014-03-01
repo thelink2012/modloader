@@ -330,7 +330,7 @@ namespace data
             {
                 // This is our epsilon, based on program outputs (like MEd) and the actual original file
                 // Don't use std::numeric_limits epsilon, it's not for our purposes!
-                return 0.008;
+                return (T)(0.008);
             }
             
             bool operator==(const SComplex& sz) const

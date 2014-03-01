@@ -175,6 +175,7 @@ bool CThePlugin::OnReload()
     static bool bFirstTime = true;
     if(!bFirstTime) this->ReloadModels();
     bFirstTime = false;
+    return true;
 }
 
 
@@ -283,21 +284,23 @@ void CThePlugin::ReplaceStandardImg()
     // If replacing gta3 or gta_int, hook it's loading proc
     if(!gta3.empty() || !gta_int.empty())
     {
+        void(*OpenGtaImg)(void) = []()  // mid replacement for CStreaming::OpenGtaImg
+        {
+            int(*CStreaming__AddImageToList)(const char* filename, char notPlayerImg)
+                = memory_pointer(0x407610).get();
+
+            CdStreamInfo& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfo>();
+            char* gta3Path = ReadMemory<char*>(0x40844C + 1, true);
+            char* gtaIntPath = ReadMemory<char*>(0x40848C + 1, true);;
+
+            imgPlugin->Log("Opening gta3 img: %s\nOpening gta_int img: %s", gta3Path, gtaIntPath);
+
+            cdinfo.gta3_id = CStreaming__AddImageToList(gta3Path, true);
+            cdinfo.gtaint_id = CStreaming__AddImageToList(gtaIntPath, true);
+        };
+
         // We need to do this hook to not hook too much code
          MakeNOP(0x4083E4 + 5, 4);
-         MakeJMP(0x4083E4, raw_ptr((void*)((void (*)(void))([]()  // mid replacement for CStreaming::OpenGtaImg
-         {
-             int (*CStreaming__AddImageToList)(const char* filename, char notPlayerImg)
-                        = memory_pointer(0x407610).get();
-             
-             CdStreamInfo& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfo>();
-             char* gta3Path       = ReadMemory<char*>(0x40844C + 1, true);
-             char* gtaIntPath     = ReadMemory<char*>(0x40848C + 1, true);;
-
-             imgPlugin->Log("Opening gta3 img: %s\nOpening gta_int img: %s", gta3Path, gtaIntPath);
-
-             cdinfo.gta3_id   = CStreaming__AddImageToList(gta3Path, true);
-             cdinfo.gtaint_id = CStreaming__AddImageToList(gtaIntPath, true);
-         }))));
+         MakeJMP(0x4083E4, raw_ptr(OpenGtaImg));
     }
 }

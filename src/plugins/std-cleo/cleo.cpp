@@ -124,7 +124,7 @@ class CThePlugin : public modloader::CPlugin
             void SetupFlags(const ModLoaderFile& file)
             {
                 flags.i = 0; hash = 0;
-                if((flags.bIsDir = file.is_dir) == false)
+                if((flags.bIsDir = (file.is_dir != 0)) == false)
                 {
                     flags.bIsFXT  = IsFileExtension(file.filext, "fxt");
                     flags.bIsConf = IsFileExtension(file.filext, "ini");
@@ -364,7 +364,7 @@ bool CThePlugin::PosProcess()
         if(ReadMemory<uint8_t>(0x6A0050, true) == 0xE9) 
         {
             // CLEO already did it's GXT hook here, good!
-            this->CLEO_GxtHook() = GetBranchDestination(0x6A0050).get();
+            this->CLEO_GxtHook() = (CThePlugin::CText__Locate_Type) GetBranchDestination(0x6A0050).get();
             
             // Do ours now
             MakeJMP(0x6A0050, raw_ptr(CThePlugin::GxtHook));

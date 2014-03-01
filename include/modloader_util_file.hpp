@@ -58,14 +58,13 @@ namespace modloader
      *      Reads a file into memory
      *      @filepath: File to be read
      *      @out: Vector that will receive the file data
-     *      @sizeLimit: If file size is greater than this value, failure happens.
      */
-    inline bool ReadEntireFile(const char* filepath, std::vector<char>& out, uint64_t sizeLimit = -1)
+    inline bool ReadEntireFile(const char* filepath, std::vector<char>& out)
     {
         /* 64 bits file not supported */
 
         bool bResult = false;
-        uint64_t fsize;
+        long fsize;
         
         if(FILE* f = fopen(filepath, "rb"))
         { 

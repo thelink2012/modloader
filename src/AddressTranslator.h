@@ -17,6 +17,7 @@ namespace modloader
 {
     using injector::memory_pointer_raw;
     using injector::address_manager;
+    using injector::raw_ptr;
     
     /*
      *  AddressTranslator
@@ -83,7 +84,7 @@ namespace modloader
 
                     auto diff = uintptr_t(p - it->first);   // What's the difference between @p and that address?
                     if(diff <= max_ptr_dist)                // Could we live with this difference in hands?
-                        result = it->second + diff;         // Yes, we can!
+                        result = it->second + raw_ptr(diff);         // Yes, we can!
 
                 }
                 

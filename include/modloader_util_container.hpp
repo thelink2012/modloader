@@ -135,9 +135,9 @@ namespace modloader
         if(s.size())
         {
             if(trimLeft)
-                s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ref(::isspace))));
+                s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::function<int(int)>(::isspace))));
             if(trimRight)
-                  s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ref(::isspace))).base(), s.end());
+                s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::function<int(int)>(::isspace))).base(), s.end());
                 
             if(s.size() >= 3)
             {

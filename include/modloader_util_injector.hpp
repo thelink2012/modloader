@@ -16,6 +16,10 @@
 #ifndef MODLOADER_UTIL_INJECTOR_ADDRT_HPP
 #define	MODLOADER_UTIL_INJECTOR_ADDRT_HPP
 
+#if _MSC_VER
+#   pragma warning(disable : 4180)  // qualifier applied to function type has no meaning; ignored
+#endif
+
 #include <cstdio>
 #include "AddressTranslator.h"
 

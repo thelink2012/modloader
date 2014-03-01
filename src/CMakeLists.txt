@@ -6,21 +6,24 @@
 # The current directory shall be used for #include <file>
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-# Enable ASM files
-enable_language(C CXX ASM)
-
-
 
 # Visual Studio specific stuff
 if(MSVC)
-    set(ASM_EXT "asm")  # MASM Assembly extension
+#    set(ASM_EXT "asm")  # MASM Assembly extension
+    set(ASM_EXT "c")	 # Use C with declspec(naked) instead
 
     # We don't want to deal with Buffer Security Check under "Release" build.
     set(CMAKE_CXX_FLAGS_RELEASE "/GS- ${CMAKE_CXX_FLAGS_RELEASE}")
+
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS)
 endif(MSVC)
 
 # MiNGW specific stuff
 if(MINGW)
+
+    # Enable ASM files
+    enable_language(C CXX ASM)
+
     set(ASM_EXT "s")  # GAS Assembly extension
 
     # Compiling C++11 source (with GNU and Microsoft extensions)

@@ -102,7 +102,7 @@ extern "C" __declspec(dllexport) // Needed on MinGW...
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     // Startup or Shutdown modloader
-    bool bResult = true; char buffer[256];
+    bool bResult = true;
     
     switch(fdwReason)
     {

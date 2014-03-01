@@ -67,9 +67,9 @@ namespace data
 
         /* Formating information */
         static const char* format() { return "%d %s %d %f %f %f %f %f %f %f %d"; }
-        static size_t count()       { return min_count(); }
-        static size_t min_count()   { return 11; }
-        static size_t max_count()   { return min_count(); }
+        static int count()       { return min_count(); }
+        static int min_count()   { return 11; }
+        static int max_count()   { return min_count(); }
         
         /* Proper inst comparision */
         bool operator==(const SDataIPL_INST& b) const
@@ -82,8 +82,6 @@ namespace data
                 /* If objects are equal and one of the objects is default, ignore the lod check */
                 if(a.isDefault || b.isDefault)
                 {
-                    if(a.obj.lod != b.obj.lod)
-                        ;// we have a problem, Log it?
                     return true;
                 }
                 /* Compare lods */
@@ -165,9 +163,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { size_t a; return (format(formating, a));    }
-        size_t count()       const { size_t a; return (format(formating, a), a); }
-        static size_t min_count()  { return 11; }
-        static size_t max_count()  { return 14; }
+        int count()       const { size_t a; return (format(formating, a), a); }
+        static int min_count()  { return 11; }
+        static int max_count()  { return 14; }
 
         /* Comparision */
         bool operator==(const SDataIPL_CULL& b) const
@@ -281,9 +279,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { size_t a; return (format(formating, a));    }
-        size_t count()       const { size_t a; return (format(formating, a), a); }
-        static size_t min_count()  { return 11; }
-        static size_t max_count()  { return 14; }
+        int count()       const { size_t a; return (format(formating, a), a); }
+        static int min_count()  { return 11; }
+        static int max_count()  { return 14; }
         
         
         bool operator==(const SDataIPL_GRGE& b) const
@@ -392,9 +390,9 @@ namespace data
         
         /* Formating information */
         static const char* format() { return "%f %f %f %f %f %f %f %f %f %f %f %d %d %s %d %d %d %d"; }
-        static size_t count()       { return min_count(); }
-        static size_t min_count()   { return 18; }
-        static size_t max_count()   { return min_count(); }
+        static int count()       { return min_count(); }
+        static int min_count()   { return 18; }
+        static int max_count()   { return min_count(); }
         
         /* Comparer */
         bool operator==(const SDataIPL_ENEX& b) const
@@ -441,9 +439,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%d %f %f %f"; }
-        size_t count()       const { return min_count(); }
-        static size_t min_count()  { return 4; }
-        static size_t max_count()  { return min_count(); }
+        int count()       const { return min_count(); }
+        static int min_count()  { return 4; }
+        static int max_count()  { return min_count(); }
         
         bool operator==(const SDataIPL_PICK& b) const
         {
@@ -478,9 +476,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d"; }
-        size_t count()       const { return min_count(); }
-        static size_t min_count()  { return 16; }
-        static size_t max_count()  { return min_count(); }
+        int count()       const { return min_count(); }
+        static int min_count()  { return 16; }
+        static int max_count()  { return min_count(); }
         
         bool operator==(const SDataIPL_JUMP& b) const
         {
@@ -526,9 +524,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%f %f %f %f %f %f %d %d %f    %f %f %f"; }
-        size_t count()       const { return min_count() + nopt; }
-        static size_t min_count()  { return 9; }
-        static size_t max_count()  { return 9+3; }
+        int count()       const { return min_count() + nopt; }
+        static int min_count()  { return 9; }
+        static int max_count()  { return 9+3; }
         
         
         bool operator==(const SDataIPL_TCYC& b) const
@@ -613,9 +611,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { size_t a; return (format(formating, a));    }
-        size_t count()       const { size_t a; return (format(formating, a), a); }
-        static size_t min_count()  { return 7; }
-        static size_t max_count()  { return 9; }
+        int count()       const { size_t a; return (format(formating, a), a); }
+        static int min_count()  { return 7; }
+        static int max_count()  { return 9; }
         
         bool operator==(const SDataIPL_AUZO& b) const
         {
@@ -714,9 +712,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%f %f %f %f %d %d %d %d %d %d %d %d"; }
-        size_t count()       const { return min_count(); }
-        static size_t min_count()  { return 12; }
-        static size_t max_count()  { return min_count(); }
+        int count()       const { return min_count(); }
+        static int min_count()  { return 12; }
+        static int max_count()  { return min_count(); }
         
         bool operator==(const SDataIPL_CARS& b) const
         {
@@ -771,9 +769,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%f %f %f %f %f %f %f     %f %f %d"; }
-        size_t count()       const { return min_count() + nopt; }
-        static size_t min_count()  { return 7; }
-        static size_t max_count()  { return 7+3; }
+        int count()       const { return min_count() + nopt; }
+        static int min_count()  { return 7; }
+        static int max_count()  { return 7+3; }
         
         
         bool operator==(const SDataIPL_OCCL& b) const
@@ -822,10 +820,10 @@ namespace data
         bool get(char* line) const
         {
             // Print common data into line
-            return(!PrintConfigLine(line, count(), format(),
+            return PrintConfigLine(line, count(), format(),
                         mid[0].f, mid[1].f, bottom.f,
                         width[0].f, width[1].f, height.f, rotation.f,
-                        opt1[0].f, opt1[1].f, opt2)) > 0;
+                        opt1[0].f, opt1[1].f, opt2) > 0;
         }
     };
     
@@ -840,9 +838,9 @@ namespace data
         
         /* Formating information */
         const char* format() const { return "%s %d %f %f %f %f %f %f %d %s"; }
-        size_t count()       const { return min_count(); }
-        static size_t min_count()  { return 10; }
-        static size_t max_count()  { return min_count(); }
+        int count()       const { return min_count(); }
+        static int min_count()  { return 10; }
+        static int max_count()  { return min_count(); }
         
         
         bool operator==(const SDataIPL_ZONE& b) const
@@ -875,7 +873,7 @@ namespace data
                         name.buf, type,
                         box[0][0].f, box[0][1].f, box[0][2].f,
                         box[1][0].f, box[1][1].f, box[1][2].f,
-                        island, label.buf);
+                        island, label.buf) > 0;
         }
     };
     

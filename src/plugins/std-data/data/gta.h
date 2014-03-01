@@ -67,13 +67,6 @@ namespace data
             string64    path;
             int         index;      // Set by the handler Set object, see TraitsGTA
                                     // This index is unique for each path
-
-         /*
-            const char* format() const { return "%s %s"; }
-            size_t count()       const { return min_count(); }
-            static size_t min_count()  { return 2; }
-            static size_t max_count()  { return min_count(); }
-         */
  
             // for map ordering and equality comparision
             bool operator<(const key_type& b) const
@@ -153,7 +146,7 @@ namespace data
             {
                 return PrintConfigLine(line, "%s %s",
                                        FindSectionById(this->section)->name,
-                                       this->path.buf);
+                                       this->path.buf) > 0;
             }
         };
 

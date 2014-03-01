@@ -44,7 +44,7 @@ struct CAESoundRequest
   void *m_pBuffer;
   int m_iLoadingStatus;
   unsigned short m_usBank;
-  short m_usBankSlot;
+  unsigned short m_usBankSlot;
   unsigned short m_usSound;
   char m_iPak;
   char field_1F;

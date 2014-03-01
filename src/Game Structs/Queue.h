@@ -34,6 +34,7 @@ inline Queue* InitialiseQueue(Queue* q, int size)
     q->queue = new int[size];
     q->size = size;
     q->head = q->tail = 0;
+    return q;
 }
 
 inline void FinalizeQueue(Queue* q)

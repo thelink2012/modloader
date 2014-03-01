@@ -14,7 +14,7 @@ It may be very helpful for people with two or more game installations for differ
 
 It's certainlly is very helpful for developers too, you don't have to be messing with .img files, rebuilding them everytime. Some installable modifications in modloader permit an reloading without closing the game!
 
-This is a open source project, so, feel free to do whatever you want (well, see the LICENSE at the base directory, whatever is not the right word here), contribute, report and fix bugs...
+This is a open source project, so, feel free to contribute, report and fix bugs...
 
 
 ### Compiling
@@ -24,14 +24,12 @@ If you are building from the source code, it is very simple to compile. You'll n
 + [CMake] (http://www.cmake.org/) 2.8 or greater
 + [MinGW](http://mingw-w64.sourceforge.net/download.php) 4.8.2 or greater *(32 bits, SJLJ exception handling is prefered)*
 
-An Visual Studio port would be easy, checkout `doc/MSVC.txt` file
-
 
 Then, in a terminal *(cmd.exe on Windows)* go into the base source directory and run the commands:
 
     mkdir build
     cd build
-    cmake -G "MinGW Makefiles" ../ && make
+    cmake -G "MinGW Makefiles" ../ && mingw32-make
     
 On **Linux**, using MinGW for cross-compiling you might replace the last line with:
 
