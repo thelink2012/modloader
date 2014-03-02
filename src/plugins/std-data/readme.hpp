@@ -1,11 +1,11 @@
 /*
-* Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
+* Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
 * Licensed under GNU GPL v3, see LICENSE at top level directory.
 *
 *  Readme reader -- the magic is simple
 *  
-*  PS¹: This file should be included in data.cpp
-*  PS²: Does not compile under Visual Studio (2013 and below) because of a compiler bug
+*  PS1: This file should be included in data.cpp
+*  PS2: Does not compile under Visual Studio (2013 and below) because of a compiler bug
 *
 */
 #include "data.h"

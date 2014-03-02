@@ -2,7 +2,7 @@
  *  Injectors - Light Version
  *	Header with helpful stuff for ASI memory hacking
  *
- *	(C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
+ *  (C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
  *  (C) 2014 Deji <the_zone@hotmail.co.uk>
  * 
  *  This source code is offered for use in the public domain. You may

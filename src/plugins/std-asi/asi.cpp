@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  std-asi -- Standard ASI Loader Plugin for San Andreas Mod Loader
@@ -7,9 +7,12 @@
  * 
  */
 #include "asi.h"
-#include "args_translator.hpp"
+#include "args_translator/translator.hpp"
 #include <modloader_util.hpp>
+#include <modloader_util_path.hpp>
 #include <map>
+
+using namespace modloader;
 
 
 //
@@ -137,6 +140,11 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  */
 bool CThePlugin::PosProcess()
 {
+    if(true && IsPath("CLEO.asi"))
+    {
+        this->asiList.emplace_back("CLEO.asi");
+    }
+    
     // Iterate on the asi list loading each asi file
     for(auto& asi : this->asiList)
     {
@@ -167,7 +175,7 @@ bool CThePlugin::PosProcess()
 CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
 {
     size_t last = GetLastPathComponent(path);
-    bIsASI = bIsMainExecutable = bIsD3D9 = false;
+    bIsASI = bIsMainExecutable = bIsMainCleo = bIsD3D9 = false;
     memset(&this->hacks, 0, sizeof(hacks));
     
     const char* filename = &path[last];
@@ -177,6 +185,8 @@ CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
         bIsD3D9 = true;
     else if(!strcmp(filename, "gta", false))
         bIsMainExecutable = true;
+    else if(!strcmp("CLEO.asi", filename, false))
+        bIsMainCleo = true;
     else
         bIsASI = true;
     
@@ -186,7 +196,6 @@ CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
     {
         hacks.bRyosukeModuleName = true;
     }
-    
     
     // Setup fields
     this->module = 0;
@@ -439,6 +448,8 @@ extern const char aLoadLibraryA[] = "LoadLibraryA";
 extern const char aLoadLibraryExA[] = "LoadLibraryExA";
 extern const char aGetModuleFileNameA[] = "GetModuleFileNameA";
 extern const char aFindFirstFileA[] = "FindFirstFileA";
+extern const char aFindNextFileA[] = "FindNextFileA";
+extern const char aFindClose[] = "FindClose";
 extern const char aSetCurrentDirectoryA[] = "SetCurrentDirectoryA";
 extern const char aGetPrivateProfileIntA[] = "GetPrivateProfileIntA";
 extern const char aGetPrivateProfileSectionA[] = "GetPrivateProfileSectionA";
@@ -453,10 +464,18 @@ extern const char aWritePrivateProfileStructA[] = "WritePrivateProfileStructA";
 // Operations
 static path_translator_stdcall<aCreateFileA, aKernel32, HANDLE(LPCTSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
         psCreateFileA(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
-static path_translator_stdcall<aFindFirstFileA, aKernel32, HMODULE(LPCTSTR, LPWIN32_FIND_DATA)>
-        psFindFirstFileA(0, AR_PATH_IN, 0);
 //static path_translator_stdcall<aSetCurrentDirectoryA, aKernel32, BOOL(LPCTSTR)>
-//        psSetCurrentDirectoryA(0, AR_PATH_INE);
+//        psSetCurrentDirectoryA(0, AR_PATH_INE);       -- Commented because doesn't work well together the other funcs
+
+
+// File finding (used mostly to hack CLEO.asi)
+static path_translator_stdcall<aFindFirstFileA, aKernel32, HANDLE(LPCTSTR, LPWIN32_FIND_DATAA)>
+        psFindFirstFileA(0, AR_PATH_IN, 0);
+static path_translator_stdcall<aFindNextFileA, aKernel32, BOOL(HANDLE, LPWIN32_FIND_DATAA)>  // Hack CLEO.asi
+        psFindNextFileA(0, 0, 0);
+static path_translator_stdcall<aFindClose, aKernel32, BOOL(HANDLE)>                          // Hack CLEO.asi
+        psFindClose(0, 0);
+
 
 
 // Library routines

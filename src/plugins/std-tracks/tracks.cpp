@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  * 
@@ -244,7 +244,6 @@ bool CThePlugin::PosProcess()
             dwOffset = dwSize = 0;
             bEncrypted = false;
         }
-        puts(szPath);
         return func(self, 0, id, szPath, dwOffset, dwSize, bEncrypted);
     });
     

@@ -1,5 +1,5 @@
 /* 
- *  Created by Denilson das Mercês Amorim <dma_2012@hotmail.com>
+ *  (C) 2013 Denilson das Mercês Amorim <dma_2012@hotmail.com>
  * 
  *  This source code is offered for use in the public domain. You may
  *  use, modify or distribute it freely.

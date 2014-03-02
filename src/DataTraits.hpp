@@ -1,5 +1,5 @@
 /* 
- *  Created by Denilson das Mercês Amorim <dma_2012@hotmail.com>
+ *  (C) 2013 Denilson das Mercês Amorim <dma_2012@hotmail.com>
  * 
  *  I really don't know how to describe this header.
  *  Basically it provides data structures that finds a 'dominant' element in a serie of structures.

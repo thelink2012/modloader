@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
@@ -17,10 +17,6 @@ using namespace modloader;
 
 // Forward path_translator_base from args_translator.h
 struct path_translator_base;
-
-//#include <cstdio>
-//#define printf asiPlugin->Log
-//#define puts asiPlugin->Log
 
 
 /*
@@ -48,6 +44,7 @@ class CThePlugin : public modloader::CPlugin
             bool bIsASI;                // Is this a ASI module?
             bool bIsD3D9;               // Is this a D3D9.dll module?
             bool bIsMainExecutable;     // Is this the main executable? (gta_sa.exe etc)
+            bool bIsMainCleo;           // Is the main CLEO.asi
             
             struct      // Hacks that some ASIs will need to work properly
             {
