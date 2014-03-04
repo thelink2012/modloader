@@ -4,12 +4,15 @@
  * 
  *  std-text -- Standard GTA Text Loader Plugin for San Andreas Mod Loader
  *      This plugin overrides gxt files
+ *      It also loads fake gta text (fxt) files
  *
  */
 #include <modloader.hpp>
 #include <modloader_util.hpp>
+#include <modloader_util_fxt.hpp>
 #include <modloader_util_path.hpp>
 #include <modloader_util_injector.hpp>
+#include <list>
 using namespace modloader;
 
 /*
@@ -60,6 +63,8 @@ class CThePlugin : public modloader::CPlugin
         };
         
         //
+        std::list<std::string> fxt_files;
+        modloader::fxt_manager fxt_manager;
         GxtOverrider gxt[5];
         
         CThePlugin()
@@ -115,12 +120,12 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "RC1";
+    return "RC2";
 }
 
 const char** CThePlugin::GetExtensionTable()
 {
-    static const char* table[] = { "gxt", 0 };
+    static const char* table[] = { "gxt", "fxt", 0 };
     return table;
 }
 
@@ -129,7 +134,8 @@ const char** CThePlugin::GetExtensionTable()
  */
 bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
-    if(!file.is_dir && IsFileExtension(file.filext, "gxt"))
+    if(!file.is_dir
+    && (IsFileExtension(file.filext, "gxt") || IsFileExtension(file.filext, "fxt")))
         return true;
     return false;
 }
@@ -139,10 +145,17 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
  */
 bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
-    if(auto* gxt = GetOverrider(file.filename))
+    if(IsFileExtension(file.filext, "gxt"))
     {
-        if(gxt->Replace(GetFilePath(file).c_str()))
-            return true;
+        if(auto* gxt = GetOverrider(file.filename))
+        {
+            if(gxt->Replace(GetFilePath(file).c_str()))
+                return true;
+        }
+    }
+    else
+    {
+        fxt_files.emplace_back(GetFilePath(file));
     }
     return false;
 }
@@ -182,5 +195,12 @@ bool CThePlugin::PosProcess()
     make_function_hook<0x6A0228, int(const char*, const char*)>(hook);
     make_function_hook<0x69FD5A, int(const char*, const char*)>(hook);
 
+    // Inject fxt files
+    for(auto& file : this->fxt_files)
+    {
+        Log("Injecting FXT file \"%s\"", file.c_str());
+        injector::ParseFXT(this->fxt_manager, file.c_str());
+    }
+    
     return true;
 }

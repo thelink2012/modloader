@@ -7,6 +7,17 @@
  *      This plugin copies and removes files from the CLEO/ folder, but it tries to make sure that the modifies are undone.
  *      It is recommend that you use CLEO mods directly in CLEO/ folder!
  * 
+ * 
+ *      NOTICE:
+ *          This plugin is deprecated because of it's faults (the need to copy 'n paste stuff)
+ *          std-asi is now responssible for loading cleo scripts and cleo plugins
+ *          std-text is now responssible for loading fxt files
+ * 
+ *          As of this version the plugin does nothing but finishes the old cache file cleaning up what it did before
+ *          the update!
+ * 
+ *          Only the pieces of code related to the caching system is left here.
+ * 
  */
 #include <modloader.hpp>
 #include <modloader_util.hpp>
@@ -16,13 +27,9 @@
 #include <modloader_util_injector.hpp>
 using namespace modloader;
 
-#include <list>
-#include <vector>
-#include <set>
-#include <map>
 
-#include "Injector.h"
-#include "CText.h"
+
+
 
 /*
  *  The plugin object
@@ -39,9 +46,7 @@ class CThePlugin : public modloader::CPlugin
         bool CheckFile(modloader::ModLoaderFile& file);
         bool ProcessFile(const modloader::ModLoaderFile& file);
         bool PosProcess();
-        bool OnLoad();
         
-        const char** GetExtensionTable();
 
     public:
         
@@ -148,79 +153,13 @@ class CThePlugin : public modloader::CPlugin
             
         };
         
-        bool bHaveCLEO;
-        std::vector<HMODULE>   plugins;
-        std::list<CacheStruct> files;
-        std::map<size_t, std::string> text; // for gxt hook
         char cacheDirPath[MAX_PATH];
         char cacheFilePath[MAX_PATH];
         char cacheCleoPath[MAX_PATH];
 
         bool StartCacheFile();
         bool FinishCacheFile(bool bIsStartup = false);
-        
-        
-        /*
-         *  Parses the FXT file @filename calling @AddText foreach key-value pari 
-         */
-        bool ParseFXT(const char* filename);
-        
-        /*
-         *  Adds a GXT key-value pair to the @text map for use in our GxtHook 
-         */
-        void AddText(const char* key, const char* value)
-        {
-            text[modloader::hash(key, ::toupper)] = value;
-        }
-        
-        
-        /*
-         *  Creates all necessary folders for this plugin to work properly 
-         */
-        void CreateImportantFolders()
-        {
-            MakeSureDirectoryExistA("CLEO");
-            MakeSureDirectoryExistA("CLEO\\CLEO_TEXT");
-            MakeSureDirectoryExistA(cacheDirPath);
-            MakeSureDirectoryExistA(cacheCleoPath);
-        }
-        
-        /*
-         * Checks if the user has the CLEO library installed
-         */
-        bool DoesHaveCLEO()
-        {
-            /* You have CLEO if either CLEO folder exists or cleo.asi exists */
-            return (IsDirectoryA("CLEO") || IsPathA("cleo.asi"));
-        }
 
-        
-        typedef const char* (__fastcall *CText__Locate_Type)(CText*, int, const char*);
-        
-        /*
-         *  Address for CLEO's GXT HOOK
-         */
-        static CText__Locate_Type& CLEO_GxtHook()
-        {
-            static CText__Locate_Type hook = 0;
-            return hook;
-        }
-        
-        /*
-         *  Hooks CText::Locate taking in consideration CLEO already hooked it 
-         */
-        static const char* __fastcall GxtHook(CText* self, int, const char* key)
-        {
-            auto& text = cleoPlugin->text;
-            
-            // Try to find @key in our text map
-            auto it = text.find(modloader::hash(key, ::toupper));
-            if(it != text.end()) return it->second.c_str();
-            
-            // Nothing found, try with CLEO call
-            return CLEO_GxtHook()(self, 0, key);
-        }
-        
         
 } plugin;
 
@@ -251,14 +190,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "RC2";
-}
-
-const char** CThePlugin::GetExtensionTable()
-{
-    /* Put the extensions  this plugin handles on @table */
-    static const char* table[] = { "cs", "cm", "cleo", "fxt", 0 };
-    return table;
+    return "DC1";   // Deprecation Candidate 1, lol
 }
 
 /*
@@ -276,112 +208,26 @@ bool CThePlugin::OnStartup()
     /* Finish the cache if it still exist, probably because an abnormal termination of the game */
     FinishCacheFile(true);
     
-    if(bHaveCLEO = DoesHaveCLEO())
-    {
-        //
-        CreateImportantFolders();
-    }
-    else
-        Log("CLEO not found! std-cleo plugin features will be disabled.");
-    
     return true;
 }
 
 bool CThePlugin::OnShutdown()
 {
-    if(bHaveCLEO)
-    {
-        scoped_chdir xdir(this->modloader->gamepath);
-        std::for_each(this->plugins.begin(), this->plugins.end(), FreeLibrary); // free .cleo plugins
-        FinishCacheFile();
-    }
     return true;
 }
 
-/*
- *  Check if the file is the one we're looking for
- */
 bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 {
-    if(bHaveCLEO)
-    {
-        if(file.is_dir)
-        {
-            /* me can handle folder named CLEO */
-            return (!strcmp(file.filename, "CLEO", false)? true : false);
-        }
-        else
-        {
-            /* Check if an CLEO handled extension */
-            for(const char** p = GetExtensionTable(); *p; ++p)
-            {
-                if(IsFileExtension(file.filext, *p))
-                    return true;
-            }
-        }
-    }
     return false;
 }
 
-/*
- * Process the replacement
- */
 bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
 {
-    if(bHaveCLEO)
-    {
-        if(file.is_dir)
-        {
-            // This is the CLEO directory, go recursive to copy all files inside this folder
-            scoped_chdir xdir(file.filepath);
-            
-            ForeachFile("*.*", true, [this,&file](ModLoaderFile& mf)
-            {
-                this->files.emplace_back(file, mf);
-                return true;
-            });
-        }
-        else
-        {
-            this->files.emplace_back(file);
-        }
-    }
     return true;
 }
 
-/*
- * Called after all files have been processed
- */
 bool CThePlugin::PosProcess()
 {
-    if(bHaveCLEO)
-    {
-        // Add some chunks for us in the loading bar
-        this->SetChunks(this->files.size());
-        this->SetChunkLimiter();
-        
-        // Make our GXT hook
-        if(ReadMemory<uint8_t>(0x6A0050, true) == 0xE9) 
-        {
-            // CLEO already did it's GXT hook here, good!
-            this->CLEO_GxtHook() = (CThePlugin::CText__Locate_Type) GetBranchDestination(0x6A0050).get();
-            
-            // Do ours now
-            MakeJMP(0x6A0050, raw_ptr(CThePlugin::GxtHook));
-        }
-        else
-            Log("Failed to install std-cleo gxt hook because CLEO.asi didn't install it's hook yet");
-    }
-    
-    return true;
-}
-
-/*
- *  Called on the loading screen 
- */
-bool CThePlugin::OnLoad()
-{
-    this->StartCacheFile();
     return true;
 }
 
@@ -390,169 +236,7 @@ bool CThePlugin::OnLoad()
  */
 bool CThePlugin::StartCacheFile()
 {
-    std::set<std::string> pluginsPath;  // set of normalize strings pointing to files in .cleo folder
-                                        // don't repeat a plugin file twice
-    
-    std::vector<char> filebuf;
-    CacheHeader header;
-   
-    Log("Starting cache file");
-    CreateImportantFolders();
-    
-    FILE* f = fopen(cacheFilePath, "wb");
-    if(f == NULL)
-    {
-        Log("Failed to open cache file for writing (%s)", cacheFilePath);
-        return false;
-    }
-    
-    if(fwrite(&header, sizeof(header), 1, f) != 1)
-    {
-        Log("Failed to write header to cache file. Cache corruption may happen.");
-    }
-    else
-    {
-        Log("Creating backup CLEO folder");
-        bool bFailedToCreateCLEO = false;
-        int errorCode;
-        std::string cacheDir = cacheDirPath;
-        
-        // Destroy old backup
-        if(!DestroyDirectoryA(cacheCleoPath))
-        {
-            Log("Failed to destroy backup CLEO folder in-cache. Error code: 0x%X.", GetLastError());
-        }
-
-        // Create only folders at the CLEO backup folder
-        if(CreateDirectoryA(cacheCleoPath, 0))
-        {
-            // Iterate on CLEO folder finding each folder to create a reflection on the backup folder
-            ForeachFile("CLEO\\", "*.*", true, [&](ModLoaderFile& f)
-            {
-                if(f.is_dir)
-                {
-                    // Create directory with same name on backup folder...
-                    if(!CreateDirectoryA((cacheDir + f.filepath).c_str(), 0))
-                    {
-                        // Ops.. something bad happened!
-                        errorCode = GetLastError();
-                        bFailedToCreateCLEO = true;
-                        f.recursion = false;
-                        return false;
-                    }
-                }
-                return true;
-            });
-        }
-        else
-        {
-            // bad...
-            errorCode = GetLastError();
-            bFailedToCreateCLEO = true;
-        }
-        
-        //
-        if(bFailedToCreateCLEO)
-        {
-            Log("Failed to create backup CLEO folder. Error code: 0x%X. Aborting.", errorCode);
-        }
-        // For each file, write to the cache it's information
-        else for(auto& file : this->files)
-        {
-            this->NewChunkLoaded();
-            
-            if(file.flags.bIsDir)
-            {
-                // Just make sure we have that directory created
-                MakeSureDirectoryExistA(file.dstPath);
-                Log("Created directory \"%s\"", file.dstPath);
-                continue;
-            }
-            else 
-            {
-                // If FXT file, don't even copy it into CLEO, we will handle it ourselfs
-                if(file.flags.bIsFXT)
-                {
-                    this->ParseFXT(file.srcPath);
-                    continue;
-                }
-                
-                // Check if file already exist in the destination CLEO folder
-                if(IsPathA(file.dstPath))
-                {
-                    // Mark...
-                    file.flags.bExists = true;
-                    
-                    // Copy it as a safe backup
-                    if(!CopyFileA(file.dstPath, (cacheDir + file.dstPath).c_str(), FALSE))
-                    {
-                        Log("Failed to create backup for file \"%s\". Skipping it.", file.srcPath);
-                        continue;
-                    }
-                    else
-                    {
-                        Log("Created backup for file \"%s\"", file.dstPath);
-                    }
-                }
-            }
-            
-            // Take the file hash
-            if(!ReadEntireFile(file.srcPath, filebuf))
-            {
-                Log("Failed to read source file for hashing (\"%s\"). Skipping it.", file.srcPath);
-                continue;
-            }
-            else
-            {
-                file.hash = hash((void*)filebuf.data(), filebuf.size());
-            }
-            
-            /* Finally make the file copy at main game path CLEO/ */
-            if(!CopyFileA(file.srcPath, file.dstPath, FALSE))
-            {
-                Log("Failed to copy source file (%s) to destination (%s)\n\terror code: 0x%X. Skipping it.",
-                    file.srcPath, file.dstPath, GetLastError());
-                continue;
-            }
-            else
-            {
-                if(file.flags.bIsCLEO)  // Is .cleo plugin?
-                {
-                    // Push it's path for later processing
-                    pluginsPath.emplace(NormalizePath(file.dstPath));
-                }
-            }
-            
-            /* Write file information to the cache and flush immediately, we don't want to lose information on some crash */
-            if(fwrite(&file, sizeof(file), 1, f) != 1)
-            {
-                Log("Failed to write file info into the cache. Cache corruption may happen.");
-                continue;
-            }
-            else fflush(f);
-        }
-    }
-    
-    // Load each CLEO plugin
-    for(auto& path : pluginsPath)
-    {
-        if(HMODULE module = LoadLibraryA(path.c_str()))
-        {
-            Log("CLEO plugin has been loaded: %s", path.c_str());
-            this->plugins.emplace_back(module); // for later FreeLibrary
-        }
-        else
-        {
-            Log("Failed to load .CLEO plugin (%s)\n\terror code: 0x%X.", path.c_str(), GetLastError());
-        }
-    }
-    
-    // I don't need this data anymore, fre memory
-    files.clear();
-    
-    fclose(f);
-    Log("Cache file has been started");
-    return true;
+    return false;
 }
 
 /*
@@ -565,7 +249,7 @@ bool CThePlugin::FinishCacheFile(bool bIsStartup)
     CacheStruct file;
     
     Log("Finishing cache file");
-    CreateImportantFolders();
+    //CreateImportantFolders();
     
     FILE* f = fopen(cacheFilePath, "rb");
     if(f == NULL)
@@ -659,63 +343,3 @@ bool CThePlugin::FinishCacheFile(bool bIsStartup)
     if(f) fclose(f);
     return true;
 }
-
-/*
- *  Parses a CLEO FXT file into our text map 
- */
-bool CThePlugin::ParseFXT(const char* filename)
-{
-    if(FILE* f = fopen(filename, "r"))
-    {
-        char buf[1024];
-        
-        Log("Reading FXT file \"%s\"", filename);
-        
-        // Alright, that format is pretty easy
-        while(fgets(buf, sizeof(buf), f))
-        {
-            char *key = 0, *value = 0;
-            
-            // Parses the fxt line
-            for(char* p = buf; *p; ++p)
-            {
-                // # is used as comments...
-                if(*p == '#')
-                {
-                    *p = 0;
-                    break;
-                }
-                
-                // If no key found yet...
-                if(key == 0)
-                {
-                    // ...and the current iterating character is a space...
-                    if(isspace(*p))
-                    {
-                        // ..we've just found that the key is there
-                        *p = 0;
-                        key = buf;
-                    }
-                }
-                // But, if key has been found but no value found yet...
-                else if(value == 0)
-                {
-                    // ...we are actually reading the first character from the value!
-                    value = p;
-                }
-            }
-            
-            // Adds into the text map only if found both key and value
-            if(key && value) this->AddText(key, value);
-        }
-        
-        // Done
-        fclose(f);
-        return true;
-    }
-    else
-        Log("Failed to open FXT file \"%s\" for reading.", filename);
-    
-    return false;
-}
-

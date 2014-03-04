@@ -1,6 +1,9 @@
-v0.1.13 (IN DEVELOPMENT)
+v0.1.14 (IN DEVELOPMENT)
+    Feature: CLEO files do not need copy and paste to work anymore, they're injected into CLEO.asi searches
     Feature: Binary IPLs are automatically detected
+    Bug fix: Binary IPLs being handled by the wrong plugin fixed
     Bug fix: Fixed crash on exit if playing SA:MP
+    Bug fix: Other minor fixes
 
 
 v0.1.12

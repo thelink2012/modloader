@@ -54,7 +54,7 @@ class CThePlugin : public modloader::CPlugin
             if(cacheFiles.size() == 0) cacheFiles[0];
             
             // Get path last component (filename) and turn into lower case for case insensitiveness...
-            std::string filename = &path[GetLastPathComponent(path)];
+            std::string filename = &path[GetLastPathComponent<char>(path)];
             modloader::tolower(filename);
             
             // Get current working cache id and it's files

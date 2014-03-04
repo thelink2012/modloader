@@ -38,14 +38,6 @@ Mas o seguinte é errado:
     [*] Não substitui nada nos arquivos originais
         Isso você já deve saber mas eu gostaria de reforçar a ideia.
         O modloader não substitui NADA nos arquivos originais do jogo, então pode ficar tranquilo.
-        
-    [*] Mods CLEO (.cs, .cm, .cleo, .fxt, CLEO/)
-        O modloader pode instalar mods cleo, porem com uma condição.
-        Ele vai ter que tocar na pasta CLEO... Eu disse que ele não tocava em arquivos ORIGINAIS...
-        Todo arquivo com uma das extenções acima serão copiados para a pasta CLEO do seu jogo.
-        E todo o conteudo de qualquer pasta CLEO encontrada (tipo modloader/nome do mod/CLEO/...) será copiada para a CLEO na base do jogo.
-        
-        PS: Os arquivos .cleo e .fxt vão ser tratados pelo modloader em vez da CLEO por questões tecnicas.
 
     [*] Mistura de arquivos
         Quando se trata dos arquivos data (.dat, .cfg, .ide, .ipl) o modloader trabalha de uma forma muito interessante.

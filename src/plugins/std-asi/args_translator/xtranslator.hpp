@@ -11,6 +11,8 @@
 
 // Some symbols need forwarding because we're going to check for them
 extern const char aKernel32[];
+extern const char aCreateFileA[];
+extern const char aSetCurrentDirectoryA[];
 extern const char aGetModuleFileNameA[];
 extern const char aFindFirstFileA[];
 extern const char aFindNextFileA[];
@@ -22,7 +24,12 @@ enum eArgsType
     AR_DUMMY        = 0,           // Don't touch argument
     AR_PATH_INE,                   // Input path for existing file
     AR_PATH_IN,                    // Input path
+    AR_PATH_INEB,                  // Input path for existing folder before the file (e.g. "AA/BB/CC" folder "AA/BB" must exist)
 };
+
+// Override INEB, we won't handle it (for now at least)
+// Implemeting that wouldn't work very well with FindFirstFileA because it returns a non-relative path on the searched path, grr
+#define AR_PATH_INEB    AR_DUMMY
 
 
 #endif

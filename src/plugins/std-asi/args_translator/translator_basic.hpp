@@ -11,12 +11,12 @@
 #define	ARGS_TRANSLATOR_BASIC_HPP
 
 #include "../asi.h"
-#include "Injector.h"
 #include <memory>
 #include <charov.hpp>
 #include <type_traits>
 #include <modloader_util_path.hpp>
 #include <modloader_util_container.hpp>
+#include <modloader_util_injector.hpp>
 
 #include "xtranslator.hpp"
 #include "hacks/RyosukeSetModule.hpp"
@@ -34,7 +34,7 @@ struct path_translator_base
 {
     typedef CThePlugin::ModuleInfo ModuleInfo;
     typedef std::vector<path_translator_base*> list_type;
-    typedef std::unique_ptr<path_translator_base> smart_ptr;
+    typedef path_translator_base* smart_ptr;
     
     // List of singletons
     static list_type& List()
@@ -48,6 +48,12 @@ struct path_translator_base
     template<class T> static smart_ptr DoClone(const T* self)
     {
         return smart_ptr(new T(*self));
+    }
+    
+    // Checks if argument @type is a input path
+    static bool IsInputPath(char type)
+    {
+        return type != AR_DUMMY;
     }
     
     
@@ -64,6 +70,9 @@ struct path_translator_base
     // Type
     bool bIsSingleton;
     bool bGetModuleFileName;        // Must be set by child
+    bool bIniOperations;            // ^
+    bool bSetCurrentDirectory;      // ^
+    bool bCreateFile;               // ^
     bool bFindFirstFile;            // ^
     bool bFindNextFile;             // ^
     bool bFindClose;                // ^
@@ -130,7 +139,7 @@ struct path_translator_base
     {
         if(InitializationDone() == false)   // Still initializing singletons?
         {
-            if(t == AR_PATH_INE || t == AR_PATH_IN)
+            if(IsInputPath(t))
                 ++npath;                            // Increase num paths
             this->argtype[N] = t;                   // Register
             return RegisterPathType<N+1>(ts...);    // Next
@@ -151,6 +160,8 @@ struct path_translator_base
         // Size of each element in the character pool
         static const size_t pool_elem_size = MAX_PATH * sizeof(wchar_t);
 
+        bool bSetDir;                       // Call comming from gta_sa.exe:_chdir
+               
         std::unique_ptr<char[]> path_pool;  // Character pool
         size_t path_pool_used;              // Size (not number of elements) used in the pool
         
@@ -158,7 +169,7 @@ struct path_translator_base
         ModuleInfo* asi;                    // Pointer to Calling ASI module
         
         // Construct the information
-        CallInfo() : asi(0), base(0)
+        CallInfo() : asi(0), base(0), bSetDir(false)
         {}
         
         // Allocates a path in the pool. @size is the num characters the path will need.
@@ -209,11 +220,13 @@ struct path_translator_base
         template<size_t N = 1, class T, class... A>
         void TranslateForCall(T& x, A&&... a)
         {
+            auto argtype = base->argtype[N];
+            
             // Is it a input path?
-            if(base->argtype[N] == AR_PATH_IN || base->argtype[N] == AR_PATH_INE)
+            if(IsInputPath(argtype))
             {
                 // Translate this path to be side by side with the asi path
-                TranslatePath(x, base->argtype[N]);
+                TranslatePath(x, argtype);
             }
             else
             {
@@ -270,7 +283,10 @@ struct path_translator_base
                 static const T a3[] = { '%', 's', '\\', '%', 's', '\\',     // "%s\\%s\\%s" or "%s\\%s\\%ls"
                                         '%', bIsWideChar? 'l' : 's', bIsWideChar? 's' : '\0',
                                         '\0' };
-
+                static const T a0[] = { '%', 's', '\\',                     // "%s\\%s" or "%s\\%ls"
+                                        '%', bIsWideChar? 'l' : 's', bIsWideChar? 's' : '\0',
+                                        '\0' };
+                
                 // Build output string based on received prefixes / suffixes / whatever
                 if(currdir)
                 {
@@ -280,7 +296,12 @@ struct path_translator_base
                         sprintf(out, a2, prefix, currdir);          // "%s\\%s"
                 }
                 else
-                    sprintf(out, a1, prefix);   // "%s"
+                {
+                    if(suffix)
+                        sprintf(out, a0, prefix, suffix);   // "%s\\%s" or "%s\\%ls"
+                    else
+                        sprintf(out, a1, prefix);           // "%s"
+                }
                 
                 // Done
                 return out;
@@ -294,22 +315,31 @@ struct path_translator_base
         void TranslatePath(const T*& arg, char type, F build_path)
         {
             // If it isn't a absolute path, go ahead for the translation
-            if(!IsAbsolutePath(arg))
+            // Accept absolute path only from SetDir or ini operation call
+            if(!IsAbsolutePath(arg) || this->bSetDir || base->bIniOperations)
             {
-                if(asi->bIsMainExecutable)
+                // Translate SetCurrentDirectory call only when coming from SetDir
+                if(!base->bSetCurrentDirectory || this->bSetDir)
                 {
-                    // If this is the module for the main game executable, calm down! It's special of course...
-                    return TranslatePathForMainExecutable(arg, type, build_path);
-                }
-                else if(asi->bIsMainCleo)
-                {
-                    // If this is the CLEO.asi module, translate path for a cs script
-                    return TranslatePathForCleo(arg, type, build_path);
-                }
-                else if(asi->bIsASI || asi->bIsD3D9)
-                {
-                    // If this is an ASI plugin module, translate path to be relative to it
-                    return TranslatePathForASI(arg, type, build_path);
+                    if(asi->bIsMainExecutable)
+                    {
+                        // If this is the module for the main game executable, calm down! It's special of course...
+                        return TranslatePathForMainExecutable(arg, type, build_path);
+                    }
+                    else if(asi->bIsCleo)
+                    {
+                        // If this is CLEO.asi or any .cleo plugin module, translate path for a cs script
+                        return TranslatePathForCleo(arg, type, build_path);
+                    }
+                    else if(asi->bIsASI || asi->bIsD3D9)
+                    {
+                        // If this is an ASI plugin module, translate path to be relative to it
+                        return TranslatePathForASI(arg, type, build_path);
+                    }
+                    else
+                    {
+                        asiPlugin->Error("std-asi error at TranslatePath<T,F>");
+                    }
                 }
             }
         }
@@ -320,46 +350,61 @@ struct path_translator_base
         template<class T, class F> void TranslatePathForCleo(const T*&, char, F);
         template<class T, class F> void TranslatePathForASI(const T*&, char, F);
         
+        template<class T, class M, class F>
+        bool CxBuildPath(T* p, const M& module, const char* currdir, const T*& arg, F build_path);
         
         
         
         
         
         // Gets the current working directory relative to the the game path
-        // If working directory is not anywhere ahead the game path, return null
+        // If working directory is not anywhere near the game path, return null
         const char* GetCurrentDir(char* buffer, size_t max)
         {
-            char *fullpath = buffer, *currdir = 0;
+            char *fullpath = buffer;
+            const char* currdir = 0;
             
             // Get working directory...
             if(GetCurrentDirectoryA(max, fullpath))
             {
-                // Iterate on the game path comparing it with the current working dir
-                // Note gamePath ends with a '\\'
-                const char* gamePath = asiPlugin->modloader->gamepath;
-                for(size_t i = 0; i < max; ++i)
+                // Do the hard work there...
+                currdir = GetCurrentDir(fullpath, asiPlugin->modloader->gamepath, max);
+            }
+            
+            return currdir;
+        }
+        
+        // Gets the current working directory relative to the the game path
+        // If working directory is not anywhere near the game path, return null
+        // This is the manual version, where you send the current working directory (@fullpath) and game path (@gamepath)
+        const char* GetCurrentDir(const char* fullpath, const char* gamePath, size_t max)
+        {
+            const char* currdir = 0;
+            
+            // Iterate on the game path comparing it with the current working dir
+            for(size_t i = 0; i < max; ++i)
+            {
+                if(gamePath[i] == 0)    // End of game path?
                 {
-                    if(gamePath[i] == 0)    // End of game path?
+                    // Then here starts the relative part
+                    currdir = &fullpath[i];
+                    break;
+                }
+                else if(gamePath[i] != fullpath[i]) // Piece of gamepath not equal to the working dir? wow
+                {
+                    // Let's calm down, if working directory ended and game path is ending, we're still 'equal'
+                    if(fullpath[i] == 0 && gamePath[i] == '\\' && gamePath[i+1] == 0)
                     {
-                        // Then here starts the relative part
+                        // Point current directory to "\0" part of fullpath
                         currdir = &fullpath[i];
-                        break;
                     }
-                    else if(gamePath[i] != fullpath[i]) // Piece of gamepath not equal to the working dir? wow
-                    {
-                        // Let's calm down, if working directory ended and game path is ending, we're still 'equal'
-                        if(fullpath[i] == 0 && gamePath[i] == '\\' && gamePath[i+1] == 0)
-                        {
-                            // Point current directory to "\0" part of fullpath
-                            currdir = &fullpath[i];
-                        }
-                        break;
-                    }
+                    break;
                 }
             }
             
             return currdir;
         }
+        
         
     };
 
@@ -387,10 +432,19 @@ struct path_translator_basic : public path_translator_base
     path_translator_basic()
     {
         this->SetupSingleton();
-        bGetModuleFileName = (Symbol == aGetModuleFileNameA && LibName == aKernel32);
-        bFindFirstFile     = (Symbol == aFindFirstFileA && LibName == aKernel32);
-        bFindNextFile      = (Symbol == aFindNextFileA && LibName == aKernel32);
-        bFindClose         = (Symbol == aFindClose && LibName == aKernel32);
+
+        if(LibName == aKernel32)
+        {
+            bGetModuleFileName = (Symbol == aGetModuleFileNameA);
+            bSetCurrentDirectory=(Symbol == aSetCurrentDirectoryA);
+            bCreateFile        = (Symbol == aCreateFileA);
+            bFindFirstFile     = (Symbol == aFindFirstFileA);
+            bFindNextFile      = (Symbol == aFindNextFileA);
+            bFindClose         = (Symbol == aFindClose);
+            bIniOperations     = false;
+        }
+        
+        
     }
     
     // Let's extend CallInfo to work with out singleton, so we'll operate safe!
@@ -403,6 +457,11 @@ struct path_translator_basic : public path_translator_base
             
             if(pCaller) // Succesfully got caller pointer?
             {
+                if(Symbol == aSetCurrentDirectoryA)
+                {
+                    this->bSetDir = (pCaller == memory_pointer(0x836F3B).get());
+                }
+                    
                 // Identify the caller ASI from code segment pointer
                 if(SetupASI(asiPlugin->FindModuleFromAddress(pCaller), Symbol, LibName))
                     return true;

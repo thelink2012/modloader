@@ -56,22 +56,23 @@ struct path_translator_stdcall<Symbol, LibName, Ret(Args...)> : public path_tran
         
         // Get pointer to a address in the caller module (the return pointer actually)...
         if(!CaptureStackBackTrace(1, 1, &pReturn, 0)) pReturn = nullptr;
-        
+
         // Find the ASI information from the caller return pointer...
         if(info.FindInfo(pReturn))
         {
-            info.TranslateForCall(a...); // Translate the paths
-        }
-        
-        // Check if it was called from CLEO.asi
-        if(info.asi && info.asi->bIsMainCleo)
-        {
-            // If walking on files execute another path
-            if(info.base->bFindFirstFile || info.base->bFindNextFile || info.base->bFindClose)
+            // Check if it was called from CLEO.asi
+            if(info.asi && info.asi->bIsMainCleo)
             {
-                // Find all scripts in modloader
-                bDetoured = hacks::FindCleoScripts::Finder<Symbol, Ret>(result, a...);
+                // If walking on files execute another path
+                if(info.base->bFindFirstFile || info.base->bFindNextFile || info.base->bFindClose)
+                {
+                    // Find all scripts in modloader
+                    bDetoured = hacks::FindCleoScripts::Finder<Symbol, Ret>(result, a...);
+                }
             }
+            
+            if(!bDetoured)
+                info.TranslateForCall(a...); // Translate the paths
         }
         
         if(!bDetoured)

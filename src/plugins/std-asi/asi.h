@@ -10,13 +10,21 @@
 #include <string>
 #include <list>
 #include <vector>
-#include <memory>       // for unique_ptr
 #include <modloader.hpp>
 #include <modloader_util_path.hpp>
 using namespace modloader;
 
 // Forward path_translator_base from args_translator.h
 struct path_translator_base;
+
+// Cleo iVersion for scripts
+enum
+{
+    CLEO_VER_NONE       = '\0',
+    CLEO_VER_3          = '3',
+    CLEO_VER_4          = '4',
+    CLEO_VER_5          = '5',
+};
 
 
 /*
@@ -38,12 +46,15 @@ class CThePlugin : public modloader::CPlugin
         bool PosProcess();
         const char** GetExtensionTable();
         
-        //
+        /*
+         *  Information about asi plugins (and more)
+         */
         struct ModuleInfo
         {
             bool bIsASI;                // Is this a ASI module?
             bool bIsD3D9;               // Is this a D3D9.dll module?
             bool bIsMainExecutable;     // Is this the main executable? (gta_sa.exe etc)
+            bool bIsCleo;               // Is the main CLEO.asi or any .cleo plugin
             bool bIsMainCleo;           // Is the main CLEO.asi
             
             struct      // Hacks that some ASIs will need to work properly
@@ -52,25 +63,41 @@ class CThePlugin : public modloader::CPlugin
                 
             } hacks;
             
-            
+            HMODULE module;         // The module handle
             std::string name;       // The asi filename, like "bbb.asi"
             std::string path;       // The asi path, like "modloader/aaa/bbb.asi"
             std::string folder;     // The folder where the asi is at, like "modloader/aaa/"
-            std::vector<std::unique_ptr<path_translator_base>> translators;
+            std::vector<path_translator_base*> translators;
 
-            HMODULE module;         // The module handle
+            
 
             ModuleInfo(std::string&& path);
-            bool Load();
-            void Free();
+            bool Load();            // Loads the module
+            void Free();            // Frees the module
             
-            void PatchImports();
-            void RestoreImports();
+            void PatchImports();    // Patches IAT to translate arguments such as path
+            void RestoreImports();  // Unpatches the IAT
+            
+            // Find translator for @symbol and @libname on translators list
             path_translator_base* FindTranslatorFrom(const char* symbol, const char* libname);
         };
         
-        // List of asi fileswe need to load (or loaded)
-        std::list<ModuleInfo> asiList;  // It's called asiList but it's not limited to .asi files!
+        /*
+         *  Information about cleo scripts 
+         */
+        struct CsInfo
+        {
+            char        iVersion;
+            bool        bIsMission;
+            
+            std::string path;       // e.g. "modloader/foo/script.cs"
+            std::string folder;     // e.g. "modloader/foo/"
+            
+            CsInfo(const modloader::ModLoaderFile& file);
+            static bool GetVersionFromExtension(const char* ext, char& version);
+        };
+        
+        
         
         /*
          *  Finds a ModuleInfo from an address that's supposed to be inside it 
@@ -91,6 +118,19 @@ class CThePlugin : public modloader::CPlugin
             return nullptr;
         }
 
+        
+        typedef std::list<ModuleInfo>   ModuleInfoList;
+        typedef std::list<CsInfo>       CsInfoList;
+        
+        // List of asi files need to load (or loaded)
+        ModuleInfoList asiList;  // It's called asiList but it's not limited to .asi files!
+        
+        // List of CLEO scripts (.cs, .cs3, .cs4, .cs5, .cm)
+        CsInfoList     csList;   // It's called cs but it's not limited to .cs files (e.g. cm files works)
+        
+        
+
+        
 };
 
 #endif	/* ASI_H */

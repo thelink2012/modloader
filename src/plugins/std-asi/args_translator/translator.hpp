@@ -6,7 +6,6 @@
  *      [*] Redirects ASI system calls that uses a path as input and translates the path to it's actual folder
  *      [*] Make CLEO.asi load cleo scripts inside modloader
  * 
- *  This file should be inlined in asi.cpp
  */
 
 #ifndef ARGS_TRANSLATOR_HPP

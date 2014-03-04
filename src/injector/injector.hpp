@@ -1,5 +1,5 @@
 /*
- *  Injectors - Light Version
+ *  Injectors - Base Header
  *	Header with helpful stuff for ASI memory hacking
  *
  *  (C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
@@ -18,8 +18,6 @@
 #include <windows.h>
 #include <cstdint>
 #include <cstdio>
-#include <functional>
-#include <utility>
 
 namespace injector
 {
@@ -539,13 +537,13 @@ inline int GetRelativeOffset(memory_pointer_tr abs_value, memory_pointer_tr end_
  *  ReadRelativeOffset
  *      Reads relative offset from address @at
  */
-inline memory_pointer_raw ReadRelativeOffset(memory_pointer_tr at, size_t sizeof_addr = 4)
+inline memory_pointer_raw ReadRelativeOffset(memory_pointer_tr at, size_t sizeof_addr = 4, bool vp = true)
 {
 	switch(sizeof_addr)
 	{
-		case 1: return (GetAbsoluteOffset(ReadMemory<int8_t> (at, true), at+sizeof_addr));
-		case 2: return (GetAbsoluteOffset(ReadMemory<int16_t>(at, true), at+sizeof_addr));
-		case 4: return (GetAbsoluteOffset(ReadMemory<int32_t>(at, true), at+sizeof_addr));
+		case 1: return (GetAbsoluteOffset(ReadMemory<int8_t> (at, vp), at+sizeof_addr));
+		case 2: return (GetAbsoluteOffset(ReadMemory<int16_t>(at, vp), at+sizeof_addr));
+		case 4: return (GetAbsoluteOffset(ReadMemory<int32_t>(at, vp), at+sizeof_addr));
 	}
 	return nullptr;
 }
@@ -554,13 +552,13 @@ inline memory_pointer_raw ReadRelativeOffset(memory_pointer_tr at, size_t sizeof
  *  MakeRelativeOffset
  *      Writes relative offset into @at based on absolute destination @dest
  */
-inline void MakeRelativeOffset(memory_pointer_tr at, memory_pointer_tr dest, size_t sizeof_addr = 4)
+inline void MakeRelativeOffset(memory_pointer_tr at, memory_pointer_tr dest, size_t sizeof_addr = 4, bool vp = true)
 {
 	switch(sizeof_addr)
 	{
-		case 1: WriteMemory<int8_t> (at, static_cast<int8_t> (GetRelativeOffset(dest, at+sizeof_addr)), true);
-		case 2: WriteMemory<int16_t>(at, static_cast<int16_t>(GetRelativeOffset(dest, at+sizeof_addr)), true);
-		case 4: WriteMemory<int32_t>(at, static_cast<int32_t>(GetRelativeOffset(dest, at+sizeof_addr)), true);
+		case 1: WriteMemory<int8_t> (at, static_cast<int8_t> (GetRelativeOffset(dest, at+sizeof_addr)), vp);
+		case 2: WriteMemory<int16_t>(at, static_cast<int16_t>(GetRelativeOffset(dest, at+sizeof_addr)), vp);
+		case 4: WriteMemory<int32_t>(at, static_cast<int32_t>(GetRelativeOffset(dest, at+sizeof_addr)), vp);
 	}
 }
 
@@ -569,14 +567,14 @@ inline void MakeRelativeOffset(memory_pointer_tr at, memory_pointer_tr dest, siz
  *      Gets the destination of a branch instruction at address @at
  *      *** Works only with JMP and CALL for now ***
  */
-inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at)
+inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at, bool vp = true)
 {
-	switch(ReadMemory<uint8_t>(at, true))
+	switch(ReadMemory<uint8_t>(at, vp))
 	{
         // We need to handle other instructions (and prefixes) later...
 		case 0xE8:	// call rel
 		case 0xE9:	// jmp rel
-			return ReadRelativeOffset(at + 1, 4);
+			return ReadRelativeOffset(at + 1, 4, vp);
 	}
 	return nullptr;
 }
@@ -586,11 +584,11 @@ inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at)
  *      Creates a JMP instruction at address @at that jumps into address @dest
  *      If there was already a branch instruction there, returns the previosly destination of the branch
  */
-inline memory_pointer_raw MakeJMP(memory_pointer_tr at, memory_pointer_tr dest)
+inline memory_pointer_raw MakeJMP(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
 {
-	auto p = GetBranchDestination(at);
-	WriteMemory<uint8_t>(at, 0xE9, true);
-	MakeRelativeOffset(at+1, dest);
+	auto p = GetBranchDestination(at, vp);
+	WriteMemory<uint8_t>(at, 0xE9, vp);
+	MakeRelativeOffset(at+1, dest, 4, vp);
 	return p;
 }
 
@@ -599,11 +597,11 @@ inline memory_pointer_raw MakeJMP(memory_pointer_tr at, memory_pointer_tr dest)
  *      Creates a CALL instruction at address @at that jumps into address @dest
  *      If there was already a branch instruction there, returns the previosly destination of the branch
  */
-inline memory_pointer_raw MakeCALL(memory_pointer_tr at, memory_pointer_tr dest)
+inline memory_pointer_raw MakeCALL(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
 {
-	auto p = GetBranchDestination(at);
-	WriteMemory<uint8_t>(at, 0xE8, true);
-	MakeRelativeOffset(at+1, dest);
+	auto p = GetBranchDestination(at, vp);
+	WriteMemory<uint8_t>(at, 0xE8, vp);
+	MakeRelativeOffset(at+1, dest, 4, vp);
 	return p;
 }
 
@@ -612,340 +610,44 @@ inline memory_pointer_raw MakeCALL(memory_pointer_tr at, memory_pointer_tr dest)
  *      Creates a JA instruction at address @at that jumps if above into address @dest
  *      If there was already a branch instruction there, returns the previosly destination of the branch
  */
-inline void MakeJA(memory_pointer_tr at, memory_pointer_tr dest)
+inline void MakeJA(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
 {
-	WriteMemory<uint16_t>(at, 0x87F0, true);
-	MakeRelativeOffset(at+2, dest);
+	WriteMemory<uint16_t>(at, 0x87F0, vp);
+	MakeRelativeOffset(at+2, dest, 4, vp);
 }
 
 /*
  *  MakeNOP
  *      Creates a bunch of NOP instructions at address @at
  */
-inline void MakeNOP(memory_pointer_tr at, size_t count = 1)
+inline void MakeNOP(memory_pointer_tr at, size_t count = 1, bool vp = true)
 {
-    MemoryFill(at, 0x90, count, true);
+    MemoryFill(at, 0x90, count, vp);
 }
 
-inline void MakeRET(memory_pointer_tr at, int pop = 0)
+/*
+ *  MakeRET
+ *      Creates a RET instruction at address @at popping @pop values from the stack
+ *      If @pop is equal to 0 it will use the 1 byte form of the instruction
+ */
+inline void MakeRET(memory_pointer_tr at, uint16_t pop = 0, bool vp = true)
 {
-    WriteMemory(at, pop ? 0xC2 : 0xC3, true);
-    if(pop) WriteMemory(at + 1, pop, true);
+    WriteMemory(at, pop? 0xC2 : 0xC3, vp);
+    if(pop) WriteMemory(at+1, pop, vp);
 }
 
 
 
-#if __cplusplus >= 201103L || defined(INJECTOR_USE_VARIADIC_TEMPLATES)
-
-    // Call function at @p returning @Ret with args @Args
-    template<class Ret, class ...Args>
-    inline Ret Call(memory_pointer_tr p, Args&&... a)
-    {
-        Ret(*fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
-    
-    template<class Ret, class ...Args>
-    inline Ret StdCall(memory_pointer_tr p, Args&&... a)
-    {
-        Ret(__stdcall *fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
-    
-    template<class Ret, class ...Args>
-    inline Ret ThisCall(memory_pointer_tr p, Args&&... a)
-    {
-        Ret(__thiscall *fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
-
-    template<class Ret, class ...Args>
-    inline Ret FastCall(memory_pointer_tr p, Args&&... a)
-    {
-        Ret(__fastcall *fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
 
 
-    /*
-     * 
-     */
-    template<uintptr_t addr1, class Prototype>
-    struct function_hooker;
-
-    template<uintptr_t addr1, class Ret, class ...Args>
-    struct function_hooker<addr1, Ret(Args...)>
-    {
-        public:
-            static const uintptr_t addr = addr1;
-            typedef Ret(*func_type)(Args...);
-            typedef Ret(*hook_type)(func_type, Args&...);
-
-        protected:
-            
-            // Stores the previous function pointer
-            static func_type& original()
-            { static func_type f; return f; }
-            
-            // Stores our hook pointer
-            static hook_type& hook()
-            { static hook_type h; return h; }
-
-            // The hook caller
-            static Ret call(Args... a)
-            {
-                return hook()(original(), a...);
-            }
-
-        public:
-            // Constructs passing information to the static variables
-            function_hooker(hook_type hooker)
-            {
-                hook() = hooker;
-                original() = MakeCALL(addr, raw_ptr(call)).get();
-            }
-            
-            // Restores the previous call before the hook happened
-            static void restore()
-            {
-                MakeCALL(addr, raw_ptr(original()));
-            }
-    };
-    
-    //
-    //
-    template<uintptr_t addr1, class Prototype>
-    struct function_hooker_fastcall;
-
-    template<uintptr_t addr1, class Ret, class ...Args>
-    struct function_hooker_fastcall<addr1, Ret(Args...)>
-    {
-        public:
-            static const uintptr_t addr = addr1;
-            typedef Ret(__fastcall *func_type)(Args...);
-            typedef Ret(*hook_type)(func_type, Args&...);
-
-        protected:
-            
-            // Stores the previous function pointer
-            static func_type& original()
-            { static func_type f; return f; }
-            
-            // Stores our hook pointer
-            static hook_type& hook()
-            { static hook_type h; return h; }
-
-            // The hook caller
-            static Ret __fastcall call(Args... a)
-            {
-                return hook()(original(), a...);
-            }
-
-        public:
-            // Constructs passing information to the static variables
-            function_hooker_fastcall(hook_type hooker)
-            {
-                hook() = hooker;
-                original() = MakeCALL(addr, raw_ptr(call)).get();
-            }
-            
-            // Restores the previous call before the hook happened
-            static void restore()
-            {
-                MakeCALL(addr, raw_ptr(original()));
-            }
-    };
-    
-    template<uintptr_t addr1, class Prototype>
-    struct function_hooker_stdcall;
-
-    template<uintptr_t addr1, class Ret, class ...Args>
-    struct function_hooker_stdcall<addr1, Ret(Args...)>
-    {
-        public:
-            static const uintptr_t addr = addr1;
-            typedef Ret(__stdcall *func_type)(Args...);
-            typedef Ret(*hook_type)(func_type, Args&...);
-
-        protected:
-            
-            // Stores the previous function pointer
-            static func_type& original()
-            { static func_type f; return f; }
-            
-            // Stores our hook pointer
-            static hook_type& hook()
-            { static hook_type h; return h; }
-
-            // The hook caller
-            static Ret __stdcall call(Args... a)
-            {
-                return hook()(original(), a...);
-            }
-
-        public:
-            // Constructs passing information to the static variables
-            function_hooker_stdcall(hook_type hooker)
-            {
-                hook() = hooker;
-                original() = MakeCALL(addr, raw_ptr(call)).get();
-            }
-            
-            // Restores the previous call before the hook happened
-            static void restore()
-            {
-                MakeCALL(addr, raw_ptr(original()));
-            }
-    };
-    
-    
-    template<class T> inline
-    T make_function_hook(typename T::hook_type hooker)
-    {
-        return T(hooker);
-    }
-    
-    template<uintptr_t addr, class T, class U> inline
-    function_hooker<addr, T> make_function_hook(U hooker)
-    {
-        typedef function_hooker<addr, T> type;
-        return make_function_hook<type>(hooker);
-    }
-
-    template<class T>
-    struct scoped_hook
-    {
-        scoped_hook(typename T::hook_type hooker)   { make_function_hook<T>(hooker); }
-        scoped_hook()                               {}
-        scoped_hook(const T&)                       {}
-        ~scoped_hook()                              { T::restore(); }
-    };
-
-    template<uintptr_t addr1, size_t size = 5>
-    struct scoped_nop
-    {
-        memory_pointer_raw addr;
-        char buf[size];
-        
-        scoped_nop(memory_pointer_tr addrx = -1)
-        {
-            this->addr = (uintptr_t)((uintptr_t)(addrx) == (uintptr_t)(-1)? addr1 : addrx);
-            ReadMemoryRaw(this->addr, this->buf, size, true);
-            MakeNOP(this->addr, size);
-        }
-        
-        ~scoped_nop()
-        {
-            WriteMemoryRaw(this->addr, this->buf, size, true);
-        }
-    };
 
 
-    class save_manager
-    {
-        private:
-            // Hooks
-            typedef function_hooker<0x53E59B, char(void)> fnew_hook;
-            typedef function_hooker<0x53C6EA, void(void)> ldng_hook;
-            typedef function_hooker<0x53C70B, char(char*)> ldngb_hook;
-            typedef function_hooker_fastcall<0x578DFA, int(void*, int, int)> onsav_hook;
-            
-            // Prototypes
-            typedef std::function<void(int)> OnLoadType;
-            typedef std::function<void(int)> OnSaveType;
-        
-            // Callbacks storage
-            static OnLoadType& OnLoadCallback()
-            { static OnLoadType cb; return cb; }
-        
-            static OnSaveType& OnSaveCallback()
-            { static OnSaveType cb; return cb; }
-        
-            // Necessary game vars
-            static bool IsLoad()
-            { return ReadMemory<char>(0xBA6748+0x60) != 0; }
-            static char GetSlot()
-            { return ReadMemory<char>(0xBA6748+0x15F); }
-            static bool SetDirMyDocuments()
-            {
-                return (memory_pointer(0x538860).get<int()>()  ()) != 0;
-            }
-            
-            // Calls on load callback if possible
-            static void CallOnLoad(int slot)
-            { if(auto& cb = OnLoadCallback()) cb(slot); }
-            
-            // Calls on save callback if possible
-            static void CallOnSave(int slot)
-            { if(auto& cb = OnSaveCallback()) cb(slot); }
 
-            // Patches the game to notify callbacks
-            static void Patch()
-            {
-                static bool bPatched = false;
-                if(bPatched == true) return;
-                bPatched = true;
-                
-                // On the first time the user does a new-game/load-game...
-                make_function_hook<fnew_hook>([](fnew_hook::func_type func)
-                {
-                    if(IsLoad() == false) CallOnLoad(-1);
-                    return func();
-                });
-            
-                // On the second time+ a new game happens or whenever a load game happens...
-                make_function_hook<ldng_hook>([](ldng_hook::func_type func)
-                {
-                    if(IsLoad() == false)  CallOnLoad(-1);
-                    return func();
-                });
-                
-                // Whenever a load game happens
-                make_function_hook<ldngb_hook>([](ldngb_hook::func_type GenericLoad, char*& e)
-                {
-                    auto result = GenericLoad(e);
-                    if(result) CallOnLoad(GetSlot());
-                    return result;
-                });
-                
-                // Whenever a save game happens
-                make_function_hook<onsav_hook>([](onsav_hook::func_type GenericSave, void*& self, int&, int& savenum)
-                {
-                    auto result = GenericSave(self, 0, savenum);
-                    if(!result) CallOnSave(GetSlot());
-                    return result;
-                });
-            }
-            
-        public:
-            // RAII wrapper to SetDirMyDocuments, scoped change to user directory
-            struct scoped_userdir
-            {
-                char buffer[MAX_PATH];
-                
-                scoped_userdir()
-                {
-                    GetCurrentDirectoryA(sizeof(buffer), buffer);
-                    SetDirMyDocuments();
-                }
-                
-                ~scoped_userdir()
-                { SetCurrentDirectoryA(buffer); }
-            };
-            
-            // Setup a callback to call whenever a new game or load game happens
-            static void on_load(const OnLoadType& fn)
-            { Patch(); OnLoadCallback() = fn; }
-            
-            // Setup a callback to call whenever a save game happens
-            static void on_save(const OnSaveType& fn)
-            { Patch(); OnSaveCallback() = fn; }
-    };
+/*
+ * 
+ * 
+ */
 
-#endif
-
-    
-    
 inline bool game_version_manager::DetectIII()
 {
     if(this->IsUnknown() || this->IsIII())
@@ -1006,11 +708,6 @@ inline bool game_version_manager::DetectSA()
     }
 	return false;
 }
-    
-    
-    
+
 } // namespace 
 
-#ifdef INJECTOR_DO_USING_NAMESPACE
-using namespace injector;
-#endif

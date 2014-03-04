@@ -13,8 +13,7 @@
 #include <set>
 #include <vector>
 #include <type_traits>
-#include "Injector.h"
-#include <modloader_util_injector.hpp>    // Must be included after Injector.h
+#include <modloader_util_injector.hpp>
 
 /*
  * The following structure is a helper for the BuildDataFile() function

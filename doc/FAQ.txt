@@ -32,7 +32,7 @@
        in SA:MP, well, I don't know, try it.
 
     Q: Can it load sound files?
-    A: Not yet
+    A: Yes, it even fixes the common sound bugs that happens with replaced sounds.
 
     Q: I found a bug!
     A: Then report it! Don't forget to attach the file modloader/modloader.log.

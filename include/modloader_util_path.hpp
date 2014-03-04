@@ -27,6 +27,13 @@ namespace modloader
     static const char* szNullFile = "NUL";          // "/dev/null" on POSIX systems
     static const char cNormalizedSlash = '\\';      // The slash used in the normalized path
     
+    template<class T>
+    const T* GetPathSeparators()
+    {
+        static const T slash[] = { '/', '\\', 0 };
+        return slash;
+    }
+    
     /*
      *  MakeSureStringIsDirectory
      *      Makes sure the string @dir is a directory path. If @touchEmpty is true,
@@ -198,7 +205,8 @@ namespace modloader
      *      @path: Path to get the last component from
      *      @return: Returns the last path component position in the string
      */
-    inline std::string::size_type GetLastPathComponent(std::string path, size_t count = 1)
+    template<class T>
+    inline size_t GetLastPathComponent(std::basic_string<T> path, size_t count = 1)
     {
         size_t pos = path.npos;
         size_t x = path.npos;
@@ -211,7 +219,7 @@ namespace modloader
             // Do the search
             for(size_t i = 0; i < count; ++i)
             {
-                pos = path.find_last_of("/\\", x);
+                pos = path.find_last_of(GetPathSeparators<T>(), x);
                 x = pos - 1;
                 if(pos == 0 || pos == path.npos) break;
             }

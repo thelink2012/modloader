@@ -10,7 +10,8 @@
 #define INJECTOR_USE_VARIADIC_TEMPLATES
 #define INJECTOR_GVM_HAS_TRANSLATOR
 
-#include "Injector.h"
+#include <injector/injector.hpp>
+#include <injector/hooking.hpp>
 #include <map>
 
 namespace modloader
@@ -177,6 +178,9 @@ namespace modloader
                 
                 // ^ The above table must be restructured
                 // Pointers there may be repeating below:
+                
+                // std-asi
+                map[0x836F3B] = 0x836F3B;   // chdir return ptr
                 
                 // FX pointers
                 map[0x5B8F58] = 0x5B8F58;
