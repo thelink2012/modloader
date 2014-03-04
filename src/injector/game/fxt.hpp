@@ -43,6 +43,11 @@ namespace injector
             typedef const char* (__fastcall *GetType)(void*, int, const char*);
             typedef typename TextMap::key_type hash_type;  
             
+            // Marks if this fxt manager is enabled or disabled
+            // We need this because we can't just unhook the game anymore or we'd cause problems
+            static bool& IsEnabled()
+            { static bool b = false; return b; }
+            
             // Store the raw pointer that CText::Get is located at
             static memory_pointer_raw& GetPtr()
             { static memory_pointer_raw x; return x; }
@@ -90,6 +95,24 @@ namespace injector
                 GetPtr() = memory_pointer(CText_Get).get<void>();   // Save the CText::Get pointer in raw form for fast access
                 UnprotectMemory(GetPtr(), 5, old);                  // Unprotect the memory forever
                 MakeHook();                                         // Make our hook
+                enable();                                           // Enable this
+            }
+            
+            /*
+             *  Enable this
+             */
+            static void enable()
+            {
+                patch();
+                IsEnabled() = true;
+            }
+            
+            /*
+             *  Disables this 
+             */
+            static void disable()
+            {
+                IsEnabled() = false;
             }
 
             
@@ -110,9 +133,12 @@ namespace injector
             // Hooked CText::Get
             static const char* __fastcall GxtHook(void* self, int, const char* key)
             {
-                // Try to find @key in our text map
-                if(const char* value = FindFromKey(key))
-                    return value;
+                if(IsEnabled())
+                {
+                    // Try to find @key in our text map
+                    if(const char* value = FindFromKey(key))
+                        return value;
+                }
 
                 // Nothing found, try with original call
                 return ForwardGet(self, key);

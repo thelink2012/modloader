@@ -1,6 +1,5 @@
 Primary:
 [ ] Track loader (.ogg)
-[ ] Loading CLEO scripts without copy-paste (using std-asi IAT hooking to accomplish that)
 [ ] Support for more data files (std-data)
 
 Secondary:

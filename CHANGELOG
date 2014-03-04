@@ -1,30 +1,30 @@
-v0.1.14 (IN DEVELOPMENT)
+v0.1.14 -- Mar 04 2014
     Feature: CLEO files do not need copy and paste to work anymore, they're injected into CLEO.asi searches
     Feature: Binary IPLs are automatically detected
-    Bug fix: Binary IPLs being handled by the wrong plugin fixed
+    Bug fix: Fixed binary IPLs being handled wrongly
     Bug fix: Fixed crash on exit if playing SA:MP
+    Bug fix: Fixed new clothing models not working properly
     Bug fix: Other minor fixes
 
-
-v0.1.12
+v0.1.12 -- Feb 01 2014
     Bug fix: Random crashes caused by std-bank fixed
     Bug fix: The wave loader accepts the extended wave format header now
 
-v0.1.11
+v0.1.11 -- Jan 31 2014
     Bug fix: std-img being auto-deleted fixed
 
-v0.1.10
+v0.1.10 -- Jan 31 2014
     Feature: The known bug on modded sound effects has been fixed
     Feature: Sound effects loader implemented (.wav)
     Bug fix: ASI files linked using the Borland linker won't crash modloader anymore (Thanks to SilentPL).
 
-v0.1.8
+v0.1.8  -- Jan 23 2014
     Feature: Implemented overrider for fonts.dat
     Feature: Text files (.txt) greater than 10KB will not be detect as readme files
     Bug fix: Anti-flooding for logging the failure on CaptureStackBackTrace
     Other stuff I don't remember of.
 
-v0.1.7
+v0.1.7  -- Jan 21 2014
     Feature: ASI plugins that rely on external files on run-time works fine now, except for a few exceptions.
     Feature: The loader can handle D3D9 hooks
     Feature: Sacky's Limit Adjuster removed from modloader
@@ -36,12 +36,11 @@ v0.1.7
     Bug fix: Fixed the conflict between the clothing file COACH and the vehicle file COACH
     Bug fix: Other minor fixes
     
-
-v0.1.6
+v0.1.6  -- Jan 12 2014
     Feature: Implemented file mixer for plants.dat
     Bug fix: Clothes models now works properly... Really...
 
-v0.1.5
+v0.1.5  -- Jan 11 2014
     Feature: std-cleo now handles .cleo plugins by itself
     Feature: std-cleo now handles .fxt files by itself
     Bug fix: Data mixing is working fine now
@@ -51,6 +50,6 @@ v0.1.5
     Bug fix: Collision files now works properly
     Bug fix: Other minor fixes
 
-v0.1
+v0.1  -- Dec 30 2013
     First public release
 

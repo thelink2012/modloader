@@ -156,6 +156,7 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
     else
     {
         fxt_files.emplace_back(GetFilePath(file));
+        return true;
     }
     return false;
 }

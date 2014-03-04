@@ -10,6 +10,7 @@
 #define	ARGS_TRANSLATOR_XTRANSLATOR_HPP
 
 // Some symbols need forwarding because we're going to check for them
+extern const char aBass[];
 extern const char aKernel32[];
 extern const char aCreateFileA[];
 extern const char aSetCurrentDirectoryA[];

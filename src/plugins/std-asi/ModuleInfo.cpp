@@ -9,8 +9,15 @@
 #include "asi.h"
 #include "args_translator/translator.hpp"
 #include <map>
+#include <tlhelp32.h>
 
 using namespace modloader;
+
+
+template<class F>
+static bool ModulesWalk(uint32_t pid, F functor);
+
+
 
 /*
  *  Constructs a ModuleInfo object
@@ -26,7 +33,10 @@ CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
     
     // Setup flags
     if(!strcmp(filename, "d3d9.dll", false))
+    {
         bIsD3D9 = true;
+        bIsASI = true;
+    }
     else if(!strcmp(filename, "gta", false))
         bIsMainExecutable = true;
     else if(!strcmp("CLEO.asi", filename, false))
@@ -58,7 +68,32 @@ CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
     this->name   = filename;
     this->path = std::move(path);
 }
-            
+
+
+/*
+ *  Find all cleo plugins already loaded and push them into asi list 
+ */
+void CThePlugin::LocateCleoPlugins()
+{
+    ModulesWalk(GetCurrentProcessId(), [this](const MODULEENTRY32& entry)
+    {
+        // Find the extension for this module
+        if(const char* p = strrchr(entry.szModule, '.'))
+        {
+            // Is it a .cleo plugin?
+            if(IsFileExtension(p+1, "cleo"))
+            {
+                // Yep, take the relative path and push it to the asi list
+                p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->modloader->gamepath, -1);
+                this->asiList.emplace_back(p);
+            }
+        }
+        
+        return true;
+    });
+}
+
+
 /*
  *  Loads the module assigned to our field path 
  */
@@ -291,6 +326,75 @@ void CThePlugin::ModuleInfo::RestoreImports()
 }
 
 
+
+
+
+
+
+/*
+ *  ModulesWalk
+ *      Iterates on the list of modules loaded in process id @pid and calls @functor with the module information
+ *      Functor prototype should be like [bool functor(const MODULEENTRY32& entry)]
+ */
+template<class F>
+static bool ModulesWalk(uint32_t pid, F functor)
+{
+    HANDLE hSnapshot;
+    MODULEENTRY32 entry;
+    entry.dwSize = sizeof(entry);
+    bool bSkip = false;
+    bool bDoIt = true;
+    
+    // Open the modules snapshot for process id @pid
+    hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+    if(hSnapshot != INVALID_HANDLE_VALUE)
+    {
+        // Get the first module on the snapshot
+        if(!Module32First(hSnapshot, &entry))
+        {
+            // Failed to get the module, what's it?
+            if(GetLastError() != ERROR_NO_MORE_FILES)
+                bSkip = true;   // Some internal failure, just skip this buffer
+            else
+                bDoIt = false;  // Don't continue the search
+        }
+        
+        // Continue the search?
+        if(bDoIt)
+        {
+            do
+            {
+                // Should skip this module data (because it is an invalid data)?
+                if(!bSkip)
+                {
+                    // Call the functor with the data and check out if we should continue the search
+                    if(!functor(entry)) break;
+                }
+                
+                // Get the next module on the snapshot
+                if(!Module32Next(hSnapshot, &entry))
+                {
+                    // Failed, why?
+                    if(GetLastError() != ERROR_NO_MORE_FILES)
+                        bSkip = true;   // Just skip this data
+                    else
+                        break;          // End of the search
+                }
+                
+            } while(true);
+        }
+        
+        // Search is done
+        FindClose(hSnapshot);
+        return true;
+    }
+    
+    // Something gone wrong
+    return false;
+}
+
+
+
 /* ----------------------------------------------------------------------------------------------------------------------- */
 
 /*
@@ -445,3 +549,19 @@ static path_translator_stdcall<aD3DXCreateEffectFromFileW, aD3DX, HRESULT(void*,
 
 
 
+/*
+ *  Bass Library
+ * 
+ */
+extern const char aBass[] = "bass.dll";
+extern const char aBASS_MusicLoad[]  = "BASS_MusicLoad";
+extern const char aBASS_SampleLoad[] = "BASS_SampleLoad";
+extern const char aBASS_StreamCreateFile[] = "BASS_StreamCreateFile";
+
+// Translators for bass.dll
+static path_translator_stdcall<aBASS_MusicLoad, aBass, DWORD(BOOL, const char*, uint64_t, DWORD, DWORD, DWORD)>
+        psBASS_MusicLoad(0, 0, AR_PATH_INE, 0, 0, 0, 0);
+static path_translator_stdcall<aBASS_SampleLoad, aBass, DWORD(BOOL, const char*, uint64_t, DWORD, DWORD, DWORD)>
+        psBASS_SampleLoad(0, 0, AR_PATH_INE, 0, 0, 0, 0);
+static path_translator_stdcall<aBASS_StreamCreateFile, aBass, DWORD(BOOL, const char*, uint64_t, uint64_t, DWORD)>
+        psBASS_StreamCreateFile(0, 0, AR_PATH_INE, 0, 0, 0);

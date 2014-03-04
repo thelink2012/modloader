@@ -10,7 +10,6 @@
 #include <modloader_util.hpp>
 #include <modloader_util_path.hpp>
 #include <map>
-
 using namespace modloader;
 
 
@@ -20,7 +19,6 @@ static CThePlugin plugin;
 
 // <lower_case_asi_name, file_size>
 static std::map<std::string, size_t> incompatible;
-
 
 /*
  *  Export plugin object data
@@ -52,7 +50,7 @@ const char* CThePlugin::GetVersion()
 
 const char** CThePlugin::GetExtensionTable()
 {
-    static const char* table[] = {  "asi", "dll", "cleo",   // TODO FXT
+    static const char* table[] = {  "asi", "dll", "cleo",
                                     "cm", "cs", "cs3", "cs4", "cs5",
                                     0 };
     return table;
@@ -164,6 +162,9 @@ bool CThePlugin::PosProcess()
         this->asiList.emplace_back("CLEO.asi");
     }
     
+    // Find all already loaded .cleo plugins (loaded by CLEO.asi)
+    this->LocateCleoPlugins();
+    
     // Iterate on the asi list loading each asi file
     for(auto& asi : this->asiList)
     {
@@ -184,3 +185,4 @@ bool CThePlugin::PosProcess()
 
     return true;
 }
+

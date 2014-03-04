@@ -216,6 +216,7 @@ namespace injector
             }
             
             // Restore the previosly saved data
+            // TODO what if someone placed a hook there too, after my hook? What to do?
             void restore()
             {
                 if(this->saved)

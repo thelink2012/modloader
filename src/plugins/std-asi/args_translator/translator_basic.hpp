@@ -20,6 +20,7 @@
 
 #include "xtranslator.hpp"
 #include "hacks/RyosukeSetModule.hpp"
+#include "hacks/Bass.hpp"
 
 using namespace injector;
 using namespace cwc;
@@ -76,6 +77,7 @@ struct path_translator_base
     bool bFindFirstFile;            // ^
     bool bFindNextFile;             // ^
     bool bFindClose;                // ^
+    bool bDoBassHack;               // ^
     
     // Almost static vars (he), the value is always the same in all objects
     int npath;              // Num args that uses a path
@@ -161,7 +163,8 @@ struct path_translator_base
         static const size_t pool_elem_size = MAX_PATH * sizeof(wchar_t);
 
         bool bSetDir;                       // Call comming from gta_sa.exe:_chdir
-               
+        bool bAbsolutePath;                 // Is translating a path with absolute path?       
+        
         std::unique_ptr<char[]> path_pool;  // Character pool
         size_t path_pool_used;              // Size (not number of elements) used in the pool
         
@@ -236,6 +239,13 @@ struct path_translator_base
                     // If translating first argument for GetModuleFileName in a Ryosuke plugin
                     // override this argument with the plugin module instead of a (NULL) module.
                     if(N == 1) hacks::RyosukeSetModule(&x, asi->module);
+                }
+                // Hack for import hacked for bass.dll
+                else if(base->bDoBassHack)
+                {
+                    // Don't continue if first param (BOOL mem) is TRUE, it isn't a path on the next param
+                    if(N == 1 && hacks::BassIsMem(x))
+                        return;
                 }
             }
             
@@ -314,13 +324,13 @@ struct path_translator_base
         template<class T, class F>
         void TranslatePath(const T*& arg, char type, F build_path)
         {
-            // If it isn't a absolute path, go ahead for the translation
-            // Accept absolute path only from SetDir or ini operation call
-            if(!IsAbsolutePath(arg) || this->bSetDir || base->bIniOperations)
+            if(true)
             {
                 // Translate SetCurrentDirectory call only when coming from SetDir
                 if(!base->bSetCurrentDirectory || this->bSetDir)
                 {
+                    this->bAbsolutePath = IsAbsolutePath(arg);
+
                     if(asi->bIsMainExecutable)
                     {
                         // If this is the module for the main game executable, calm down! It's special of course...
@@ -351,15 +361,17 @@ struct path_translator_base
         template<class T, class F> void TranslatePathForASI(const T*&, char, F);
         
         template<class T, class M, class F>
-        bool CxBuildPath(T* p, const M& module, const char* currdir, const T*& arg, F build_path);
+        bool CxBuildPath(T* p, const M& module, const char* currdir, const T*& arg, F build_path, bool bForce);
         
         
         
         
+        template<class T>
+        bool GetCurrentDir(const T*& arg, char type, const char*& currdir, char buffer[MAX_PATH]);
         
         // Gets the current working directory relative to the the game path
         // If working directory is not anywhere near the game path, return null
-        const char* GetCurrentDir(char* buffer, size_t max)
+        static const char* GetCurrentDir(char* buffer, size_t max)
         {
             char *fullpath = buffer;
             const char* currdir = 0;
@@ -377,7 +389,7 @@ struct path_translator_base
         // Gets the current working directory relative to the the game path
         // If working directory is not anywhere near the game path, return null
         // This is the manual version, where you send the current working directory (@fullpath) and game path (@gamepath)
-        const char* GetCurrentDir(const char* fullpath, const char* gamePath, size_t max)
+        static const char* GetCurrentDir(const char* fullpath, const char* gamePath, size_t max)
         {
             const char* currdir = 0;
             
@@ -433,6 +445,8 @@ struct path_translator_basic : public path_translator_base
     {
         this->SetupSingleton();
 
+        bDoBassHack = (LibName == aBass);
+        
         if(LibName == aKernel32)
         {
             bGetModuleFileName = (Symbol == aGetModuleFileNameA);
@@ -443,8 +457,6 @@ struct path_translator_basic : public path_translator_base
             bFindClose         = (Symbol == aFindClose);
             bIniOperations     = false;
         }
-        
-        
     }
     
     // Let's extend CallInfo to work with out singleton, so we'll operate safe!

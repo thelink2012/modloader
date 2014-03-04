@@ -13,6 +13,7 @@
 #include "CDirectory.h"
 #include "img.h"
 #include "CImgDescriptor.h"
+#include "core/CModLoader.hpp"
 #include <modloader_util_injector.hpp>
 #include <modloader_util_path.hpp>
 using namespace modloader;
@@ -141,6 +142,17 @@ class CAbstractStreaming
             if(pModel) this->Reimport(*pModel, index);
             else       this->RemoveImport(index);
         }
+        
+        // Fills a CDirectoryEntry with the data from the model file @file
+        static void FillDirectoryEntry(CDirectoryEntry& entry, ModelFile& model)
+        {
+            strncpy(entry.filename, model.name.data(), 23);
+            entry.filename[23]  = 0;
+            entry.fileOffset    = 0;
+            entry.sizePriority1 = 0;
+            entry.sizePriority2 = model.GetSizeInBlocks();
+        }
+        
         
 } abstract;
 
@@ -336,7 +348,8 @@ void CAbstractStreaming::RequestClothes(int index)
 
 /*
  *  FixClothesDirectory
- *      Fix CDirectory size fields for imported clothes 
+ *      Fix CDirectory size fields for imported clothes
+ *      Also adds new items to the directory
  */
 void CAbstractStreaming::FixClothesDirectory(CDirectory& dir)
 {
@@ -357,6 +370,31 @@ void CAbstractStreaming::FixClothesDirectory(CDirectory& dir)
         }
     }
     
+    // Add new entries to the directory
+    auto& directory = *playerImgDirectory;
+    for(auto& model_pair : this->clothes)
+    {
+        ModelFile& model = model_pair.second;
+        
+        // Check if this model is a clothing item and it's not present on player.img directory
+        if(model.IsClothes() && !model.IsAlsoPresentOnPlayerImg())
+        {
+            // Add it to the directory list (TODO call 0x00532310 instead ???)
+            if(directory.m_dwCount >= directory.m_dwSize)
+            {
+                imgPlugin->Log("Warning: Clothes directory is full!");
+            }
+            else
+            {
+                // Make abstract entry in there
+                auto& entry = directory.m_pEntries[directory.m_dwCount++];
+                FillDirectoryEntry(entry, model);           // Setup the entry
+                entry.fileOffset = model_pair.first;        // Set the offset to a sparse but abstract offset
+            }
+        }
+        
+    }
+    
 }
 
 /*
@@ -365,6 +403,14 @@ void CAbstractStreaming::FixClothesDirectory(CDirectory& dir)
  */
 void CAbstractStreaming::BuildClothesMap()
 {
+    static const auto coach_dff_hash = modloader::hash("COACH.DFF");
+    static const auto coach_txd_hash = modloader::hash("COACH.TXD");
+
+    // Used for pushing more items into the directory list
+    uint32_t dwCustomSector = 0;
+    uint32_t dwHighestSector = 0;
+    uint32_t dwHighestSectorSize = 1;
+    
     // Findout about some pointers...
     char* playerImgPath         = ReadMemory<char*>(0x5A69F7 + 1, true);
     int   playerImgNumEntries   = ReadMemory<int>  (0x5A69E8 + 1, true);
@@ -376,17 +422,22 @@ void CAbstractStreaming::BuildClothesMap()
     this->clothes.clear();
     
     // Find files on modloader folder that is present in player.img cdimage too
+    // or files that are inside a "player.img" directory
     for(size_t i = 0; i < playerImgDirectory->m_dwCount; ++i)
     {
         CDirectoryEntry& entry = playerImgDirectory->m_pEntries[i];
         
+        // Mark highest sector in player.img
+        if(entry.fileOffset > dwHighestSector)
+        {
+            dwHighestSector = entry.fileOffset;
+            dwHighestSectorSize = entry.sizePriority1? entry.sizePriority1 : entry.sizePriority2;
+        }
+            
         auto hash = modloader::hash(entry.filename, ::toupper);
         auto it = imgPlugin->models.find(hash);
         if(it != imgPlugin->models.end())
         {
-            static const auto coach_dff_hash = modloader::hash("COACH.DFF");
-            static const auto coach_txd_hash = modloader::hash("COACH.TXD");
-            
             ModelFile& model = it->second;
             
             std::string model_path = model.path;
@@ -401,10 +452,32 @@ void CAbstractStreaming::BuildClothesMap()
             // Register the clothes file we've just found...
             this->clothes.emplace(entry.fileOffset, model);
             model.isClothes = true;
-            
-            imgPlugin->Log("Found clothes file \"%s\"", model.path.c_str());
         }
     }
+    
+    // Check out for forced clothes
+    auto& directory = *playerImgDirectory;                  // Clothes directory
+    dwCustomSector = dwHighestSector + dwHighestSectorSize; // Sparse sector to put our abstract files
+    for(auto& model_pair : imgPlugin->models)
+    {
+        ModelFile& model = model_pair.second;
+        
+        // Check if this model is a clothing item and it's not present on player.img directory
+        if(model.IsClothes() && !model.IsAlsoPresentOnPlayerImg())
+        {
+            // Then let's add it into into the clothes list, so we can add it to the player.img directory later on the fly 
+            this->clothes.emplace(dwCustomSector, model);
+            dwCustomSector = dwCustomSector + model.GetSizeInBlocks();
+        }
+    }
+    
+    // Log all clothes we've found
+    for(auto& model_pair : this->clothes)
+    {
+        ModelFile& model = model_pair.second;
+        imgPlugin->Log("Found clothing model file \"%s\"", model.path.c_str());
+    }
+    
 }
 
 
@@ -427,7 +500,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory()
     
     Log("Loading abstract cd directory...");
 
-    // Build the clothes map right now so we know how much "real models" we have in hands
+    // Build the clothes map right now so we know how many "real models" we have in hands
     this->BuildClothesMap();
     
     // Make the models iterator point to the beggining
@@ -448,22 +521,15 @@ void CAbstractStreaming::LoadAbstractCdDirectory()
     // Reads abstract cd entries based on the models that are on the disk
     auto rentry = make_function_hook<rentry_hook>([](rentry_hook::func_type, void*&, void*& buf, size_t&)
     {
-        CThePlugin::ModelFile* file = nullptr;
-        CDirectoryEntry* entry = (CDirectoryEntry*)(buf);
-
         // Advance models iterator until a non-clothes model is found
-        while(models_it->second.get().isClothes) ++models_it;
-        file = &models_it->second.get();
-        
+        // Safe to iterate forward without checking for .end because this function will get called exactly the ammount of times we need :)
+        while(models_it->second.get().IsClothes()) ++models_it;
+
         // Setup abstract entry
-        strncpy((char*)entry->filename, file->name.data(), 23);
-        entry->filename[23]  = 0;
-        entry->fileOffset    = 0;
-        entry->sizePriority1 = 0;
-        entry->sizePriority2 = file->GetSizeInBlocks();
+        FillDirectoryEntry(*(CDirectoryEntry*)(buf), models_it->second.get());
 
         curr_model_it = models_it++;
-        return sizeof(entry);
+        return sizeof(CDirectoryEntry);
     });
     
     // Registers the existence of a model index under our ownership

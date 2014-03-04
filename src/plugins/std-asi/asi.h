@@ -128,7 +128,8 @@ class CThePlugin : public modloader::CPlugin
         // List of CLEO scripts (.cs, .cs3, .cs4, .cs5, .cm)
         CsInfoList     csList;   // It's called cs but it's not limited to .cs files (e.g. cm files works)
         
-        
+        // Find all cleo plugins already loaded and push them into asi list 
+        void LocateCleoPlugins();
 
         
 };
