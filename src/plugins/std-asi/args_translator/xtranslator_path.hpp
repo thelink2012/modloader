@@ -77,7 +77,6 @@ inline bool  path_translator_base::CallInfo::GetCurrentDir(const T*& arg, char t
     }
     else
     {
-        if(asi->bIsCleo) puts((char*)arg);
         // Get current directory relative to the game path
         currdir = GetCurrentDir(buffer, MAX_PATH);
         bCheckModules = currdir != 0;

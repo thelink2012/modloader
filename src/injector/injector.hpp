@@ -19,6 +19,33 @@
 #include <cstdint>
 #include <cstdio>
 
+/*
+    The following macros (#define) are relevant on this header:
+
+    INJECTOR_GVM_HAS_TRANSLATOR
+        If defined, the user should provide their own address_manager::translator function.
+        That function is responssible for translating a void pointer (that mayn't be an actual pointer) into an actual address.
+        The meaning of that void pointer will be made by YOU when you send it to the functions that receive pointers on this library.
+        The default translator does nothing but returns that void pointer as the address.
+
+    INJECTOR_GVM_OWN_DETECT
+        If defined,  the user should provide it's own game detection function thought game_version_manager::Detect
+        By default it provide an good detection for the Grand Theft Auto series.
+
+    INJECTOR_GVM_PLUGIN_NAME
+        If this is defined, it will be used as the plugin name used at error messages.
+        By default it will use ""Unknown Plugin Name"
+
+    INJECTOR_GVM_DUMMY
+        If defined, the game_version_manager will be a dummy object
+        By default it provides a nice gvm for Grand Theft Auto series
+        
+    INJECTOR_OWN_GVM
+        If defined, the game_version_manager should be implemented by the user before including this library.
+        By default it provides a nice gvm for Grand Theft Auto series
+*/
+
+
 namespace injector
 {
 
@@ -29,6 +56,8 @@ namespace injector
  *      Detects the game, the game version and the game region
  *      This assumes the executable is decrypted, so, Silent's ASI Loader is recommended.
  */
+#ifndef INJECTOR_OWN_GVM 
+#ifndef INJECTOR_GVM_DUMMY
 class game_version_manager
 {
 	public:
@@ -41,9 +70,21 @@ class game_version_manager
 	public:
 		game_version_manager()
 		{
-            PluginName = "Unknown Plugin Name";
-			game = region = major = minor = cracker = steam = 0;
+		    #ifdef INJECTOR_GVM_PLUGIN_NAME
+		        PluginName = INJECTOR_GVM_PLUGIN_NAME;
+		    #else
+                PluginName = "Unknown Plugin Name";
+            #endif
+			
+			this->Clear();
 		}
+        
+
+	    // Clear any information about game version
+	    void Clear()
+	    {
+	        game = region = major = minor = cracker = steam = 0;
+	    }
         
 		// Checks if I don't know the game we are attached to
 		bool IsUnknown()		{ return game == 0; }
@@ -69,22 +110,7 @@ class game_version_manager
         bool IsSA () { return game == 'S'; }
 
 		// Detects game, region and version; returns false if could not detect it
-		bool Detect()
-		{
-            game = region = major = minor = cracker = steam = 0;
-            
-			// Look for game and version thought the entry-point
-            return (DetectSA() || DetectVC() || DetectIII());
-		}
-        
-        
-		// Thanks Silent for the DetectXXX() functions
-		// DetectXXX():
-		//		The DetectXXX Methods tries to detect the region and version for game XXX
-		//		If it could not be detect, no changes are made to the object and the func returns false
-        bool DetectIII();
-        bool DetectVC();
-        bool DetectSA();
+		bool Detect();
         
 		// Gets the game version as text, the buffer must contain at least 32 bytes of space.
         char* GetVersionText(char* buffer)
@@ -118,6 +144,14 @@ class game_version_manager
 			MessageBoxA(0, buf, PluginName, MB_ICONERROR);
 		}
 };
+#else   // INJECTOR_GVM_DUMMY
+class game_version_manager
+{
+    public:
+        bool Detect() { return true; }
+};
+#endif  // INJECTOR_GVM_DUMMY
+#endif  // INJECTOR_OWN_GVM
 
 
 /*
@@ -186,10 +220,8 @@ class address_manager : public game_version_manager
             { return translate_address(p); }
         };
 };
-#endif
 
-
-
+#endif  // #if 1
 
 
 
@@ -641,73 +673,81 @@ inline void MakeRET(memory_pointer_tr at, uint16_t pop = 0, bool vp = true)
 
 
 
+#ifndef INJECTOR_GVM_OWN_DETECT // Should we implement our detection method?
 
-
-/*
- * 
- * 
- */
-
-inline bool game_version_manager::DetectIII()
+// Detects game, region and version; returns false if could not detect it
+inline bool game_version_manager::Detect()
 {
-    if(this->IsUnknown() || this->IsIII())
+    // Cleanup data
+    this->Clear();
+
+    // Find NT header
+    uintptr_t          base     = (uintptr_t) GetModuleHandleA(NULL);;
+    IMAGE_DOS_HEADER*  dos      = (IMAGE_DOS_HEADER*)(base);
+    IMAGE_NT_HEADERS*  nt       = (IMAGE_NT_HEADERS*)(base + dos->e_lfanew);
+            
+    // Look for game and version thought the entry-point
+    // Thanks to Silent for many of the entry point offsets
+    switch(base + nt->OptionalHeader.AddressOfEntryPoint)
     {
-        if(ReadMemory<uint32_t>(raw_ptr(0x5C1E70), true) == 0x53E58955)
+        case 0x5C1E70:  // GTA III 1.0
             game = '3', major = 1, minor = 0, region = 0, steam = false;
-        else if(ReadMemory<uint32_t>(raw_ptr(0x5C2130), true) == 0x53E58955)
+            return true;
+            
+        case 0x5C2130:  // GTA III 1.1
             game = '3', major = 1, minor = 1, region = 0, steam = false;
-        else if(ReadMemory<uint32_t>(raw_ptr(0x5C6FD0), true) == 0x53E58955)
+            return true;
+            
+        case 0x5C6FD0:  // GTA III 1.1 (Cracked Steam Version)
+        case 0x9912ED:  // GTA III 1.1 (Encrypted Steam Version)
             game = '3', major = 1, minor = 1, region = 0, steam = true;
-        else
-            return false;
-        
-        return true;
-    }
-	return false;
-}
-
-inline bool game_version_manager::DetectVC()
-{
-    if(this->IsUnknown() || this->IsVC())
-    {
-        if(ReadMemory<uint32_t>(raw_ptr(0x667BF0), true) == 0x53E58955)
+            return true;
+    
+        case 0x667BF0:  // GTA VC 1.0
             game = 'V', major = 1, minor = 0, region = 0, steam = false;
-        else if(ReadMemory<uint32_t>(raw_ptr(0x667C40), true) == 0x53E58955)
+            return true;
+            
+        case 0x667C40:  // GTA VC 1.1
             game = 'V', major = 1, minor = 1, region = 0, steam = false;
-        else if(ReadMemory<uint32_t>(raw_ptr(0xA402ED), true) == 0x56525153)
-            game = 'V', major = 1, minor = 1, region = 0, steam = true;
-        else
-            return false;
-        
-        return true;
-    }
-    return false;
-}
+            return true;
 
-inline bool game_version_manager::DetectSA()
-{
-    if(this->IsUnknown() || this->IsSA())
-    {
-        if(ReadMemory<uint32_t>(raw_ptr(0x82457C), true) == 0x94BF)
-        {
+        case 0x666BA0:  // GTA VC 1.1 (Cracked Steam Version)
+        case 0xA402ED:  // GTA VC 1.1 (Encrypted Steam Version)
+            game = 'V', major = 1, minor = 1, region = 0, steam = true;
+            return true;
+    
+        case 0x82457C:  // GTA SA 1.0 US Cracked
+        case 0x824570:  // GTA SA 1.0 US Compact
             game = 'S', major = 1, minor = 0, region = 'U', steam = false;
             cracker = injector::ReadMemory<uint8_t>(raw_ptr(0x406A20), true) == 0xE9? 'H' : 0;
-        }
-        else if(ReadMemory<uint32_t>(raw_ptr(0x8245BC), true) == 0x94BF)
-            game = 'S', major = 1, minor = 0, region = 'E', steam = false;
-        else if(ReadMemory<uint32_t>(raw_ptr(0x8252FC), true) == 0x94BF)
-            game = 'S', major = 1, minor = 1, region = 'U', steam = false;
-        else if(ReadMemory<uint32_t>(raw_ptr(0x82533C), true) == 0x94BF)
-            game = 'S', major = 1, minor = 1, region = 'E', steam = false;
-        else if(ReadMemory<uint32_t>(raw_ptr(0x85EC4A), true) == 0x94BF)
-            game = 'S', major = 3, minor = 0, region = 0, steam = true;
-        else
-            return false;
+            return true;
 
-        return true;
+        case 0x8245BC:  // GTA SA 1.0 EU Cracked
+            game = 'S', major = 1, minor = 0, region = 'E', steam = false;
+            return true;
+            
+        case 0x8252FC:  // GTA SA 1.1 US Cracked
+            game = 'S', major = 1, minor = 1, region = 'U', steam = false;
+            return true;
+            
+        case 0x82533C:  // GTA SA 1.1 EU Cracked
+            game = 'S', major = 1, minor = 1, region = 'E', steam = false;
+            return true;
+            
+        case 0x85EC4A:  // GTA SA 3.0 (Cracked Steam Version)
+        case 0xD3C3DB:  // GTA SA 3.0 (Encrypted Steam Version)
+            game = 'S', major = 3, minor = 0, region = 0, steam = true;
+            return true;
+
+        default:
+            return false;
     }
-	return false;
 }
+
+#endif
+
+
+
 
 } // namespace 
 

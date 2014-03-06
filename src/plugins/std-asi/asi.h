@@ -122,6 +122,10 @@ class CThePlugin : public modloader::CPlugin
         typedef std::list<ModuleInfo>   ModuleInfoList;
         typedef std::list<CsInfo>       CsInfoList;
         
+        // CLEO.ASI version
+        int iCleoVersion;
+        bool bHasNoCleoFolder;
+        
         // List of asi files need to load (or loaded)
         ModuleInfoList asiList;  // It's called asiList but it's not limited to .asi files!
         
@@ -129,7 +133,7 @@ class CThePlugin : public modloader::CPlugin
         CsInfoList     csList;   // It's called cs but it's not limited to .cs files (e.g. cm files works)
         
         // Find all cleo plugins already loaded and push them into asi list 
-        void LocateCleoPlugins();
+        void LocateCleo();
 
         
 };

@@ -1,5 +1,9 @@
+v0.1.15 -- Mar 05 2014
+    Bug fix: CLEO scripts injection works with CLEO 4.1 and below
+    Bug fix: CLEO folder don't need to exist on the game base path for CLEO 4.3 to work
+
 v0.1.14 -- Mar 04 2014
-    Feature: CLEO files do not need copy and paste to work anymore, they're injected into CLEO.asi searches
+    Feature: CLEO files aren't copied and pasted anymore, they're injected into CLEO.asi searches
     Feature: Binary IPLs are automatically detected
     Bug fix: Fixed binary IPLs being handled wrongly
     Bug fix: Fixed crash on exit if playing SA:MP

@@ -151,6 +151,7 @@ namespace hacks
                     if(GetFileAttributesExA(lpFindFileData->cFileName, GetFileExInfoStandard, lpFindFileData))
                     {
                         // Set lower part of lpFindData
+                        this->GetCleoCompatiblePath(lpFindFileData->cFileName);
                         lpFindFileData->cAlternateFileName[0] = 0;          // Not used
                         lpFindFileData->dwReserved0 = 0;                    // ^
                         lpFindFileData->dwReserved1 = 0;                    // ^
@@ -164,6 +165,17 @@ namespace hacks
             char* GetFullPath(char* buf)
             {
                 sprintf(buf, "%s%s", asiPlugin->modloader->gamepath, GetPath());
+                return buf;
+            }
+            
+            // Get path in iterator compatible with what CLEO.asi expects to receive
+            char* GetCleoCompatiblePath(char* buf)
+            {
+                // CLEO 4.3 needs a existing CLEO folder for the path relativity to work
+                if(asiPlugin->iCleoVersion > 0x401011E && asiPlugin->bHasNoCleoFolder)
+                    return GetFullPath(buf);
+                
+                sprintf(buf, "..\\%s", GetPath());
                 return buf;
             }
             
@@ -253,18 +265,8 @@ namespace hacks
             hStock = result = FindFirstFileA(lpFileName, lpFindFileData);
             if(result == INVALID_HANDLE_VALUE)
             {
-                // If failed, check if failed because there's no file to search...
-                if(GetLastError() == ERROR_FILE_NOT_FOUND)
-                {
-                    // Yep, ignore this failure and point out that there's no more files
-                    // so we can start the extra search
-                    bNoMoreFiles = true;
-                }
-                else
-                {
-                    bFailed = true;
-                    asiPlugin->Log("Cleo script search failed to start, error code 0x%X", GetLastError());
-                }
+                // Alrighty, do our search
+                bNoMoreFiles = true;
             }
             
             // If search started succesfuly (...) inject our pseudo handle into the return

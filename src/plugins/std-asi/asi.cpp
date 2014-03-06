@@ -45,7 +45,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "0.10";
+    return "0.11";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -156,14 +156,8 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
  */
 bool CThePlugin::PosProcess()
 {
-    // We need CLEO.asi module for cleo script injection
-    if(IsPath("CLEO.asi"))
-    {
-        this->asiList.emplace_back("CLEO.asi");
-    }
-    
-    // Find all already loaded .cleo plugins (loaded by CLEO.asi)
-    this->LocateCleoPlugins();
+    // Find CLEO.asi and already loaded .cleo plugins (loaded by CLEO.asi)
+    this->LocateCleo();
     
     // Iterate on the asi list loading each asi file
     for(auto& asi : this->asiList)

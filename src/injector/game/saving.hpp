@@ -2,7 +2,7 @@
  *  Injectors - Save Notification
  *	Header with helpful stuff for ASI memory hacking
  *
- *  (C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
+ *  (C) 2014 LINK/2012 <dma_2012@hotmail.com>
  * 
  *  This source code is offered for use in the public domain. You may
  *  use, modify or distribute it freely.

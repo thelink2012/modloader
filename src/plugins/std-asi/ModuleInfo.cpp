@@ -73,24 +73,52 @@ CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
 /*
  *  Find all cleo plugins already loaded and push them into asi list 
  */
-void CThePlugin::LocateCleoPlugins()
+void CThePlugin::LocateCleo()
 {
-    ModulesWalk(GetCurrentProcessId(), [this](const MODULEENTRY32& entry)
+    HMODULE hCleo = GetModuleHandleA("CLEO.asi");
+
+    // We need CLEO.asi module for cleo script injection
+    if(hCleo)
     {
-        // Find the extension for this module
-        if(const char* p = strrchr(entry.szModule, '.'))
+        char buffer[MAX_PATH];
+        if(GetModuleFileNameA(hCleo, buffer, sizeof(buffer)))
         {
-            // Is it a .cleo plugin?
-            if(IsFileExtension(p+1, "cleo"))
+            if(const char* p = path_translator_base::CallInfo::GetCurrentDir(buffer, this->modloader->gamepath, -1))
             {
-                // Yep, take the relative path and push it to the asi list
-                p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->modloader->gamepath, -1);
+                // Find the library version
+                auto CLEO_GetVersion = (int (__stdcall*)()) GetProcAddress(hCleo, "_CLEO_GetVersion@0");
+                this->iCleoVersion = CLEO_GetVersion? CLEO_GetVersion() : 0;
+                
+                Log("CLEO library version %X found at \"%s\"", iCleoVersion, p);
+                if(this->bHasNoCleoFolder = !IsPath("./CLEO/")) Log("Warning: No CLEO folder found, may cause problems");
+                
                 this->asiList.emplace_back(p);
             }
         }
-        
-        return true;
-    });
+        else
+            hCleo = NULL;
+    }
+
+    // Find all the already loaded cleo plugins
+    if(hCleo)
+    {
+        ModulesWalk(GetCurrentProcessId(), [this](const MODULEENTRY32& entry)
+        {
+            // Find the extension for this module
+            if(const char* p = strrchr(entry.szModule, '.'))
+            {
+                // Is it a .cleo plugin?
+                if(IsFileExtension(p+1, "cleo"))
+                {
+                    // Yep, take the relative path and push it to the asi list
+                    if(p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->modloader->gamepath, -1))
+                        this->asiList.emplace_back(p);
+                }
+            }
+
+            return true;
+        });
+    }
 }
 
 
