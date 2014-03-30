@@ -249,7 +249,6 @@ namespace hacks
     template<>
     bool FindCleoScripts::Finder<aFindFirstFileA>(HANDLE& result, LPCTSTR& lpFileName, LPWIN32_FIND_DATAA& lpFindFileData)
     {
-        HANDLE hStock;
         char version;
         
         // Find file extension position
@@ -261,11 +260,20 @@ namespace hacks
             bool bFailed = false;       // Real failure on FindFirstFileA
             bool bNoMoreFiles = false;  // No more files on FindFirstFileA
             
-            // Start the search
-            hStock = result = FindFirstFileA(lpFileName, lpFindFileData);
-            if(result == INVALID_HANDLE_VALUE)
+            if(!asiPlugin->bHasNoCleoFolder)
             {
-                // Alrighty, do our search
+                // Start the search
+                result = FindFirstFileA(lpFileName, lpFindFileData);
+                if(result == INVALID_HANDLE_VALUE)
+                {
+                    // Alrighty, do our search
+                    bNoMoreFiles = true;
+                }
+            }
+            else
+            {
+                // CLEO folder don't exist, don't even try to open a search for it
+                result = INVALID_HANDLE_VALUE;
                 bNoMoreFiles = true;
             }
             

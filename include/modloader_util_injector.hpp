@@ -20,8 +20,11 @@
 #   pragma warning(disable : 4180)  // qualifier applied to function type has no meaning; ignored
 #endif
 
-#include <cstdio>
-#include "AddressTranslator.h"
+#define INJECTOR_GVM_PLUGIN_NAME        "Mod Loader"
+#define INJECTOR_GVM_HAS_TRANSLATOR
+
+#include <injector/injector.hpp>
+#include <injector/hooking.hpp>
 
 namespace modloader
 {

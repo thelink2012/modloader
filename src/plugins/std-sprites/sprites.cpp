@@ -77,7 +77,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "RC1";
+    return "RC2";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -162,11 +162,9 @@ bool CThePlugin::PosProcess()
     // loadscs patch
     if(this->loadscs.size())
     {
-        /* Replace "loadscs.txd" string with our path */
+        // Replace "loadscs.txd" string with our path
+        loadscs.append("../../", 0);                                    // Relative to "models/txd" folder
         WriteMemory<const char*>(0x5900CC + 1, loadscs.data(), true);
-            
-        /* chdir into root directory instead of "models/txd" */
-        WriteMemory<const char*>(0x5900B6 + 1, "", true);
     }
     
     return true;

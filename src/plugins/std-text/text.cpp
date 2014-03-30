@@ -35,7 +35,7 @@ class CThePlugin : public modloader::CPlugin
         struct GxtOverrider
         {
             const char* original;   // The original filename (e.g. "american.gxt")
-            std::string replace;    // The replacement file (fullpath)
+            std::string replace;    // The replacement file path
             
             // Setup the structure
             void Setup(const char* original)
@@ -53,14 +53,14 @@ class CThePlugin : public modloader::CPlugin
             // If no replacement has been registered, returns "text\@original"
             const char* GetReplacement()
             {
-                if(replace.empty())
-                {
-                    replace = std::string("text\\") + original;
-                }
+                if(replace.empty()) replace = std::string("text/") + original;
                 return replace.c_str();
             }
             
         };
+        
+        
+        
         
         //
         std::list<std::string> fxt_files;
@@ -77,7 +77,7 @@ class CThePlugin : public modloader::CPlugin
             gxt[4].Setup("french.gxt");
         }
         
-        /* Finds a gxt overrider based on the original filename */
+        // Finds a gxt overrider based on the original filename
         GxtOverrider* GetOverrider(const char* filename)
         {
             for(int i = 0; i < 5; ++i)
@@ -120,7 +120,7 @@ const char* CThePlugin::GetAuthor()
 
 const char* CThePlugin::GetVersion()
 {
-    return "RC2";
+    return "RC3";
 }
 
 const char** CThePlugin::GetExtensionTable()
@@ -170,11 +170,7 @@ bool CThePlugin::PosProcess()
 {
     typedef int(*fopen_type)(const char*, const char*);
     typedef int(*hook_type)(fopen_type fopen, const char*& file, const char*& mode);
-    
-    // chdir into the root directory instead of "text" folder
-    WriteMemory<const char*>(0x69FCE1 + 1, "", true);
-    WriteMemory<const char*>(0x6A01BE + 1, "", true);
-    
+
     // Hook that replaces the fopen that opens GXT files (there's two calls)
     // Remember, the filename received is based on "text" folder but we are on the root folder!
     hook_type hook = [](fopen_type fopen, const char*& filename, const char*& mode)
@@ -182,13 +178,12 @@ bool CThePlugin::PosProcess()
         if(auto* gxt = textPlugin->GetOverrider(filename))
         {
             // Found overrider!
-            return fopen(gxt->GetReplacement(), mode);
+            return fopen((std::string("../") + gxt->GetReplacement()).c_str(), mode);
         }
         else
         {
             // Nope, open filename on text folder
-            std::string buf = std::string("text\\") + filename;
-            return fopen(buf.data(), mode);
+            return fopen(filename, mode);
         }
     };
     

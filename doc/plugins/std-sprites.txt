@@ -1,6 +1,6 @@
 *************************************************************************
 	Name: std-sprites --- (Standard Sprites Loader Plugin)
-	Version: RC1
+	Version: Release Candidate 2
 	Author: LINK/2012 <dma_2012@hotmail.com>
 	Default Priority: 50
 *************************************************************************
