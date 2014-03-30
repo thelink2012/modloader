@@ -33,4 +33,12 @@ enum eArgsType
 #define AR_PATH_INEB    AR_DUMMY
 
 
+#if defined(_MSC_VER)
+#   define GetReturnAddress()      _ReturnAddress()
+#else
+#   define GetReturnAddress()      __builtin_return_address(0)
+#endif
+
+
+
 #endif

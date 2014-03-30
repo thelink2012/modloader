@@ -49,8 +49,8 @@ struct path_translator_cdecl<Symbol, LibName, Ret(Args...)> : public path_transl
         typename super::CallInfo info;
         void* pReturn;
 
-        // Get pointer to a address in the caller module (the return pointer actually)...
-        if(!CaptureStackBackTrace(1, 1, &pReturn, 0)) pReturn = nullptr;
+        // Get pointer to a address in the caller module...
+        pReturn = GetReturnAddress();
         
         // Find the ASI information from the caller return pointer...
         if(info.FindInfo(pReturn)) info.TranslateForCall(a...);    // Translate the paths

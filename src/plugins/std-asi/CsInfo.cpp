@@ -34,9 +34,18 @@ CThePlugin::CsInfo::CsInfo(const modloader::ModLoaderFile& file)
     }
     else
     {
-        // Get .cs version
-        if(char* p = strrchr(file.filename, '.'))
-            this->GetVersionFromExtension(p+1, this->iVersion);
+        if(IsFileInsideFolder(file.filepath, false, "CLEO")
+        && !IsFileInsideFolder(file.filepath, true, "CLEO"))
+        {
+            // Ignore scripts that are inside a subfolder in CLEO folder
+            this->bIsMission = true;
+        }
+        else
+        {
+            // Get .cs version
+            if(char* p = strrchr(file.filename, '.'))
+                this->GetVersionFromExtension(p+1, this->iVersion);
+        }
     }
 }
 

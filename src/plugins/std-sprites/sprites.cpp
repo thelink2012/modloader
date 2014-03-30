@@ -163,7 +163,7 @@ bool CThePlugin::PosProcess()
     if(this->loadscs.size())
     {
         // Replace "loadscs.txd" string with our path
-        loadscs.append("../../", 0);                                    // Relative to "models/txd" folder
+        loadscs.insert(0, "../../");     // Relative to "models/txd" folder
         WriteMemory<const char*>(0x5900CC + 1, loadscs.data(), true);
     }
     

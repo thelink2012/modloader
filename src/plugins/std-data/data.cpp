@@ -178,13 +178,15 @@ bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
         
         // In case of any of the basics ide file, let the user put it outside data folder
         // and it will be still detected as it should
-        if(!strcmp(file.filename, "vehicles.ide", false)
+        bool bVehMods = !strcmp(file.filename, "veh_mods.ide", false);
+        if( bVehMods
+        || !strcmp(file.filename, "vehicles.ide", false)
         || !strcmp(file.filename, "default.ide", false)
         || !strcmp(file.filename, "peds.ide", false))
         {
             if(!IsFileInsideFolder(file.filepath, false, "data"))
             {
-                fsPath = fsPathAux.assign("data/").append(file.filename).c_str();
+                fsPath = fsPathAux.assign(!bVehMods? "data/" : "data/maps/veh_mods/").append(file.filename).c_str();
             }
         }
         

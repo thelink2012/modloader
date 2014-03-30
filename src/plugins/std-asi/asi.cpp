@@ -76,6 +76,8 @@ bool CThePlugin::OnStartup()
     incompatible.emplace("killlog.asi", 98816);
     incompatible.emplace("weaponlimit.asi", 99840);
     incompatible.emplace("maplimit.asi", 50688);
+    incompatible.emplace("GTA_IV_HUD.asi", 50688);
+    incompatible.emplace("HandlingAdder.asi", 55296);
     
     return true;
 }

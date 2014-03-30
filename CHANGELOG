@@ -1,3 +1,8 @@
+v0.1.16 -- InDev
+    Bug fix: CLEO scripts inside cleo sub folders aren't loaded anymore
+    Bug fix: Custom missions aren't loaded at startup anymore
+    Bug fix: Other minor fixes
+
 v0.1.15 -- Mar 05 2014
     Bug fix: CLEO scripts injection works with CLEO 4.1 and below
     Bug fix: CLEO folder don't need to exist on the game base path for CLEO 4.3 to work

@@ -121,7 +121,7 @@ namespace hacks
                 }
                 
                 // Find next script with compatibility for iVersion and that is not a custom mission (.cm)
-                while(iterator != asiPlugin->csList.end() && iterator->iVersion != this->iVersion && !iterator->bIsMission)
+                while(iterator != asiPlugin->csList.end() && (iterator->iVersion != this->iVersion || iterator->bIsMission))
                     ++iterator;
 
                 // No more files to work with?
