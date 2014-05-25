@@ -27,119 +27,70 @@
 
 namespace modloader
 {
-    typedef modloader_file_t   ModLoaderFile;
-    typedef modloader_plugin_t ModLoaderPlugin;
+    struct ModLoaderFile : modloader_file_t
+    {
+        bool IsDirectory() const      { return (flags & MODLOADER_FF_IS_DIRECTORY) != 0; }
+        
+        uint32_t UniqueId() const     { return file_id; }
+        uint32_t ModId() const        { return mod_id; }
+        
+        uint64_t Size() const         { return size; }
+        uint64_t Time() const         { return time; }
+
+        const char* FilePath() const  { return FileBuffer(pos_filepath);  }
+        const char* FileName() const  { return FileBuffer(pos_filename);  }
+        const char* FileExt() const   { return FileBuffer(pos_filext);    }
+        
+        const char* FileBuffer(size_t idx = 0) const { return &buffer[idx];      }
+        size_t FileBufferLength() const              { return (size_t)(pos_eos); }
+        
+        // Has file changed in comparation with c
+        // Checks only for file size and file time
+        bool HasFileChanged(const ModLoaderFile& c) const
+        {
+            return !(Time() == c.Time() && Size() == c.Size());
+        }
+    };
     
+    struct ModLoaderPlugin : modloader_plugin_t
+    {
+    };
+    
+    static_assert(sizeof(ModLoaderFile) == sizeof(modloader_file_t), "Invalid ModLoaderFile inheritance size");
+    static_assert(sizeof(ModLoaderPlugin) == sizeof(modloader_plugin_t), "Invalid ModLoaderPlugin inheritance size");
+    
+#if 0
     // Base class for the plugin interface
     class CPlugin
     {
         private:
             friend struct CPluginCallbacks;
-            
-            struct {    // Chunks information
-                int nLimiter;
-                int nTotalCalls;
-                int nStep;
-                int nChunks;
-                int nChunksLoaded;
-            };
-            
-            // Calculate necessary values and return the actual chunks we'll load
-            int GetChunks()
-            {
-                if(nChunks)
-                {
-                    if(nLimiter == 0 || nChunks < nLimiter)
-                    {
-                        nStep = 1;
-                        nLimiter = nChunks;
-                    }
-                    else
-                    {
-                        nStep = nChunks / nLimiter;
-                    }
-                    return nLimiter;
-                }
-                return 0;
-            }
-            
-            // This is called after the OnLoad to make sure nChunksLoaded == nChunks
-            void MakeSureChunksHaveBeenLoaded()
-            {
-                while(nTotalCalls < nLimiter)
-                {
-                    ForwardNewChunkLoaded();
-                }
-            }
-            
-            // Forward the call to NewChunkLoaded to the game
-            void ForwardNewChunkLoaded()
-            {
-                if(nTotalCalls < nLimiter)
-                {
-                    ++nTotalCalls;
-                    modloader->NewChunkLoaded();
-                }
-            }
 
         public:
-                // The loader data
-                modloader_plugin_data*      data;
-                modloader_data*             modloader;
-                modloader_fLog              Log;
-                modloader_fvLog             vLog;
-                modloader_fError            Error;
+            // The loader data
+            modloader_plugin_data*      data;
+            modloader_data*             modloader;
+            modloader_fLog              Log;
+            modloader_fvLog             vLog;
+            modloader_fError            Error;
                 
-                // Limits the number of times to call the real NewChunkLoaded
-                // It's recommended to use this function if you're going to touch the loading bar!
-                void SetChunkLimiter(int limiter = 10)
-                {
-                    nLimiter = limiter;
-                }
+            // Checkout modloader.h or "doc/Creating Your Own Plugin.txt" for details on those callbacks
+            virtual const char* GetName()=0;
+            virtual const char* GetAuthor()=0;
+            virtual const char* GetVersion()=0;
+            virtual bool OnStartup()    { return true; }
+            virtual bool OnShutdown()   { return true; }
+            virtual bool CheckFile(ModLoaderFile& file)=0;
+            virtual bool ProcessFile(const ModLoaderFile& file)=0;
+            virtual bool PosProcess()   { return true; }
+            virtual bool OnSplash()     { return true; }
+            virtual bool OnLoad()       { return true; }
+            virtual bool OnReload()     { return true; }
+            
+            // TODO new interface
                 
-                // Call this to set the number of chunks this plugin got
-                void SetChunks(int num)
-                {
-                    nChunks = num;
-                }
-                
-                // Call this to increase the number of chunks this plugin got
-                void AddChunks(int increaseBy = 1)
-                {
-                    nChunks += increaseBy;
-                }
-                
-                // Safe wrapper around modloader->NewChunkLoaded
-                void NewChunkLoaded()
-                {
-                    if(nChunksLoaded < nChunks)
-                    {
-                        if((nChunksLoaded++ % nStep) == 0)
-                        {
-                            ForwardNewChunkLoaded();
-                        }
-                    }
-                }
-                
-                // Checkout modloader.h or "doc/Creating Your Own Plugin.txt" for details on those callbacks
-                virtual const char* GetName()=0;
-                virtual const char* GetAuthor()=0;
-                virtual const char* GetVersion()=0;
-                virtual bool OnStartup()    { return true; }
-                virtual bool OnShutdown()   { return true; }
-                virtual bool CheckFile(ModLoaderFile& file)=0;
-                virtual bool ProcessFile(const ModLoaderFile& file)=0;
-                virtual bool PosProcess()   { return true; }
-                virtual bool OnSplash()     { return true; }
-                virtual bool OnLoad()       { return true; }
-                virtual bool OnReload()     { return true; }
-                
-                /* Returns the favorable file extensions for this plugin */
-                virtual const char** GetExtensionTable() { return nullptr; }
-                
-                CPlugin() :
-                    nChunks(0), nChunksLoaded(0), nLimiter(0), nTotalCalls(0), nStep(0)
-                {}
+            // Returns the favorable file extensions for this plugin
+            virtual const char** GetExtensionTable() { return nullptr; }
     };
     
     // Callbacks wrapper
@@ -188,7 +139,6 @@ namespace modloader
         static int PosProcess(modloader_plugin_t* data)
         {
             int result = !GetThis(data)->PosProcess();
-            data->loadbar_chunks = GetThis(data)->GetChunks();
             return result;
         }
         
@@ -200,7 +150,6 @@ namespace modloader
         static int OnLoad(modloader_plugin_t* data)
         {
             int result = !GetThis(data)->OnLoad();
-            GetThis(data)->MakeSureChunksHaveBeenLoaded();
             return result;
         }
         
@@ -257,6 +206,7 @@ namespace modloader
         interfc.Log       = interfc.modloader->Log;
         interfc.vLog      = interfc.modloader->vLog;
     }
+#endif
     
 };
 

@@ -13,7 +13,6 @@
 #include "CDirectory.h"
 #include "img.h"
 #include "CImgDescriptor.h"
-#include "core/CModLoader.hpp"
 #include <modloader_util_injector.hpp>
 #include <modloader_util_path.hpp>
 using namespace modloader;

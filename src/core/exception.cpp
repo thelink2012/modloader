@@ -14,6 +14,8 @@
 #include <windows.h>
 #include <cstdio>
 
+// TODO more descriptive exceptions
+
 /*
  * GetExceptionCodeString
  *      Returns an description by an exception code 

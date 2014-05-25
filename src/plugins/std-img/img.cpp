@@ -191,6 +191,7 @@ void CThePlugin::ReadImgFolder(const modloader::ModLoaderFile& cfile)
     ModLoaderFile file = cfile; // Modifiable file structure
 
     //
+    /* TODO
     ForeachFile(file.filepath, "*.*", true, [this, &file](const ModLoaderFile& forfile)
     {
         if(forfile.is_dir == false)
@@ -201,6 +202,7 @@ void CThePlugin::ReadImgFolder(const modloader::ModLoaderFile& cfile)
         }
         return true;
     });
+     */
 }
 
 /*

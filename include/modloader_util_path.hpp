@@ -16,23 +16,56 @@
 #ifndef MODLOADER_UTIL_PATH_HPP
 #define	MODLOADER_UTIL_PATH_HPP
 
+#include <functional>
 #include <string>
 #include <cstring>
 #include <windows.h>
 #include <modloader.hpp>
 #include <modloader_util_container.hpp>
 
+// TODO CHECK THIS HEADER
+
 namespace modloader
 {
     static const char* szNullFile = "NUL";          // "/dev/null" on POSIX systems
     static const char cNormalizedSlash = '\\';      // The slash used in the normalized path
     
+    struct FileWalkInfo
+    {
+        // File string buffer
+        const char*     filebuf;
+        
+        // The following pointers are inside filebuf
+        const char*     filepath;
+        const char*     filename;
+        const char*     filext;
+        size_t          length;
+        
+        // File properties
+        bool            is_dir;
+        uint64_t        size;
+        uint64_t        time;
+        
+        // If is_dir=true and you don't want recursion to take place in this folder,
+        // the following property should be set to false by the callback
+        bool            recursive;
+    };
+    
     template<class T>
-    const T* GetPathSeparators()
+    inline const T* GetPathSeparators()
     {
         static const T slash[] = { '/', '\\', 0 };
         return slash;
     }
+    
+    inline LONGLONG GetLongFromLargeInteger(DWORD LowPart, DWORD HighPart)
+    {
+        LARGE_INTEGER l;
+        l.LowPart = LowPart;
+        l.HighPart = HighPart;
+        return l.QuadPart;
+    }
+    
     
     /*
      *  MakeSureStringIsDirectory
@@ -76,7 +109,6 @@ namespace modloader
         return path;
     }
     
-    
     /*
      *  GetProperlyPath
      *      This works exactly the same as NormalizePath (see above), except if @transform is not a null pointer
@@ -84,7 +116,7 @@ namespace modloader
      * 
      *      PS: @transform MUST be normalized!
      */
-    static std::string GetProperlyPath(std::string path, const char* transform)
+    inline std::string GetProperlyPath(std::string path, const char* transform)
     {
         path = NormalizePath(std::move(path));
         if(transform)
@@ -94,78 +126,6 @@ namespace modloader
         }
         return path;
     }
-
-    /*
-     * ForeachFile
-     *      Iterates on all files in a directory, files beggining with '.' will be ignored.
-     *      @dir: Directory to search at
-     *      @mask: Search mask
-     *      @bRecursive: Recursive search?
-     *      @cb: Callback to call on each file (bool(ModLoaderFile& file))
-     */
-    template<class T>
-    inline bool ForeachFile(std::string dir, std::string mask, bool bRecursive, T cb)
-    {
-        HANDLE hSearch;
-        WIN32_FIND_DATAA fd;
-        ModLoaderFile mf;
-        memset(&fd, 0, sizeof(fd));
-        memset(&mf, 0, sizeof(mf));
-        
-        std::string filepath_buffer;
-        filepath_buffer.reserve(100);
-        
-        MakeSureStringIsDirectory(dir, false);
-        
-        // Opens the search
-        if((hSearch = FindFirstFileA((dir + mask).c_str(), &fd)) == INVALID_HANDLE_VALUE)
-            return true;
-
-        // Iterate on all files on this directory
-        do
-        {
-            //  Ignore files beggining with '.' (including "." & "..")
-            if(fd.cFileName[0] != '.' && fd.cFileName[0] != '*')
-            {
-                // Setup mf structure  
-                mf.filename = (fd.cFileName);  // Just the filename
-                mf.is_dir   = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0;  // Is it a directory?
-                mf.recursion = bRecursive && mf.is_dir;                             // cb() can set this to false if it don't want to go recursive
-                if(mf.filext = strrchr(mf.filename, '.'))
-                    mf.filext = mf.filext + 1;
-                else
-                    mf.filext = "";
-                
-                // get dir+filename, if dir append '\\'
-                filepath_buffer = dir + mf.filename;
-                if(mf.is_dir) MakeSureStringIsDirectory(filepath_buffer);
-                
-                // Finish setupping mf structure
-                mf.filepath = filepath_buffer.c_str();          // Filename and directory related to the first call to ForeachFile
-                mf.filepath_len = filepath_buffer.length();     // Length, may be helpful for plugins analyzes
-     
-                // Call cb() and go recursive if asked to...
-                if(!cb(mf)
-                ||(mf.recursion && !ForeachFile(dir + mf.filename, mask, bRecursive, cb)))
-                {
-                    FindClose(hSearch);
-                    return false;
-                }
-            }
-        }
-        while(FindNextFile(hSearch, &fd));   // Next...
-
-        // Done
-        FindClose(hSearch);  
-        return true;
-    }
-
-    template<class T>
-    inline bool ForeachFile(std::string mask, bool bRecursive, T cb)
-    {
-        return ForeachFile<T>("", mask, bRecursive, cb);
-    }
-    
     
     /*
      *      Checks if a file is inside an named folder, or just inside it
@@ -229,6 +189,79 @@ namespace modloader
     }
     
     
+    
+    
+    /*
+     * FilesWalk
+     *      Iterates on all files in a directory, files beggining with '.' will be ignored.
+     *      @dir: Directory to search at
+     *      @mask: Search mask
+     *      @recursive: Recursive search?
+     *      @cb: Callback to call on each file
+     */
+    inline bool FilesWalk(std::string dir, const std::string& glob, bool recursive, std::function<bool(FileWalkInfo&)> cb)
+    {
+        std::string filebuf;
+        WIN32_FIND_DATAA fd;
+        FileWalkInfo wf;
+        HANDLE hSearch;
+
+        // Clear structures
+        memset(&fd, 0, sizeof(fd));
+        memset(&wf, 0, sizeof(wf));
+        filebuf.reserve(100);
+        
+        MakeSureStringIsDirectory(dir, false);
+        
+        // Opens the search
+        if((hSearch = FindFirstFileA((dir + glob).c_str(), &fd)) == INVALID_HANDLE_VALUE)
+            return false;
+
+        // Iterate on all files on this directory
+        do
+        {
+            //  Ignore files beggining with '.' (including "." & "..")
+            if(fd.cFileName[0] != '.' && fd.cFileName[0] != '*')
+            {
+                // Setup filebuf
+                filebuf = dir + fd.cFileName;
+                //filebuf = NormalizePath(std::move(filebuf)); -- fucking no
+                
+                // Setup properties
+                wf.is_dir    = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0;
+                wf.size      = GetLongFromLargeInteger(fd.nFileSizeLow, fd.nFileSizeHigh);
+                wf.time      = GetLongFromLargeInteger(fd.ftLastWriteTime.dwLowDateTime, fd.ftLastWriteTime.dwHighDateTime);
+                wf.recursive = recursive && wf.is_dir;
+                
+                // Setup string pointers
+                wf.filebuf  = filebuf.data();
+                wf.filepath = wf.filebuf;
+                wf.length   = filebuf.length();
+                wf.filename = &wf.filepath[GetLastPathComponent(filebuf)];
+                
+                // Setup file extension pointer
+                if(wf.filext = strrchr(wf.filename, '.'))
+                    wf.filext = wf.filext + 1;
+                else
+                    wf.filext = &wf.filebuf[wf.length];
+                
+                // Call 'cb' and go recursive if asked to...
+                if(!cb(wf)
+                ||(wf.recursive && !FilesWalk(dir + wf.filename, glob, recursive, cb)))
+                {
+                    FindClose(hSearch);
+                    return false;
+                }
+            }
+        }
+        while(FindNextFile(hSearch, &fd));   // Next...
+
+        // Done
+        FindClose(hSearch);  
+        return true;
+    }
+    
+
     /*
      *  IsFileExtension
      *      @str: File
@@ -298,6 +331,7 @@ namespace modloader
         return TRUE;
     }
     
+#if 0
     /*
      *  CopyDirectoryA
      *      WinAPI-like function that copies the full directory @szFrom to @szTo
@@ -328,18 +362,20 @@ namespace modloader
         
         return FALSE;
     }
+#endif
     
+#if 1
     /*
      *  DestroyDirectoryA
      *      WinAPI-like function that deletes the path @szPath fully
      */
     inline BOOL DestroyDirectoryA(LPCTSTR szPath)
     {
-        ForeachFile(szPath, "*.*", false, [&szPath](ModLoaderFile& file)
+        FilesWalk(szPath, "*.*", false, [&szPath](FileWalkInfo& file)
         {
             CHAR szPathFile[MAX_PATH];
             const char* pPath = file.filename;
-                
+            
             sprintf(szPathFile, "%s\\%s", szPath, pPath);
                 
             if(file.is_dir)
@@ -352,6 +388,8 @@ namespace modloader
         
         return RemoveDirectoryA(szPath);
     }
+#endif
+    
     
     /*
      *  GetFileSize
@@ -359,19 +397,14 @@ namespace modloader
      */
     inline LONGLONG GetFileSize(LPCTSTR szPath)
     {
-        WIN32_FILE_ATTRIBUTE_DATA fad; LARGE_INTEGER size;
-
-        if(!GetFileAttributesExA(szPath, GetFileExInfoStandard, &fad))
-                return 0;
-
-        size.HighPart = fad.nFileSizeHigh;
-        size.LowPart = fad.nFileSizeLow;
-        return size.QuadPart;
+        WIN32_FILE_ATTRIBUTE_DATA fad;
+        return GetFileAttributesExA(szPath, GetFileExInfoStandard, &fad)?
+            GetLongFromLargeInteger(fad.nFileSizeLow, fad.nFileSizeHigh) : 0;
     }
     
     
     template<class T>
-    static bool IsAbsolutePath(const T* str)
+    inline bool IsAbsolutePath(const T* str)
     {
         return (
                 (str[0] == '\\' || str[0] == '/')

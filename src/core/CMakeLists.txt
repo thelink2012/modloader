@@ -1,3 +1,4 @@
-add_library(modloader SHARED main.cpp exception.cpp $<TARGET_OBJECTS:addr>)
+add_library(modloader SHARED loader.cpp exception.cpp logging.cpp plugins.cpp folder.cpp $<TARGET_OBJECTS:addr>)
+target_link_libraries(modloader shlwapi)    # for PathMatchSpec
 set_target_properties(modloader PROPERTIES SUFFIX ".asi")
 install(TARGETS modloader RUNTIME DESTINATION "./")

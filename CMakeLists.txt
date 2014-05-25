@@ -43,12 +43,6 @@ install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${C
 install(FILES ${readme_doc}  DESTINATION "./modloader/.data")
 
 # Install config files
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    # Don't copy configs in Debug
-else()
-    install(FILES "${CONFIGS_DIR}/modloader.ini" DESTINATION "./modloader")
-    install(FILES "${CONFIGS_DIR}/plugins.ini" DESTINATION "./modloader/.data/plugins")
-endif()
-
-
+install(FILES "${CONFIGS_DIR}/modloader.ini.0" DESTINATION "./modloader/.data")
+install(FILES "${CONFIGS_DIR}/plugins.ini.0" DESTINATION "./modloader/.data/plugins")
 

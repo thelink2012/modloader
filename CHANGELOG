@@ -1,4 +1,7 @@
-v0.1.16 -- InDev
+v0.2.0  -- In Dev
+
+
+v0.1.16 -- Not Released
     Bug fix: CLEO scripts inside cleo sub folders aren't loaded anymore
     Bug fix: Custom missions aren't loaded at startup anymore
     Bug fix: Other minor fixes

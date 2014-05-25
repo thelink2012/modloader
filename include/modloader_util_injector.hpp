@@ -20,7 +20,7 @@
 #   pragma warning(disable : 4180)  // qualifier applied to function type has no meaning; ignored
 #endif
 
-#define INJECTOR_GVM_PLUGIN_NAME        "Mod Loader"
+#define INJECTOR_GVM_PLUGIN_NAME        "Mod Loader Plugin"
 #define INJECTOR_GVM_HAS_TRANSLATOR
 
 #include <injector/injector.hpp>
