@@ -6,6 +6,7 @@
 #include "loader.hpp"
 #include <shlwapi.h>
 
+// TODO rename CheckFile
 // TODO const std::string
 
 template<class L>
@@ -136,7 +137,11 @@ void Loader::FolderInformation::SetForceExclude(bool bSet)
 auto Loader::FolderInformation::GetAll() -> FolderInformationRefList
 {
     FolderInformationRefList list = { *this };
-    for(auto& pair : this->childs) list.splice(list.end(), pair.second.GetAll());
+    for(auto& pair : this->childs)
+    {
+        auto rest = pair.second.GetAll();
+        list.insert(list.end(), rest.begin(), rest.end());
+    }
     return list;
 }
 
@@ -173,7 +178,7 @@ void Loader::FolderInformation::RebuildIncludeModsGlob()
 void Loader::ModInformation::Scan()
 {
     scoped_gdir xdir(this->path.c_str());
-    Log("Scanning files at \"%s\"...", this->path.c_str());
+    Log("\nScanning files at \"%s\"...", this->path.c_str());
     
     // Mark all current files as removed
     MarkStatus(this->files, Status::Removed);
@@ -185,8 +190,9 @@ void Loader::ModInformation::Scan()
 
         if(!parent.IsFileIgnored(filename))
         {
-            ModLoaderFile m;
+            modloader::file m;
             PluginVector callme;
+            PluginInformation* handler;
             auto filepath = this->path + NormalizePath(file.filebuf);
             
             // This buffer setup is tricky but should work fine
@@ -198,21 +204,22 @@ void Loader::ModInformation::Scan()
             
             // Setup other information
             m.flags   = (std::underlying_type<FileFlags>::type)(file.is_dir? FileFlags::IsDirectory : FileFlags::None);
-            m.file_id = loader.PickUniqueFileId();
-            m.mod_id  = this->id;
+            m.behaviour = loader.PickUniqueFileId();
+            m.parent  = this;
             m.size    = file.size;
             m.time    = file.time;
             m._rsv2   = 0;
 
             // Find a handler for this file
-            if(PluginInformation* handler = loader.FindHandlerForFile(m, callme))
+            handler = loader.FindHandlerForFile(m, callme);
+            if(handler || !callme.empty())
             {
                 file.recursive = false;     // Avoid FilesWalk recursion
                 
                 // Push the new file into our list
                 auto ipair = files.emplace( std::piecewise_construct,
                                             std::forward_as_tuple(std::move(filename)), 
-                                            std::forward_as_tuple(*this, std::move(filepath), m, *handler, std::move(callme)));
+                                            std::forward_as_tuple(*this, std::move(filepath), m, handler, std::move(callme)));
                 
                 auto& n = ipair.first->second;
                 
@@ -221,7 +228,19 @@ void Loader::ModInformation::Scan()
                     n.status = Status::Added;
                 else
                     n.status = n.HasFileChanged(m)? Status::Updated : Status::Unchanged;
+                
+                Log("Found file '%s' with handler '%s'",
+                        file.filebuf,
+                        n.handler? n.handler->name : callme.size()? "<callme>" : "<none>");
             }
+            else
+            {
+                if(!file.is_dir) Log("No handler or callme for file '%s'", file.filebuf);
+            }
+        }
+        else
+        {
+            Log("Ignoring file '%s'", file.filebuf);
         }
         
         // TODO Check if SubModLoader
@@ -234,21 +253,21 @@ void Loader::ModInformation::Scan()
     FindStatus(*this, this->files, fine);
 }
 
-auto Loader::FindHandlerForFile(const ModLoaderFile& m, PluginVector& callme) -> PluginInformation*
+auto Loader::FindHandlerForFile(modloader::file& m, PluginVector& callme) -> PluginInformation*
 {
     PluginInformation* handler = nullptr;
     
     for(auto& plugin : this->plugins)
     {
-        auto state = plugin.FindHandleStatus(m);
+        auto state = plugin.FindBehaviour(m);
         
-        if(state == HandleStatus::Yes)
+        if(state == BehaviourType::Yes)
         {
             // We found a handler, stop the search immediately, don't check for other CallMe's
             handler = &plugin;
             break;
         }
-        else if(state == HandleStatus::CallMe)
+        else if(state == BehaviourType::CallMe)
         {
             // This plugin requests this file to be sent OnInstall for some reason (readme files?)
             callme.emplace_back(&plugin);

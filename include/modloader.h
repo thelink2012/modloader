@@ -46,9 +46,9 @@ extern "C" {
  **************************************/
 
 /* Check file result */
-#define MODLOADER_CHECK_NO          0
-#define MODLOADER_CHECK_YES         1
-#define MODLOADER_CHECK_CALL_ME     2
+#define MODLOADER_BEHAVIOUR_NO          0
+#define MODLOADER_BEHAVIOUR_YES         1
+#define MODLOADER_BEHAVIOUR_CALLME      2
 
 /* modloader_file_t flags */
 #define MODLOADER_FF_IS_DIRECTORY   1
@@ -63,10 +63,21 @@ struct modloader_t;
 struct modloader_plugin_t;
 
 
+/*
+ * modloader_mod_t
+ *      This structure represents a mod
+ */
+typedef struct
+{
+    uint64_t    id;         // Unique mod id
+    uint32_t    priority;   // Mod priority
+    uint32_t    _pad1;
+    
+} modloader_mod_t;
 
 
 /*
- * modloader_file_serial_t
+ * modloader_file_t
  *      This structure represents a file
  */
 typedef struct
@@ -82,10 +93,14 @@ typedef struct
     uint64_t        time;                   /* File modification time  */
                                             /*  (as FILETIME, 100-nanosecond intervals since January 1, 1601 UTC) */
     
-    uint32_t        file_id;
-    uint32_t        mod_id;
+    // --> TODO To align and fix:
+    modloader_mod_t*    parent;
+    uint32_t            _rsv3;
+    uint64_t            behaviour;
     
 } modloader_file_t;
+
+
 
 
 
@@ -108,13 +123,6 @@ typedef void (*modloader_fvLog)(const char* msg, va_list va);
  */
 typedef void (*modloader_fError)(const char* errmsg, ...);
 
-/*
- * NewChunkLoaded
- *      Tells modloader to increase the loading bar a bit
- *      PS: You must setup how much you will call it at modloader_plugin_data.loadbar_chunks
- */
-typedef void (*modloader_fNewChunkLoaded)( );
-
 
 /* ---- Interface ---- */
 typedef struct modloader_t
@@ -127,6 +135,8 @@ typedef struct modloader_t
     modloader_fError            Error;
     
 } modloader_t;
+
+
 
 
 
@@ -178,27 +188,23 @@ typedef int (*modloader_fOnStartup)(modloader_plugin_t* data);
 
 /*
  *  OnShutdown
- *      Called when the plugin gets unloaded, this probably happens when the game closes
+ *      Plugin shut dowing
  *      @data: The plugin data
  *      @return 0 on success and 1 on failure;
  */
 typedef int (*modloader_fOnShutdown)(modloader_plugin_t* data);
 
 /*
- * CheckFile
- *      Called to check if a specific file is to be processed by this plugin.
+ * GetBehaviour
+ *      Gets the behaviour of this plugin in relation to the specified file
  *      @data: The plugin data   
- *      @return 0 for 'yes' and 1 for 'no';
+ *      @return MODLOADER_RELATIONSHIP_NONE    for no relationship
+ *              MODLOADER_RELATIONSHIP_STRONG  for strong relationship, this plugin will handle the file installation
+ *              MODLOADER_RELATIONSHIP_WEAK    for weak relationship, this plugin won't handle the file installation but will receive it at Install, Uninstall and so on.
+ *              
+ * 
  */
-typedef int (*modloader_fCheckFile)(modloader_plugin_t* data, const modloader_file_t* file);
-
-/*
- * ProcessFile
- *      Called to process a file previosly checked as 'yes'
- *      @data: The plugin data
- *      @return 0 on success and 1 on failure;
- */
-typedef int (*modloader_fProcessFile)(modloader_plugin_t* data, const modloader_file_t* file);
+typedef int (*modloader_fGetBehaviour)(modloader_plugin_t* data, modloader_file_t* file);
 
 /*
  * InstallFile
@@ -208,6 +214,16 @@ typedef int (*modloader_fProcessFile)(modloader_plugin_t* data, const modloader_
  */
 typedef int (*modloader_fInstallFile)(modloader_plugin_t* data, const modloader_file_t* file);
 
+
+/*
+ * ReinstallFile
+ *      Called to reinstall a file  previosly installed, the file was updated
+ *      @data: The plugin data
+ *      @return 0 on success and 1 on failure;
+ */
+typedef int (*modloader_fReinstallFile)(modloader_plugin_t* data, const modloader_file_t* file);
+
+
 /*
  * UninstallFile
  *      Called to uninstall a file previosly installed with 'InstallFile'
@@ -215,36 +231,6 @@ typedef int (*modloader_fInstallFile)(modloader_plugin_t* data, const modloader_
  *      @return 0 on success and 1 on failure;
  */
 typedef int (*modloader_fUninstallFile)(modloader_plugin_t* data, const modloader_file_t* file);
-
-/*
- *  PosProcess
- *      Called after all files have been processed (with ProcessFile)
- *      @data: The plugin data
- *      @return: 0 on success and 1 on failure
- */
-typedef int (*modloader_fPosProcess)(modloader_plugin_t* data);
-
-/*
- *  OnSplash
- *      Called when the splash screen written "GTA San Andreas" and copyright notices shows up.
- *      This will be the first call after the splash screen.
- *      @data: The plugin data
- *      @return: 0 on success and 1 on failure
- * 
- */
-typedef int (*modloader_fOnSplash)(modloader_plugin_t* data);
-
-/*
- *  OnLoad
- *      Called on the loading screen (with a loading bar, etc).
- *      This will be the first call after the loading screen starts.
- *      You must make your time-consuming tasks and calls to NewChunkLoaded here on this callback
- *      @data: The plugin data
- *      @return: 0 on success and 1 on failure
- * 
- */
-typedef int (*modloader_fOnLoad)(modloader_plugin_t* data);
-
 
 /*
  *  OnReload
@@ -257,7 +243,7 @@ typedef int (*modloader_fOnReload)(modloader_plugin_t* data);
 
 
 
-/* ---- Interface ---- */
+/* ---- Interface ---- Should be compatible with all versions of modloader.asi */
 typedef struct modloader_plugin_t
 {
     /*
@@ -266,13 +252,13 @@ typedef struct modloader_plugin_t
      */
     uint8_t major, minor, revision, _pad0;
     
-    // Data to be set by modloader itself, read-only data for plugins!
+    // Data to be set by Mod Loader itself, read-only data for plugins!
     struct  
     {
         void *pThis, *pModule;                      /* this pointer and HMODULE */
         const char *name, *author, *version;        /* Plugin info */
         modloader_t* modloader;                     /* Modloader pointer  */
-        uint8_t checked, _pad1[3];
+        uint8_t _pad1[4];                           /* Backward compatibility */
     };
     
     /* Userdata, set it to whatever you want */
@@ -284,26 +270,32 @@ typedef struct modloader_plugin_t
     
     /*
      * The plugin priority, normally this is set outside the plugin in a config file, not recommend to touch this value.
-     * Modloader sets this to the default priority "50"; "0" means ignore this plugin.
+     * Mod Loader sets this to the default priority "50"; "0" means ignore this plugin.
      */
     int priority;
-    
-    /* Callbacks */ // TODO DOCUMENT
+
+    /* Callbacks */
     modloader_fGetName          GetName;
     modloader_fGetAuthor        GetAuthor;
     modloader_fGetVersion       GetVersion;
     modloader_fOnStartup        OnStartup;
     modloader_fOnShutdown       OnShutdown;
-    modloader_fCheckFile        CheckFile;
-    modloader_fProcessFile      ProcessFile;    // TODO REMOVE
-    modloader_fPosProcess       PosProcess;     // TODO REMOVE
+    modloader_fGetBehaviour     GetBehaviour;
     modloader_fInstallFile      InstallFile;
+    modloader_fReinstallFile    ReinstallFile;
     modloader_fUninstallFile    UninstallFile;
-    modloader_fOnSplash         OnSplash;       // TODO REMOVE
-    modloader_fOnLoad           OnLoad;         // TODO REMOVE
-    modloader_fOnReload         OnReload;
+    modloader_fOnReload         OnReload;           // TODO REMOVE???????
+    
+    
+    
+    /* Add padding for compatibility with previous version to not destroy PluginInformation object */
+    uint8_t _safepad[32];
     
 } modloader_plugin_t;
+
+
+
+
 
 
 

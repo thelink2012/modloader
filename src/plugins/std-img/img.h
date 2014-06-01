@@ -29,8 +29,8 @@ class CThePlugin : public modloader::CPlugin
         bool OnStartup();
         bool OnShutdown();
         
-        bool CheckFile(modloader::ModLoaderFile& file);
-        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::modloader::file& file);
+        bool ProcessFile(const modloader::modloader::file& file);
         bool PosProcess();
         bool OnReload();
         
@@ -127,7 +127,7 @@ class CThePlugin : public modloader::CPlugin
         std::list<ImgFile> imgFiles;            // List of .img files
         std::map<size_t, ModelFileRef> models;  // Pointer to the modelsFiles above, except it's using a hash for fast-lookup
 
-        void ReadImgFolder(const modloader::ModLoaderFile& file);
+        void ReadImgFolder(const modloader::modloader::file& file);
         void BuildModelsMap();
         void ReplaceStandardImg();
         

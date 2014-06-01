@@ -41,8 +41,8 @@ class CThePlugin : public modloader::CPlugin
         const char* GetVersion();
         bool OnStartup();
         bool OnShutdown();
-        bool CheckFile(modloader::ModLoaderFile& file);
-        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::modloader::file& file);
+        bool ProcessFile(const modloader::modloader::file& file);
         bool PosProcess();
         const char** GetExtensionTable();
         
@@ -93,7 +93,7 @@ class CThePlugin : public modloader::CPlugin
             std::string path;       // e.g. "modloader/foo/script.cs"
             std::string folder;     // e.g. "modloader/foo/"
             
-            CsInfo(const modloader::ModLoaderFile& file);
+            CsInfo(const modloader::modloader::file& file);
             static bool GetVersionFromExtension(const char* ext, char& version);
         };
         

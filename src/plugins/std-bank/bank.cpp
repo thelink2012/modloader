@@ -66,7 +66,7 @@ bool CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::modloader::file& file)
 {
     if(!file.is_dir)
     {
@@ -99,7 +99,7 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 /*
  * Process the replacement
  */
-bool CThePlugin::ProcessFile(const ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::file& file)
 {
     if(*file.filext == 0)   // No extension, is a pak
     {
@@ -137,7 +137,7 @@ bool CThePlugin::PosProcess()
 
 
 
-bool CThePlugin::AddWave(const modloader::ModLoaderFile& file)
+bool CThePlugin::AddWave(const modloader::modloader::file& file)
 {
     waves_pre.emplace_back(modloader::NormalizePath(file.filepath), modloader::GetFilePath(file));
     return true;

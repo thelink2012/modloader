@@ -54,8 +54,8 @@ class CThePlugin : public modloader::CPlugin
         bool OnStartup();
         bool OnShutdown();
         
-        bool CheckFile(modloader::ModLoaderFile& file);
-        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::modloader::file& file);
+        bool ProcessFile(const modloader::modloader::file& file);
         bool PosProcess();
         
         //bool OnSplash();
@@ -68,7 +68,7 @@ class CThePlugin : public modloader::CPlugin
         void Patch();
         
         // Add wave from @file
-        bool AddWave(const modloader::ModLoaderFile& file);
+        bool AddWave(const modloader::modloader::file& file);
 
         // Finds a wave at @pak in @bank at @sound
         std::string* FindWave(std::string pak, uint16_t bank, uint16_t sound)

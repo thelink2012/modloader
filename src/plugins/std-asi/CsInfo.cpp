@@ -13,7 +13,7 @@ using namespace modloader;
  *  Constructs a CsInfo
  *  This stores information about cleo scripts 
  */
-CThePlugin::CsInfo::CsInfo(const modloader::ModLoaderFile& file)
+CThePlugin::CsInfo::CsInfo(const modloader::modloader::file& file)
 {
     // Do basic initial setup
     this->path = GetFilePath(file);

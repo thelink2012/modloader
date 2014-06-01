@@ -1,5 +1,8 @@
 ------------------------- Creating your own loader-plugin for modloader
 
+
+******************* OUT DATED DOCUMENTATION ****************************
+
     This modloader is fully plugin-based, each plugin handle a kind of file.
     A good way to contribute to the project, is creating a plugin, forked from a existing plugin or not.
     

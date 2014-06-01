@@ -26,12 +26,12 @@ namespace modloader
     
     /*
      *  GetFilePath
-     *      Gets the filepath relative to the root game directory from the ModLoaderFile object @file
+     *      Gets the filepath relative to the root game directory from the modloader::file object @file
      */
-    inline std::string GetFilePath(const ModLoaderFile& file)
+    /*inline std::string GetFilePath(const modloader::file& file)
     {
-        return (std::string(file.modpath) + file.filepath);
-    }
+        return file.FileBuffer();
+    }*/
     
     
     
@@ -42,6 +42,7 @@ namespace modloader
      *  
      *  The behaviour of this function can change whenever we think it's necessary
      */
+    /*
     inline bool RegisterReplacementFile(CPlugin& plugin, const char* name,  std::string& buf, const char* path, bool bLogOnSuccess = true)
     {
         // If buffer is not empty, there's a replacement present, log it
@@ -62,6 +63,7 @@ namespace modloader
         
         return true;
     }
+     */
 
 }
 

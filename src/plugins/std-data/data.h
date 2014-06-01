@@ -40,8 +40,8 @@ class CThePlugin : public modloader::CPlugin
         const char* GetVersion();
         bool OnStartup();
         bool OnShutdown();
-        bool CheckFile(modloader::ModLoaderFile& file);
-        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::modloader::file& file);
+        bool ProcessFile(const modloader::modloader::file& file);
         bool PosProcess();
         bool OnSplash();
         
@@ -194,7 +194,7 @@ class CDataFS
         }
         
         /* Adds a custom file to the container */
-        DataTraitsType& AddFile(const ModLoaderFile& file, const char* fsPath = nullptr)
+        DataTraitsType& AddFile(const modloader::file& file, const char* fsPath = nullptr)
         {
             if(fsPath == nullptr) fsPath = file.filepath;
             return AddFile(fsPath, GetFilePath(file).c_str(), false);

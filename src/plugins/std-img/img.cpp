@@ -78,7 +78,7 @@ bool CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::modloader::file& file)
 {
     if(IsFileExtension(file.filext, "img")) // For directories or actual files
         return true;
@@ -120,7 +120,7 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 /*
  * Process the replacement
  */
-bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
 {
     std::string filepath = GetFilePath(file);
     
@@ -186,13 +186,13 @@ bool CThePlugin::OnReload()
 /*
  *  Read all files from the folder @file and puts on @modelsFiles list 
  */
-void CThePlugin::ReadImgFolder(const modloader::ModLoaderFile& cfile)
+void CThePlugin::ReadImgFolder(const modloader::modloader::file& cfile)
 {
-    ModLoaderFile file = cfile; // Modifiable file structure
+    modloader::file file = cfile; // Modifiable file structure
 
     //
     /* TODO
-    ForeachFile(file.filepath, "*.*", true, [this, &file](const ModLoaderFile& forfile)
+    ForeachFile(file.filepath, "*.*", true, [this, &file](const modloader::file& forfile)
     {
         if(forfile.is_dir == false)
         {

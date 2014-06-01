@@ -341,7 +341,7 @@ namespace modloader
     {
         if(CreateDirectoryA(szTo, NULL))
         {
-            ForeachFile(szFrom, "*.*", false, [&szFrom, &szTo](ModLoaderFile& file)
+            ForeachFile(szFrom, "*.*", false, [&szFrom, &szTo](modloader::file& file)
             {
                 CHAR szToFile[MAX_PATH], szFromFile[MAX_PATH];
                 const char* pPath = file.filename;

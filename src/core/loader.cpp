@@ -9,12 +9,16 @@
 #include <modloader_util_path.hpp>
 #include <modloader_util_ini.hpp>
 
+REGISTER_ML_NULL();
+
 // TODO take care of ini.0
 // TODO no process priority
 // TODO build extension map
 
 //
 extern int LogException(char* buffer, LPEXCEPTION_POINTERS pException);
+
+
 
 // Previous exception filter
 static LPTOP_LEVEL_EXCEPTION_FILTER PrevFilter = nullptr;
@@ -58,7 +62,7 @@ static LONG CALLBACK MyUnhandledExceptionFilter(LPEXCEPTION_POINTERS pException)
 void Loader::Patch()
 {
     auto& gvm = injector::address_manager::singleton();
-    gvm.set_name("Mod Loader");
+    gvm.set_name("Mod Loader");     // Mod Loader core
     
     // Check game version to make sure we're compatible
     if(gvm.IsUnknown())
@@ -314,12 +318,11 @@ void Loader::ScanAndInstallFiles()
 void Loader::FolderInformation::Scan()
 {
     scoped_gdir xdir(this->path.c_str());
-    Log("Scanning mods at \"%s\"...", this->path.c_str());
+    Log("\nScanning mods at \"%s\"...", this->path.c_str());
 
     bool fine = true;
     
     // TODO this->LoadConfigFromINI("modloader.ini"); ONLY ONCE?
-    // TODO this->PreScan();
 
     // Mark all current mods as removed
     MarkStatus(this->mods, Status::Removed);
@@ -342,19 +345,22 @@ void Loader::FolderInformation::Scan()
     
     // Find the underlying status of this folder
     FindStatus(*this, this->mods, fine);
-
-    // TODO this->PosScan();
+    
     // TODO search childs
 }
 
 void Loader::FolderInformation::Update()
 {
+    // TODO mods by priority
+    
+    // Uninstall all removed files since the last update...
     for(auto& pair : this->mods)
     {
         ModInformation& mod = pair.second;
         mod.UninstallNecessaryFiles();
     }
     
+    // Install all updated and added files since the last update...
     for(auto& pair : this->mods)
     {
         ModInformation& mod = pair.second;
@@ -362,14 +368,23 @@ void Loader::FolderInformation::Update()
     }
 }
 
+
+
+
+
+
+
 void Loader::ModInformation::UninstallNecessaryFiles()
 {
+    // Finds all removed file in this mod and uninstall them
     for(auto it = this->files.begin(); it != this->files.end();  )
     {
         FileInformation& file = it->second;
         if(file.status == Status::Removed)
         {
-            // TODO Uninstall()
+            // File was removed from the filesystem, uninstall and erase from our internal list
+            Log("Extinguishing file '%s'", file.FileBuffer());
+            file.Uninstall();
             it = this->files.erase(it);
         }
         else
@@ -380,22 +395,126 @@ void Loader::ModInformation::UninstallNecessaryFiles()
 
 void Loader::ModInformation::InstallNecessaryFiles()
 {
-    // TODO GET SORTED LIST BY PRIORITY
-    
     for(auto it = this->files.begin(); it != this->files.end(); ++it)
     {
         FileInformation& file = it->second;
         switch(file.status)
         {
-            case Status::Added:
-                // TODO Install();
+            case Status::Added:     // File has been added since the last update
+                file.Install();
                 break;
                 
-            case Status::Updated:
-                // TODO Reinstall();
+            case Status::Updated:   // File has been updated since the last update
+                file.Reinstall();
                 break;
         }
+        
+        file.status = Status::Unchanged;
     }
+}
+
+
+
+
+
+
+
+
+struct FileInstallLog
+{
+    const Loader::FileInformation& file;
+    const char* action;
+    bool revaction;
+    
+    FileInstallLog(const Loader::FileInformation& file, const char* action, bool revaction = false) :
+                file(file), action(action), revaction(revaction)
+    {
+        loader.Log("%sing file '%s'", action, file.FileBuffer());
+    }
+    
+    ~FileInstallLog()
+    {
+        if(file.installed == revaction)
+            loader.Log("Failed to %s file '%s'", action, file.FileBuffer());
+    }
+    
+};
+
+void Loader::FileInformation::Install()
+{
+    // TODO throw if already installed
+    
+    FileInstallLog xlog(*this, "Install");
+    
+    // Install with the main handler and with callme handlers
+    if(this->handler) this->installed = handler->Install(*this, true);
+    for(auto& p : this->callme) p->Install(*this, false);
+}
+
+void Loader::FileInformation::Reinstall()
+{
+    if(this->installed)
+    {
+        FileInstallLog xlog(*this, "Reinstall");
+        
+        // Reinstall both on main handler and on callme handlers
+        if(this->handler) this->installed = handler->Reinstall(*this, true);
+        for(auto& p : this->callme) p->Reinstall(*this, false);
+    }
+}
+
+void Loader::FileInformation::Uninstall()
+{
+    if(this->installed)
+    {
+        FileInstallLog xlog(*this, "Uninstall", true);
+        
+        // Uninstall both on main handler and on callme handlers
+        if(this->handler) this->installed = !handler->Uninstall(*this, true);
+        for(auto& p : this->callme) p->Uninstall(*this, false);
+    }
+}
+
+
+
+
+
+
+bool Loader::PluginInformation::Install(FileInformation& file, bool isMainHandler)
+{
+    if(isMainHandler)
+    {
+        if(FileInformation* old = this->FindFileWithBehaviour(file.behaviour))
+            old->Uninstall();
+        
+        auto it = behv.emplace(file.behaviour, &file);
+        if(!it.second && it.first->second != &file)
+                /* TODO THROW */;
+    }
+    
+    return this->Install(file);
+}
+
+bool Loader::PluginInformation::Uninstall(FileInformation& file, bool isMainHandler)
+{
+    // TODO safeness check
+    if(isMainHandler)
+    {
+        behv.erase(file.behaviour);
+    }
+    
+    return this->Uninstall(file);
+}
+
+
+bool Loader::PluginInformation::Reinstall(FileInformation& file, bool isMainHandler)
+{
+    // TODO safeness check
+    if(isMainHandler)
+    {
+    }
+    
+    return this->Reinstall(file);
 }
 
 
@@ -410,3 +529,94 @@ void Loader::ModInformation::InstallNecessaryFiles()
 // Scan
 // Uninstall old
 // Install new
+
+
+//
+// Install/Uni options:
+//      [++] Option 1: Let the plugin keep track of all installed files with same behaviour
+//      [++] Option 2: Let the plugin send a identifier of the file behaviour, and when one is uninstalled the other is found and installed
+//      [--] Option 3: Let the plugin call UninstallFile() on the old file
+//
+//
+// Install 1/x.dff
+// Install 2/x.dff
+// Install 3/x.dff
+// What happens? 3/ gets installed
+//
+// Uninstall 3/x.dff
+// What to do to install /2?
+// By option 1:
+//              The plugin will know what to do (stacking or something)
+// By option 2:
+//              PS: When two with same behaviour gets Installed(), the older gets Uninstalled()
+//              Find others with same behaviour and Install()
+// 
+// By option 3:
+//              Default will get installed
+//
+//
+//  Reescan finds 4/x.dff
+//  What to do to install /4?
+//  By option 1:
+//              The plugin will know what to do
+//
+//  By option 2:
+//              Others with same behaviour has less priority, Install()
+// 
+//  By option 3:
+//              Simply Install()
+//
+//
+//  Priority of 1/x.dff increases
+//  What to do to install /1?
+//  By option 1:
+//              Reinstall() and the plugin will know what to do
+//
+//  By option 2:
+//              Looking at behaviour and priority, Reinstall() this and Uninstall() old
+// 
+//  By option 3:
+//              ?????????????
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// 
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// 
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// Conclusion:
+//      Option 1 will complicate plugin creation
+//      Option 3 is mind blowing, will break many things for sure
+//      Option 2 looks like the most viable and helpful
+//
+
+
+
+
+
+

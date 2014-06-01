@@ -23,17 +23,20 @@
 #define	MODLOADER_HPP
 #pragma once
 #include <modloader.h>
-#include <cstdio>
+
 
 namespace modloader
 {
-    struct ModLoaderFile : modloader_file_t
+    struct mod  : public modloader_mod_t
+    {
+    };
+    
+    struct file : public modloader_file_t
     {
         bool IsDirectory() const      { return (flags & MODLOADER_FF_IS_DIRECTORY) != 0; }
         
-        uint32_t UniqueId() const     { return file_id; }
-        uint32_t ModId() const        { return mod_id; }
-        
+        //uint64_t Behaviour() const    { return behaviour; }
+
         uint64_t Size() const         { return size; }
         uint64_t Time() const         { return time; }
 
@@ -45,125 +48,130 @@ namespace modloader
         size_t FileBufferLength() const              { return (size_t)(pos_eos); }
         
         // Has file changed in comparation with c
-        // Checks only for file size and file time
-        bool HasFileChanged(const ModLoaderFile& c) const
+        // Checks only for file size and file time, returns false for directories
+        bool HasFileChanged(const file& c) const
         {
-            return !(Time() == c.Time() && Size() == c.Size());
+            return !IsDirectory() && !(Time() == c.Time() && Size() == c.Size());
         }
     };
     
-    struct ModLoaderPlugin : modloader_plugin_t
+    struct plugin : public modloader_plugin_t
     {
     };
     
-    static_assert(sizeof(ModLoaderFile) == sizeof(modloader_file_t), "Invalid ModLoaderFile inheritance size");
-    static_assert(sizeof(ModLoaderPlugin) == sizeof(modloader_plugin_t), "Invalid ModLoaderPlugin inheritance size");
+    static_assert(sizeof(file) == sizeof(modloader_file_t), "Invalid file inheritance size");
+    static_assert(sizeof(plugin) == sizeof(modloader_plugin_t), "Invalid plugin inheritance size");
     
-#if 0
-    // Base class for the plugin interface
-    class CPlugin
+    class basic_plugin
     {
-        private:
-            friend struct CPluginCallbacks;
-
         public:
-            // The loader data
-            modloader_plugin_data*      data;
-            modloader_data*             modloader;
+            friend struct basic_plugin_wrapper;
+            
+            struct info
+            {
+                const char*  name;
+                const char*  version;
+                const char*  author;
+                int          default_priority;
+                const char** extable;
+            };
+        
+        public:
+            modloader_t*                loader;
+            plugin*                     data;
             modloader_fLog              Log;
             modloader_fvLog             vLog;
             modloader_fError            Error;
-                
+     
+        public:
+            // Gets the plugin information such as name, version and author
+            virtual const info& GetInfo()=0;
+            
             // Checkout modloader.h or "doc/Creating Your Own Plugin.txt" for details on those callbacks
-            virtual const char* GetName()=0;
-            virtual const char* GetAuthor()=0;
-            virtual const char* GetVersion()=0;
             virtual bool OnStartup()    { return true; }
             virtual bool OnShutdown()   { return true; }
-            virtual bool CheckFile(ModLoaderFile& file)=0;
-            virtual bool ProcessFile(const ModLoaderFile& file)=0;
-            virtual bool PosProcess()   { return true; }
-            virtual bool OnSplash()     { return true; }
-            virtual bool OnLoad()       { return true; }
             virtual bool OnReload()     { return true; }
-            
-            // TODO new interface
-                
-            // Returns the favorable file extensions for this plugin
-            virtual const char** GetExtensionTable() { return nullptr; }
+            virtual int  GetBehaviour(file&)=0;
+            virtual bool InstallFile(const file&)=0;
+            virtual bool ReinstallFile(const file&)=0;
+            virtual bool UninstallFile(const file&)=0;
     };
     
+    
+#if 1
     // Callbacks wrapper
-    struct CPluginCallbacks
+    struct basic_plugin_wrapper
     {
-        static CPlugin* GetThis(modloader_plugin_t* data)
+        static basic_plugin& GetThis(modloader_plugin_t* data)
         {
-            return (CPlugin*)(data->pThis);
+            return *(basic_plugin*)(data->pThis);
         }
+        
+        static file& GetFile(const modloader_file_t* f)
+        {
+            return *(const_cast<file*>(reinterpret_cast<const file*>(f)));
+        }
+        
+        
         
         static const char* GetName(modloader_plugin_t* data)
         {
-            return GetThis(data)->GetName();
+            return GetThis(data).GetInfo().name;
         }
         
         static const char* GetAuthor(modloader_plugin_t* data)
         {
-            return GetThis(data)->GetAuthor();
+            return GetThis(data).GetInfo().author;
         }
         
         static const char* GetVersion(modloader_plugin_t* data)
         {
-            return GetThis(data)->GetVersion();
+            return GetThis(data).GetInfo().version;
         }
         
         static int OnStartup(modloader_plugin_t* data)
         {
-            return !GetThis(data)->OnStartup();
+            return !GetThis(data).OnStartup();
         }
         
         static int OnShutdown(modloader_plugin_t* data)
         {
-            return !GetThis(data)->OnShutdown();
+            return !GetThis(data).OnShutdown();
         }
         
-        static int CheckFile(modloader_plugin_t* data, modloader_file_t* file)
+        static int GetBehaviour(modloader_plugin_t* data, modloader_file_t* file)
         {
-            return !GetThis(data)->CheckFile(*file);
-        }  
-        
-        static int ProcessFile(modloader_plugin_t* data, const modloader_file_t* file)
-        {
-            return !GetThis(data)->ProcessFile(*file);
+            return GetThis(data).GetBehaviour(GetFile(file));
         }
         
-        static int PosProcess(modloader_plugin_t* data)
+        static int InstallFile(modloader_plugin_t* data, const modloader_file_t* file)
         {
-            int result = !GetThis(data)->PosProcess();
-            return result;
+            return !GetThis(data).InstallFile(GetFile(file));
         }
         
-        static int OnSplash(modloader_plugin_t* data)
+        static int ReinstallFile(modloader_plugin_t* data, const modloader_file_t* file)
         {
-            return !GetThis(data)->OnSplash();
+            return !GetThis(data).ReinstallFile(GetFile(file));
         }
         
-        static int OnLoad(modloader_plugin_t* data)
+        static int UninstallFile(modloader_plugin_t* data, const modloader_file_t* file)
         {
-            int result = !GetThis(data)->OnLoad();
-            return result;
+            return !GetThis(data).UninstallFile(GetFile(file));
         }
         
         static int OnReload(modloader_plugin_t* data)
         {
-            return !GetThis(data)->OnReload();
+            return !GetThis(data).OnReload();
         }
         
     };
 
     // Attaches the 'interface' with the plugin 'data'
     // This is intended to be called at GetPluginData export
-    inline void RegisterPluginData(CPlugin& interfc, modloader_plugin_t* data, int priority = -1)
+    inline void RegisterPluginData(basic_plugin& interfc, modloader_plugin_t* data)
     {
+        int priority = interfc.GetInfo().default_priority;
+        
         // Register version this plugin was built in
         data->major = MODLOADER_VERSION_MAJOR;
         data->minor = MODLOADER_VERSION_MINOR;
@@ -173,23 +181,22 @@ namespace modloader
         data->pThis = &interfc;
 
         // Callbacks
-        data->GetName = &CPluginCallbacks::GetName;
-        data->GetVersion = &CPluginCallbacks::GetVersion;
-        data->GetAuthor = &CPluginCallbacks::GetAuthor;
-        data->OnStartup = &CPluginCallbacks::OnStartup;
-        data->OnShutdown = &CPluginCallbacks::OnShutdown;
-        data->CheckFile = &CPluginCallbacks::CheckFile;
-        data->ProcessFile = &CPluginCallbacks::ProcessFile;
-        data->PosProcess = &CPluginCallbacks::PosProcess;
-        data->OnSplash = &CPluginCallbacks::OnSplash;
-        data->OnLoad = &CPluginCallbacks::OnLoad;
-        data->OnReload = &CPluginCallbacks::OnReload;
+        data->GetName = &basic_plugin_wrapper::GetName;
+        data->GetVersion = &basic_plugin_wrapper::GetVersion;
+        data->GetAuthor = &basic_plugin_wrapper::GetAuthor;
+        data->OnStartup = &basic_plugin_wrapper::OnStartup;
+        data->OnShutdown = &basic_plugin_wrapper::OnShutdown;
+        data->GetBehaviour = &basic_plugin_wrapper::GetBehaviour;
+        data->InstallFile = &basic_plugin_wrapper::InstallFile;
+        data->UninstallFile = &basic_plugin_wrapper::UninstallFile;
+        data->ReinstallFile = &basic_plugin_wrapper::ReinstallFile;
+        data->OnReload = &basic_plugin_wrapper::OnReload;
         
         // Custom priority
         if(priority != -1) data->priority = priority;
         
         // Get Extension Table
-        if(data->extable = interfc.GetExtensionTable())
+        if(data->extable = interfc.GetInfo().extable)
         {
             for(const char** extable = data->extable; *extable; ++extable)
                 ++data->extable_len;
@@ -199,15 +206,30 @@ namespace modloader
             data->extable_len = 0;
         }
         
-        // Modloader
-        interfc.data      = data;
-        interfc.modloader = data->modloader;
-        interfc.Error     = interfc.modloader->Error;
-        interfc.Log       = interfc.modloader->Log;
-        interfc.vLog      = interfc.modloader->vLog;
+        // Mod Loader
+        interfc.data      = reinterpret_cast<plugin*>(data);
+        interfc.loader    = data->modloader;
+        interfc.Error     = interfc.loader->Error;
+        interfc.Log       = interfc.loader->Log;
+        interfc.vLog      = interfc.loader->vLog;
     }
-#endif
     
+    
+    /*
+     *  Export plugin object data
+     */
+    extern basic_plugin* plugin_ptr;
+    extern "C" __declspec(dllexport) inline void GetPluginData(modloader_plugin_t* data)
+    {
+        if(plugin_ptr) modloader::RegisterPluginData(*plugin_ptr, data);
+    }
+    
+#endif
+
+#define REGISTER_ML_PLUGIN_PTR(ptr) namespace modloader { modloader::basic_plugin* plugin_ptr = ptr; }
+#define REGISTER_ML_PLUGIN(plugin)  REGISTER_ML_PLUGIN_PTR(&plugin);
+#define REGISTER_ML_NULL()          REGISTER_ML_PLUGIN_PTR(nullptr)
+
 };
 
 

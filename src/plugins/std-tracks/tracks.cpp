@@ -54,8 +54,8 @@ class CThePlugin : public modloader::CPlugin
         bool OnStartup();
         bool OnShutdown();
         
-        bool CheckFile(modloader::ModLoaderFile& file);
-        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::modloader::file& file);
+        bool ProcessFile(const modloader::modloader::file& file);
         bool PosProcess();
         
         //bool OnSplash();
@@ -122,7 +122,7 @@ bool CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::modloader::file& file)
 {
     if(!file.is_dir)
     {
@@ -162,7 +162,7 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 /*
  * Process the replacement
  */
-bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
 {
     if(*file.filext == 0)
     {

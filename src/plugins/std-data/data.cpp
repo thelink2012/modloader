@@ -97,7 +97,7 @@ bool CThePlugin::OnShutdown()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::modloader::file& file)
 {
     /* Check if handlable extension */
     for(const char** p = GetExtensionTable(); *p; ++p)
@@ -118,7 +118,7 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 /*
  * Process the replacement
  */
-bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
 {
     const char* filename = file.filename;
     

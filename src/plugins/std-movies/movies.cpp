@@ -24,8 +24,8 @@ class CThePlugin : public modloader::CPlugin
         const char* GetName();
         const char* GetAuthor();
         const char* GetVersion();
-        bool CheckFile(modloader::ModLoaderFile& file);
-        bool ProcessFile(const modloader::ModLoaderFile& file);
+        bool CheckFile(modloader::modloader::file& file);
+        bool ProcessFile(const modloader::modloader::file& file);
         bool PosProcess();
         
         const char** GetExtensionTable();
@@ -68,7 +68,7 @@ const char** CThePlugin::GetExtensionTable()
 /*
  *  Check if the file is the one we're looking for
  */
-bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
+bool CThePlugin::CheckFile(modloader::modloader::file& file)
 {
     if( !file.is_dir && IsFileExtension(file.filext, "mpg") &&
         (  !strcmp(file.filename, "Logo.mpg",  false)                                                
@@ -81,7 +81,7 @@ bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
 /*
  * Process the replacement
  */
-bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
 {
     std::string filepath = GetFilePath(file);
     
