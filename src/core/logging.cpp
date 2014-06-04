@@ -5,6 +5,8 @@
  */
 #include "loader.hpp"
 
+// TODO log size limit at ini
+
 static FILE* logfile = 0;
 extern int LogException(char* buffer, LPEXCEPTION_POINTERS pException);
 
@@ -22,12 +24,40 @@ void Loader::OpenLog()
     if(!logfile)
     {
         // Opens the logging stream
-        logfile = fopen("modloader/modloader.log", "w");
-
+        this->TruncateLog();
+        
         // Write the log header, with version number and IsDev information
         Log("========================== Mod Loader %d.%d.%d %s==========================\n",
                 MODLOADER_VERSION_MAJOR, MODLOADER_VERSION_MINOR, MODLOADER_VERSION_REVISION,
                 MODLOADER_VERSION_ISDEV? "Development Build " : "");
+    }
+}
+
+/*
+ *  Loader::TruncateLog
+ *      Clears the log file
+ */
+void Loader::TruncateLog()
+{
+    // Clears the ammount of bytes written...
+    auto path = this->gamePath + "modloader/modloader.log";
+    numBytesInLog = 0;
+    
+    if(logfile == nullptr)
+    {
+        // Log file hadn't been open before, open it now.
+        logfile = fopen(path.c_str(), "w");
+        if(!logfile) Error("Failed to open the log file");
+    }
+    else
+    {
+        // Reopen the file for truncation
+        if((logfile = freopen(path.c_str(), "w", logfile)) == 0)
+        {
+            // Wuut, we couldn't do it?
+            Error("Failed to truncate log! Closing it for safeness %s.", strerror(errno) );
+            CloseLog();
+        }
     }
 }
 
@@ -66,9 +96,13 @@ void Loader::vLog(const char* msg, va_list va)
 {
     if(logfile)
     {
-        vfprintf(logfile, msg, va);
+        loader.numBytesInLog += vfprintf(logfile, msg, va) + 2;
         fputc('\n', logfile);
         if(loader.bImmediateFlush) fflush(logfile);
+
+        // Truncate log if it's too big
+        if(loader.numBytesInLog >= loader.maxBytesInLog)
+            loader.TruncateLog();
     }
 }
 
@@ -88,7 +122,27 @@ void Loader::Error(const char* msg, ...)
     
     // Show message box with the message
     MessageBoxA(NULL, buffer, "Mod Loader", MB_ICONERROR); 
+    //Log("Loader::Error -> %s", buffer);
 }
+
+/*
+ *  Loader::FatalError
+ *      Shows a message box with the content of ("Fatal Error: ", msg, ...) then terminates application
+ *      This should be called only on very unhandleable cases.
+ */
+void Loader::FatalError(const char* msg, ...)
+{
+    char buffer[1024];
+    
+    // Print message into buffer
+    va_list va; va_start(va, msg);
+    vsprintf(buffer, msg, va);
+    va_end(va);
+    
+    Error("Fatal Error: %s", buffer);
+    std::terminate();
+}
+
 
 /*
  *  Loader::LogException
@@ -96,7 +150,7 @@ void Loader::Error(const char* msg, ...)
  */
 void Loader::LogException(void* pExceptionPointers)
 {
-    char buffer[1024];
+    char buffer[1024];  // TODO this buffer will need to increase for the new LogException
     if(::LogException(buffer, (LPEXCEPTION_POINTERS)pExceptionPointers))
         Log(buffer);
 }

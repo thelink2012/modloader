@@ -1,11 +1,12 @@
 /* 
- * San Andreas Mod Loader
+ * Mod Loader
  * Created by LINK/2012 <dma_2012@hotmail.com>
  * 
  *  Mod Loader plugin interface
  *      The interface is extremly simple, you don't even have to link with modloader.
  *      The only thing you are requiered to do is export a 'GetPluginData' function (see below for the prototype).
  *      Put your plugin at '/modloader/.data/plugins' folder
+ * 
  * 
  *  This source code is offered for use in the public domain. You may
  *  use, modify or distribute it freely.
@@ -82,21 +83,17 @@ typedef struct
  */
 typedef struct
 {
-    uint32_t        flags;                  /* File flags */
-    const char*     buffer;                 /* Pointer to the file buffer... that's the file path relative to game dir  */
-    uint8_t         pos_eos;                /* The null terminator position (length of the string)  */
-    uint8_t         pos_filepath;           /* The position of the filepath relative to the mod folder (e.g. "modloader/my mod/stuff/a.dat" -> "stuff/a.dat") */
-    uint8_t         pos_filename;           /* The position of the file name  */
-    uint8_t         pos_filext;             /* The position of the file extension  */
-    uint32_t        _rsv2;                  /* Reserved (Padding)  */
-    uint64_t        size;                   /* Size of the file in bytes  */
-    uint64_t        time;                   /* File modification time  */
-                                            /*  (as FILETIME, 100-nanosecond intervals since January 1, 1601 UTC) */
-    
-    // --> TODO To align and fix:
-    modloader_mod_t*    parent;
-    uint32_t            _rsv3;
-    uint64_t            behaviour;
+    uint32_t            flags;          /* File flags */
+    const char*         buffer;         /* Pointer to the file buffer... that's the file path relative to game dir  */
+    uint8_t             pos_eos;        /* The null terminator position (length of the string)  */
+    uint8_t             pos_filepath;   /* The position of the filepath relative to the mod folder (e.g. "modloader/my mod/stuff/a.dat" -> "stuff/a.dat") */
+    uint8_t             pos_filename;   /* The position of the file name  */
+    uint8_t             pos_filext;     /* The position of the file extension  */
+    modloader_mod_t*    parent;         /* The mod owner of this file */
+    uint64_t            size;           /* Size of the file in bytes  */
+    uint64_t            time;           /* File modification time  */
+                                        /*  (as FILETIME, 100-nanosecond intervals since January 1, 1601 UTC) */
+    uint64_t            behaviour;      /* The file behaviour */
     
 } modloader_file_t;
 
@@ -130,9 +127,9 @@ typedef struct modloader_t
     const char* gamepath;   /* game path */
     const char* cachepath;  /* cache path, normally "modloader/.data/cache" */
     
-    modloader_fLog              Log;
-    modloader_fvLog             vLog;
-    modloader_fError            Error;
+    modloader_fLog          Log;
+    modloader_fvLog         vLog;
+    modloader_fError        Error;
     
 } modloader_t;
 
@@ -232,16 +229,6 @@ typedef int (*modloader_fReinstallFile)(modloader_plugin_t* data, const modloade
  */
 typedef int (*modloader_fUninstallFile)(modloader_plugin_t* data, const modloader_file_t* file);
 
-/*
- *  OnReload
- *      Called when the user enters the game (on newgame/loadgame)
- *      @data: The plugin data
- *      @return: 0 on success and 1 on failure
- * 
- */
-typedef int (*modloader_fOnReload)(modloader_plugin_t* data);
-
-
 
 /* ---- Interface ---- Should be compatible with all versions of modloader.asi */
 typedef struct modloader_plugin_t
@@ -284,8 +271,6 @@ typedef struct modloader_plugin_t
     modloader_fInstallFile      InstallFile;
     modloader_fReinstallFile    ReinstallFile;
     modloader_fUninstallFile    UninstallFile;
-    modloader_fOnReload         OnReload;           // TODO REMOVE???????
-    
     
     
     /* Add padding for compatibility with previous version to not destroy PluginInformation object */

@@ -28,6 +28,35 @@
 
 namespace modloader
 {
+    // List of references for objects of type T
+    template<class T>
+    using ref_list = std::vector<std::reference_wrapper<T>>;
+    
+    /*
+     *  Gets ref_list from containers 
+     */
+    
+    template<class C>
+    inline auto refs(C& container) -> ref_list<typename C::value_type>
+    {
+        ref_list<typename C::value_type> list;
+        list.reserve(container.size());
+        for(auto& ref : container) list.emplace_back(ref);
+        return list;
+    }
+
+    template<class C>
+    inline auto refs_mapped(C& container) -> ref_list<typename C::mapped_type>
+    {
+        ref_list<typename C::mapped_type> list;
+        list.reserve(container.size());
+        for(auto& pair : container) list.emplace_back(pair.second);
+        return list;
+    }
+    
+    
+    
+    
     /*
      *  String comparision functions, with case sensitive option
      */
@@ -156,7 +185,7 @@ namespace modloader
     {
         return !!compare(s, "false", false);
     }
-    
+
 }
 
 #endif	/* MODLOADER_UTIL_CONTAINER_HPP */

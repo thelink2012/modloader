@@ -225,7 +225,6 @@ namespace modloader
             {
                 // Setup filebuf
                 filebuf = dir + fd.cFileName;
-                //filebuf = NormalizePath(std::move(filebuf)); -- fucking no
                 
                 // Setup properties
                 wf.is_dir    = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0;
@@ -248,10 +247,7 @@ namespace modloader
                 // Call 'cb' and go recursive if asked to...
                 if(!cb(wf)
                 ||(wf.recursive && !FilesWalk(dir + wf.filename, glob, recursive, cb)))
-                {
-                    FindClose(hSearch);
-                    return false;
-                }
+                    break;
             }
         }
         while(FindNextFile(hSearch, &fd));   // Next...

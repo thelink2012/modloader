@@ -36,7 +36,7 @@ void Loader::LoadPlugins()
                 
                 
         // Iterate on each dll plugin and load it
-        FilesWalk("", "*.dll", false, [this](FileWalkInfo& file)
+        FilesWalk("", "*.dll", true, [this](FileWalkInfo& file)
         {
             LoadPlugin(file.filepath);
             return true;
@@ -50,9 +50,7 @@ void Loader::LoadPlugins()
  */
 void Loader::UnloadPlugins()
 {
-    std::vector<PluginInformation*> aplugins;
-    for(auto& plugin : this->plugins) aplugins.emplace_back(&plugin);
-    for(auto& plugin : aplugins) this->UnloadPlugin(*plugin);
+    for(auto& plugin : refs(this->plugins)) this->UnloadPlugin(plugin);
 }
 
 /*
@@ -89,7 +87,7 @@ bool Loader::LoadPlugin(std::string filename)
         {
             failed = true;
             Log("Failed to load module '%s', it requieres a newer version of Mod Loader!\nUpdate yourself at: %s",
-                modulename, modurl);
+                modulename, downurl);
         }
         // Zero priority means "don't load"
         else if (data.priority == 0)
@@ -186,6 +184,9 @@ void Loader::RebuildExtensionMap()
 /*
  *  PluginInformation methods 
  */
+
+// Wrappers around the C library...
+
 bool Loader::PluginInformation::Startup()
 {
     return !(OnStartup && OnStartup(this));
@@ -194,4 +195,103 @@ bool Loader::PluginInformation::Startup()
 bool Loader::PluginInformation::Shutdown()
 {
     return !(OnShutdown && OnShutdown(this));
+}
+
+Loader::BehaviourType Loader::PluginInformation::FindBehaviour(modloader::file& m)
+{
+    return GetBehaviour? (BehaviourType) (GetBehaviour(this, &m)) : BehaviourType::No;
+}
+
+bool Loader::PluginInformation::InstallFile(const modloader::file& m)
+{
+    return base::InstallFile? !base::InstallFile(this, &m) : false;
+}
+
+bool Loader::PluginInformation::ReinstallFile(const modloader::file& m)
+{
+    return base::ReinstallFile? !base::ReinstallFile(this, &m) : false;
+}
+
+bool Loader::PluginInformation::UninstallFile(const modloader::file& m)
+{
+    return base::UninstallFile? !base::UninstallFile(this, &m) : false;
+}
+
+
+/*
+ *  PluginInformation::FindFileWithBehaviour
+ *      Finds the currently installed file that has the specified @behaviour  
+ */
+Loader::FileInformation* Loader::PluginInformation::FindFileWithBehaviour(uint64_t behaviour)
+{
+    auto it = behv.find(behaviour);
+    return it != behv.end() ? it->second : nullptr;
+}
+
+
+/*
+ *  PluginInformation::Install 
+ *      Installs the specified @file using this plugin.
+ */
+bool Loader::PluginInformation::Install(FileInformation& file)
+{
+    if(this->IsMainHandlerFor(file))
+    {
+        // If any other file with the same behaviour present, uninstall it
+        if(FileInformation* old = this->FindFileWithBehaviour(file.behaviour))
+        {
+            if(!old->Uninstall())
+                return false;
+        }
+            
+        // Assign this file to it's behaviour
+        if(!behv.emplace(file.behaviour, &file).second)
+            FatalError("Behaviour emplace didn't took place at Install");
+    }
+    
+    return this->InstallFile(file);
+}
+
+/*
+ *  PluginInformation::Uninstall 
+ *      Uninstalls the specified @file using this plugin.
+ */
+bool Loader::PluginInformation::Uninstall(FileInformation& file)
+{
+    if(EnsureBehaviourPresent(file) && this->UninstallFile(file))
+    {
+        if(this->IsMainHandlerFor(file)) behv.erase(file.behaviour);
+        return true;
+    }
+    return false;
+}
+
+/*
+ *  PluginInformation::Reinstall 
+ *      Reinstalls the specified @file using this plugin.
+ */
+bool Loader::PluginInformation::Reinstall(FileInformation& file)
+{
+    if(EnsureBehaviourPresent(file) && !this->ReinstallFile(file))
+    {
+        if(this->IsMainHandlerFor(file))
+        {
+            // Somehow we failed to Reinstall, so Uninstall it instead.
+            if(!file.Uninstall())
+                FatalError("Catastrophical failure at Reinstall");
+        }
+        return false;
+    }
+    return true;
+}
+
+/*
+ *  PluginInformation::EnsureBehaviourPresent 
+ *      Ensures the specified @file behaviour is being used on this plugin.
+ *      Always return true, in case of failure terminates the application.
+ */
+bool Loader::PluginInformation::EnsureBehaviourPresent(const FileInformation& file)
+{
+    if(behv.find(file.behaviour) == behv.end()) FatalError("EnsureBehaviourPresent failed");
+    return true;
 }

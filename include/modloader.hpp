@@ -190,7 +190,6 @@ namespace modloader
         data->InstallFile = &basic_plugin_wrapper::InstallFile;
         data->UninstallFile = &basic_plugin_wrapper::UninstallFile;
         data->ReinstallFile = &basic_plugin_wrapper::ReinstallFile;
-        data->OnReload = &basic_plugin_wrapper::OnReload;
         
         // Custom priority
         if(priority != -1) data->priority = priority;

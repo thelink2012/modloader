@@ -10,22 +10,26 @@
 #include <cinttypes>
 #include <modloader.hpp>
 #include <modloader_util_path.hpp>
+#include <modloader_util_container.hpp>
 #include <string>
 #include <vector>
 #include <list>
 #include <map>
 #include <set>
 
+// TODO we should have a GetLoaderVersion before GetPluginData
+// TODO REMOVE Status::Added (or maybe not)
+// TODO DESTRUCTOR IMPORTANCE
 // TODO FIX THE PRIORITY SYSTEM
-// TODO UNORDMAP???
-// TODO UINT64 FOR IDS
+// TODO think about shutdown time
 
 using namespace modloader;
 
-template<class T>
-using ref_list = std::vector<std::reference_wrapper<T>>;
+extern class Loader loader;
 
-static const char* modurl = "https://github.com/thelink2012/sa-modloader";
+// URL
+static const char* modurl  = "https://github.com/thelink2012/modloader";
+static const char* downurl = "https://github.com/thelink2012/modloader/releases";
 
 // Functor for sorting based on priority and name 
 template<class T>
@@ -39,37 +43,6 @@ struct PriorityPred
     }
 };
 
-template<class T>
-struct ByName
-{
-    struct EqualTo
-    {
-        bool operator()(const T& a, const T& b) const
-        {
-            return compare(a.name, b.name, false) == 0;
-        }
-    };
-    
-    struct LessThan
-    {
-        bool operator()(const T& a, const T& b) const
-        {
-            return compare(a.name, b.name, false) < 0;
-        }
-    };
-    
-    struct Hash
-    {
-        std::hash<decltype(T::name)> hash;
-        
-        bool operator()(const T& a) const
-        {
-            return hash(a.name);
-        }
-    };
-};
-
-extern class Loader loader;
 
 // The Mod Loader Core
 class Loader : public modloader_t
@@ -78,18 +51,22 @@ class Loader : public modloader_t
         static const int default_priority = 50;         // Default priority for mods
         static const int default_cmd_priority = 80;     // Default priority for mods sent by command line
         
+        // Forwarding declarations
         class ModInformation;
         class FileInformation;
         class PluginInformation;
         class FolderInformation;
         typedef std::vector<PluginInformation*> PluginVector;
+        typedef std::map<std::string, PluginVector> ExtMap;
         
+        // File flags
         enum class FileFlags : decltype(modloader::file::flags)
         {
             None        = 0,
             IsDirectory = MODLOADER_FF_IS_DIRECTORY,    // File is a directory
         };
         
+        // Status for a mod object
         enum class Status : uint8_t
         {
             Unchanged,          // Unchanged since last install
@@ -98,6 +75,7 @@ class Loader : public modloader_t
             Removed,            // Removed from the filesystem since last install
         };
         
+        // Behaviour for a file
         enum class BehaviourType
         {
             No      = MODLOADER_BEHAVIOUR_NO,
@@ -105,15 +83,19 @@ class Loader : public modloader_t
             CallMe  = MODLOADER_BEHAVIOUR_CALLME
         };
         
+        
+        
+        
+        
         // Information about a Mod Loader plugin
         class PluginInformation : public modloader::plugin 
         {
             protected:
                 friend class Loader;
-                bool Startup();         // Calls OnStartup event
-                bool Shutdown();        // Calls OnShutdown event
-               
-                std::map<uint64_t, FileInformation*> behv;  // All the behaviours being handled by this plugin
+                typedef modloader::plugin base;
+                
+                // All the behaviours being handled by this plugin
+                std::map<uint64_t, FileInformation*> behv;
                 
             public:
                 PluginInformation(void* module, const char* modulename, modloader_fGetPluginData GetPluginData)
@@ -137,184 +119,172 @@ class Loader : public modloader_t
                 }
                 
                 
+            protected:
+                // Methods to install and uninstall files into this plugin
+                friend class FileInformation;
+                bool Install(FileInformation& file);
+                bool Reinstall(FileInformation& file);
+                bool Uninstall(FileInformation& file);
                 
-                BehaviourType FindBehaviour(modloader::file& m)
-                {
-                    return GetBehaviour? (BehaviourType)(GetBehaviour(this, &m)) : BehaviourType::No;
-                }
                 
-                
-                
-                bool Install(FileInformation& file, bool isMainHandler);
-                bool Reinstall(FileInformation& file, bool isMainHandler);
-                bool Uninstall(FileInformation& file, bool isMainHandler);
-                
-            private:
-                FileInformation* FindFileWithBehaviour(uint64_t behaviour)
-                {
-                    auto it = behv.find(behaviour);
-                    return it != behv.end()? it->second : nullptr;
-                }
+            protected:
+                // Methods to deal with file behaviour
+                BehaviourType FindBehaviour(modloader::file& m);
+                FileInformation* FindFileWithBehaviour(uint64_t behaviour);
                 
             private:
-                bool Install(const modloader::file& m)
-                {
-                    return InstallFile? !InstallFile(this, &m) : false;
-                }
+                // Methods mapping straight to the raw methods at modloader_file_t
+                bool InstallFile(const modloader::file& m);
+                bool ReinstallFile(const modloader::file& m);
+                bool UninstallFile(const modloader::file& m);
+                bool Startup();
+                bool Shutdown();
                 
-                bool Reinstall(const modloader::file& m)
-                {
-                    return ReinstallFile? !ReinstallFile(this, &m) : false;
-                }
+                bool IsMainHandlerFor(const FileInformation& file)
+                { return file.handler == this; }
                 
-                bool Uninstall(const modloader::file& m)
-                {
-                    return UninstallFile? !UninstallFile(this, &m) : false;
-                }
-                
+                bool EnsureBehaviourPresent(const FileInformation& file);
         };
         
-        // Information about a file
-        class FileInformation : public modloader::file // TODO
+        
+        
+        // Information about a mod file
+        class FileInformation : public modloader::file
         {
-            public: // protected: -- Only FolderInformation should touch this struct
+            protected:
+                friend class Loader;
                 ModInformation&                 parent;         // The mod this file belongs to
                 PluginInformation*              handler;        // The plugin that will handle this file (may be null)
                 std::string                     pathbuf;        // Path buffer (as used in base.buffer)
                 PluginVector                    callme;         // Those plugins should receive this file, but they won't handle it
+                bool                            installed;      // Is the mod installed?
+                Status                          status;         // File status
                 
-                // The following information is used for the in-game install/uninstall system
-                bool       installed;   // Is the mod installed?
-                Status     status;      // File status
-                
+            public:
+                // Initializer
                 FileInformation(ModInformation& parent, std::string&& xpathbuf, const modloader::file& m,
                                 PluginInformation* xhandler, PluginVector&& xcallme)
                 
                     : parent(parent), handler(xhandler), pathbuf(std::move(xpathbuf)), callme(std::move(xcallme)),
-                      installed(false), status(Status::Added)
+                      installed(false), status(Status::Unchanged)
                 {
                     std::memcpy(this, &m, sizeof(modloader::file));
                     modloader::file::parent = &parent;
                 }
                 
-                void Install();
-                void Reinstall();
-                void Uninstall();
+                // Checks if this file is installed
+                bool IsInstalled() const { return installed; }
+                    
+                // Installs or uninstalls this file
+                bool Install();
+                bool Reinstall();
+                bool Uninstall();
+
+                // Updates the current file state based on another new state
+                bool Update(const modloader::file& m);
         };
+        
         
         // Information about a mod folder
         class ModInformation : public modloader::mod
         {
-            public: // protected: -- Only FolderInformation should touch this struct
-                friend class FolderInformation;
+            protected:
+                friend class Loader;
+                friend struct PriorityPred<ModInformation>;
                 FolderInformation&          parent;         // Owner of this mod
                 std::string                 path;           // Path for this mod (relative to game dir), normalized
                 std::string                 name;           // Name for this mod, this is the filename in path (normalized)
                 std::string                 fs_name;        // Name for this mod on the filesystem (non normalized)
-                std::map<std::string, FileInformation>  files;          // Files inside this mod
+                std::map<std::string, FileInformation>  files; // Files inside this mod
                 Status                      status;         // Mod status
-                
+
+            public:
+                // Initializer
                 ModInformation(std::string name, FolderInformation& parent, uint64_t id)
-                    : fs_name(name), name(NormalizePath(name)), parent(parent), status(Status::Added)
+                    : fs_name(name), name(NormalizePath(name)), parent(parent), status(Status::Unchanged)
                 {
                     this->id = id;
                     this->priority = parent.GetPriority(this->name);
                     MakeSureStringIsDirectory(this->path = parent.GetPath() + this->name);
                 }
                 
+                // Scans this mod for new, updated or removed files
                 void Scan();
-                void UninstallNecessaryFiles();
+                
+                // Uninstall / Install files after scanning and finding out the status of mods
+                void ExtinguishNecessaryFiles();
                 void InstallNecessaryFiles();
                 
-                /* WHAT NO SENSE
-                ref_list<FileInformation> GetFilesByPriority()
-                {
-                    ref_list<FileInformation> list;
-                    for(auto& pair : files) list.emplace_back(pair.second);
-                    std::sort(list.begin(), list.end(), [](const FileInformation& a, const FileInformation& b)
-                    {
-                        return PriorityPred<ModInformation>()(a.parent, b.parent);
-                    });
-                    return list;
-                }
-                 */
+                const std::string& GetPath() { return this->path; }
+
+            protected:
+                const decltype(files)& InfoContainer() const { return files; }
+                void SetUnchanged() { if(status != Status::Removed) status = Status::Unchanged; }
+                //bool NeedsToBeCollected() const { return this->status == Status::Removed; }
+                //bool CannotCollectBecauseOfFiles() const { return this->status == Status::Removed && !files.empty(); }
         };
         
-        // Information about a "modloader" folder
-        class FolderInformation // TODO
+        
+        
+        // Information about a modloader folder
+        class FolderInformation
         {
-            // TODO NEED TO: sort by priority (any but map/set) AND name (map/set)
-            
-            public: // Type definitions
-                typedef std::map<std::string, FolderInformation>                    FolderInformationList;
-                typedef FolderInformationList::iterator                             FolderInformationIterator;
-                typedef std::map<std::string, ModInformation>                       ModInformationList;
-                typedef ModInformationList::iterator                                ModInformationIterator;
-                typedef ref_list<FolderInformation>                                 FolderInformationRefList;
+            public:
+                typedef std::map<std::string, FolderInformation>    FolderInformationList;
+                typedef std::map<std::string, ModInformation>       ModInformationList;
 
-            public: // Methods
+            public:
                 FolderInformation(const std::string& path, FolderInformation* parent = nullptr)
-                    : path(path), parent(parent), status(Status::Added)
+                    : path(path + cNormalizedSlash), parent(parent), status(Status::Unchanged)
                 {}
                 
+                // Ignore checking
+                bool IsIgnored(const std::string& name);
+                bool IsFileIgnored(const std::string& name);
                 
-                // Clears all buffers from this structure and makes it as if it was at the initial stage
-                void Clear();
+                // Adders (and Finders)
+                FolderInformation& AddChild(const std::string& path);
+                ModInformation& AddMod(const std::string& name);
                 
-                
-                // Checks if the specified mod should be ignored
-                bool IsIgnored(std::string name);
-                
-                // Checks if the specified file should be ignored
-                bool IsFileIgnored(std::string name);
-                
-
-                
-                // Adds a child mod list folder
-                FolderInformation& AddChild(std::string path);
-                
-                // Adds a mod to the container
-                ModInformation& AddMod(std::string name);
-                
-                // Adds a priority to a mod. If priority is zero, it ignores the mod.
+                // Priority, inclusion and ignores
                 void SetPriority(std::string name, int priority);
-                
-                // Gets a priority to a mod.
-                int GetPriority(std::string name);
-
-                // Adds a mod to the mod inclusion list (to get loaded even if ExcludeAll is true)
+                int GetPriority(const std::string& name);
                 void Include(std::string name);
-                
-                // Makes a specified file glob ignored
                 void IgnoreFileGlob(std::string glob);
                 
                 // Sets flags
                 void SetIgnoreAll(bool bSet);
                 void SetExcludeAll(bool bSet);
                 void SetForceExclude(bool bSet);
+
+                // Gets me, my childs, my child-childs....
+                ref_list<FolderInformation> GetAll();
                 
-                
-                
-                // Gets me and my childs in a reference list
-                FolderInformationRefList GetAll();
+                // Get my mods sorted by priority
+                ref_list<ModInformation>    GetModsByPriority();
                 
                 // Rebuilds the glob string for exclude_globs
                 void RebuildIncludeModsGlob();
                 void RebuildExcludeFilesGlob();
                 
-                
+                // Scanning and Updating
                 void Scan();
-                void Update();
+                void Update();  // After this call some ModInformation may have been deleted
+                static void Update(ModInformation& mod);    // ^
                 
+                // Gets the path to this modfolder (relative to gamedir, normalized)
                 const std::string& GetPath() { return path; }
+                
+                // Clears all buffers from this structure
+                void Clear();
                 
             protected:
                 friend class Loader;
-                Status status;    // Folder status
+                Status status;                      // Folder status
                 
-            private:    // Data
-                std::string path;               // Path relative to game dir
-                FolderInformation* parent;      // Parent folder
+            private:
+                std::string path;                   // Path relative to game dir
+                FolderInformation* parent;          // Parent folder
                 
                 ModInformationList       mods;      // All mods on this folder
                 FolderInformationList    childs;    // All child mod folders on this mod folder (sub sub "modloader/" folders)
@@ -338,23 +308,30 @@ class Loader : public modloader_t
                     {}
                     
                 } flags;
+                
+            protected:
+                const decltype(childs)& InfoContainer() const { return childs; }
+                void SetUnchanged() { if(status != Status::Removed) status = Status::Unchanged; }
+                //bool NeedsToBeCollected() const { return this->status == Status::Removed; }
+                //bool CannotCollectBecauseOfFiles() const { return this->status == Status::Removed && !mods.empty(); }
         };
 
-        
-        typedef std::map<std::string, PluginVector> ExtMap;
         
     protected:
         friend class scoped_gdir;
         
         // Configs
+        uint64_t        maxBytesInLog;          // Maximum number of bytes in the logging stream 
         bool            bRunning;               // True when the loader was started up, false otherwise
         bool            bEnableLog;             // Enable logging to the log file
         bool            bImmediateFlush;        // Enable immediately flushing the log file
         bool            bEnablePlugins;         // Enable the loading of ML plugins
         
+        uint64_t        numBytesInLog;
+        
         // Unique ids
         uint64_t        currentModId;           // Current id for the unique mod id
-        uint64_t        currentFileId;          // Current id for the unique file id
+        uint64_t        currentFileId;          // Current id for the unique file id (hibit is set)
         
         // Directories
         std::string     gamePath;               // Full game path
@@ -370,6 +347,7 @@ class Loader : public modloader_t
     private: // Logging
         void OpenLog();     // Open log stream
         void CloseLog();    // Closes log stream
+        void TruncateLog();
  
     private: // Plugins Management
         
@@ -393,7 +371,7 @@ class Loader : public modloader_t
     public:
         
         // Constructor
-        Loader() : mods("modloader\\")
+        Loader() : mods("modloader")
         {}
         
         // Patches the game code to run this core
@@ -406,52 +384,51 @@ class Loader : public modloader_t
         // Called on specific game circustances
         void OnReload();    // On Game Reloading
         
-        
-        void ScanAndInstallFiles();
-        PluginInformation* FindHandlerForFile(modloader::file& m, PluginVector& out_callme);
-        
         // Logging functions
         static void Log(const char* msg, ...);
         static void vLog(const char* msg, va_list va);
         static void Error(const char* msg, ...);
+        static void FatalError(const char* msg, ...);
         static void LogException(void* pExceptionPointers);
         
+        // Unique ids function
         uint64_t PickUniqueModId()  { return ++currentModId; }
-        uint64_t PickUniqueFileId() { return (++currentFileId) | 0x8000000000000000; }
+        uint64_t PickUniqueFileId() { return ++currentFileId; }
+        
+        
+        // Scan and update (install) the mods
+        void ScanAndUpdate();
+        
+        // Finds the plugin that'll handle the file @m, or that needs to get called (@out_callme)
+        PluginInformation* FindHandlerForFile(modloader::file& m, PluginVector& out_callme);
         
         
         
-        
-        
-        
-        
-        
-        
+        // Marks all status at the specified @map to @status
         template<class M>
         static void MarkStatus(M& map, Loader::Status status)
         {
-            for(auto& pair : map)
-            {
-                auto& x = pair.second;
-                x.status = status;
-            }
+            for(auto& pair : map) pair.second.status = status;
         }
 
 
+        // Updates the status of @info based on the content of @map, after a full rescan happened
+        // If the mod has been deleted @fine should be false, otherwise true
         template<class T, class M>
-        static void FindStatus(T& info, M& map, bool fine)
+        static void UpdateStatus(T& info, M& map, bool fine)
         {
             if(!fine)
             {
-                // Failed to scan this, it probably doesn't exist
+                // Failed to scan info, it probably has been deleted
                 info.status = Status::Removed;
             }
-            else if(info.status != Status::Added)
+            else if(info.status != Status::Added)   // is Updated or Unchanged?
             {
+                info.status = Status::Unchanged;
+                
                 for(auto& pair : map)
                 {
-                    auto& x = pair.second;
-                    if(x.status != Status::Unchanged)
+                    if(pair.second.status != Status::Unchanged)   // status is Updated?
                     {
                         // Something changed here on this scan
                         info.status = Status::Updated;
@@ -460,6 +437,34 @@ class Loader : public modloader_t
                 }
             }
         }
+        
+        // Collects garbage information at the map @self
+        template<class I>
+        static void CollectInformation(I& self)
+        {
+            typedef typename I::mapped_type T;
+            auto NeedsCollect = [&](const T& item) { return item.status == Status::Removed; };
+            auto CanCollect   = [&](const T& item) { return NeedsCollect(item) && item.InfoContainer().empty(); };
+
+            for(auto it = self.begin(); it != self.end(); )
+            {
+                auto& item = it->second;
+                const char* path = item.GetPath().c_str();
+                
+                if(CanCollect(item))
+                {
+                    Log("Collecting '%s'", path);
+                    it = self.erase(it);
+                }
+                else
+                {
+                    if(NeedsCollect(item)) Log("Cannot collect '%s' because of remaining files!", path);
+                    ++it;
+                }
+            }
+        }
+        
+        friend int test();
 };
 
 
@@ -471,42 +476,12 @@ inline bool operator==(const Loader::PluginInformation& a, const Loader::PluginI
     return (&a == &b);
 }
 
+// Scoped chdir relative to gamedir
 struct scoped_gdir : public modloader::scoped_chdir
 {
     scoped_gdir(const char* newdir) : scoped_chdir((!newdir[0]? loader.gamePath : loader.gamePath + newdir).data())
     { }
 };
-
-
-
-
-
-
-
-
-// What should be taken into consideration:
-//  Zipped Files
-//  Game Menu
-//  Normalized
-
-/*
-CheckFile
-InstallFile
-UninstallFile
-PosProcess
-*/
-
-/*
----> File Information
-    uint8_t     Flags                                   : 1=Is Directory
-    uint8_t     Filepath length
-    uint8_t     Index to the filename in the filepath
-    uint8_t     Index to the extension in the filepath
-    char*       Pointer to the file normalized filepath (see NormalizePath function)
-    uint64_t    File size
-    uint64_t    File time (Windows FILETIME, that's 100-nanosecond intervals since January 1, 1601 (UTC))
-    uint64_t    reserved1 (0)
-*/
 
 
 

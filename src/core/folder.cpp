@@ -6,17 +6,16 @@
 #include "loader.hpp"
 #include <shlwapi.h>
 
-// TODO rename CheckFile
-// TODO const std::string
+// TODO priority set at runtime
 
 template<class L>
-void BuildGlobString(const L& list, std::string& glob)
+static void BuildGlobString(const L& list, std::string& glob)
 {
     glob.clear();
     for(auto& g : list) glob.append(g).push_back(';');
 }
 
-bool MatchGlob(const std::string& name, const std::string& glob)
+static bool MatchGlob(const std::string& name, const std::string& glob)
 {
     return PathMatchSpecA(name.c_str(), glob.c_str()) != 0;
 }
@@ -40,82 +39,124 @@ void Loader::FolderInformation::Clear()
 
 
 /*
- *  FolderInformation::Clear
- *      Checks if the specified mod should be ignored
+ *  FolderInformation::IsIgnored
+ *      Checks if the specified mod @name (normalized) should be ignored
+ *      This doesn't check parents IsIgnored
  */
-bool Loader::FolderInformation::IsIgnored(std::string name)
+bool Loader::FolderInformation::IsIgnored(const std::string& name)
 {
     // If excluse all is under effect, check if we are included, otherwise check if we are excluded.
     if(flags.bExcludeAll || flags.bForceExclude)
         return (MatchGlob(name, include_mods_glob) == false);
     else
     {
-        auto it = mods_priority.find(std::move(name));
+        auto it = mods_priority.find(name);
         return (it != mods_priority.end() && it->second == 0);
     }
 }
 
-// Checks if the specified file should be ignored
-bool Loader::FolderInformation::IsFileIgnored(std::string name)
+/*
+ *  FolderInformation::IsFileIgnored
+ *      Checks if the specified file @name (normalized) should be ignored
+ *      This also checks on parents
+ */
+bool Loader::FolderInformation::IsFileIgnored(const std::string& name)
 {
-    return MatchGlob(name, exclude_files_glob);
+    if(MatchGlob(name, exclude_files_glob)) return true;
+    return (this->parent? parent->IsFileIgnored(name) : false);
 }
 
 
-// Adds a child mod list folder
-auto Loader::FolderInformation::AddChild(std::string path) -> FolderInformation&
+/*
+ *  FolderInformation::AddChild
+ *      Adds or finds a child FolderInformation at @path (normalized) into this
+ */
+auto Loader::FolderInformation::AddChild(const std::string& path) -> FolderInformation&
 {
-    //childs.emplace(path, this);
-    //return childs.back();
-    
     auto ipair = childs.emplace(std::piecewise_construct,
                         std::forward_as_tuple(path),
-                        std::forward_as_tuple(*this));
+                        std::forward_as_tuple(path, this));
     
     return ipair.first->second;
 }
 
-// Adds a mod to the container
-auto Loader::FolderInformation::AddMod(std::string name) -> ModInformation&
+/*
+ *  FolderInformation::AddMod
+ *      Adds or finds mod at folder @name (non-normalized) into this FolderInformation
+ */
+auto Loader::FolderInformation::AddMod(const std::string& name) -> ModInformation&
 {
-    // Acquiere variables
-    //mods.emplace_back(std::move(name), *this, loader.PickUniqueModId());
-    //return mods.back();
-    
     auto ipair = mods.emplace(std::piecewise_construct,
-                        std::forward_as_tuple(name),
+                        std::forward_as_tuple(NormalizePath(name)),
                         std::forward_as_tuple(name, *this, loader.PickUniqueModId()));
     
     return ipair.first->second;
 }
 
-// Adds a priority to a mod. If priority is zero, it ignores the mod.
+/*
+ *  FolderInformation::SetPriority
+ *      Sets the @priority for the next mods named @name (normalized) over here
+ */
 void Loader::FolderInformation::SetPriority(std::string name, int priority)
 {
     mods_priority.emplace(std::move(name), priority);
 }
 
-int Loader::FolderInformation::GetPriority(std::string name)
+
+/*
+ *  FolderInformation::GetPriority
+ *      Gets the @priority for the mod named @name (normalized)
+ */
+int Loader::FolderInformation::GetPriority(const std::string& name)
 {
-    auto it = mods_priority.find(std::move(name));
+    auto it = mods_priority.find(name);
     return (it == mods_priority.end()? default_priority : it->second);
 }
 
-// Adds a mod to the mod inclusion list
+/*
+ *  FolderInformation::Include
+ *      Adds a file to the inclusion list, to be included even if bExcludeAll=true
+ */
 void Loader::FolderInformation::Include(std::string name)
 {
     include_mods.emplace(std::move(name));
     RebuildIncludeModsGlob();
 }
 
-// Makes a specified file ignored
+/*
+ *  FolderInformation::IgnoreFileGlob
+ *      Adds a file glob to be ignored
+ */
 void Loader::FolderInformation::IgnoreFileGlob(std::string glob)
 {
     exclude_files.emplace(std::move(glob));
     RebuildExcludeFilesGlob();
 }
 
-// Sets flags
+
+/*
+ *  FolderInformation::RebuildExcludeFilesGlob  - Rebuilds glob for files exclusion
+ *  FolderInformation::RebuildIncludeModsGlob   - Rebuilds glob for files inclusion
+ */
+
+void Loader::FolderInformation::RebuildExcludeFilesGlob()
+{
+    BuildGlobString(this->exclude_files, this->exclude_files_glob);
+}
+
+void Loader::FolderInformation::RebuildIncludeModsGlob()
+{
+    BuildGlobString(this->include_mods, this->include_mods_glob);
+}
+
+
+/*
+ *  FolderInformation::SetIgnoreAll     - Ignores all mods 
+ *  FolderInformation::SetExcludeAll    - Excludes all mods except the ones being included ([INCLUDE])
+ *  FolderInformation::SetForceExclude  - Internal ExcludeAll for -mod command line
+ * 
+ */
+
 void Loader::FolderInformation::SetIgnoreAll(bool bSet)
 {
     flags.bIgnoreAll = bSet;
@@ -133,149 +174,128 @@ void Loader::FolderInformation::SetForceExclude(bool bSet)
 
 
 
-// Gets me and my childs in a reference list
-auto Loader::FolderInformation::GetAll() -> FolderInformationRefList
+/*
+ *  FolderInformation::GetAll 
+ *      Gets all the childs and subchilds FolderInformation including self
+ */
+auto Loader::FolderInformation::GetAll() -> ref_list<FolderInformation>
 {
-    FolderInformationRefList list = { *this };
+    ref_list<FolderInformation> list = { *this };  // self
     for(auto& pair : this->childs)
     {
         auto rest = pair.second.GetAll();
-        list.insert(list.end(), rest.begin(), rest.end());
+        list.insert(list.end(), rest.begin(), rest.end());  // subchilds
     }
     return list;
 }
 
-
-
-
-
-
-
-void Loader::FolderInformation::RebuildExcludeFilesGlob()
+/*
+ *  FolderInformation::GetModsByPriority 
+ *      Gets my mods ordered by priority
+ */
+auto Loader::FolderInformation::GetModsByPriority() -> ref_list<ModInformation>
 {
-    BuildGlobString(this->exclude_files, this->exclude_files_glob);
-}
-
-void Loader::FolderInformation::RebuildIncludeModsGlob()
-{
-    BuildGlobString(this->include_mods, this->include_mods_glob);
+    auto list = refs_mapped(this->mods);
+    std::sort(list.begin(), list.end(), PriorityPred<ModInformation>());
+    return list;
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-void Loader::ModInformation::Scan()
+/*
+ *  FolderInformation::Scan
+ *      Scans mods at this and child folders
+ *      This method only scans, to update using the scanned information, call Update()
+ */
+void Loader::FolderInformation::Scan()
 {
     scoped_gdir xdir(this->path.c_str());
-    Log("\nScanning files at \"%s\"...", this->path.c_str());
+    Log("\n\nScanning mods at '%s'...", this->path.c_str());
+
+    bool fine = true;
     
-    // Mark all current files as removed
-    MarkStatus(this->files, Status::Removed);
+    // TODO this->LoadConfigFromINI("modloader.ini"); ONLY ONCE?
 
-    // Scan the directory checking out all files
-    bool fine = FilesWalk("", "*.*", true, [this](FileWalkInfo& file)
+    // > Status here is Status::Unchanged
+    // Mark all current mods as removed
+    MarkStatus(this->mods, Status::Removed);
+
+    // Walk on this folder to find mods
+    if (flags.bIgnoreAll == false)
     {
-        auto filename = NormalizePath(file.filename);
-
-        if(!parent.IsFileIgnored(filename))
+        fine = FilesWalk("", "*.*", false, [this](FileWalkInfo & file)
         {
-            modloader::file m;
-            PluginVector callme;
-            PluginInformation* handler;
-            auto filepath = this->path + NormalizePath(file.filebuf);
-            
-            // This buffer setup is tricky but should work fine
-            m.buffer       = filepath.data();
-            m.pos_eos      = filepath.length();
-            m.pos_filepath = this->path.length();
-            m.pos_filename = m.pos_filepath + (file.filename - file.filebuf);
-            m.pos_filext   = m.pos_filepath + (file.filext - file.filebuf);
-            
-            // Setup other information
-            m.flags   = (std::underlying_type<FileFlags>::type)(file.is_dir? FileFlags::IsDirectory : FileFlags::None);
-            m.behaviour = loader.PickUniqueFileId();
-            m.parent  = this;
-            m.size    = file.size;
-            m.time    = file.time;
-            m._rsv2   = 0;
-
-            // Find a handler for this file
-            handler = loader.FindHandlerForFile(m, callme);
-            if(handler || !callme.empty())
+            if(file.is_dir)
             {
-                file.recursive = false;     // Avoid FilesWalk recursion
-                
-                // Push the new file into our list
-                auto ipair = files.emplace( std::piecewise_construct,
-                                            std::forward_as_tuple(std::move(filename)), 
-                                            std::forward_as_tuple(*this, std::move(filepath), m, handler, std::move(callme)));
-                
-                auto& n = ipair.first->second;
-                
-                // Adjust the file status
-                if(ipair.second)
-                    n.status = Status::Added;
+                if (IsIgnored(NormalizePath(file.filename)))
+                    Log("Ignoring mod at '%s'", file.filepath);
                 else
-                    n.status = n.HasFileChanged(m)? Status::Updated : Status::Unchanged;
-                
-                Log("Found file '%s' with handler '%s'",
-                        file.filebuf,
-                        n.handler? n.handler->name : callme.size()? "<callme>" : "<none>");
+                    this->AddMod(file.filename).Scan();
             }
-            else
-            {
-                if(!file.is_dir) Log("No handler or callme for file '%s'", file.filebuf);
-            }
-        }
-        else
-        {
-            Log("Ignoring file '%s'", file.filebuf);
-        }
-        
-        // TODO Check if SubModLoader
-        
-        return true;
-    });
-    
-    
-    // Find the underlying status of this mod
-    FindStatus(*this, this->files, fine);
-}
-
-auto Loader::FindHandlerForFile(modloader::file& m, PluginVector& callme) -> PluginInformation*
-{
-    PluginInformation* handler = nullptr;
-    
-    for(auto& plugin : this->plugins)
-    {
-        auto state = plugin.FindBehaviour(m);
-        
-        if(state == BehaviourType::Yes)
-        {
-            // We found a handler, stop the search immediately, don't check for other CallMe's
-            handler = &plugin;
-            break;
-        }
-        else if(state == BehaviourType::CallMe)
-        {
-            // This plugin requests this file to be sent OnInstall for some reason (readme files?)
-            callme.emplace_back(&plugin);
-        }
+            return true;
+        });
     }
     
-    return handler;
+    // Find the underlying status of this folder
+    UpdateStatus(*this, this->mods, fine);
+    
+    // Scan on my childs too
+    if(this->status != Status::Removed)
+    {
+        for(auto& pair : this->childs)
+        {
+            FolderInformation& child = pair.second;
+            
+            child.Scan();
+            if(this->status == Status::Unchanged && child.status != Status::Unchanged)
+                this->status = Status::Updated;
+        }
+    }
 }
 
+/*
+ *  FolderInformation::Update
+ *      Updates the state of all mods.
+ *      This is normally called after Scan()
+ */
+void Loader::FolderInformation::Update()
+{
+    if(this->status != Status::Unchanged)
+    {
+        Log("\nUpdating mods for '%s'...", this->path.c_str());
 
+        auto mods = this->GetModsByPriority();
 
+        // Uninstall all removed files since the last update...
+        for(auto& mod : mods)
+        {
+            mod.get().ExtinguishNecessaryFiles();
+        }
+
+        // Install all updated and added files since the last update...
+        for(auto& mod : mods)
+        {
+            mod.get().InstallNecessaryFiles();
+            mod.get().SetUnchanged();
+        }
+
+        // Update my childs
+        for(auto& child : this->childs)
+        {
+            child.second.Update();
+        }
+
+        // Collect garbaged mods and childs
+        CollectInformation(this->mods);
+        CollectInformation(this->childs);
+        this->SetUnchanged();
+    }
+}
+
+/*
+ *  FolderInformation::Update
+ *      Updates the state of the specified @mod
+ */
+void Loader::FolderInformation::Update(ModInformation& mod)
+{
+    mod.parent.Update();
+}
