@@ -6,7 +6,7 @@
 *  Overrides all *.txd, *.fxp and grass*.dff files from models folder
 *
 */
-#include <modloader.hpp>
+#include <modloader/modloader.hpp>
 
 
 // TODO

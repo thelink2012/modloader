@@ -20,16 +20,15 @@
 #include <string>
 #include <cstring>
 #include <windows.h>
-#include <modloader.hpp>
-#include <modloader_util_container.hpp>
-
-// TODO CHECK THIS HEADER
+#include <modloader/modloader.hpp>
+#include <modloader/util/container.hpp>
 
 namespace modloader
 {
     static const char* szNullFile = "NUL";          // "/dev/null" on POSIX systems
     static const char cNormalizedSlash = '\\';      // The slash used in the normalized path
     
+    // Information output by FilesWalk function
     struct FileWalkInfo
     {
         // File string buffer
@@ -51,13 +50,14 @@ namespace modloader
         bool            recursive;
     };
     
-    template<class T>
-    inline const T* GetPathSeparators()
+    // Gets all possible path separators in a null terminated string
+    template<class T> inline const T* GetPathSeparators()
     {
         static const T slash[] = { '/', '\\', 0 };
         return slash;
     }
     
+    // Gets a LONGLONG from a LARGEINTEGER
     inline LONGLONG GetLongFromLargeInteger(DWORD LowPart, DWORD HighPart)
     {
         LARGE_INTEGER l;

@@ -5,6 +5,7 @@
  */
 #include "loader.hpp"
 #include <shlwapi.h>
+#include <modloader/util/ini.hpp>
 
 // TODO priority set at runtime
 
@@ -46,7 +47,7 @@ void Loader::FolderInformation::Clear()
 bool Loader::FolderInformation::IsIgnored(const std::string& name)
 {
     // If excluse all is under effect, check if we are included, otherwise check if we are excluded.
-    if(flags.bExcludeAll || flags.bForceExclude)
+    if(this->bExcludeAll || this->bForceExclude)
         return (MatchGlob(name, include_mods_glob) == false);
     else
     {
@@ -115,7 +116,7 @@ int Loader::FolderInformation::GetPriority(const std::string& name)
 
 /*
  *  FolderInformation::Include
- *      Adds a file to the inclusion list, to be included even if bExcludeAll=true
+ *      Adds a file @name (normalized) to the inclusion list, to be included even if ExcludeAllMods=true
  */
 void Loader::FolderInformation::Include(std::string name)
 {
@@ -125,7 +126,7 @@ void Loader::FolderInformation::Include(std::string name)
 
 /*
  *  FolderInformation::IgnoreFileGlob
- *      Adds a file glob to be ignored
+ *      Adds a file @glob (normalized) to be ignored
  */
 void Loader::FolderInformation::IgnoreFileGlob(std::string glob)
 {
@@ -152,24 +153,24 @@ void Loader::FolderInformation::RebuildIncludeModsGlob()
 
 /*
  *  FolderInformation::SetIgnoreAll     - Ignores all mods 
- *  FolderInformation::SetExcludeAll    - Excludes all mods except the ones being included ([INCLUDE])
+ *  FolderInformation::SetExcludeAll    - Excludes all mods except the ones being included ([IncludeMods])
  *  FolderInformation::SetForceExclude  - Internal ExcludeAll for -mod command line
  * 
  */
 
 void Loader::FolderInformation::SetIgnoreAll(bool bSet)
 {
-    flags.bIgnoreAll = bSet;
+    this->bIgnoreAll = bSet;
 }
 
 void Loader::FolderInformation::SetExcludeAll(bool bSet)
 {
-    flags.bExcludeAll = bSet;
+    this->bExcludeAll = bSet;
 }
 
 void Loader::FolderInformation::SetForceExclude(bool bSet)
 {
-    flags.bForceExclude = bSet;
+    this->bForceExclude = bSet;
 }
 
 
@@ -213,14 +214,19 @@ void Loader::FolderInformation::Scan()
 
     bool fine = true;
     
-    // TODO this->LoadConfigFromINI("modloader.ini"); ONLY ONCE?
+    // Loads the config file only once
+    if(!this->gotConfig)
+    {
+        this->gotConfig = true;
+        this->LoadConfigFromINI("modloader.ini");
+    }
 
     // > Status here is Status::Unchanged
     // Mark all current mods as removed
     MarkStatus(this->mods, Status::Removed);
 
     // Walk on this folder to find mods
-    if (flags.bIgnoreAll == false)
+    if (this->bIgnoreAll == false)
     {
         fine = FilesWalk("", "*.*", false, [this](FileWalkInfo & file)
         {
@@ -298,4 +304,56 @@ void Loader::FolderInformation::Update()
 void Loader::FolderInformation::Update(ModInformation& mod)
 {
     mod.parent.Update();
+}
+
+
+/*
+ *  FolderInformation::LoadConfigFromINI
+ *      Loads configuration specific to this folder from the specified ini file
+ */
+void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
+{
+    modloader::ini cfg;
+
+    // Reads the top [Config] section
+    auto ReadConfig = [this](const modloader::ini::key_container& kv)
+    {
+        for(auto& pair : kv)
+        {
+            if(!compare(pair.first, "IgnoreAllFiles", false))
+                this->SetIgnoreAll(to_bool(pair.second));
+            else if(!compare(pair.first, "ExcludeAllMods", false))
+                this->SetExcludeAll(to_bool(pair.second));
+        }
+    };
+
+    // Reads the [Priority] section
+    auto ReadPriorities = [this](const modloader::ini::key_container& kv)
+    {
+        for(auto& pair : kv) this->SetPriority(NormalizePath(pair.first), std::strtol(pair.second.c_str(), 0, 0));
+    };
+
+    // Reads the [ExcludeFiles] section
+    auto ReadExcludeFiles = [this](const modloader::ini::key_container& kv)
+    {
+        for(auto& pair : kv) this->IgnoreFileGlob(NormalizePath(pair.first));
+    };
+
+    // Reads the [IncludeFiles] section
+    auto ReadIncludeMods = [this](const modloader::ini::key_container& kv)
+    {
+        for(auto& pair : kv) this->Include(NormalizePath(pair.first));
+    };
+
+    // Load the ini and readddddddddddddd
+    if(cfg.load_file(inifile))
+    {
+        ReadConfig(cfg["Config"]);
+        ReadPriorities(cfg["Priority"]);
+        ReadExcludeFiles(cfg["ExcludeFiles"]);
+        ReadIncludeMods(cfg["IncludeMods"]);
+    }
+    else
+        Log("Failed to load config file");
+
 }

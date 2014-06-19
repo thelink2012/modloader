@@ -8,9 +8,10 @@
 
 #define __STDC_FORMAT_MACROS
 #include <cinttypes>
-#include <modloader.hpp>
-#include <modloader_util_path.hpp>
-#include <modloader_util_container.hpp>
+#include <modloader/modloader.h>
+#include <modloader/modloader.hpp>
+#include <modloader/util/path.hpp>
+#include <modloader/util/container.hpp>
 #include <string>
 #include <vector>
 #include <list>
@@ -255,6 +256,9 @@ class Loader : public modloader_t
                     : path(path + cNormalizedSlash), parent(parent), status(Status::Unchanged)
                 {}
                 
+                // Config
+                void LoadConfigFromINI(const std::string& inifile);
+
                 // Ignore checking
                 bool IsIgnored(const std::string& name);
                 bool IsFileIgnored(const std::string& name);
@@ -300,6 +304,7 @@ class Loader : public modloader_t
                 Status status;                      // Folder status
                 
             private:
+                bool gotConfig = false;
                 std::string path;                   // Path relative to game dir
                 FolderInformation* parent;          // Parent folder
                 
@@ -314,17 +319,9 @@ class Loader : public modloader_t
                 std::string exclude_files_glob;             // exclude_files built into a single glob
                 
                 // Folder flags
-                struct flags_t
-                {
-                    bool bIgnoreAll;        // When true, no mod will be readen
-                    bool bExcludeAll;       // When true, no mod gets loaded but the ones at include_mods list (set by INI)
-                    bool bForceExclude;     // When true, have the same effect as exclude all (set by command line)
-                    
-                    // Defaults
-                    flags_t() : bIgnoreAll(false), bExcludeAll(false), bForceExclude(false)
-                    {}
-                    
-                } flags;
+                bool bIgnoreAll    = false;     // When true, no mod will be readen
+                bool bExcludeAll   = false;     // When true, no mod gets loaded but the ones at include_mods list (set by INI)
+                bool bForceExclude = false;     // When true, have the same effect as exclude all (set by command line)
                 
             protected:
                 const decltype(childs)& InfoContainer() const { return childs; }

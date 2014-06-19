@@ -5,9 +5,9 @@
  */
 
 #include "loader.hpp"
-#include <modloader_util_injector.hpp>
-#include <modloader_util_path.hpp>
-#include <modloader_util_ini.hpp>
+#include <modloader/util/injector.hpp>
+#include <modloader/util/path.hpp>
+#include <modloader/util/ini.hpp>
 
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
@@ -16,13 +16,6 @@ REGISTER_ML_NULL();
 
 // Mod Loader object
 Loader loader;
-
-// TODO Make exception.cpp constants configurable thought a ini
-// TODO REMOVE Status::Added (or maybe not)
-// TODO DESTRUCTOR IMPORTANCE
-// TODO FIX THE PRIORITY SYSTEM
-// TODO think about shutdown time
-
 
 
 /*
@@ -47,7 +40,7 @@ void test()
     while(true)
     {
         auto func = (int(*)())0;
-        func();
+        //func();
         Sleep(1000);
         loader.ScanAndUpdate();
     }
@@ -140,7 +133,7 @@ void Loader::Startup()
         this->bRunning       = false;
         this->bEnableLog     = true;
         this->bEnablePlugins = true;
-        this->maxBytesInLog  = 5242880;     // 5 MiB (TODO ini)
+        this->maxBytesInLog  = 5242880;     // 5 MiB
         this->currentModId   = 0;
         this->currentFileId  = 0x8000000000000000;  // File id should have the hibit set
         
@@ -226,19 +219,17 @@ void Loader::ReadBasicConfig(const char* filename)
     Log("Loading basic config file %s", filename);
     if(data.load_file(filename))
     {
-        // Read basic stuff from CONFIG section
-        for(auto& pair : data["CONFIG"])
+        // Read basic stuff from [Config] section
+        for(auto& pair : data["Config"])
         {
-            auto& key = pair.first;
-            auto& value = pair.second;
-
-            // Check the option and apply the change
-            if(!compare(key.data(), "ENABLE_PLUGINS", false))
-                this->bEnablePlugins = to_bool(value);
-            else if(!compare(key.data(), "LOG_ENABLE", false))
-                this->bEnableLog = to_bool(value);
-            else if(!compare(key.data(), "LOG_IMMEDIATE_FLUSH", false))
-                this->bImmediateFlush = to_bool(value);
+            if(!compare(pair.first, "EnablePlugins", false))
+                this->bEnablePlugins = to_bool(pair.second);
+            else if(!compare(pair.first, "EnableLog", false))
+                this->bEnableLog = to_bool(pair.second);
+            else if(!compare(pair.first, "ImmediateFlushLog", false))
+                this->bImmediateFlush = to_bool(pair.second);
+            else if(!compare(pair.first, "MaxLogSize", false))
+                this->maxBytesInLog = std::strtoul(pair.second.data(), 0, 0);
         }
     }
     else

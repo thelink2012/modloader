@@ -24,7 +24,7 @@
 #include <map>
 #include <cstdio>
 
-#include "modloader_util_container.hpp"
+#include <modloader/util/container.hpp>
 
 
 namespace modloader
@@ -72,6 +72,9 @@ namespace modloader
             { }
 
             basic_ini(const char_type* filename)
+            { this->read_file(filename); }
+
+            basic_ini(const StringType& filename)
             { this->read_file(filename); }
             
             /* Iterator methods */
@@ -127,10 +130,13 @@ namespace modloader
             /* Too lazy to continue this container... If you need more methods, just add it */
             
 #if 1
+            /*
+             *  Reads the content of a ini file into this container
+             */
             bool load_file(const char_type* filename)
             {
                 /* Using C stream in a STL-like container, funny?
-                 * No. For me, C++ streams are bad designed, non friendly interface, I don't like it
+                 * Not for me, C++ streams are bad designed, non friendly interface, I don't like it
                  */
                 if(FILE* f = fopen(filename, "r"))
                 {
@@ -193,6 +199,38 @@ namespace modloader
                     return true;
                 }
                 return false;
+            }
+
+            /*
+             *  Dumps the content of this container into an ini file
+             */
+            bool write_file(const char_type* filename)
+            {
+                if(FILE* f = fopen(filename, "w"))
+                {
+                    for(auto& sec : this->data)
+                    {
+                        fprintf(f, "\n[%s]\n", sec.first.c_str());
+                        for(auto& kv : sec.second)
+                            fprintf(f, "%s = %s\n", kv.first.c_str(), kv.second.c_str());
+                    }
+                    fclose(f);
+                    return true;
+                }
+                return false;
+            }
+
+
+            /*
+            */
+            bool load_file(const StringType& filename)
+            {
+                return load_file(filename.c_str());
+            }
+
+            bool write_file(const StringType& filename)
+            {
+                return write_file(filename.c_str());
             }
 #endif       
             

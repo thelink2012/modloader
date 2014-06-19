@@ -22,7 +22,7 @@
 #ifndef MODLOADER_HPP
 #define	MODLOADER_HPP
 #pragma once
-#include <modloader.h>
+#include <modloader/modloader.h>
 
 
 namespace modloader

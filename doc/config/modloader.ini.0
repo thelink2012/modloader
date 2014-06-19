@@ -2,20 +2,21 @@
 ;   Modloader config file
 ;       Please note each modloader recursive folder has it's own configuration plus the configuration from the parent modloader.
 ;
-[CONFIG]
+[Config]
 ; Works foreach modloader.ini
-IGNORE_ALL=FALSE            ; Ignores all files. This essentially disables mods loading
-EXCLUDE_ALL=FALSE           ; Excludes all mods from being loaded except the ones at INCLUDE_MODS list
+IgnoreAllFiles = false            ; Ignores all files. This essentially disables mods loading
+ExcludeAllMods = false            ; Excludes all mods from being loaded except the ones at INCLUDE_MODS list
 
 ; Works only for root modloader.ini
-ENABLE_PLUGINS=TRUE         ; Enables/disables plugins from "modloader/.data/plugins", you probably want to have them enabled since they are responssible for loading stuff...
-LOG_ENABLE=TRUE             ; Enables/disables logging. Logging is useful to find bugs or know what's going on, but it slow downs the game, so disable it if you don't care about logs
-LOG_IMMEDIATE_FLUSH=TRUE    ; Enables/disables immediate flushing to the disk from the log file. Disabling this increases performance when logging is enabled but decreases logging usefulness
+EnablePlugins     = true        ; Enables/disables plugins from "modloader/.data/plugins", you probably want to have them enabled since they are responssible for loading stuff...
+EnableLog         = true        ; Enables/disables logging. Logging is useful to find bugs or know what's going on, but it slow downs the game, so disable it if you don't care about logs
+ImmediateFlushLog = true        ; Enables/disables immediate flushing to the disk from the log file. Disabling this increases performance when logging is enabled but decreases logging usefulness
+MaxLogSize        = 5242880     ; Maximum size of the modloader.log file in bytes, if this size is reached the file is truncated.
 
 
 ; --------------------------> Exclusion/Inclusion <------------------------------
 
-[PRIORITY]
+[Priority]
 ;
 ; Define mods priority here
 ; The priority must be from 1 to 100, where 100 has the highest and 1 has the lowest priority
@@ -27,10 +28,9 @@ LOG_IMMEDIATE_FLUSH=TRUE    ; Enables/disables immediate flushing to the disk fr
 ;      the LOADSCS.txd from mod B will be used, because LOADSCS.txd from A was loaded then B was loaded, overriding the LOADSCS from A
 ;
 
-[EXCLUDE_FILES]
-; Put files name to be ignored here (e.g. cheetah.dff)
-; You can also use the pattern *.extension, that will ignore all files with the given extension (e.g. *.txd will ignore all txd files)
+[ExcludeFiles]
+; Put files globs to be ignored here (e.g. cheetah.dff, *.dff)
 
-[INCLUDE_MODS]
-; Put mods to be included in the game even when EXCLUDE_ALL=TRUE or you passed a -mod command line to the game
+[IncludeMods]
+; Put mods to be included in the game even when ExcludeAllMods=true or you passed a -mod command line to the game
 

@@ -3,9 +3,9 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include <modloader_util_path.hpp>
-#include <modloader_util_ini.hpp>
 #include "loader.hpp"
+#include <modloader/util/path.hpp>
+#include <modloader/util/ini.hpp>
 using namespace modloader;
 
 /*
@@ -28,7 +28,7 @@ void Loader::LoadPlugins()
             if(ini.load_file("plugins.ini"))
             {
                 // Check out plugins priority overrides
-                for(auto& pair : ini["PRIORITY"])
+                for(auto& pair : ini["Priority"])
                     plugins_priority.emplace(NormalizePath(pair.first), std::stoi(pair.second));
             }
             else Log("Failed to read plugins.ini");
