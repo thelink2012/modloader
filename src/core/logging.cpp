@@ -82,6 +82,7 @@ void Loader::Log(const char* msg, ...)
     va_end(va);
 }
 
+
 /*
  *  Loader::Log
  *      Logs the message (msg, va, '\n') into the logging stream
@@ -136,3 +137,4 @@ void Loader::FatalError(const char* msg, ...)
     Error("Fatal Error: %s", buffer);
     std::terminate();
 }
+

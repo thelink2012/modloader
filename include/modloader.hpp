@@ -69,7 +69,7 @@ namespace modloader
             
             struct info
             {
-                const char*  name;
+                const char*  name;              // Useless
                 const char*  version;
                 const char*  author;
                 int          default_priority;
@@ -113,11 +113,6 @@ namespace modloader
         }
         
         
-        
-        static const char* GetName(modloader_plugin_t* data)
-        {
-            return GetThis(data).GetInfo().name;
-        }
         
         static const char* GetAuthor(modloader_plugin_t* data)
         {
@@ -181,7 +176,6 @@ namespace modloader
         data->pThis = &interfc;
 
         // Callbacks
-        data->GetName = &basic_plugin_wrapper::GetName;
         data->GetVersion = &basic_plugin_wrapper::GetVersion;
         data->GetAuthor = &basic_plugin_wrapper::GetAuthor;
         data->OnStartup = &basic_plugin_wrapper::OnStartup;
@@ -222,6 +216,14 @@ namespace modloader
     {
         if(plugin_ptr) modloader::RegisterPluginData(*plugin_ptr, data);
     }
+
+    extern "C" __declspec(dllexport) inline void GetLoaderVersion(uint8_t* major, uint8_t* minor, uint8_t* revision)
+    {
+        *major = MODLOADER_VERSION_MAJOR;
+        *minor = MODLOADER_VERSION_MINOR;
+        *revision = MODLOADER_VERSION_REVISION;
+    }
+
     
 #endif
 

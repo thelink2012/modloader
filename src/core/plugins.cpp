@@ -36,9 +36,10 @@ void Loader::LoadPlugins()
                 
                 
         // Iterate on each dll plugin and load it
-        FilesWalk("", "*.dll", true, [this](FileWalkInfo& file)
+        FilesWalk("", "*.*", true, [this](FileWalkInfo& file)
         {
-            LoadPlugin(file.filepath);
+            if(!file.is_dir && !strcmp(file.filext, "dll", false))
+                LoadPlugin(file.filepath);
             return true;
         });
     }
@@ -60,72 +61,106 @@ void Loader::UnloadPlugins()
 bool Loader::LoadPlugin(std::string filename)
 {
     scoped_gdir xdir(this->pluginPath.c_str());
-    HMODULE module;
-    bool failed = false;
-    int priority = -1;
+    
+    uint8_t major, minor, revision;
     const char* modulename = filename.c_str();
-        
-    // Load the plugin module
-    if(module = LoadLibraryA(modulename))
+    int priority = -1;
+    bool failed = false;
+    HMODULE module;
+
+    // Validate the plugin version to make sure it's compatible
+    auto ValidateVersion = [&modulename, &major, &minor, &revision](modloader_fGetLoaderVersion GetLoaderVersion)
     {
-        Log("Loading plugin module '%s'", modulename);
-        auto GetPluginData = (modloader_fGetPluginData) GetProcAddress(module, "GetPluginData");
-        
-        // Allocate a new plugin information structure
-        this->plugins.emplace_back(module, modulename, GetPluginData);
-        PluginInformation& data = this->plugins.back();
+        // Since 0.2.x we have GetLoaderVersion to make sure compatibility is fine
+        if(GetLoaderVersion == nullptr)
+        {
+            Log("Failed to load module '%s', missing GetLoaderVersion. Plugin possibily compiled for an older version of Mod Loader.", modulename);
+            return false;
+        }
+        else
+        {
+            GetLoaderVersion(&major, &minor, &revision);
+        }
 
         // Check version incompatibilities
-        if (data.minor < 2) // 0.2.x introduces a different API set
+        if (minor < 2) // 0.2.x introduces a different API set
         {
-            failed = true;
-            Log("Failed to load module '%s', plugin was compiled for an old version of Mod Loader.", modulename);
+            Log("Failed to load module '%s', plugin was compiled for an older version of Mod Loader.", modulename);
+            return false;
         }
         // Check if plugin was written to a (future) version of modloader, if so, we need to be updated
-        else if (data.major > MODLOADER_VERSION_MAJOR
-                 || (data.major == MODLOADER_VERSION_MAJOR && data.minor > MODLOADER_VERSION_MINOR))
+        else if (major > MODLOADER_VERSION_MAJOR
+                 || (major == MODLOADER_VERSION_MAJOR && minor > MODLOADER_VERSION_MINOR))
         {
-            failed = true;
             Log("Failed to load module '%s', it requieres a newer version of Mod Loader!\nUpdate yourself at: %s",
                 modulename, downurl);
+            return false;
         }
+
+        return true;
+    };
+
+    // Validates the plugin data to make sure it's usable
+    auto ValidatePlugin = [&modulename](const modloader::plugin& data)
+    {
         // Zero priority means "don't load"
-        else if (data.priority == 0)
+        if (data.priority == 0)
         {
-            failed = true;
             Log("Plugin module '%s' will not be loaded. It's priority is zero", modulename);
+            return false;
         }
-        else
+        return true;
+    };
+
+
+    // Load the plugin module, use full path because we don't want to conflict with any other plugin with same name but different directory
+    if(module = LoadLibraryA((this->gamePath + this->pluginPath + modulename).c_str()))
+    {
+        Log("Loading plugin module '%s'", modulename);
+        auto GetLoaderVersion = (modloader_fGetLoaderVersion) GetProcAddress(module, "GetLoaderVersion");
+        auto GetPluginData = (modloader_fGetPluginData) GetProcAddress(module, "GetPluginData");
+
+        if(ValidateVersion(GetLoaderVersion))
         {
-            // Yep, we managed to load
-            data.name = data.GetName ? data.GetName(&data) : "NONAME";
-            data.version = data.GetVersion ? data.GetVersion(&data) : "";
-            data.author = data.GetAuthor ? data.GetAuthor(&data) : "";
-            Log("Plugin module '%s' loaded as %s %s %s %s",
-                modulename, data.name, data.version,
-                data.author ? "by" : "", data.author);
-        }
-            
-        // On failure, unload module, on success, push plugin to list
-        if(failed)
-        {
-            FreeLibrary(module);
+            // Allocate a new plugin information structure
+            this->plugins.emplace_back(module, modulename, GetPluginData);
+            PluginInformation& data = this->plugins.back();
+
+            // Validate plugin to make sure it' ok to run it
+            if(ValidatePlugin(data))
+            {
+                // We're almost there, setup some important data
+                data.major     = major;
+                data.minor     = minor;
+                data.revision  = revision;
+                data.version   = data.GetVersion? data.GetVersion(&data) : "";
+                data.author    = data.GetAuthor? data.GetAuthor(&data) : "";
+
+                Log("Plugin module '%s' loaded as %s %s %s %s",
+                    modulename, data.name, data.version,
+                    data.author ? "by" : "", data.author);
+
+                // Startup and go!!!!
+                if(this->StartupPlugin(this->plugins.back()))
+                {
+                    plugins.sort(PriorityPred<PluginInformation>());
+                    this->RebuildExtensionMap();
+                }
+                return true;    // Here LoadPlugin is successful, even if StartupPlugin fails.
+                                // StartupPlugin does it's own cleanup for failure :)
+            }
+
             this->plugins.pop_back();
         }
-        else
-        {
-            if(this->StartupPlugin(this->plugins.back()))
-            {
-                plugins.sort(PriorityPred<PluginInformation>());
-                this->RebuildExtensionMap();
-            }
-        }
+
+        FreeLibrary(module);
     }
     else
         Log("Could not load plugin module '%s'", modulename);
 
-    return !failed;
+    return false;
 }
+
 
 /*
  *  Loader::UnloadPlugin
@@ -175,7 +210,7 @@ void Loader::RebuildExtensionMap()
         if(plugin.extable)
         {
             for(auto i = 0u; i < plugin.extable_len; ++i)
-                extMap[plugin.extable[i]].emplace_back(&plugin);
+                extMap[plugin.extable[i]].emplace_back(plugin);
         }
     }
 }

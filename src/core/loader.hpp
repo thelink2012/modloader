@@ -17,12 +17,6 @@
 #include <map>
 #include <set>
 
-// TODO we should have a GetLoaderVersion before GetPluginData
-// TODO REMOVE Status::Added (or maybe not)
-// TODO DESTRUCTOR IMPORTANCE
-// TODO FIX THE PRIORITY SYSTEM
-// TODO think about shutdown time
-
 using namespace modloader;
 
 extern class Loader loader;
@@ -31,17 +25,32 @@ extern class Loader loader;
 static const char* modurl  = "https://github.com/thelink2012/modloader";
 static const char* downurl = "https://github.com/thelink2012/modloader/releases";
 
-// Functor for sorting based on priority and name 
+
+// Functor for sorting based on priority
 template<class T>
-struct PriorityPred
+struct SimplePriorityPred
 {
     bool operator()(const T& a, const T& b) const
     {
-        return (a.priority != b.priority?
-                a.priority > b.priority :               // That's right, higher priority means lower
-                compare(a.name, b.name, true) < 0);
+        return (a.priority > b.priority);    // That's right, higher priority means lower
     }
 };
+
+// Functor for sorting based on priority and name
+template<class T>
+struct PriorityPred
+{
+    SimplePriorityPred<T> pred;
+
+    bool operator()(const T& a, const T& b) const
+    {
+        return (a.priority != b.priority?
+                pred(a, b) : compare(a.name, b.name, true) < 0);
+    }
+};
+
+
+
 
 
 // The Mod Loader Core
@@ -56,8 +65,7 @@ class Loader : public modloader_t
         class FileInformation;
         class PluginInformation;
         class FolderInformation;
-        typedef std::vector<PluginInformation*> PluginVector;
-        typedef std::map<std::string, PluginVector> ExtMap;
+        typedef std::map<std::string, ref_list<PluginInformation>> ExtMap;
         
         // File flags
         enum class FileFlags : decltype(modloader::file::flags)
@@ -94,6 +102,9 @@ class Loader : public modloader_t
                 friend class Loader;
                 typedef modloader::plugin base;
                 
+                // Plugin identifier (i.e. "gta/std/fx.dll" -> "gta.std.fx")
+                std::string identifier;
+
                 // All the behaviours being handled by this plugin
                 std::map<uint64_t, FileInformation*> behv;
                 
@@ -108,9 +119,15 @@ class Loader : public modloader_t
                     
                     // Fill the plugin structure with the rest of the informations
                     if(GetPluginData) GetPluginData(this);
-                    
+
+                    //
+                    this->identifier = NormalizePath(modulename);
+                    std::replace(identifier.begin(), identifier.end(), cNormalizedSlash, '.');
+                    this->identifier.erase(identifier.length() - 4);    // Remove '.dll' extension
+                    this->name = identifier.c_str();                    // Identifier and name are the same
+
                     // Override priority
-                    auto it = loader.plugins_priority.find(NormalizePath(modulename));
+                    auto it = loader.plugins_priority.find(identifier);
                     if(it != loader.plugins_priority.end())
                     {
                          Log("\tOverriding priority, from %d to %d", priority, it->second);
@@ -156,14 +173,14 @@ class Loader : public modloader_t
                 ModInformation&                 parent;         // The mod this file belongs to
                 PluginInformation*              handler;        // The plugin that will handle this file (may be null)
                 std::string                     pathbuf;        // Path buffer (as used in base.buffer)
-                PluginVector                    callme;         // Those plugins should receive this file, but they won't handle it
+                ref_list<PluginInformation>     callme;         // Those plugins should receive this file, but they won't handle it
                 bool                            installed;      // Is the mod installed?
                 Status                          status;         // File status
                 
             public:
                 // Initializer
                 FileInformation(ModInformation& parent, std::string&& xpathbuf, const modloader::file& m,
-                                PluginInformation* xhandler, PluginVector&& xcallme)
+                                PluginInformation* xhandler, ref_list<PluginInformation>&& xcallme)
                 
                     : parent(parent), handler(xhandler), pathbuf(std::move(xpathbuf)), callme(std::move(xcallme)),
                       installed(false), status(Status::Unchanged)
@@ -363,6 +380,7 @@ class Loader : public modloader_t
 
         // Rebuilds the extMap object
         void RebuildExtensionMap();
+        ref_list<PluginInformation> GetPluginsBy(const std::string& extension);
         
     private: // Basic configuration
         void ReadBasicConfig(const char*);
@@ -385,6 +403,7 @@ class Loader : public modloader_t
         void OnReload();    // On Game Reloading
         
         // Logging functions
+        static void LogGameVersion();
         static void Log(const char* msg, ...);
         static void vLog(const char* msg, va_list va);
         static void Error(const char* msg, ...);
@@ -399,7 +418,7 @@ class Loader : public modloader_t
         void ScanAndUpdate();
         
         // Finds the plugin that'll handle the file @m, or that needs to get called (@out_callme)
-        PluginInformation* FindHandlerForFile(modloader::file& m, PluginVector& out_callme);
+        PluginInformation* FindHandlerForFile(modloader::file& m, ref_list<PluginInformation>& out_callme);
         
         
         

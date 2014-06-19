@@ -63,7 +63,7 @@ void Loader::ModInformation::Scan()
         {
             uint64_t uid;
             modloader::file m;
-            PluginVector callme;
+            ref_list<PluginInformation> callme;
             PluginInformation* handler;
 
             // This buffer setup is tricky but should work fine
@@ -232,7 +232,7 @@ bool Loader::FileInformation::Install()
     // Install with the main handler then with callme handlers
     if((this->installed = this->handler? handler->Install(*this) : true))
     {
-        for(auto& p : this->callme) p->Install(*this);
+        for(auto& p : this->callme) p.get().Install(*this);
     }
     
     // Refresh state
@@ -253,7 +253,7 @@ bool Loader::FileInformation::Reinstall()
         // Reinstall with the main handler then with callme handlers
         if((this->installed = this->handler? handler->Reinstall(*this) : true))
         {
-            for(auto& p : this->callme) p->Reinstall(*this);
+            for(auto& p : this->callme) p.get().Reinstall(*this);
         }
     }
     else
@@ -280,7 +280,7 @@ bool Loader::FileInformation::Uninstall()
         // Uninstall with the main handler then with callme handlers
         if((this->installed = this->handler? !handler->Uninstall(*this) : false) == false)
         {
-            for(auto& p : this->callme) p->Uninstall(*this);
+            for(auto& p : this->callme) p.get().Uninstall(*this);
         }
     }
     

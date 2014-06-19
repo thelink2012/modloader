@@ -18,6 +18,11 @@ REGISTER_ML_NULL();
 Loader loader;
 
 // TODO Make exception.cpp constants configurable thought a ini
+// TODO REMOVE Status::Added (or maybe not)
+// TODO DESTRUCTOR IMPORTANCE
+// TODO FIX THE PRIORITY SYSTEM
+// TODO think about shutdown time
+
 
 
 /*
@@ -31,6 +36,14 @@ int __stdcall test_winmain(HINSTANCE, HINSTANCE, LPSTR, int) {         int i;
 
 void test()
 {
+    auto l = loader.GetPluginsBy("txd");
+    for(auto& x : l)
+    {
+        char o[256];
+        GetModuleFileNameA((HMODULE)x.get().pModule, o, sizeof(o));
+        loader.Log(o);
+    }
+
     while(true)
     {
         auto func = (int(*)())0;
@@ -93,7 +106,7 @@ void Loader::Patch()
             // Install exception filter to log crashes
             InstallExceptionCatcher([](const char* buffer)
             {
-                // TODO log the game version
+                LogGameVersion();
                 Log(buffer);
                 loader.Shutdown();
             });
@@ -133,8 +146,7 @@ void Loader::Startup()
         
         // Open the log file
         OpenLog();
-        
-        // TODO log game version
+        LogGameVersion();
         
         // Make sure we have the modloader.ini file
         CopyFileA(basic_config_default, basic_config, TRUE);
@@ -295,6 +307,16 @@ void Loader::ParseCommandLine()
     Log("Done reading command line");
 }
 
+/*
+ *  Loader::LogGameVersion
+ *      Logs the game version into the logging stream
+ */
+void Loader::LogGameVersion()
+{
+    char buffer[128];
+    Log("Game version: %s", injector::address_manager::singleton().GetVersionText(buffer));
+}
+
 
 /*
  *  Loader::ScanAndUpdate
@@ -311,13 +333,12 @@ void Loader::ScanAndUpdate()
  *       Finds the plugin responssible for handling the file @m,
  *       also the plugins that wants to receive the file at @callme
  */
-auto Loader::FindHandlerForFile(modloader::file& m, PluginVector& callme) -> PluginInformation*
+auto Loader::FindHandlerForFile(modloader::file& m, ref_list<PluginInformation>& callme) -> PluginInformation*
 {
     PluginInformation* handler = nullptr;
     
-    // TODO get list by priority and extmap
-    
-    for(auto& plugin : this->plugins)
+    // Iterate on the plugins to find a handler for it
+    for(PluginInformation& plugin : this->GetPluginsBy(m.FileExt()))
     {
         auto state = plugin.FindBehaviour(m);
         
@@ -330,9 +351,48 @@ auto Loader::FindHandlerForFile(modloader::file& m, PluginVector& callme) -> Plu
         else if(state == BehaviourType::CallMe)
         {
             // This plugin requests this file to be sent for some reason (readme files?)
-            callme.emplace_back(&plugin);
+            callme.emplace_back(plugin);
         }
     }
     
     return handler;
+}
+
+
+/*
+ *  Loader::GetPluginsBy
+ *       Gets a list of plugins sorted for file-behaviour-search.
+ *       That's, sort by priority and extension.
+ */
+auto Loader::GetPluginsBy(const std::string& extension) -> ref_list<PluginInformation>
+{
+    SimplePriorityPred<PluginInformation> pred_base;
+    auto list = refs(this->plugins);
+
+    // Checks if the specified plugin list contains any plugin 'p'
+    auto contains = [](ref_list<PluginInformation>& plugins, const PluginInformation& p)
+    {
+        return std::any_of(plugins.begin(), plugins.end(), [&p](const PluginInformation& a) { return a == p; });
+    };
+
+    // Predicate to execute the sorting
+    auto pred = [&, this](const PluginInformation& a, const PluginInformation& b)
+    {
+        if(a.priority == b.priority)    // If priorities are equal, check for extension!
+        {
+            auto it = this->extMap.find(extension);
+            if(it != extMap.end())
+            {
+                bool ca = contains(it->second, a);
+                bool cb = contains(it->second, b);
+                if(ca && !cb) return true;          // a has priority over b
+                else if(!ca && cb) return false;    // b has priority over a
+            }
+        }
+        return pred_base(a, b);
+    };
+
+    // Sort and return
+    std::sort(list.begin(), list.end(), pred);
+    return list;
 }

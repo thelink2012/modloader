@@ -28,21 +28,16 @@ add_subdirectory(src)
 
 # ----------------------------> Install
 set(CMAKE_INSTALL_PREFIX "")
-
-# Find all plugins readme files
-file(GLOB plugins_doc "${DOC_DIRECTORY}/plugins/*.txt")
-
-# Find all readme files
-file(GLOB readme_doc  "${DOC_DIRECTORY}/readme/*.txt")
+set(plugins_doc "${DOC_DIRECTORY}/plugins/")
+set(readme_doc "${DOC_DIRECTORY}/readme/")
 
 # Install plugins documentation into modloader plugins folder
-install(FILES ${plugins_doc} DESTINATION "./modloader/.data/plugins")
+install(DIRECTORY ${plugins_doc} DESTINATION "./modloader/.data/plugins")
 
 # Install readme files, README.md, LICENSE and CHANGELOG into modloader/.data
+install(DIRECTORY ${readme_doc}  DESTINATION "./modloader/.data")
 install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
-install(FILES ${readme_doc}  DESTINATION "./modloader/.data")
 
 # Install config files
 install(FILES "${CONFIGS_DIR}/modloader.ini.0" DESTINATION "./modloader/.data")
 install(FILES "${CONFIGS_DIR}/plugins.ini.0" DESTINATION "./modloader/.data/plugins")
-

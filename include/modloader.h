@@ -143,20 +143,20 @@ typedef struct modloader_t
  **************************************/
 
 /*
-        You have to export the function (with C naming, extern "C"):
-                void GetPluginData(modloader_plugin_t* data);
-        Then you shall JUST (and JUST) fill 'data' with the plugin information.
-        If everything goes okay (version checking, etc), data->OnStartUp will be called...
-        Note data->modloader is already set here.
+        You have to export this function!
+        Then you shall JUST (and JUST) fill 'major', 'minor' and 'revision' with  the values of 
+        MODLOADER_VERSION_MAJOR, MODLOADER_VERSION_MINOR,  MODLOADER_VERSION_REVISION macros.
+        If the version checking goes okay, GetPluginData will get called.
 */
-typedef void (*modloader_fGetPluginData)(modloader_plugin_t* data);
+typedef void (*modloader_fGetLoaderVersion)(uint8_t* major, uint8_t* minor, uint8_t* revision);
 
 /*
- *  GetName
- *      Get plugin name (e.g. "X Nope Loader")
- *      @data: The plugin data   
- */
-typedef const char* (*modloader_fGetName)(modloader_plugin_t* data);
+        You have to export this function!
+        Then you shall JUST (and JUST) fill 'data' with the plugin information.
+        If everything goes okay, data->OnStartup will get called.
+        Note that data->modloader is already set here :)
+*/
+typedef void (*modloader_fGetPluginData)(modloader_plugin_t* data);
 
 /*
  *  GetVersion
@@ -233,15 +233,10 @@ typedef int (*modloader_fUninstallFile)(modloader_plugin_t* data, const modloade
 /* ---- Interface ---- Should be compatible with all versions of modloader.asi */
 typedef struct modloader_plugin_t
 {
-    /*
-     * Set those values to MODLOADER_VERSION_*, e.g. MODLOADER_VERSION_MAJOR. Ignore pad0!
-     * Those values will be helpful to know if your plugin is compatible with the current version of modloader
-     */
-    uint8_t major, minor, revision, _pad0;
-    
     // Data to be set by Mod Loader itself, read-only data for plugins!
     struct  
     {
+        uint8_t major, minor, revision, _pad0;
         void *pThis, *pModule;                      /* this pointer and HMODULE */
         const char *name, *author, *version;        /* Plugin info */
         modloader_t* modloader;                     /* Modloader pointer  */
@@ -262,7 +257,6 @@ typedef struct modloader_plugin_t
     int priority;
 
     /* Callbacks */
-    modloader_fGetName          GetName;
     modloader_fGetAuthor        GetAuthor;
     modloader_fGetVersion       GetVersion;
     modloader_fOnStartup        OnStartup;
@@ -271,10 +265,6 @@ typedef struct modloader_plugin_t
     modloader_fInstallFile      InstallFile;
     modloader_fReinstallFile    ReinstallFile;
     modloader_fUninstallFile    UninstallFile;
-    
-    
-    /* Add padding for compatibility with previous version to not destroy PluginInformation object */
-    uint8_t _safepad[32];
     
 } modloader_plugin_t;
 
