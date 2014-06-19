@@ -379,7 +379,7 @@ namespace modloader
             else
                 DeleteFileA(szPathFile);
 
-            return TRUE;
+            return true;
         });
         
         return RemoveDirectoryA(szPath);

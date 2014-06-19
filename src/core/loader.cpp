@@ -9,27 +9,40 @@
 #include <modloader_util_path.hpp>
 #include <modloader_util_ini.hpp>
 
+extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
+
+#define USE_TEST 1
 REGISTER_ML_NULL();
-
-//
-extern int LogException(char* buffer, LPEXCEPTION_POINTERS pException);
-
-// Previous exception filter
-static LPTOP_LEVEL_EXCEPTION_FILTER PrevFilter = nullptr;
 
 // Mod Loader object
 Loader loader;
 
+// TODO Make exception.cpp constants configurable thought a ini
 
-int test()
+
+/*
+ *
+ *
+ */
+#if USE_TEST
+int __stdcall test_winmain(HINSTANCE, HINSTANCE, LPSTR, int) {         int i;
+        sscanf("0x1337", "%i", &i);
+        printf("%i", i); test(); return 1; }
+
+void test()
 {
     while(true)
     {
+        auto func = (int(*)())0;
+        func();
         Sleep(1000);
         loader.ScanAndUpdate();
     }
-    return 1;
 }
+#endif
+
+
+
 
 
 
@@ -44,21 +57,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
     return TRUE;
 }
 
-/*
- *  MyUnhandledExceptionFilter
- *      Logs an unhandled exception and shutdowns the loader
- */
-static LONG CALLBACK MyUnhandledExceptionFilter(LPEXCEPTION_POINTERS pException)
-{
-    // Log this exception into the log file
-    loader.LogException(pException);
-
-    // Let's shutdown our loader anyway
-    loader.Shutdown();
-
-    // Continue exception propagation
-    return (PrevFilter? PrevFilter(pException) : EXCEPTION_CONTINUE_SEARCH);  // I'm not really sure about this return
-}
 
 /*
  *  Loader::Patch
@@ -76,7 +74,6 @@ void Loader::Patch()
         Error("Mod Loader still do not support game versions other than HOODLUM GTA SA 1.0 US");
     else
     {
-        //
         typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
         typedef function_hooker<0x53C6DB, void(void)>           onreload_hook;
                 
@@ -84,13 +81,28 @@ void Loader::Patch()
         make_function_hook<winmain_hook>([](winmain_hook::func_type WinMain,
                                                     HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
         {
-            // Setup exception filter, we need (whenever possible) to call shutdown before a crash or something
-            PrevFilter = SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
+            // Avoind circular looping forever
+            static bool bRan = false;
+            if(bRan) return WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+            bRan = true;
+
+            #if USE_TEST
+                MakeCALL(winmain_hook::addr, raw_ptr(test_winmain));
+            #endif
+
+            // Install exception filter to log crashes
+            InstallExceptionCatcher([](const char* buffer)
+            {
+                // TODO log the game version
+                Log(buffer);
+                loader.Shutdown();
+            });
 
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
+            // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
             loader.Startup();
-            //auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
-            auto result = test();
+            WinMain = ReadRelativeOffset(winmain_hook::addr + 1).get();
+            auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             loader.Shutdown();
 
             return result;
@@ -115,7 +127,7 @@ void Loader::Startup()
         this->bRunning       = false;
         this->bEnableLog     = true;
         this->bEnablePlugins = true;
-        this->maxBytesInLog  = 5242880;     // 5 MiB
+        this->maxBytesInLog  = 5242880;     // 5 MiB (TODO ini)
         this->currentModId   = 0;
         this->currentFileId  = 0x8000000000000000;  // File id should have the hibit set
         

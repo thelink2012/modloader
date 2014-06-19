@@ -17,7 +17,7 @@ static void BuildGlobString(const L& list, std::string& glob)
 
 static bool MatchGlob(const std::string& name, const std::string& glob)
 {
-    return PathMatchSpecA(name.c_str(), glob.c_str()) != 0;
+    return !glob.empty() && PathMatchSpecA(name.c_str(), glob.c_str()) != 0;
 }
 
 

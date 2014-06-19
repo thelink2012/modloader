@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <functional>
 #include <cctype>
+#include <vector>
 
 /*
  *  Containers and Strings utility functions

@@ -5,14 +5,8 @@
  */
 #include "loader.hpp"
 
-// TODO log size limit at ini
-
-static FILE* logfile = 0;
-extern int LogException(char* buffer, LPEXCEPTION_POINTERS pException);
-
-
 // Not thread-safe
-
+static FILE* logfile = 0;
 
 /*
  *  Loader::OpenLog
@@ -142,16 +136,3 @@ void Loader::FatalError(const char* msg, ...)
     Error("Fatal Error: %s", buffer);
     std::terminate();
 }
-
-
-/*
- *  Loader::LogException
- *      Logs a exception into the logging stream
- */
-void Loader::LogException(void* pExceptionPointers)
-{
-    char buffer[1024];  // TODO this buffer will need to increase for the new LogException
-    if(::LogException(buffer, (LPEXCEPTION_POINTERS)pExceptionPointers))
-        Log(buffer);
-}
-

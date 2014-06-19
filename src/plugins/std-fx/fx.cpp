@@ -80,7 +80,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
  */
 bool ThePlugin::InstallFile(const modloader::file& file)
 {
-    Log("Install called with %s", file.FileBuffer());
+    //Log("Install called with %s", file.FileBuffer());
     return true;
 }
 
@@ -90,7 +90,7 @@ bool ThePlugin::InstallFile(const modloader::file& file)
  */
 bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
-    Log("Reinstall called with %s", file.FileBuffer());
+    //Log("Reinstall called with %s", file.FileBuffer());
     return true;
 }
 
@@ -100,6 +100,6 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
  */
 bool ThePlugin::UninstallFile(const modloader::file& file)
 {
-    Log("Uninstall called with %s", file.FileBuffer());
+    //Log("Uninstall called with %s", file.FileBuffer());
     return true;
 }

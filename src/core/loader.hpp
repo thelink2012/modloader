@@ -318,7 +318,7 @@ class Loader : public modloader_t
 
         
     protected:
-        friend class scoped_gdir;
+        friend struct scoped_gdir;
         
         // Configs
         uint64_t        maxBytesInLog;          // Maximum number of bytes in the logging stream 
@@ -389,7 +389,6 @@ class Loader : public modloader_t
         static void vLog(const char* msg, va_list va);
         static void Error(const char* msg, ...);
         static void FatalError(const char* msg, ...);
-        static void LogException(void* pExceptionPointers);
         
         // Unique ids function
         uint64_t PickUniqueModId()  { return ++currentModId; }
@@ -464,7 +463,7 @@ class Loader : public modloader_t
             }
         }
         
-        friend int test();
+        friend void test();
 };
 
 

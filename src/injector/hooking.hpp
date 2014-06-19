@@ -30,7 +30,7 @@
 namespace injector
 {
 
-#if __cplusplus >= 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1800  // MSVC 2013
 
     /*
      * 
