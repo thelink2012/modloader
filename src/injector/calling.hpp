@@ -27,7 +27,8 @@
 #include "injector.hpp"
 #include <utility>
 
-#if __cplusplus < 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1800   // MSVC 2013
+#else
 #error "This feature is not supported on this compiler"
 #endif
 
@@ -37,28 +38,28 @@ namespace injector
     template<class Ret, class ...Args>
     inline Ret Call(memory_pointer_tr p, Args&&... a)
     {
-        Ret(*fn)(Args...) = p.get();
+        auto fn = (Ret(*)(Args...)) p.get<void>();
         return fn(std::forward<Args>(a)...);
     }
     
     template<class Ret, class ...Args>
     inline Ret StdCall(memory_pointer_tr p, Args&&... a)
     {
-        Ret(__stdcall *fn)(Args...) = p.get();
+        auto fn = (Ret(__stdcall *)(Args...)) p.get<void>();
         return fn(std::forward<Args>(a)...);
     }
     
     template<class Ret, class ...Args>
     inline Ret ThisCall(memory_pointer_tr p, Args&&... a)
     {
-        Ret(__thiscall *fn)(Args...) = p.get();
+        auto fn = (Ret(__thiscall *)(Args...)) p.get<void>();
         return fn(std::forward<Args>(a)...);
     }
 
     template<class Ret, class ...Args>
     inline Ret FastCall(memory_pointer_tr p, Args&&... a)
     {
-        Ret(__fastcall *fn)(Args...) = p.get();
+        auto fn = (Ret(__fastcall *)(Args...)) p.get<void>();;
         return fn(std::forward<Args>(a)...);
     }
     

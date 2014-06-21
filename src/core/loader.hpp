@@ -18,9 +18,13 @@
 #include <map>
 #include <set>
 
-using namespace modloader;
-
 extern class Loader loader;
+
+using modloader::ref_list;
+using modloader::NormalizePath;
+using modloader::cNormalizedSlash;
+using modloader::compare;
+
 
 // URL
 static const char* modurl  = "https://github.com/thelink2012/modloader";
@@ -49,10 +53,6 @@ struct PriorityPred
                 pred(a, b) : compare(a.name, b.name, true) < 0);
     }
 };
-
-
-
-
 
 // The Mod Loader Core
 class Loader : public modloader_t
@@ -112,6 +112,8 @@ class Loader : public modloader_t
             public:
                 PluginInformation(void* module, const char* modulename, modloader_fGetPluginData GetPluginData)
                 {
+                    using namespace modloader;
+
                     // Fill basic information
                     std::memset(this, 0, sizeof(modloader::plugin));
                     this->pModule   = module;
@@ -223,7 +225,7 @@ class Loader : public modloader_t
                 {
                     this->id = id;
                     this->priority = parent.GetPriority(this->name);
-                    MakeSureStringIsDirectory(this->path = parent.GetPath() + this->name);
+                    modloader::MakeSureStringIsDirectory(this->path = parent.GetPath() + this->name);
                 }
                 
                 // Scans this mod for new, updated or removed files

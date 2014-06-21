@@ -4,6 +4,7 @@
  * 
  */
 #include "loader.hpp"
+using namespace modloader;
 
 /*
  *  Scoped logging for Install/Reinstall/Uninstall

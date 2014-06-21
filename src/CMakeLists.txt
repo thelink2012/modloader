@@ -5,6 +5,7 @@
 
 # The current directory shall be used for #include <file>
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+add_definitions(-DINJECTOR_GVM_HAS_TRANSLATOR -DINJECTOR_GVM_PLUGIN_NAME="Mod Loader Plugin")
 
 
 # Visual Studio specific stuff

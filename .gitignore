@@ -1,5 +1,6 @@
 bin
 build
+build2
 nbproject
 Makefile
 release/gamedir

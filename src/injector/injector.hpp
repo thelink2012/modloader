@@ -329,15 +329,17 @@ union basic_memory_pointer
         bool operator>=(const basic_memory_pointer& rhs) const
         { return this->a >=rhs.a; }
         
-#if __cplusplus >= 201103L
+        bool is_null() { return this->p != nullptr; }
+
+#if __cplusplus >= 201103L || _MSC_VER >= 1800  // MSVC 2013
         /* Conversion to other types */
         explicit operator uintptr_t()
         { return this->a; }
         explicit operator bool()
         { return this->p != nullptr; }
 #else
-        operator bool()
-        { return this->p != nullptr; }
+        //operator bool() -------------- Causes casting problems because of implicitness, use !is_null()
+        //{ return this->p != nullptr; }
 #endif
 
 };
@@ -353,6 +355,28 @@ inline memory_pointer_raw  raw_ptr(T p)
     return memory_pointer_raw(p);
 }
 
+
+/*
+  *  lazy_pointer
+  *      Lazy pointer, where it's final value will get evaluated only once when finally needed.
+  */
+ template<uintptr_t addr>
+ struct lazy_pointer
+ {
+     // Returns the final pointer
+     static auto_ptr_cast xget()
+     {
+         static void* ptr = nullptr;
+         if(!ptr) ptr = memory_pointer(addr).get();
+         return auto_ptr_cast(ptr);
+     }
+ 
+     // Returns the final raw pointer
+     static memory_pointer_raw get()
+     {
+         return xget();
+     }
+ };
 
 
 /*

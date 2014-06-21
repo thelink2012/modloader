@@ -111,7 +111,7 @@ namespace injector
             function_hooker_fastcall(hook_type hooker)
             {
                 hook() = hooker;
-                original() = MakeCALL(addr, raw_ptr(call)).get();
+                original() = MakeCALL(raw_ptr(addr), raw_ptr(call)).get();//TODO RESTORE
             }
             
             // Restores the previous call before the hook happened

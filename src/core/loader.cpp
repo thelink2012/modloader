@@ -8,10 +8,11 @@
 #include <modloader/util/injector.hpp>
 #include <modloader/util/path.hpp>
 #include <modloader/util/ini.hpp>
+using namespace modloader;
 
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
-#define USE_TEST 1
+#define USE_TEST 0
 REGISTER_ML_NULL();
 
 // Mod Loader object
@@ -22,21 +23,17 @@ Loader loader;
  *
  *
  */
+
+extern void test_menu();
+
 #if USE_TEST
+
 int __stdcall test_winmain(HINSTANCE, HINSTANCE, LPSTR, int) {         int i;
         sscanf("0x1337", "%i", &i);
         printf("%i", i); test(); return 1; }
 
 void test()
 {
-    auto l = loader.GetPluginsBy("txd");
-    for(auto& x : l)
-    {
-        char o[256];
-        GetModuleFileNameA((HMODULE)x.get().pModule, o, sizeof(o));
-        loader.Log(o);
-    }
-
     while(true)
     {
         auto func = (int(*)())0;
@@ -82,7 +79,7 @@ void Loader::Patch()
     {
         typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
         typedef function_hooker<0x53C6DB, void(void)>           onreload_hook;
-                
+
         // Hook WinMain to run mod loader
         make_function_hook<winmain_hook>([](winmain_hook::func_type WinMain,
                                                     HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
@@ -107,6 +104,7 @@ void Loader::Patch()
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
             // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
             loader.Startup();
+            test_menu();
             WinMain = ReadRelativeOffset(winmain_hook::addr + 1).get();
             auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             loader.Shutdown();

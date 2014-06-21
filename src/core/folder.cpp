@@ -6,6 +6,7 @@
 #include "loader.hpp"
 #include <shlwapi.h>
 #include <modloader/util/ini.hpp>
+using namespace modloader;
 
 // TODO priority set at runtime
 
