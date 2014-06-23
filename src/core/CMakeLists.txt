@@ -3,7 +3,9 @@ set(SOURCE_FILES
      exception.cpp logging.cpp
 
      extras/gta3/menu.cpp
+     extras/gta3/menu.hpp
      extras/gta3/MenuExtender/MenuExtender.cpp
+     extras/gta3/MenuExtender/MenuExtender.h
 )
 
 add_library(modloader SHARED ${SOURCE_FILES} $<TARGET_OBJECTS:addr>)

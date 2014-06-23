@@ -26,6 +26,7 @@ static std::map<memory_pointer_raw, memory_pointer_raw> map;
 // Translate pointer from GTA SA 10US offset to this executable offset
 void* injector::address_manager::translator(void* p_)
 {
+    return p_;//TODO
     memory_pointer_raw p = p_;
     memory_pointer_raw result = nullptr;
                 

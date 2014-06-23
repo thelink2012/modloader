@@ -1,18 +1,9 @@
-;
-;   Modloader config file
-;       Please note each modloader recursive folder has it's own configuration plus the configuration from the parent modloader.
+﻿;
+;           Mod Loader Per-Folder Config File -- Inherits from parent
 ;
 [Config]
-; Works foreach modloader.ini
 IgnoreAllFiles = false            ; Ignores all files. This essentially disables mods loading
 ExcludeAllMods = false            ; Excludes all mods from being loaded except the ones at INCLUDE_MODS list
-
-; Works only for root modloader.ini
-EnablePlugins     = true        ; Enables/disables plugins from "modloader/.data/plugins", you probably want to have them enabled since they are responssible for loading stuff...
-EnableLog         = true        ; Enables/disables logging. Logging is useful to find bugs or know what's going on, but it slow downs the game, so disable it if you don't care about logs
-ImmediateFlushLog = true        ; Enables/disables immediate flushing to the disk from the log file. Disabling this increases performance when logging is enabled but decreases logging usefulness
-MaxLogSize        = 5242880     ; Maximum size of the modloader.log file in bytes, if this size is reached the file is truncated.
-
 
 ; --------------------------> Exclusion/Inclusion <------------------------------
 

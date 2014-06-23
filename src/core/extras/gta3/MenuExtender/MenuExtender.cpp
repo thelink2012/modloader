@@ -6,16 +6,22 @@
  */
 
 #include <cassert>
+#include <algorithm>
 #include "MenuExtender.h"
 #include <injector/injector.hpp>
 //#include <game_sa/CMenuManager.h>       // For MenuItem / MenuItemEntry
 #include "shared/SharedData.hpp"
+
+
+
+// This file needs refactoring
 
 namespace plugin {
 
 // Initialises this manager
 void MenuExtender::Initialise()
 {
+    Instance() = this;
     if(!this->initialized)
     {
         this->initialized = true;
@@ -41,8 +47,11 @@ void MenuExtender::Initialise(MenuExtenderData* block)
     }
 }
 
+
+
+
 // Registers @quantity number of menu pages and returns a pointer to them or null on failure
-CMenuItem* MenuExtender::RegisterMenuScreen(int quantity)
+CMenuItem* MenuExtender::RegisterMenuPage(int quantity)
 {
     auto i = Register(block->nUsedItems, quantity, max_pages);
     if(i != -1) return &block->pItems[i];
@@ -75,29 +84,42 @@ int MenuExtender::RegisterEntryType(int quantity)
     return Register(block->nUsedTypes, quantity, max_types);
 }
 
+
+
+
+
 // Returns the pointer for the menu screen at index @i
-CMenuItem* MenuExtender::GetScreen(int i)
+CMenuItem* MenuExtender::GetPage(int i)
 {
-    return block? &block->pItems[i] : nullptr;
+    return block && i >= 0? &block->pItems[i] : nullptr;
 }
 
 // Gets the screen index from @screen
-int MenuExtender::GetScreenIndex(const CMenuItem* screen)
+int MenuExtender::GetPageIndex(const CMenuItem* screen)
 {
     assert(initialized);
-    return screen - GetScreen(0);
+    return screen - GetPage(0);
 }
 
-// Gets the screen with name @title or null on failure
-CMenuItem* MenuExtender::GetScreen(const char* title)
+CMenuItem* MenuExtender::GetPage(const char* title)
 {
-    for(int i = 0; i < max_pages; ++i)
+    return GetPage(title, block->pItems, max_pages);
+}
+
+CMenuItem* MenuExtender::GetPage(const char* title, CMenuItem* pages, size_t npages)
+{
+    if(pages)
     {
-        auto& screen = block->pItems[i];
-        if(!strcmp(title, screen.m_szTitleName)) return &screen;
+        for(size_t i = 0; i < npages; ++i)
+        {
+            auto& screen = pages[i];
+            if(!strcmp(title, screen.m_szTitleName)) return &screen;
+        }
     }
     return nullptr;
 }
+
+
 
 
 
@@ -106,29 +128,82 @@ CMenuItem* MenuExtender::GetScreen(const char* title)
 // On failure or if @screen is null, returns null
 CMenuEntryData* MenuExtender::AddTargetMenu(CMenuItem* screen, CMenuItem* target, const char* text)
 {
-    if(auto entry = AddEntry(screen))
+    if(screen && target)
     {
-        SetTargetMenu(entry, target, text, screen);
-        entry->m_nAlign = 3;
+        if(auto entry = AddEntry(screen))
+        {
+            SetTargetMenu(entry, target, text, screen);
+            entry->m_nAlign = 3;
+            return entry;
+        }
     }
     return nullptr;
 }
+
+
+// Adds a new entry into the specified menu @screen poiting to @target and using gxt entry @text
+// Adds the target before the specified @before
+// On failure or if @screen or @before is null, returns null
+CMenuEntryData* MenuExtender::AddTargetMenuBefore(CMenuItem* screen, CMenuEntryData* before, CMenuItem* target, const char* text)
+{
+    if(screen && before && target)
+    {
+        if(auto entry = AddEntryBefore(screen, before))
+        {
+            SetTargetMenu(entry, target, text, screen);
+            target->m_nStartingEntry = entry - &screen->m_aEntries[0];
+            entry->m_nAlign = 3;
+            return entry;
+        }
+    }
+    return nullptr;
+}
+
 
 // Sets the screen @target for the menu @entry. The entry will use the gxt entry @text and optionally the previous menu @prev
 // On failure or if @entry is null, returns null
 CMenuEntryData* MenuExtender::SetTargetMenu(CMenuEntryData* entry, CMenuItem* target, const char* text, CMenuItem* prev)
 {
-    if(entry)
+    if(entry && target)
     {
-        if(prev) target->m_nPrevMenu = GetScreenIndex(prev);
+        if(prev) target->m_nPrevMenu = GetPageIndex(prev);
         entry->m_nActionType = action_goto_page;
         entry->m_nType = type_goto_page;
-        entry->m_nTargetMenu = GetScreenIndex(target);
+        entry->m_nTargetMenu = GetPageIndex(target);
         strcpy(entry->m_szName, text);
         return entry;
     }
     return nullptr;
 }
+
+
+// Setups the specified menu @pages array replacing all pages references (NextPage, PrevPage, ...) with a relative relationship on the array.
+// The size of the pages array is specified by @npages
+void MenuExtender::RelativeSetup(CMenuItem* pages, size_t npages)
+{
+    if(pages)
+    {
+        auto base = npages? GetPageIndex(&pages[0]) : 0;
+
+        for(size_t i = 0; i < npages; ++i)
+        {
+            auto& page = pages[i];
+            page.m_nPrevMenu = page.m_nPrevMenu < 0? -page.m_nPrevMenu : base + page.m_nPrevMenu;
+
+            for(int k = 0; k < max_entries; k++)
+            {
+                auto& entry = page.m_aEntries[k];
+                entry.m_nTargetMenu = entry.m_nTargetMenu < 0? -entry.m_nTargetMenu : base + entry.m_nTargetMenu;
+            }
+        }
+    }
+}
+
+
+
+
+
+
 
 
 // Gets the menu entry on the specified menu @screen with the gxt entry @entryname
@@ -165,6 +240,34 @@ CMenuEntryData* MenuExtender::AddEntry(CMenuItem* screen)
     return nullptr;
 }
 
+CMenuEntryData* MenuExtender::AddEntryBefore(CMenuItem* screen, CMenuEntryData* before)
+{
+    if(screen && before)
+    {
+        for(int i = 0; i < max_entries; ++i)
+        {
+            auto& entry = screen->m_aEntries[i];
+            if(&entry == before)
+            {
+                auto distance = std::distance(before, std::end(screen->m_aEntries));
+                if(distance > 1)    // At leat one free space on the aEntries array
+                {
+                    memmove(before+1, before, sizeof(CMenuEntryData) * (distance - 1));
+                    memset(&entry, 0, sizeof(entry));
+                    return &entry;
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
+
+
+
+
+
+
 // Gets the pointer to the main CMenuManager
 CMenuManager* MenuExtender::GetMenuManager()
 {
@@ -172,7 +275,7 @@ CMenuManager* MenuExtender::GetMenuManager()
 }
 
 // Gets the current screen index in the CMenuManager @menumgr
-int MenuExtender::GetScreenFromMenuManager(CMenuManager* menumgr)
+int MenuExtender::GetPageFromMenuManager(CMenuManager* menumgr)
 {
     return *(char*)((uintptr_t)(menumgr)+0x15D);
 }
@@ -185,32 +288,43 @@ int MenuExtender::GetEntryFromMenuManager(CMenuManager* menumgr)
 
 
 
+
+
+
 /*
     Event Handlers Registers
 */
-void MenuExtender::RegisterActionHandler(std::function<bool(ActionInfo&)> handler)
+void MenuExtender::RegisterActionListener(std::function<bool(ActionInfo&)> handler)
 {
     action_handler() = handler;
     PatchActionHandler();
 }
 
-void MenuExtender::RegisterUserInputHandler(std::function<bool(UserInputInfo&)> handler)
+void MenuExtender::RegisterUserInputListener(std::function<bool(UserInputInfo&)> handler)
 {
     userinput_handler() = handler;
     PatchUserInputHandler();
 }
 
-void MenuExtender::RegisterBackgroundHandler(std::function<bool(BackgroundInfo&)> handler)
+void MenuExtender::RegisterBackgroundListener(std::function<bool(BackgroundInfo&)> handler)
 {
     background_handler() = handler;
     PatchBackgroundHandler();
 }
 
-void MenuExtender::RegisterDrawHandler(std::function<bool(DrawInfo&)> handler)
+void MenuExtender::RegisterDrawListener(std::function<bool(DrawInfo&)> handler)
 {
     draw_handler() = handler;
     PatchDrawHandler();
 }
+
+void MenuExtender::RegisterStateTextListener(std::function<bool(StateTextInfo&)> handler)
+{
+    state_text_handler() = handler;
+    PatchStateTextHandler();
+}
+
+
 
 
 /*
@@ -230,7 +344,7 @@ void MenuExtender::PatchActionHandler()
 bool __fastcall MenuExtender::ActionHandler(void* self, int, signed char wheel, unsigned char enter)
 {
     ActionInfo info(wheel, enter);
-    return (action_handler()(info) || action_handler_ptr()(self, 0, info.wheel, info.enter));
+    return ((action_handler() && !action_handler()(info)) || action_handler_ptr()(self, 0, info.wheel, info.enter));
 }
 
 
@@ -245,10 +359,10 @@ void MenuExtender::PatchBackgroundHandler()
     }
 }
 
-void __fastcall MenuExtender::BackgroundHandler(CSprite2d* self, int, CRect* rect, CRGBA rgba)
+void __fastcall MenuExtender::BackgroundHandler(CSprite2d* self, int, CRect* rect, CRGBA* rgba)
 {
-    BackgroundInfo info(self, rect, &rgba);
-    if(background_handler()(info)) return background_handler_ptr()(info.sprite, 0, info.rect, *info.rgba);
+    BackgroundInfo info(self, rect, rgba);
+    if(!background_handler() || background_handler()(info)) return background_handler_ptr()(info.sprite, 0, info.rect, info.rgba);
 }
 
 void MenuExtender::PatchUserInputHandler()
@@ -265,7 +379,7 @@ void MenuExtender::PatchUserInputHandler()
 void __fastcall MenuExtender::UserInputHandler(void* self, int, unsigned char down, unsigned char up, unsigned char enter, unsigned char exit, char wheel)
 {
     UserInputInfo info(down, up, enter, exit, wheel);
-    if(userinput_handler()(info)) return userinput_handler_ptr()(self, 0, info.down, info.up, info.enter, info.exit, info.wheel);
+    if(!userinput_handler() || userinput_handler()(info)) return userinput_handler_ptr()(self, 0, info.down, info.up, info.enter, info.exit, info.wheel);
 }
 
 void MenuExtender::PatchDrawHandler()
@@ -282,9 +396,73 @@ void MenuExtender::PatchDrawHandler()
 void __fastcall MenuExtender::DrawHandler(void* self, int, unsigned char drawtitle)
 {
     DrawInfo info(drawtitle);
-    if(draw_handler()(info)) return draw_handler_ptr()(self, 0, info.drawtitle);
+    if(!draw_handler() || draw_handler()(info)) return draw_handler_ptr()(self, 0, info.drawtitle);
 }
 
+
+/*
+    So, this event handler (StateText) is a bit more complicated...
+    We should keep track of the entry index being parsed...
+*/
+
+static int iStateTextEntryIndex;    // The entry index being parsed
+
+template<bool ResetCounter>
+struct StateTextEntryIncreaser      // Hooks at CFont::SetAligment to reset or increase the entry index
+{
+    typedef int (*FuncBefore_t)(int);
+
+    static FuncBefore_t& FuncBefore() { static FuncBefore_t x; return x; }
+
+    static int Increaser(int a1)
+    {
+        iStateTextEntryIndex = ResetCounter? -1 : iStateTextEntryIndex + 1;
+        return FuncBefore()(a1);
+    }
+
+    static void Patch(uintptr_t addr)
+    {
+        FuncBefore() = injector::MakeCALL(addr, (void*) &Increaser).get();
+    }
+};
+
+void MenuExtender::PatchStateTextHandler()
+{
+    static bool patched = false;
+    if(!patched)
+    {
+        using namespace injector;
+        patched = true;
+        injector::MakeRelativeOffset(0x579D9D+2, 0x579DEE);
+        state_text_handler_ptr() = MakeCALL(0x57A161, raw_ptr(StateTextHandler)).get();
+        StateTextEntryIncreaser<true>::Patch(0x5794CB);     // Reset the entry index here
+        StateTextEntryIncreaser<false>::Patch(0x579AC9);    // Increase the entry index here
+    }
+}
+
+const char* __fastcall MenuExtender::StateTextHandler(CText* self, int, const char* gxtentry)
+{
+    StateTextInfo info(self, gxtentry);
+
+    if(!strncmp(info.gxtentry, "FEL_", 4) && info.page)
+    {
+        info.parsing_entry = &info.page->m_aEntries[iStateTextEntryIndex];
+        if(info.parsing_entry->m_nActionType != 36) // Language Action
+        {
+            info.gxtentry = gxtentry = "";
+
+            if(state_text_handler())
+            {
+                if(!state_text_handler()(info) || info.text)
+                    return info.text;
+            }
+
+            const char* text = state_text_handler_ptr()(info.ctext, 0, info.gxtentry);
+            return text[0]? text : nullptr;
+        }
+    }
+    return state_text_handler_ptr()(info.ctext, 0, info.gxtentry);
+}
 
 
 

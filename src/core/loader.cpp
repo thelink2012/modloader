@@ -10,6 +10,8 @@
 #include <modloader/util/ini.hpp>
 using namespace modloader;
 
+// TODO SEPARATE ENABLE AND PRIORITY
+
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
 #define USE_TEST 0
@@ -43,8 +45,6 @@ void test()
     }
 }
 #endif
-
-
 
 
 
@@ -121,14 +121,13 @@ void Loader::Patch()
 void Loader::Startup()
 {
     char rootPath[MAX_PATH];
-    const char* basic_config = "modloader/.data/modloader.ini";
-    const char* basic_config_default = "modloader/.data/modloader.ini.0";
-    
+
     // If not running yet and 'modloader' folder exists, let's start up
     if(!this->bRunning && IsDirectoryA("modloader"))
     {
         // Initialise configs and counters
         this->bRunning       = false;
+        this->bEnableMenu    = true;
         this->bEnableLog     = true;
         this->bEnablePlugins = true;
         this->maxBytesInLog  = 5242880;     // 5 MiB
@@ -138,12 +137,28 @@ void Loader::Startup()
         // Open the log file
         OpenLog();
         LogGameVersion();
+
+        // Setup basic path variables
+        this->dataPath    = "modloader/.data/";
+        this->pluginPath  = "modloader/.data/plugins/";
+        this->cachePath   = "modloader/.data/cache/";
+        GetCurrentDirectoryA(sizeof(rootPath), rootPath);
+        MakeSureStringIsDirectory(this->gamePath = rootPath);
+
+        // Setup config file names
+        this->basicConfig          = dataPath + "config.ini";
+        this->folderConfigFilename = "modloader.ini";
+        this->basicConfigDefault   = gamePath + dataPath + "config.ini.0";
+        this->folderConfigDefault  = gamePath + dataPath + "modloader.ini.0";
+
+        // Make sure the important folders exist
+        MakeSureDirectoryExistA(dataPath.c_str());
+        MakeSureDirectoryExistA(pluginPath.c_str());
+        MakeSureDirectoryExistA(cachePath.c_str());
         
-        // Make sure we have the modloader.ini file
-        CopyFileA(basic_config_default, basic_config, TRUE);
-        
-        // Read the basic information present in the main ini file
-        ReadBasicConfig(basic_config);
+        // Load the basic configuration file
+        CopyFileA(basicConfigDefault.data(), basicConfig.data(), TRUE);
+        ReadBasicConfig();
         
         // Check if logging is disabled by the basic config file
         if(!this->bEnableLog)
@@ -151,19 +166,7 @@ void Loader::Startup()
             Log("Logging is disabled. Closing log file...");
             CloseLog();
         }
-        
-        // Setup path variables
-        std::string data  = "modloader/.data/";
-        this->pluginPath  = "modloader/.data/plugins/";
-        this->cachePath   = "modloader/.data/cache/";
-        GetCurrentDirectoryA(sizeof(rootPath), rootPath);
-        MakeSureStringIsDirectory(this->gamePath = rootPath);
-        
-        // Make sure the important folders exist
-        MakeSureDirectoryExistA(data.c_str());
-        MakeSureDirectoryExistA(pluginPath.c_str());
-        MakeSureDirectoryExistA(cachePath.c_str());
-        
+
         // Register exported methods and vars
         modloader_t::gamepath        = this->gamePath.data();
         modloader_t::cachepath       = this->cachePath.data();
@@ -210,16 +213,18 @@ void Loader::Shutdown()
  *  Loader::ReadBasicConfig
  *       Read the basic configuration file @filename
  */
-void Loader::ReadBasicConfig(const char* filename)
+void Loader::ReadBasicConfig()
 {
     modloader::ini data;
 
-    Log("Loading basic config file %s", filename);
-    if(data.load_file(filename))
+    Log("Loading basic config file %s", basicConfig.c_str());
+    if(data.load_file(gamePath + basicConfig))
     {
         // Read basic stuff from [Config] section
         for(auto& pair : data["Config"])
         {
+            if(!compare(pair.first, "EnableMenu", false))
+                this->bEnableMenu = to_bool(pair.second);
             if(!compare(pair.first, "EnablePlugins", false))
                 this->bEnablePlugins = to_bool(pair.second);
             else if(!compare(pair.first, "EnableLog", false))
@@ -233,6 +238,27 @@ void Loader::ReadBasicConfig(const char* filename)
     else
         Log("Failed to load basic config file");
 }
+
+/*
+ *  Loader::SaveConfig
+ *       Saves the basic config file with the current settings applied on this loader
+ */
+ void Loader::SaveBasicConfig()
+ {
+     modloader::ini ini;
+     
+     auto& config = ini["Config"];
+     config["EnableMenu"]           = modloader::to_string(bEnableMenu);
+     config["EnablePlugins"]        = modloader::to_string(bEnablePlugins);
+     config["EnableLog"]            = modloader::to_string(bEnableLog);
+     config["ImmediateFlushLog"]    = modloader::to_string(bImmediateFlush);
+     config["MaxLogSize"]           = std::to_string(maxBytesInLog);
+
+     // Log only about failure since we'll be saving every time a entry on the menu changes
+     if(!ini.write_file(gamePath + basicConfig))
+         Log("Failed to save basic config file");
+ }
+
 
 /*
  *  Loader::ParseCommandLine

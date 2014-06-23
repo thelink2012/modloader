@@ -16,8 +16,8 @@
 #ifndef MODLOADER_UTIL_FXT_HPP
 #define	MODLOADER_UTIL_FXT_HPP
 
-#include <modloader_util_injector.hpp>  // Include this first, otherwise bad things will happen
-#include <modloader_util_hash.hpp>
+#include <modloader/util/injector.hpp>  // Include this first, otherwise bad things will happen
+#include <modloader/util/hash.hpp>
 #include <injector/game/fxt_parser.hpp>
 
 #include <map>

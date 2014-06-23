@@ -164,17 +164,14 @@ namespace modloader
     {
         if(s.size())
         {
+            // Ignore UTF-8 BOM
+            while(s.size() >= 3 && s[0] == (char)(0xEF) && s[1] == (char)(0xBB) && s[2] == (char)(0xBF))
+                s.erase(s.begin(), s.begin() + 3);
+
             if(trimLeft)
                 s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::function<int(int)>(::isspace))));
             if(trimRight)
                 s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::function<int(int)>(::isspace))).base(), s.end());
-                
-            if(s.size() >= 3)
-            {
-                // Ignore UTF-8 BOM
-                if(s[0] == 0xEF && s[1] == 0xBB && s[2] == 0xBF)
-                    s.erase(s.begin(), s.begin() + 3); 
-            }
         }
         return s;
     }
@@ -184,7 +181,13 @@ namespace modloader
      */
     inline bool to_bool(const std::string& s)
     {
+        if(s.size() == 1) return s.front() != '0';
         return !!compare(s, "false", false);
+    }
+
+    inline std::string to_string(bool boolean)
+    {
+        return boolean? "true" : "false";
     }
 
 }

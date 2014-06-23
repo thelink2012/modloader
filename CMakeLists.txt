@@ -39,5 +39,6 @@ install(DIRECTORY ${readme_doc}  DESTINATION "./modloader/.data")
 install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
 
 # Install config files
+install(FILES "${CONFIGS_DIR}/config.ini.0" DESTINATION "./modloader/.data")
 install(FILES "${CONFIGS_DIR}/modloader.ini.0" DESTINATION "./modloader/.data")
 install(FILES "${CONFIGS_DIR}/plugins.ini.0" DESTINATION "./modloader/.data/plugins")

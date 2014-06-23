@@ -251,8 +251,10 @@ union auto_ptr_cast
 
 	template<class T>
 	operator T*() { return reinterpret_cast<T*>(p); }
+    /*
 	template<class T>
 	operator const T*() { return reinterpret_cast<const T*>(p); }
+    */
 };
 
 /*

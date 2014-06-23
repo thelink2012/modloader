@@ -30,6 +30,13 @@ using modloader::compare;
 static const char* modurl  = "https://github.com/thelink2012/modloader";
 static const char* downurl = "https://github.com/thelink2012/modloader/releases";
 
+/*
+static const char basic_config[]            = "modloader/.data/config.ini";
+static const char basic_config_default[]    = "modloader/.data/config.ini.0";
+static const char folder_config_name[]      = "modloader.ini";
+static const char folder_config_default[]   = "modloader/.data/modloader.ini.0";
+*/
+
 
 // Functor for sorting based on priority
 template<class T>
@@ -60,7 +67,7 @@ class Loader : public modloader_t
     public:
         static const int default_priority = 50;         // Default priority for mods
         static const int default_cmd_priority = 80;     // Default priority for mods sent by command line
-        
+
         // Forwarding declarations
         class ModInformation;
         class FileInformation;
@@ -306,7 +313,7 @@ class Loader : public modloader_t
                 Status status;                      // Folder status
                 
             private:
-                bool gotConfig = false;
+                bool gotConfig = false;             // Has config file been read?
                 std::string path;                   // Path relative to game dir
                 FolderInformation* parent;          // Parent folder
                 
@@ -335,15 +342,17 @@ class Loader : public modloader_t
         
     protected:
         friend struct scoped_gdir;
+        friend class  TheMenu;
         
         // Configs
         uint64_t        maxBytesInLog;          // Maximum number of bytes in the logging stream 
+        uint64_t        numBytesInLog;          // Number of bytes currently written to the logging stream
         bool            bRunning;               // True when the loader was started up, false otherwise
         bool            bEnableLog;             // Enable logging to the log file
         bool            bImmediateFlush;        // Enable immediately flushing the log file
         bool            bEnablePlugins;         // Enable the loading of ML plugins
+        bool            bEnableMenu;            // Enable the menu system
         
-        uint64_t        numBytesInLog;
         
         // Unique ids
         uint64_t        currentModId;           // Current id for the unique mod id
@@ -351,9 +360,15 @@ class Loader : public modloader_t
         
         // Directories
         std::string     gamePath;               // Full game path
+        std::string     dataPath;               // .data path
         std::string     cachePath;              // Cache path (relative to game path)
         std::string     pluginPath;             // Plugins path (relative to game path)
         
+        std::string     basicConfig;
+        std::string     basicConfigDefault;     // Full path for the default basic config file
+        std::string     folderConfigFilename;
+        std::string     folderConfigDefault;    // Full path for the default folder config file
+
         // Modifications and Plugins
         FolderInformation               mods;               // All mods are contained on this folder
         ExtMap                          extMap;             // List of extensions and the plugins that takes care of it
@@ -382,7 +397,6 @@ class Loader : public modloader_t
         ref_list<PluginInformation> GetPluginsBy(const std::string& extension);
         
     private: // Basic configuration
-        void ReadBasicConfig(const char*);
         void ParseCommandLine();
         
     public:
@@ -397,9 +411,6 @@ class Loader : public modloader_t
         // Start or Shutdown the loader
         void Startup();
         void Shutdown();
-        
-        // Called on specific game circustances
-        void OnReload();    // On Game Reloading
         
         // Logging functions
         static void LogGameVersion();
@@ -419,7 +430,8 @@ class Loader : public modloader_t
         // Finds the plugin that'll handle the file @m, or that needs to get called (@out_callme)
         PluginInformation* FindHandlerForFile(modloader::file& m, ref_list<PluginInformation>& out_callme);
         
-        
+        void ReadBasicConfig();
+        void SaveBasicConfig();
         
         // Marks all status at the specified @map to @status
         template<class M>
@@ -482,6 +494,7 @@ class Loader : public modloader_t
         }
         
         friend void test();
+        
 };
 
 

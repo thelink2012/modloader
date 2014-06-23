@@ -219,7 +219,7 @@ void Loader::FolderInformation::Scan()
     if(!this->gotConfig)
     {
         this->gotConfig = true;
-        this->LoadConfigFromINI("modloader.ini");
+        this->LoadConfigFromINI(loader.folderConfigFilename);
     }
 
     // > Status here is Status::Unchanged
@@ -355,6 +355,6 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
         ReadIncludeMods(cfg["IncludeMods"]);
     }
     else
-        Log("Failed to load config file");
+        Log("Failed to load folder config file");
 
 }
