@@ -22,7 +22,7 @@ struct CMenuEntryData;
 /*******************************************************************************/
 /****** OKAY, SO, WE'RE NOT ON PLUGIN-SDK ENVIROMENT, LET'S DECLARE THOSE HERE */
 
-// TODO MOVE THIS TO CMenuManager
+// XXX MOVE THIS TO CMenuManager
 
 enum eMenuActions   // There's many actions @0x57702E and @0x57CD88
 {
@@ -287,17 +287,15 @@ class MenuExtender
 
         /**
          *  Gets the currently displayed page index in the menu manager
-         *  @param menumgr      The menu manager to look into
-         *  @return             The currently displayed page index
+         *  @return             An modifiable reference to the currently displayed page index
          */
-        static int GetPageFromMenuManager(CMenuManager* menumgr);
+        static char& GetCurrentPageIndex();
        
         /**
          *  Gets the currently selected entry index in the menu manager
-         *  @param menumgr      The menu manager to look into
-         *  @return             The currently selected entry index
+         *  @return             An modifiable reference to the currently selected entry index
          */
-        static int GetEntryFromMenuManager(CMenuManager* menumgr);
+        static int& GetCurrentEntryIndex();
 
 
     public:
@@ -360,21 +358,22 @@ class MenuExtender
             CMenuManager*         menumgr;      // The menu manager that triggered the event
             CMenuItem*            page;         // The menu page that triggered the event or null if none
             CMenuEntryData*       entry;        // The menu entry index in the page that triggered the event or null
+            void*                 user;         // High-Level User Data
 
-            EventInfo(CMenuManager* menumgr, bool use_page, bool use_entry) :
-                menumgr(menumgr),
-                page(nullptr), entry(nullptr)
+            EventInfo(bool use_page, bool use_entry) :
+                menumgr(GetMenuManager()),
+                page(nullptr), entry(nullptr), user(nullptr)
             {
                 if(use_page)
                 {
-                    auto i = GetPageFromMenuManager(menumgr);
+                    auto i = GetCurrentPageIndex();
                     if(i >= 0 && i < max_pages)
                     {
                         if(page = Instance()->GetPage(i))
                         {
                             if(use_entry)
                             {
-                                i = GetEntryFromMenuManager(menumgr);
+                                i = GetCurrentEntryIndex();
                                 if(i >= 0 && i < max_entries) entry = &page->m_aEntries[i];
                             }
                         }
@@ -391,7 +390,7 @@ class MenuExtender
             unsigned char         enter;        // The enter press
 
             ActionInfo(int wheel, int enter) :
-                EventInfo(GetMenuManager(), true, true),
+                EventInfo(true, true),
                 action(entry? entry->m_nActionType : 0), wheel(wheel), enter(enter)
             {}
         };
@@ -403,7 +402,7 @@ class MenuExtender
             char wheel;                             // The left/right movement (( < 0 is left; > 0 is right ))
 
             UserInputInfo(unsigned char down, unsigned char up, unsigned char enter, unsigned char exit, char wheel) :
-                EventInfo(GetMenuManager(), true, true), down(down), up(up), enter(enter), exit(exit), wheel(wheel)
+                EventInfo(true, true), down(down), up(up), enter(enter), exit(exit), wheel(wheel)
             {}
         };
 
@@ -415,7 +414,7 @@ class MenuExtender
             CRGBA*     rgba;                    // The color to draw the sprite in, modify the value pointed by
 
             BackgroundInfo(CSprite2d* sprite, CRect* rect, CRGBA* rgba) :
-                EventInfo(GetMenuManager(), true, false), sprite(sprite), rect(rect), rgba(rgba)
+                EventInfo(true, false), sprite(sprite), rect(rect), rgba(rgba)
             {}
         };
 
@@ -425,7 +424,7 @@ class MenuExtender
             unsigned char drawtitle;            // Boolean to specify if the menu title should be drawn
 
             DrawInfo(unsigned char drawtitle) :
-                EventInfo(GetMenuManager(), true, true), drawtitle(drawtitle)
+                EventInfo(true, true), drawtitle(drawtitle)
             {}
         };
 
@@ -438,7 +437,7 @@ class MenuExtender
             CMenuEntryData* parsing_entry;  // The entry being parsed to draw the state text
 
             StateTextInfo(CText* ctext, const char* gxtentry) :
-                EventInfo(GetMenuManager(), true, true), ctext(ctext), gxtentry(gxtentry), text(nullptr)
+                EventInfo(true, true), ctext(ctext), gxtentry(gxtentry), text(nullptr)
             {}
         };
 

@@ -104,7 +104,6 @@ void Loader::Patch()
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
             // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
             loader.Startup();
-            test_menu();
             WinMain = ReadRelativeOffset(winmain_hook::addr + 1).get();
             auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             loader.Shutdown();
@@ -146,10 +145,12 @@ void Loader::Startup()
         MakeSureStringIsDirectory(this->gamePath = rootPath);
 
         // Setup config file names
-        this->basicConfig          = dataPath + "config.ini";
         this->folderConfigFilename = "modloader.ini";
-        this->basicConfigDefault   = gamePath + dataPath + "config.ini.0";
+        this->basicConfig          = dataPath + "config.ini";
+        this->pluginConfigFilename = "plugins.ini";
         this->folderConfigDefault  = gamePath + dataPath + "modloader.ini.0";
+        this->basicConfigDefault   = gamePath + dataPath + "config.ini.0";
+        this->pluginConfigDefault  = gamePath + pluginPath + "plugins.ini.0";
 
         // Make sure the important folders exist
         MakeSureDirectoryExistA(dataPath.c_str());
@@ -157,7 +158,7 @@ void Loader::Startup()
         MakeSureDirectoryExistA(cachePath.c_str());
         
         // Load the basic configuration file
-        CopyFileA(basicConfigDefault.data(), basicConfig.data(), TRUE);
+        CopyFileA(basicConfigDefault.c_str(), basicConfig.c_str(), TRUE);
         ReadBasicConfig();
         
         // Check if logging is disabled by the basic config file
@@ -176,6 +177,7 @@ void Loader::Startup()
 
         // Initialise sub systems
         this->ParseCommandLine();   // Parse command line arguments
+        this->StartupMenu();
         this->LoadPlugins();        // Load plugins at /modloader/.data/plugins
         this->ScanAndUpdate();      // Search and install mods at /modloader
  
@@ -199,12 +201,13 @@ void Loader::Shutdown()
         Log("Mod Loader has been shutdown.");
         
         // Finish containers
-        plugins_priority.clear();
-        extMap.clear();
-        mods.Clear();
+        this->ShutdownMenu();
+        this->plugins_priority.clear();
+        this->extMap.clear();
+        this->mods.Clear();
         
         // Close the log file
-        CloseLog();
+        this->CloseLog();
         this->bRunning = false;
     }
 }
@@ -319,7 +322,7 @@ void Loader::ParseCommandLine()
     
     //
     LocalFree(argv);
-    Log("Done reading command line");
+    //Log("Done reading command line");
 }
 
 /*

@@ -221,14 +221,13 @@ class Loader : public modloader_t
                 FolderInformation&          parent;         // Owner of this mod
                 std::string                 path;           // Path for this mod (relative to game dir), normalized
                 std::string                 name;           // Name for this mod, this is the filename in path (normalized)
-                std::string                 fs_name;        // Name for this mod on the filesystem (non normalized)
                 std::map<std::string, FileInformation>  files; // Files inside this mod
                 Status                      status;         // Mod status
 
             public:
                 // Initializer
                 ModInformation(std::string name, FolderInformation& parent, uint64_t id)
-                    : fs_name(name), name(NormalizePath(name)), parent(parent), status(Status::Unchanged)
+                    : name(NormalizePath(std::move(name))), parent(parent), status(Status::Unchanged)
                 {
                     this->id = id;
                     this->priority = parent.GetPriority(this->name);
@@ -242,7 +241,8 @@ class Loader : public modloader_t
                 void ExtinguishNecessaryFiles();
                 void InstallNecessaryFiles();
                 
-                const std::string& GetPath() { return this->path; }
+                const std::string& GetPath() const { return this->path; }
+                const std::string& GetName() const { return this->name; }
 
             protected:
                 const decltype(files)& InfoContainer() const { return files; }
@@ -291,6 +291,8 @@ class Loader : public modloader_t
                 ref_list<FolderInformation> GetAll();
                 
                 // Get my mods sorted by priority
+                ref_list<ModInformation>    GetMods();
+                ref_list<ModInformation>    GetModsByName();
                 ref_list<ModInformation>    GetModsByPriority();
                 
                 // Rebuilds the glob string for exclude_globs
@@ -368,6 +370,8 @@ class Loader : public modloader_t
         std::string     basicConfigDefault;     // Full path for the default basic config file
         std::string     folderConfigFilename;
         std::string     folderConfigDefault;    // Full path for the default folder config file
+        std::string     pluginConfigFilename;
+        std::string     pluginConfigDefault;    // Full path for the default plugins config file
 
         // Modifications and Plugins
         FolderInformation               mods;               // All mods are contained on this folder
@@ -396,7 +400,9 @@ class Loader : public modloader_t
         void RebuildExtensionMap();
         ref_list<PluginInformation> GetPluginsBy(const std::string& extension);
         
-    private: // Basic configuration
+    private:
+        void StartupMenu();
+        void ShutdownMenu();
         void ParseCommandLine();
         
     public:
@@ -482,18 +488,16 @@ class Loader : public modloader_t
                 
                 if(CanCollect(item))
                 {
-                    Log("Collecting '%s'", path);
+                    Log("Collecting \"%s\"", path);
                     it = self.erase(it);
                 }
                 else
                 {
-                    if(NeedsCollect(item)) Log("Cannot collect '%s' because of remaining files!", path);
+                    if(NeedsCollect(item)) Log("Cannot collect \"%s\" because of remaining files!", path);
                     ++it;
                 }
             }
         }
-        
-        friend void test();
         
 };
 

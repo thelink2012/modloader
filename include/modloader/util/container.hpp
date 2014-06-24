@@ -177,6 +177,28 @@ namespace modloader
     }
     
     /*
+     *  Splits the string delimited by tokens
+     *  Not optimal, too lazy to do one
+     */
+    template<class T, class Container = std::vector<T>>
+    inline auto split(T s, typename T::value_type c) -> Container
+    {
+        Container vector;
+        size_t pos;
+        s.erase(0, s.find_first_not_of(c));
+        while(s.size())
+        {
+            pos = s.find_first_of(c);
+            vector.emplace_back(s.substr(0, pos));
+            s.erase(0, s.find_first_not_of(c, pos));
+        }
+        return vector;
+    }
+
+
+
+
+    /*
      *  Converts a string into a boolean
      */
     inline bool to_bool(const std::string& s)

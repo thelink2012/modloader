@@ -192,13 +192,36 @@ auto Loader::FolderInformation::GetAll() -> ref_list<FolderInformation>
 }
 
 /*
+ *  FolderInformation::GetMods 
+ *      Gets my mods in no particular oder
+ */
+auto Loader::FolderInformation::GetMods() -> ref_list<ModInformation>
+{
+    return refs_mapped(this->mods);
+}
+
+/*
  *  FolderInformation::GetModsByPriority 
  *      Gets my mods ordered by priority
  */
 auto Loader::FolderInformation::GetModsByPriority() -> ref_list<ModInformation>
 {
-    auto list = refs_mapped(this->mods);
+    auto list = this->GetMods();
     std::sort(list.begin(), list.end(), PriorityPred<ModInformation>());
+    return list;
+}
+
+/*
+ *  FolderInformation::GetModsByName
+ *      Gets my mods ordered by name
+ */
+auto Loader::FolderInformation::GetModsByName() -> ref_list<ModInformation>
+{
+    auto list = this->GetMods();
+    std::sort(list.begin(), list.end(), [](const ModInformation& a, const ModInformation& b)
+    {
+        return a.GetPath() < b.GetPath();
+    });
     return list;
 }
 
@@ -211,7 +234,7 @@ auto Loader::FolderInformation::GetModsByPriority() -> ref_list<ModInformation>
 void Loader::FolderInformation::Scan()
 {
     scoped_gdir xdir(this->path.c_str());
-    Log("\n\nScanning mods at '%s'...", this->path.c_str());
+    Log("\n\nScanning mods at \"%s\"...", this->path.c_str());
 
     bool fine = true;
     
@@ -234,7 +257,7 @@ void Loader::FolderInformation::Scan()
             if(file.is_dir)
             {
                 if (IsIgnored(NormalizePath(file.filename)))
-                    Log("Ignoring mod at '%s'", file.filepath);
+                    Log("Ignoring mod at \"%s\"", file.filepath);
                 else
                     this->AddMod(file.filename).Scan();
             }
@@ -268,7 +291,7 @@ void Loader::FolderInformation::Update()
 {
     if(this->status != Status::Unchanged)
     {
-        Log("\nUpdating mods for '%s'...", this->path.c_str());
+        Log("\nUpdating mods for \"%s\"...", this->path.c_str());
 
         auto mods = this->GetModsByPriority();
 

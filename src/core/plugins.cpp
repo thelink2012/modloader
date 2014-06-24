@@ -24,9 +24,12 @@ void Loader::LoadPlugins()
         {
             modloader::ini ini;
 
-            Log("Reading plugins.ini");
+            // Make sure we have plugins.ini ....
+            CopyFileA(pluginConfigDefault.c_str(), pluginConfigFilename.c_str(), TRUE);
+
             if(ini.load_file("plugins.ini"))
             {
+                Log("Reading plugins.ini");
                 // Check out plugins priority overrides
                 for(auto& pair : ini["Priority"])
                     plugins_priority.emplace(NormalizePath(pair.first), std::stoi(pair.second));
@@ -74,7 +77,7 @@ bool Loader::LoadPlugin(std::string filename)
         // Since 0.2.x we have GetLoaderVersion to make sure compatibility is fine
         if(GetLoaderVersion == nullptr)
         {
-            Log("Failed to load module '%s', missing GetLoaderVersion. Plugin possibily compiled for an older version of Mod Loader.", modulename);
+            Log("Failed to load module \"%s\", missing GetLoaderVersion. Plugin possibily compiled for an older version of Mod Loader.", modulename);
             return false;
         }
         else
@@ -85,14 +88,14 @@ bool Loader::LoadPlugin(std::string filename)
         // Check version incompatibilities
         if (minor < 2) // 0.2.x introduces a different API set
         {
-            Log("Failed to load module '%s', plugin was compiled for an older version of Mod Loader.", modulename);
+            Log("Failed to load module \"%s\", plugin was compiled for an older version of Mod Loader.", modulename);
             return false;
         }
         // Check if plugin was written to a (future) version of modloader, if so, we need to be updated
         else if (major > MODLOADER_VERSION_MAJOR
                  || (major == MODLOADER_VERSION_MAJOR && minor > MODLOADER_VERSION_MINOR))
         {
-            Log("Failed to load module '%s', it requieres a newer version of Mod Loader!\nUpdate yourself at: %s",
+            Log("Failed to load module \"%s\", it requieres a newer version of Mod Loader!\nUpdate yourself at: %s",
                 modulename, downurl);
             return false;
         }
@@ -106,7 +109,7 @@ bool Loader::LoadPlugin(std::string filename)
         // Zero priority means "don't load"
         if (data.priority == 0)
         {
-            Log("Plugin module '%s' will not be loaded. It's priority is zero", modulename);
+            Log("Plugin module \"%s\" will not be loaded. It's priority is zero", modulename);
             return false;
         }
         return true;
@@ -116,7 +119,7 @@ bool Loader::LoadPlugin(std::string filename)
     // Load the plugin module, use full path because we don't want to conflict with any other plugin with same name but different directory
     if(module = LoadLibraryA((this->gamePath + this->pluginPath + modulename).c_str()))
     {
-        Log("Loading plugin module '%s'", modulename);
+        Log("Loading plugin module \"%s\"", modulename);
         auto GetLoaderVersion = (modloader_fGetLoaderVersion) GetProcAddress(module, "GetLoaderVersion");
         auto GetPluginData = (modloader_fGetPluginData) GetProcAddress(module, "GetPluginData");
 
@@ -136,7 +139,7 @@ bool Loader::LoadPlugin(std::string filename)
                 data.version   = data.GetVersion? data.GetVersion(&data) : "";
                 data.author    = data.GetAuthor? data.GetAuthor(&data) : "";
 
-                Log("Plugin module '%s' loaded as %s %s %s %s",
+                Log("Plugin module \"%s\" loaded as %s %s %s %s",
                     modulename, data.name, data.version,
                     data.author ? "by" : "", data.author);
 
@@ -156,7 +159,7 @@ bool Loader::LoadPlugin(std::string filename)
         FreeLibrary(module);
     }
     else
-        Log("Could not load plugin module '%s'", modulename);
+        Log("Could not load plugin module \"%s\"", modulename);
 
     return false;
 }
@@ -189,7 +192,7 @@ bool Loader::StartupPlugin(PluginInformation& plugin)
     Log("Starting up plugin \"%s\"", plugin.name);
     if(!plugin.Startup())
     {
-        Log("Failed to startup plugin '%s', unloading it.", plugin.name);
+        Log("Failed to startup plugin \"%s\", unloading it.", plugin.name);
         this->UnloadPlugin(plugin);
         return false;
     }

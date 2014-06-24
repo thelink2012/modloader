@@ -20,13 +20,13 @@ struct FileInstallLog
     FileInstallLog(const Loader::FileInformation& file, const char* action, bool revaction = false) :
                 file(file), action(action), revaction(revaction)
     {
-        loader.Log("%sing file '%s'", action, file.FileBuffer());
+        loader.Log("%sing file \"%s\"", action, file.FileBuffer());
     }
     
     ~FileInstallLog()
     {
         if(file.IsInstalled() == revaction)
-            loader.Log("Failed to %s file '%s'", action, file.FileBuffer());
+            loader.Log("Failed to %s file \"%s\"", action, file.FileBuffer());
     }
 };
 
@@ -56,7 +56,7 @@ void Loader::ModInformation::Scan()
         // Sub Mod Loader folder...
         if(file.is_dir && filename == modloader_subfolder)
         {
-            Log("Found sub modloader at '%s'", filepath.c_str());
+            Log("Found sub modloader at \"%s\"", filepath.c_str());
             this->parent.AddChild(filepath);
             file.recursive = false;
         }
@@ -105,7 +105,7 @@ void Loader::ModInformation::Scan()
                 else
                     n.status = Status::Added;
                 
-                Log("Found file [0x%.16" PRIX64 "] '%s' with handler '%s'",
+                Log("Found file [0x%.16" PRIX64 "] \"%s\" with handler \"%s\"",
                         n.behaviour,
                         file.filebuf,
                         n.handler? n.handler->name : callme.size()? "<callme>" : "<none>");
@@ -113,12 +113,12 @@ void Loader::ModInformation::Scan()
             else
             {
                 // Show no handler only if file isn't a directory, avoid spamming directories on the log
-                if(!file.is_dir) Log("No handler or callme for file '%s'", file.filebuf);
+                if(!file.is_dir) Log("No handler or callme for file \"%s\"", file.filebuf);
             }
         }
         else
         {
-            Log("Ignoring file '%s'", file.filebuf);
+            Log("Ignoring file \"%s\"", file.filebuf);
         }
         
         return true;
@@ -139,7 +139,7 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
 {
     if(this->status != Status::Unchanged)
     {
-        Log("Extinguishing some files from '%s'...", this->path.c_str());
+        Log("Extinguishing some files from \"%s\"...", this->path.c_str());
 
         // Remove all files if this mod has been removed
         bool bRemoveAll = (this->status == Status::Removed);
@@ -151,7 +151,7 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
             if (bRemoveAll || file.status == Status::Removed)
             {
                 // File was removed from the filesystem, uninstall and erase from our internal list
-                Log("Extinguishing file '%s'", file.FileBuffer());
+                Log("Extinguishing file \"%s\"", file.FileBuffer());
                 if(file.Uninstall()) it = this->files.erase(it);
                 else                 ++it;
             }
@@ -170,7 +170,7 @@ void Loader::ModInformation::InstallNecessaryFiles()
 {
     if(this->status != Status::Unchanged)
     {
-        Log("Installing some files for '%s'...", this->path.c_str());
+        Log("Installing some files for \"%s\"...", this->path.c_str());
         
         for (auto it = this->files.begin(); it != this->files.end(); ++it)
         {
@@ -209,7 +209,7 @@ bool Loader::FileInformation::Update(const modloader::file& m)
         // Behaviour cannot change between updates!!!!
         if (this->behaviour != m.behaviour)
         {
-            Error("Behaviour of file '%s' changed during update.", this->FileBuffer());
+            Error("Behaviour of file \"%s\" changed during update.", this->FileBuffer());
             return false;
         }
         return true;

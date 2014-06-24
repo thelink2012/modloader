@@ -32,7 +32,8 @@ namespace modloader
     {
         size_t operator()(const char* key)
         {
-            return hash(key, ::toupper);
+            // FXT entries should contain max of 7 chars!
+            return fnv1a<32>()(key, 7, ::toupper, fnv_fun::condition_ascii());
         }
     };
 

@@ -275,15 +275,15 @@ CMenuManager* MenuExtender::GetMenuManager()
 }
 
 // Gets the current screen index in the CMenuManager @menumgr
-int MenuExtender::GetPageFromMenuManager(CMenuManager* menumgr)
+char& MenuExtender::GetCurrentPageIndex()
 {
-    return *(char*)((uintptr_t)(menumgr)+0x15D);
+    return *(char*)((uintptr_t)(GetMenuManager())+0x15D);
 }
 
 // Gets the current selected entry in the CMenuManager @menumgr
-int MenuExtender::GetEntryFromMenuManager(CMenuManager* menumgr)
+int& MenuExtender::GetCurrentEntryIndex()
 {
-    return *(int*)((uintptr_t)(menumgr)+0x54);
+    return *(int*)((uintptr_t)(GetMenuManager())+0x54);
 }
 
 

@@ -71,6 +71,11 @@ namespace injector
                 patch();
                 GetTextMap()[GetHash(key)] = value;
             }
+
+            static void set(const char* key, const char* value)
+            {
+                return add(key, value);
+            }
             
             /*
              *  Returns the value from @key in the CText object @ctext

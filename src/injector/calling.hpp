@@ -34,6 +34,42 @@
 
 namespace injector
 {
+    template<class Prototype>
+    struct call;
+
+    template<class Ret, class ...Args>
+    struct call<Ret(Args...)>
+    {
+        // Call function at @p returning @Ret with args @Args
+        static Ret cstd(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(*)(Args...)) p.get<void>();
+            return fn(std::forward<Args>(a)...);
+        }
+    
+        static Ret stdcall(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(__stdcall *)(Args...)) p.get<void>();
+            return fn(std::forward<Args>(a)...);
+        }
+    
+        static Ret thiscall(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(__thiscall *)(Args...)) p.get<void>();
+            return fn(std::forward<Args>(a)...);
+        }
+
+        static Ret fastcall(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(__fastcall *)(Args...)) p.get<void>();;
+            return fn(std::forward<Args>(a)...);
+        }
+    };
+
+
+
+// Produces erroneous results because of forwarding
+#if 0
     // Call function at @p returning @Ret with args @Args
     template<class Ret, class ...Args>
     inline Ret Call(memory_pointer_tr p, Args&&... a)
@@ -62,6 +98,7 @@ namespace injector
         auto fn = (Ret(__fastcall *)(Args...)) p.get<void>();;
         return fn(std::forward<Args>(a)...);
     }
+#endif
     
 } 
 
