@@ -27,6 +27,7 @@
 #include <modloader/modloader.hpp>
 #include <injector/injector.hpp>
 #include <injector/hooking.hpp>
+#include <injector/calling.hpp>
 
 namespace modloader
 {

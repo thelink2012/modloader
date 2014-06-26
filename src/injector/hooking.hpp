@@ -87,6 +87,8 @@ namespace injector
             template<class To>
             To& cast() { return cast<To>(*this); }
 
+            void* cast_to_void() { return (void*)(this); }
+
         protected:
             // Constructor, initialises
             scoped_base(size_t bufsize) : saved(false), bufsize(bufsize)
@@ -296,17 +298,17 @@ namespace injector
     {
         public:
             static const uintptr_t addr = addr1;
-            typedef FuncType        func_type;
+            typedef FuncType       func_type;
             typedef std::function<Ret(func_type, Args&...)> functor_type;
 
         public:
             // Constructors, move constructors, assigment operators........
             function_hooker_base() = default;
             function_hooker_base(const function_hooker_base&) = delete;
-            function_hooker_base(function_hooker_base&& rhs) : scoped_call(std::move(rhs)) {}
+            function_hooker_base(function_hooker_base&& rhs) : scoped_call<>(std::move(rhs)) {}
             function_hooker_base& operator=(const function_hooker_base& rhs) = delete;
             function_hooker_base& operator=(function_hooker_base&& rhs)
-            { scoped_call::operator=(std::move(rhs)); return *this; }
+            { scoped_call<>::operator=(std::move(rhs)); return *this; }
 
         protected:
             struct hook_store
@@ -328,27 +330,29 @@ namespace injector
     struct function_hooker<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(*)(Args...), Ret, Args...>
     {
         public:
+            using base = function_hooker_base<addr1, Ret(*)(Args...), Ret, Args...>;
+
             // Makes the hook
-            void make_call(functor_type functor)
+            void make_call(typename base::functor_type functor)
             {
-                store().functor = std::move(functor);
-                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+                base::store().functor = std::move(functor);
+                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
             }
 
 
             // The hook caller
             static Ret call(Args... a)
             {
-                return store().functor(store().original, a...);
+                return base::store().functor(base::store().original, a...);
             }
 
             // Constructors, move constructors, assigment operators........
             function_hooker() = default;
             function_hooker(const function_hooker&) = delete;
-            function_hooker(function_hooker&& rhs) : function_hooker_base(std::move(rhs)) {}
+            function_hooker(function_hooker&& rhs) : base(std::move(rhs)) {}
             function_hooker& operator=(const function_hooker& rhs) = delete;
             function_hooker& operator=(function_hooker&& rhs)
-            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+            { base::operator=(std::move(rhs)); return *this; }
     };
 
 
@@ -360,26 +364,29 @@ namespace injector
     struct function_hooker_stdcall<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(__stdcall*)(Args...), Ret, Args...>
     {
         public:
-            // Constructors, move constructors, assigment operators........
-            function_hooker_stdcall() = default;
-            function_hooker_stdcall(const function_hooker_stdcall&) = delete;
-            function_hooker_stdcall(function_hooker_stdcall&& rhs) : function_hooker_base(std::move(rhs)) {}
-            function_hooker_stdcall& operator=(const function_hooker_stdcall& rhs) = delete;
-            function_hooker_stdcall& operator=(function_hooker_stdcall&& rhs)
-            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+            using base = function_hooker_base<addr1, Ret(__stdcall*)(Args...), Ret, Args...>;
 
             // Makes the hook
-            void make_call(functor_type functor)
+            void make_call(typename base::functor_type functor)
             {
-                store().functor = std::move(functor);
-                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+                base::store().functor = std::move(functor);
+                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
             }
+
 
             // The hook caller
             static Ret __stdcall call(Args... a)
             {
-                return store().functor(store().original, a...);
+                return base::store().functor(base::store().original, a...);
             }
+
+            // Constructors, move constructors, assigment operators........
+            function_hooker_stdcall() = default;
+            function_hooker_stdcall(const function_hooker_stdcall&) = delete;
+            function_hooker_stdcall(function_hooker_stdcall&& rhs) : base(std::move(rhs)) {}
+            function_hooker_stdcall& operator=(const function_hooker_stdcall& rhs) = delete;
+            function_hooker_stdcall& operator=(function_hooker_stdcall&& rhs)
+            { base::operator=(std::move(rhs)); return *this; }
     };
 
 
@@ -390,27 +397,29 @@ namespace injector
     struct function_hooker_fastcall<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(__fastcall*)(Args...), Ret, Args...>
     {
         public:
-            // Constructors, move constructors, assigment operators........
-            function_hooker_fastcall() = default;
-            function_hooker_fastcall(const function_hooker_fastcall&) = delete;
-            function_hooker_fastcall(function_hooker_fastcall&& rhs) : function_hooker_base(std::move(rhs)) {}
-            function_hooker_fastcall& operator=(const function_hooker_fastcall& rhs) = delete;
-            function_hooker_fastcall& operator=(function_hooker_fastcall&& rhs)
-            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+            using base = function_hooker_base<addr1, Ret(__fastcall*)(Args...), Ret, Args...>;
 
             // Makes the hook
-            void make_call(functor_type functor)
+            void make_call(typename base::functor_type functor)
             {
-                store().functor = std::move(functor);
-                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+                base::store().functor = std::move(functor);
+                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
             }
 
 
             // The hook caller
             static Ret __fastcall call(Args... a)
             {
-                return store().functor(store().original, a...);
+                return base::store().functor(base::store().original, a...);
             }
+
+            // Constructors, move constructors, assigment operators........
+            function_hooker_fastcall() = default;
+            function_hooker_fastcall(const function_hooker_fastcall&) = delete;
+            function_hooker_fastcall(function_hooker_fastcall&& rhs) : base(std::move(rhs)) {}
+            function_hooker_fastcall& operator=(const function_hooker_fastcall& rhs) = delete;
+            function_hooker_fastcall& operator=(function_hooker_fastcall&& rhs)
+            { base::operator=(std::move(rhs)); return *this; }
     };
 
 
@@ -422,26 +431,29 @@ namespace injector
     struct function_hooker_thiscall<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(__thiscall*)(Args...), Ret, Args...>
     {
         public:
-            // Constructors, move constructors, assigment operators........
-            function_hooker_thiscall() = default;
-            function_hooker_thiscall(const function_hooker_thiscall&) = delete;
-            function_hooker_thiscall(function_hooker_thiscall&& rhs) : function_hooker_base(std::move(rhs)) {}
-            function_hooker_thiscall& operator=(const function_hooker_thiscall& rhs) = delete;
-            function_hooker_thiscall& operator=(function_hooker_thiscall&& rhs)
-            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+            using base = function_hooker_base<addr1, Ret(__thiscall*)(Args...), Ret, Args...>;
 
             // Makes the hook
-            void make_call(functor_type functor)
+            void make_call(typename base::functor_type functor)
             {
-                store().functor = std::move(functor);
-                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+                base::store().functor = std::move(functor);
+                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
             }
+
 
             // The hook caller
             static Ret __thiscall call(Args... a)
             {
-                return store().functor(store().original, a...);
+                return base::store().functor(base::store().original, a...);
             }
+
+            // Constructors, move constructors, assigment operators........
+            function_hooker_thiscall() = default;
+            function_hooker_thiscall(const function_hooker_thiscall&) = delete;
+            function_hooker_thiscall(function_hooker_thiscall&& rhs) : base(std::move(rhs)) {}
+            function_hooker_thiscall& operator=(const function_hooker_thiscall& rhs) = delete;
+            function_hooker_thiscall& operator=(function_hooker_thiscall&& rhs)
+            { base::operator=(std::move(rhs)); return *this; }
     };
 
 
@@ -450,11 +462,11 @@ namespace injector
 
     // TODO STATICA
     /* Helpers */
-    template<class T> inline
-    T& make_function_hook(typename T::functor_type functor)
+    template<class T, class F> inline
+    T& make_function_hook(F functor)
     {
         static T a;
-        a.make_call(std::move(functor));
+        a.make_call(functor); // TODO STD MOVE
         return a;
     }
     

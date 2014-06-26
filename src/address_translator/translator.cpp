@@ -7,6 +7,7 @@
 #ifndef ADDRESS_TRANSLATOR_H
 #define	ADDRESS_TRANSLATOR_H
 
+#include <modloader/modloader.hpp>
 #include <modloader/util/injector.hpp>
 #include <map>
 using namespace injector;
@@ -14,8 +15,9 @@ using namespace injector;
 // Tables
 #include "gta3/sa/10us.hpp"
 
+// TODO optimize with lazy pointers (check all the calls to the translator and put a lazy pointer on 'em)
+
 // Constants
-static const size_t ptr_failure  = 0x0;     // Returns 0x0 in case of failure in address translation
 static const size_t max_ptr_dist = 8;       // Max distance to take as a "equivalent" address for modloader
 static void init();
 
@@ -26,7 +28,6 @@ static std::map<memory_pointer_raw, memory_pointer_raw> map;
 // Translate pointer from GTA SA 10US offset to this executable offset
 void* injector::address_manager::translator(void* p_)
 {
-    return p_;//TODO
     memory_pointer_raw p = p_;
     memory_pointer_raw result = nullptr;
                 
@@ -45,14 +46,16 @@ void* injector::address_manager::translator(void* p_)
             result = it->second + raw_ptr(diff);    // Yes, we can!
     }
     
-    // Print into stdout that the address translation wasn't possible
-    // This should never happen! The user won't see this warning on stdout.
+    // If we couldn't translate the address, notify
     if(!result)
     {
         char buf[128];
-        sprintf(buf, "Could not translate address 0x%p!!\n", p.get<void>());
-        MessageBoxA(0, buf, injector::game_version_manager::PluginName, 0);
-        result = ptr_failure;
+        sprintf(buf, "Warning: Could not translate address 0x%p", p.get<void>());
+
+        if(modloader::plugin_ptr)   // A plugin might request a address just to see if it's there for this game
+            modloader::plugin_ptr->Log(buf);
+        else
+            MessageBoxA(0, buf, injector::game_version_manager::PluginName, 0);
     }
     
     return result.get();
