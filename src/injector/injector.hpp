@@ -249,6 +249,12 @@ union auto_ptr_cast
 	explicit auto_ptr_cast(void* x)    : p(x)       {}
 	explicit auto_ptr_cast(uint32_t x) : a(x)       {}
 
+    bool is_null() { return this->p != nullptr; }
+
+#if __cplusplus >= 201103L || _MSC_VER >= 1800
+    explicit operator bool() { return is_null(); }
+#endif
+
 	template<class T>
 	operator T*() { return reinterpret_cast<T*>(p); }
     /*
@@ -366,17 +372,17 @@ inline memory_pointer_raw  raw_ptr(T p)
  struct lazy_pointer
  {
      // Returns the final pointer
-     static auto_ptr_cast xget()
+     static memory_pointer_raw xget()
      {
          static void* ptr = nullptr;
          if(!ptr) ptr = memory_pointer(addr).get();
-         return auto_ptr_cast(ptr);
+         return memory_pointer_raw(ptr);
      }
  
      // Returns the final raw pointer
-     static memory_pointer_raw get()
+     static auto_ptr_cast get()
      {
-         return xget();
+         return xget().get();
      }
  };
 

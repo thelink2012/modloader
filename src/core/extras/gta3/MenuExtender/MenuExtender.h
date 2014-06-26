@@ -3,6 +3,7 @@
  * Licensed under zlib license, see LICENSE at top level directory.
  *
  *  Menu Extender, See Below For More Details
+ *  This is suposed to be a low-level abstraction, not limiting your mind, and so only have basic/necessary functionalities.
  *
  */
 #pragma once
@@ -141,7 +142,7 @@ class MenuExtender
         MenuExtender() : block(0), initialized(false)
         {}
 
-        // This class can be extended deeply
+        // This class can be extended deeply (and it's recommended to)
         virtual ~MenuExtender()
         {}
 
@@ -154,6 +155,12 @@ class MenuExtender
          */
         void Initialise();
 
+
+        /**
+         *  Gets the MenuExtender instance
+         *  @return The currently initialized MenuExtender
+         */
+        static MenuExtender*& Instance();
 
 
         /**
@@ -241,7 +248,7 @@ class MenuExtender
         /**
          *  Setups the specified array of pages with relative page relationship
          *
-         *  What this does is changes any target page (or previous page) on the pages of the array to be relative to the first entry
+         *  What this does is changes any target page (or previous page) on the pages of the array to be relative to the first page index
          *  So if the second page on the array points (by target page) to a page number '4' it will be set to point to the page of index 4 on the array
          *  This basically does (pages[i].SomePageReference += GetPageIndex(pages[0])) on all pages of the array
          *
@@ -350,15 +357,15 @@ class MenuExtender
 
 
 
-        /******** AH, TOO LAZY TO DOXYGEN THOSE STRUCTURES ********/
-
-        // Base for any event information
+        /**
+         *  Base for any event information
+         */
         struct EventInfo
         {
-            CMenuManager*         menumgr;      // The menu manager that triggered the event
-            CMenuItem*            page;         // The menu page that triggered the event or null if none
-            CMenuEntryData*       entry;        // The menu entry index in the page that triggered the event or null
-            void*                 user;         // High-Level User Data
+            CMenuManager*         menumgr;      ///< The menu manager that triggered the event
+            CMenuItem*            page;         ///< The menu page that triggered the event or null if none
+            CMenuEntryData*       entry;        ///< The menu entry index in the page that triggered the event or null
+            void*                 user;         ///< High-Level User Data
 
             EventInfo(bool use_page, bool use_entry) :
                 menumgr(GetMenuManager()),
@@ -382,12 +389,14 @@ class MenuExtender
             }
         };
 
-        // Base for any action event (triggered by clicking an menu entry)
+        /**
+         * Action event (triggered by clicking an menu entry)
+         */
         struct ActionInfo : EventInfo
         {
-            unsigned char         action;       // The action triggered
-            signed   char         wheel;        // The left/right movement (( < 0 is left; > 0 is right ))
-            unsigned char         enter;        // The enter press
+            unsigned char         action;       ///< The action triggered
+            signed   char         wheel;        ///< The left/right movement (( < 0 is left; > 0 is right ))
+            unsigned char         enter;        ///< The enter press
 
             ActionInfo(int wheel, int enter) :
                 EventInfo(true, true),
@@ -398,43 +407,51 @@ class MenuExtender
         // Base for any user input event (triggered every frame)
         struct UserInputInfo : EventInfo
         {
-            unsigned char down, up, enter, exit;    // Booleans, all obvious....
-            char wheel;                             // The left/right movement (( < 0 is left; > 0 is right ))
+            unsigned char down, up, enter, exit;    ///< Booleans, all obvious....
+            char wheel;                             ///< The left/right movement (( < 0 is left; > 0 is right ))
 
             UserInputInfo(unsigned char down, unsigned char up, unsigned char enter, unsigned char exit, char wheel) :
                 EventInfo(true, true), down(down), up(up), enter(enter), exit(exit), wheel(wheel)
             {}
         };
 
-        // Base for any background event (triggered every frame)
+
+        /**
+         *  Background event (triggered every frame)
+         */
         struct BackgroundInfo : EventInfo
         {
-            CSprite2d* sprite;                  // The sprite used for background or null for none
-            CRect*     rect;                    // The rect to draw the sprite in, modify the value pointed by
-            CRGBA*     rgba;                    // The color to draw the sprite in, modify the value pointed by
+            CSprite2d* sprite;                  ///< The sprite used for background or null for none
+            CRect*     rect;                    ///< The rect to draw the sprite in, modify the value pointed by
+            CRGBA*     rgba;                    ///< The color to draw the sprite in, modify the value pointed by
 
             BackgroundInfo(CSprite2d* sprite, CRect* rect, CRGBA* rgba) :
                 EventInfo(true, false), sprite(sprite), rect(rect), rgba(rgba)
             {}
         };
 
-        // Base for any drawing event (triggered every frame)
+        /**
+         *  Drawing event (triggered every frame)
+         */
         struct DrawInfo : EventInfo
         {
-            unsigned char drawtitle;            // Boolean to specify if the menu title should be drawn
+            unsigned char drawtitle;            ///< Boolean to specify if the menu title should be drawn
 
             DrawInfo(unsigned char drawtitle) :
                 EventInfo(true, true), drawtitle(drawtitle)
             {}
         };
 
-        // Base for an state text event (triggered every frame if in a custom menu page)
+
+        /**
+         *  State text event (triggered every frame if in a custom menu page)
+         */
         struct StateTextInfo : EventInfo
         {
-            CText* ctext;                   // CText
-            const char* gxtentry;           // GXT entry for the state
-            const char* text;               // Raw text for the state  (may be null to use gxt entry)
-            CMenuEntryData* parsing_entry;  // The entry being parsed to draw the state text
+            CText* ctext;                   ///< CText
+            const char* gxtentry;           ///< GXT entry for the state
+            const char* text;               ///< Raw text for the state  (may be null to use gxt entry)
+            CMenuEntryData* parsing_entry;  ///< The entry being parsed to draw the state text
 
             StateTextInfo(CText* ctext, const char* gxtentry) :
                 EventInfo(true, true), ctext(ctext), gxtentry(gxtentry), text(nullptr)
@@ -450,14 +467,7 @@ class MenuExtender
         Action Handler Patching
     */
     private:
-        static std::function<bool(ActionInfo&)>& action_handler()
-        { static std::function<bool(ActionInfo&)> x; return x; }
-
-        typedef bool(__fastcall *action_handler_t)(void*, int, signed char, unsigned char);
-        static action_handler_t& action_handler_ptr() { static action_handler_t x; return x; }
-
         static void PatchActionHandler();
-
         static bool __fastcall ActionHandler(void* self, int, signed char wheel, unsigned char enter);
 
 
@@ -465,29 +475,14 @@ class MenuExtender
         Background Handler Patching
     */
     private:
-        static std::function<bool(BackgroundInfo&)>& background_handler()
-        { static std::function<bool(BackgroundInfo&)> x; return x; }
-
-        typedef void(__fastcall *background_handler_t)(CSprite2d*, int, CRect*, CRGBA*);
-        static background_handler_t& background_handler_ptr() { static background_handler_t x; return x; }
-
         static void PatchBackgroundHandler();
-
         static void __fastcall BackgroundHandler(CSprite2d* self, int, CRect* rect, CRGBA* rgba);
 
     /*
         User Input Handler Patching
     */
     private:
-        static std::function<bool(UserInputInfo&)>& userinput_handler()
-        { static std::function<bool(UserInputInfo&)> x; return x; }
-
-        typedef void(__fastcall *userinput_handler_t)(void*, int, unsigned char, unsigned char, unsigned char, unsigned char, char);
-        static userinput_handler_t& userinput_handler_ptr() { static userinput_handler_t x; return x; }
-
-
         static void PatchUserInputHandler();
-
         static void __fastcall UserInputHandler(void* self, int, unsigned char down, unsigned char up, unsigned char enter, unsigned char exit, char wheel);
 
 
@@ -495,27 +490,14 @@ class MenuExtender
         Draw Handler Patching
     */
     private:
-        static std::function<bool(DrawInfo&)>& draw_handler()
-        { static std::function<bool(DrawInfo&)> x; return x; }
-
-        typedef void(__fastcall *draw_handler_t)(void*, int, unsigned char);
-        static draw_handler_t& draw_handler_ptr() { static draw_handler_t x; return x; }
-
         static void PatchDrawHandler();
-
         static void __fastcall DrawHandler(void* self, int, unsigned char drawtitle);
   
     /*
         State Text Patching
     */
-        static std::function<bool(StateTextInfo&)>& state_text_handler()
-        { static std::function<bool(StateTextInfo&)> x; return x; }
-
-        typedef const char*(__fastcall *state_text_handler_t)(CText*, int, const char*);
-        static state_text_handler_t& state_text_handler_ptr() { static state_text_handler_t x; return x; }
-
+    private:
         static void PatchStateTextHandler();
-
         static const char* __fastcall StateTextHandler(CText* self, int, const char* gxtentry);
 
 
@@ -523,13 +505,6 @@ class MenuExtender
         void Patch(CMenuItem* entries);
         static int Register(short& used, short quantity, short max);
         void Initialise(MenuExtenderData* block);
-
-    protected:
-        static MenuExtender*& Instance()
-        {
-            static MenuExtender* inst;
-            return inst;
-        }
 };
 
 

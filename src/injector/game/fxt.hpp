@@ -57,8 +57,8 @@ namespace injector
             { static TextMap map; return map; }
             
             // Store the jmp hooker
-            static scoped_jmp& JmpHook()
-            { static scoped_jmp x; return x; }
+            static scoped_jmp<>& JmpHook()
+            { static scoped_jmp<> x; return x; }
             
             
         public:

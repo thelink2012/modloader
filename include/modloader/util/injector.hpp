@@ -24,16 +24,29 @@
 //#define INJECTOR_GVM_PLUGIN_NAME        "Mod Loader Plugin"     // (for Mod Loader plugins, in dll)
 //#define INJECTOR_GVM_HAS_TRANSLATOR
 
+#include <modloader/modloader.hpp>
 #include <injector/injector.hpp>
 #include <injector/hooking.hpp>
 
 namespace modloader
 {
+    using namespace injector;
+
     static const uintptr_t gta3_specific  = 0xF3000000;
     static const uintptr_t gtavc_specific = 0xF4000000;
     static const uintptr_t gtasa_specific = 0xF5000000;
 
-    using namespace injector;
+    inline auto_ptr_cast try_address(memory_pointer addr)
+    {
+        auto Log = modloader::plugin_ptr? modloader::plugin_ptr->Log : nullptr;
+
+        if(Log) Log("Trying to get optional address 0x%p...", addr.get_raw<void>());
+        void* x = addr.get(); 
+        //if(!x && Log) Log("Ignore the warning above");
+
+        return auto_ptr_cast(x);
+    }
+    
 }
 
 #endif

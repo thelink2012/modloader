@@ -24,7 +24,6 @@
 #pragma once
 #include <modloader/modloader.h>
 
-
 namespace modloader
 {
     struct mod  : public modloader_mod_t
@@ -39,6 +38,8 @@ namespace modloader
 
         uint64_t Size() const         { return size; }
         uint64_t Time() const         { return time; }
+
+        // TODO RENAME THOSE
 
         const char* FilePath() const  { return FileBuffer(pos_filepath);  }
         const char* FileName() const  { return FileBuffer(pos_filename);  }
@@ -82,7 +83,7 @@ namespace modloader
             modloader_fLog              Log;
             modloader_fvLog             vLog;
             modloader_fError            Error;
-     
+
         public:
             // Gets the plugin information such as name, version and author
             virtual const info& GetInfo()=0;

@@ -6,6 +6,18 @@ set(SOURCE_FILES
      extras/gta3/menu.hpp
      extras/gta3/MenuExtender/MenuExtender.cpp
      extras/gta3/MenuExtender/MenuExtender.h
+
+     "${CMAKE_SOURCE_DIR}/include/modloader/modloader.h"
+     "${CMAKE_SOURCE_DIR}/include/modloader/modloader.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/container.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/file.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/fxt.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/hash.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/ini.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/injector.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/modloader.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/parser.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/path.hpp"
 )
 
 add_library(modloader SHARED ${SOURCE_FILES} $<TARGET_OBJECTS:addr>)

@@ -18,16 +18,23 @@
 
 namespace plugin {
 
-// Initialises this manager
 void MenuExtender::Initialise()
 {
-    Instance() = this;
+    Instance() = this;      // Set instance always
     if(!this->initialized)
     {
+        // Initialise only once
         this->initialized = true;
         this->Initialise(&ControllerBlockManager::GetInterface(0)->menuExtender);
     }
 }
+
+MenuExtender*& MenuExtender::Instance()
+{
+    static MenuExtender* inst;
+    return inst;
+}
+
 
 // Initialises the shared block
 void MenuExtender::Initialise(MenuExtenderData* block)
@@ -50,14 +57,6 @@ void MenuExtender::Initialise(MenuExtenderData* block)
 
 
 
-// Registers @quantity number of menu pages and returns a pointer to them or null on failure
-CMenuItem* MenuExtender::RegisterMenuPage(int quantity)
-{
-    auto i = Register(block->nUsedItems, quantity, max_pages);
-    if(i != -1) return &block->pItems[i];
-    return nullptr;
-}
-
 // Registers @quantity into @used taking into account the maximum value @used can be is @max
 // Returns the first value or -1 on failure
 int MenuExtender::Register(short& used, short quantity, short max)
@@ -69,6 +68,16 @@ int MenuExtender::Register(short& used, short quantity, short max)
     }
     return -1;
 }
+
+// Registers @quantity number of menu pages and returns a pointer to them or null on failure
+CMenuItem* MenuExtender::RegisterMenuPage(int quantity)
+{
+    auto i = Register(block->nUsedItems, quantity, max_pages);
+    if(i != -1) return &block->pItems[i];
+    return nullptr;
+}
+
+
 
 // Registers @quantity number of entry actions and returns the first action registered (next follows it)
 // Returns -1 on failure
@@ -101,30 +110,26 @@ int MenuExtender::GetPageIndex(const CMenuItem* screen)
     return screen - GetPage(0);
 }
 
+// Get menu page with @title
 CMenuItem* MenuExtender::GetPage(const char* title)
 {
     return GetPage(title, block->pItems, max_pages);
 }
 
+// Get page with @title at the @pages array with size @npages
 CMenuItem* MenuExtender::GetPage(const char* title, CMenuItem* pages, size_t npages)
 {
     if(pages)
     {
         for(size_t i = 0; i < npages; ++i)
-        {
-            auto& screen = pages[i];
-            if(!strcmp(title, screen.m_szTitleName)) return &screen;
-        }
+            if(!strcmp(title, pages[i].m_szTitleName)) return &pages[i];
     }
     return nullptr;
 }
 
 
 
-
-
-
-// Adds a new into into the specified menu @screen pointing to @target and using the gxt entry @text
+// Adds a new entry into into the specified menu @screen pointing to @target and using the gxt entry @text
 // On failure or if @screen is null, returns null
 CMenuEntryData* MenuExtender::AddTargetMenu(CMenuItem* screen, CMenuItem* target, const char* text)
 {
@@ -183,13 +188,17 @@ void MenuExtender::RelativeSetup(CMenuItem* pages, size_t npages)
 {
     if(pages)
     {
+        // Find base index for pages array
         auto base = npages? GetPageIndex(&pages[0]) : 0;
 
         for(size_t i = 0; i < npages; ++i)
         {
             auto& page = pages[i];
+
+            // Set relative prev menu
             page.m_nPrevMenu = page.m_nPrevMenu < 0? -page.m_nPrevMenu : base + page.m_nPrevMenu;
 
+            // Set relative target menus
             for(int k = 0; k < max_entries; k++)
             {
                 auto& entry = page.m_aEntries[k];
@@ -198,9 +207,6 @@ void MenuExtender::RelativeSetup(CMenuItem* pages, size_t npages)
         }
     }
 }
-
-
-
 
 
 
@@ -240,6 +246,7 @@ CMenuEntryData* MenuExtender::AddEntry(CMenuItem* screen)
     return nullptr;
 }
 
+// Adds a new menu entry at the page @screen before entry @before
 CMenuEntryData* MenuExtender::AddEntryBefore(CMenuItem* screen, CMenuEntryData* before)
 {
     if(screen && before)
@@ -252,7 +259,9 @@ CMenuEntryData* MenuExtender::AddEntryBefore(CMenuItem* screen, CMenuEntryData* 
                 auto distance = std::distance(before, std::end(screen->m_aEntries));
                 if(distance > 1)    // At leat one free space on the aEntries array
                 {
+                    // Move the items after the @before entry (and itself)
                     memmove(before+1, before, sizeof(CMenuEntryData) * (distance - 1));
+                    // Done
                     memset(&entry, 0, sizeof(entry));
                     return &entry;
                 }
@@ -271,7 +280,7 @@ CMenuEntryData* MenuExtender::AddEntryBefore(CMenuItem* screen, CMenuEntryData* 
 // Gets the pointer to the main CMenuManager
 CMenuManager* MenuExtender::GetMenuManager()
 {
-    return injector::lazy_pointer<0xBA6748>().xget();
+    return injector::lazy_pointer<0xBA6748>().get();
 }
 
 // Gets the current screen index in the CMenuManager @menumgr
@@ -289,6 +298,26 @@ int& MenuExtender::GetCurrentEntryIndex()
 
 
 
+/*
+    Handlers
+*/
+static std::function<bool(MenuExtender::ActionInfo&)> action_handler;
+static bool(__fastcall *action_handler_ptr)(void*, int, signed char, unsigned char);
+        
+static std::function<bool(MenuExtender::BackgroundInfo&)> background_handler;
+static void(__fastcall *background_handler_ptr)(CSprite2d*, int, CRect*, CRGBA*);
+
+static std::function<bool(MenuExtender::DrawInfo&)> draw_handler;
+static void(__fastcall *draw_handler_ptr)(void*, int, unsigned char);
+
+static std::function<bool(MenuExtender::UserInputInfo&)> userinput_handler;
+static void(__fastcall *userinput_handler_ptr)(void*, int, unsigned char, unsigned char, unsigned char, unsigned char, char);
+
+static std::function<bool(MenuExtender::StateTextInfo&)> state_text_handler;
+static const char*(__fastcall *state_text_handler_ptr)(CText*, int, const char*);
+
+
+
 
 
 /*
@@ -296,31 +325,31 @@ int& MenuExtender::GetCurrentEntryIndex()
 */
 void MenuExtender::RegisterActionListener(std::function<bool(ActionInfo&)> handler)
 {
-    action_handler() = handler;
+    action_handler = handler;
     PatchActionHandler();
 }
 
 void MenuExtender::RegisterUserInputListener(std::function<bool(UserInputInfo&)> handler)
 {
-    userinput_handler() = handler;
+    userinput_handler = handler;
     PatchUserInputHandler();
 }
 
 void MenuExtender::RegisterBackgroundListener(std::function<bool(BackgroundInfo&)> handler)
 {
-    background_handler() = handler;
+    background_handler = handler;
     PatchBackgroundHandler();
 }
 
 void MenuExtender::RegisterDrawListener(std::function<bool(DrawInfo&)> handler)
 {
-    draw_handler() = handler;
+    draw_handler = handler;
     PatchDrawHandler();
 }
 
 void MenuExtender::RegisterStateTextListener(std::function<bool(StateTextInfo&)> handler)
 {
-    state_text_handler() = handler;
+    state_text_handler = handler;
     PatchStateTextHandler();
 }
 
@@ -337,14 +366,14 @@ void MenuExtender::PatchActionHandler()
     {
         using namespace injector;
         patched = true;
-        action_handler_ptr() = MakeCALL(0x576FEF, raw_ptr(ActionHandler)).get();
+        action_handler_ptr = MakeCALL(0x576FEF, raw_ptr(ActionHandler)).get();
     }
 }
 
 bool __fastcall MenuExtender::ActionHandler(void* self, int, signed char wheel, unsigned char enter)
 {
     ActionInfo info(wheel, enter);
-    return ((action_handler() && !action_handler()(info)) || action_handler_ptr()(self, 0, info.wheel, info.enter));
+    return ((action_handler && !action_handler(info)) || action_handler_ptr(self, 0, info.wheel, info.enter));
 }
 
 
@@ -355,14 +384,14 @@ void MenuExtender::PatchBackgroundHandler()
     {
         using namespace injector;
         patched = true;
-        background_handler_ptr() = MakeCALL(0x57B9FD, raw_ptr(BackgroundHandler)).get();
+        background_handler_ptr = MakeCALL(0x57B9FD, raw_ptr(BackgroundHandler)).get();
     }
 }
 
 void __fastcall MenuExtender::BackgroundHandler(CSprite2d* self, int, CRect* rect, CRGBA* rgba)
 {
     BackgroundInfo info(self, rect, rgba);
-    if(!background_handler() || background_handler()(info)) return background_handler_ptr()(info.sprite, 0, info.rect, info.rgba);
+    if(!background_handler || background_handler(info)) return background_handler_ptr(info.sprite, 0, info.rect, info.rgba);
 }
 
 void MenuExtender::PatchUserInputHandler()
@@ -372,14 +401,14 @@ void MenuExtender::PatchUserInputHandler()
     {
         using namespace injector;
         patched = true;
-        userinput_handler_ptr() = MakeCALL(0x58061B, raw_ptr(UserInputHandler)).get();
+        userinput_handler_ptr = MakeCALL(0x58061B, raw_ptr(UserInputHandler)).get();
     }
 }
 
 void __fastcall MenuExtender::UserInputHandler(void* self, int, unsigned char down, unsigned char up, unsigned char enter, unsigned char exit, char wheel)
 {
     UserInputInfo info(down, up, enter, exit, wheel);
-    if(!userinput_handler() || userinput_handler()(info)) return userinput_handler_ptr()(self, 0, info.down, info.up, info.enter, info.exit, info.wheel);
+    if(!userinput_handler || userinput_handler(info)) return userinput_handler_ptr(self, 0, info.down, info.up, info.enter, info.exit, info.wheel);
 }
 
 void MenuExtender::PatchDrawHandler()
@@ -389,14 +418,14 @@ void MenuExtender::PatchDrawHandler()
     {
         using namespace injector;
         patched = true;
-        draw_handler_ptr() = MakeCALL(0x57BA58, raw_ptr(DrawHandler)).get();
+        draw_handler_ptr = MakeCALL(0x57BA58, raw_ptr(DrawHandler)).get();
     }
 }
 
 void __fastcall MenuExtender::DrawHandler(void* self, int, unsigned char drawtitle)
 {
     DrawInfo info(drawtitle);
-    if(!draw_handler() || draw_handler()(info)) return draw_handler_ptr()(self, 0, info.drawtitle);
+    if(!draw_handler || draw_handler(info)) return draw_handler_ptr(self, 0, info.drawtitle);
 }
 
 
@@ -422,7 +451,7 @@ struct StateTextEntryIncreaser      // Hooks at CFont::SetAligment to reset or i
 
     static void Patch(uintptr_t addr)
     {
-        FuncBefore() = injector::MakeCALL(addr, (void*) &Increaser).get();
+        FuncBefore() = injector::MakeCALL(addr, injector::raw_ptr( (void*) &Increaser)).get();
     }
 };
 
@@ -434,7 +463,7 @@ void MenuExtender::PatchStateTextHandler()
         using namespace injector;
         patched = true;
         injector::MakeRelativeOffset(0x579D9D+2, 0x579DEE);
-        state_text_handler_ptr() = MakeCALL(0x57A161, raw_ptr(StateTextHandler)).get();
+        state_text_handler_ptr = MakeCALL(0x57A161, raw_ptr(StateTextHandler)).get();
         StateTextEntryIncreaser<true>::Patch(0x5794CB);     // Reset the entry index here
         StateTextEntryIncreaser<false>::Patch(0x579AC9);    // Increase the entry index here
     }
@@ -444,24 +473,29 @@ const char* __fastcall MenuExtender::StateTextHandler(CText* self, int, const ch
 {
     StateTextInfo info(self, gxtentry);
 
+    // Ok, so, we're hooking the language entries for state text, let's see if this is it
     if(!strncmp(info.gxtentry, "FEL_", 4) && info.page)
     {
+        // Get the currently parsing entry
         info.parsing_entry = &info.page->m_aEntries[iStateTextEntryIndex];
+
+        // If it's not language action, it's to be handled by us!!!
         if(info.parsing_entry->m_nActionType != 36) // Language Action
         {
             info.gxtentry = gxtentry = "";
 
-            if(state_text_handler())
+            if(state_text_handler)
             {
-                if(!state_text_handler()(info) || info.text)
+                if(!state_text_handler(info) || info.text)
                     return info.text;
             }
 
-            const char* text = state_text_handler_ptr()(info.ctext, 0, info.gxtentry);
+            // If the text doesn't get found, we're not suposed to have a state text (info.gxtentry is probably empty)
+            const char* text = state_text_handler_ptr(info.ctext, 0, info.gxtentry);
             return text[0]? text : nullptr;
         }
     }
-    return state_text_handler_ptr()(info.ctext, 0, info.gxtentry);
+    return state_text_handler_ptr(info.ctext, 0, info.gxtentry);
 }
 
 

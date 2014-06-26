@@ -4,6 +4,7 @@
  * 
  */
 #include "loader.hpp"
+#include <modloader/util/hash.hpp>
 using namespace modloader;
 
 /*
@@ -73,8 +74,10 @@ void Loader::ModInformation::Scan()
             m.pos_filepath = this->path.length();
             m.pos_filename = m.pos_filepath + (file.filename - file.filebuf);
             m.pos_filext   = m.pos_filepath + (file.filext - file.filebuf);
+            m.hash         = modloader::hash(filepath.data() + m.pos_filename);
             
             // Setup other information
+            m._rsv1   = 0;
             m.flags   = (std::underlying_type<FileFlags>::type)(file.is_dir? FileFlags::IsDirectory : FileFlags::None);
             m.behaviour = uid = loader.PickUniqueFileId();
             m.parent  = this;
@@ -94,8 +97,9 @@ void Loader::ModInformation::Scan()
                 
                 auto& n = ipair.first->second;
 
-                if(!ipair.second)   // File already exists on the list
+                if(!ipair.second)
                 {
+                    // File already exists on the list
                     // If behaviour isn't handled at all, don't let m and n be different!
                     if(m.behaviour == uid) m.behaviour = n.behaviour;
                     
@@ -178,7 +182,7 @@ void Loader::ModInformation::InstallNecessaryFiles()
             switch (file.status)
             {
                 case Status::Added: // File has been added since the last update
-                    file.Install(); // TODO think about added here at runtime and priorities
+                    file.Install(); // TODO think about added here at runtime (>>> priorities)
                     break;
 
                 case Status::Updated: // File has been updated since the last update

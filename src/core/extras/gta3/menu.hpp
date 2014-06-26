@@ -181,6 +181,8 @@ class AbstractFrontendBase : public MenuExtender
 
         short* pPrevKeys;
         short* pCurrKeys;
+        short* pPrevFKeys;
+        short* pCurrFKeys;
         short* pPrevBackspaceKey;
         short* pCurrBackspaceKey;
 
@@ -189,6 +191,8 @@ class AbstractFrontendBase : public MenuExtender
             // XXX LOOK AT THIS PUT ON ADDR
             auto pPrev = raw_ptr(injector::memory_pointer(0xB72F20).get());
             auto pCurr = raw_ptr(injector::memory_pointer(0xB73190).get());
+            pPrevFKeys = raw_ptr(pPrev).get();
+            pCurrFKeys = raw_ptr(pCurr).get();
             pPrevKeys = raw_ptr(pPrev + 0x18).get();
             pCurrKeys = raw_ptr(pCurr + 0x18).get();
             pPrevBackspaceKey = raw_ptr(pPrev + 0x254).get();
@@ -204,6 +208,11 @@ class AbstractFrontendBase : public MenuExtender
         bool HasJustPressedBackspace()
         {
             return *pCurrBackspaceKey && !*pPrevBackspaceKey;
+        }
+
+        bool HasJustPressedF(int n)
+        {
+            return n >= 1 && n <= 12 && pPrevFKeys[n-1] && !pCurrFKeys[n-1];
         }
 
         static TextEntry TextLabel(const std::string& label)
@@ -252,9 +261,9 @@ class AbstractFrontend : public AbstractFrontendBase
         {
             // XXX LOOK AT THIS PUT ON ADDR
             // 0x506EA0       CReference* CAudioEngine::ReportFrontendAudioEvent(CAudioEngine *this, int eventId, float volumeChange, float speed)
-            injector::call<void(void*, int, float, float)>::thiscall(
+            injector::thiscall<void(void*, int, float, float)>::call(
                                                     0x506EA0,
-                                                    injector::lazy_pointer<0xB6BC90>().get().get<void>(),
+                                                    (void*) injector::lazy_pointer<0xB6BC90>().get(),
                                                     id, volumeChange, speed);
         }
 
@@ -287,7 +296,7 @@ class AbstractFrontend : public AbstractFrontendBase
             {
                 // XXX LOOK AT THIS PUT ON ADDR
                 // 0x57E240       CMenuManager::DisplayHelperText(CMenuManager* this, const char* gxtentry)
-                injector::call<void(CMenuManager*, const char*)>::thiscall(0x57E240, GetMenuManager(), entry.first.data());
+                injector::thiscall<void(CMenuManager*, const char*)>::call(0x57E240, GetMenuManager(), entry.first.data());
             }
         }
 
@@ -297,7 +306,7 @@ class AbstractFrontend : public AbstractFrontendBase
             {
                 // XXX LOOK AT THIS PUT ON ADDR
                 // 0x579330       int CMenuManager::MessageScreen(CMenuManager* this, const char* gxtentry, char bFillScreenBlack, char bFillOnce)
-                injector::call<void(CMenuManager*, const char*, char, char)>::thiscall(0x579330, GetMenuManager(), entry.first.data(), 0, 0);
+                injector::thiscall<void(CMenuManager*, const char*, char, char)>::call(0x579330, GetMenuManager(), entry.first.data(), 0, 0);
             }
         }
 
@@ -427,16 +436,6 @@ class AbstractFrontend : public AbstractFrontendBase
             });
         }
 
-        /*
-        void* OnAction(CMenuItem* page, int action, std::function<bool(ActionInfo&)> handler)
-        {
-            return OnAction(page, [=](ActionInfo& info)
-            {
-                return info.action == action? handler(info) : true;
-            });
-        }
-        */
-
         void* OnAction(CMenuItem* page, CMenuEntryData* entry, std::function<bool(ActionInfo&)> handler)
         {
             return OnAction(page, [=](ActionInfo& info)
@@ -514,7 +513,7 @@ class AbstractFrontend : public AbstractFrontendBase
             template<class T>
             std::function<bool(ActionInfo&)> SetupIntegerEntry(std::reference_wrapper<T> value, T min, T max, T step)
             {
-                return SetupStatefulEntry(value, std::ref(NumberLabel<T>), [min, max, step](const T& value, ActionInfo& info)
+                return SetupStatefulEntry(value, std::ref(NumberEntry<T>), [min, max, step](const T& value, ActionInfo& info)
                 {
                     return std::min(std::max((value + step * info.wheel), min), max);
                 });

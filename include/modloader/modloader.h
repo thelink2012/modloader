@@ -89,12 +89,16 @@ typedef struct
     uint8_t             pos_filepath;   /* The position of the filepath relative to the mod folder (e.g. "modloader/my mod/stuff/a.dat" -> "stuff/a.dat") */
     uint8_t             pos_filename;   /* The position of the file name  */
     uint8_t             pos_filext;     /* The position of the file extension  */
+    uint32_t            hash;           /* The filename hash (as in "modloader/util/hash.hpp" */
+    uint32_t            _rsv1;          /* Reserved */
     modloader_mod_t*    parent;         /* The mod owner of this file */
     uint64_t            size;           /* Size of the file in bytes  */
     uint64_t            time;           /* File modification time  */
                                         /*  (as FILETIME, 100-nanosecond intervals since January 1, 1601 UTC) */
     uint64_t            behaviour;      /* The file behaviour */
     
+    
+
 } modloader_file_t;
 
 
@@ -126,7 +130,14 @@ typedef struct modloader_t
 {
     const char* gamepath;   /* game path */
     const char* cachepath;  /* cache path, normally "modloader/.data/cache" */
-    
+    const char* _rsv0[4];   /* Reserved */
+
+    uint32_t   _rsv1[4];        /* Reserved */
+    uint8_t    has_game_started;
+    uint8_t    has_game_loaded;
+    uint8_t    _rsv3;           /* Reserved */
+    uint8_t    _rsv4;           /* Reserved */
+
     modloader_fLog          Log;
     modloader_fvLog         vLog;
     modloader_fError        Error;

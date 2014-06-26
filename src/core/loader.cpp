@@ -78,10 +78,9 @@ void Loader::Patch()
     else
     {
         typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
-        typedef function_hooker<0x53C6DB, void(void)>           onreload_hook;
 
         // Hook WinMain to run mod loader
-        make_function_hook<winmain_hook>([](winmain_hook::func_type WinMain,
+        injector::make_function_hook<winmain_hook>([](winmain_hook::func_type WinMain,
                                                     HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
         {
             // Avoind circular looping forever
@@ -124,6 +123,9 @@ void Loader::Startup()
     // If not running yet and 'modloader' folder exists, let's start up
     if(!this->bRunning && IsDirectoryA("modloader"))
     {
+        // Cleanup the base structure
+        memset(this, 0, sizeof(modloader_t));
+
         // Initialise configs and counters
         this->bRunning       = false;
         this->bEnableMenu    = true;
@@ -169,6 +171,8 @@ void Loader::Startup()
         }
 
         // Register exported methods and vars
+        modloader_t::has_game_started= false;   // TODO find a more realiable way to find this information
+        modloader_t::has_game_loaded = false;   // ^^                       ((see later below tho))
         modloader_t::gamepath        = this->gamePath.data();
         modloader_t::cachepath       = this->cachePath.data();
         modloader_t::Log             = this->Log;
@@ -184,6 +188,9 @@ void Loader::Startup()
         // Startup successfully
         this->bRunning = true;
         Log("\nMod Loader has started up!\n");
+
+        // >> HERE
+        modloader_t::has_game_started = modloader_t::has_game_loaded = true;
     }
 }
 

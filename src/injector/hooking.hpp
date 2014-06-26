@@ -26,238 +26,147 @@
 #pragma once
 #include "injector.hpp"
 #include <cassert>
+#include <functional>
 
 namespace injector
 {
 
-#if __cplusplus >= 201103L || _MSC_VER >= 1800  // MSVC 2013
+/*
+    The content between the #pragma pack(1) is very...... hacky
+    ............... don't get angry ....................
+*/
+
+#pragma pack(push, 1)
 
     /*
-     * 
+     *  Base interface for the RAII wrappers present on this header
+     *  This object shouldn't be instantiated, instantiate scoped_basic or any of it's childs
      */
-    template<uintptr_t addr1, class Prototype>
-    struct function_hooker;
-
-    template<uintptr_t addr1, class Ret, class ...Args>
-    struct function_hooker<addr1, Ret(Args...)>
+    struct scoped_base
     {
         public:
-            static const uintptr_t addr = addr1;
-            typedef Ret(*func_type)(Args...);
-            typedef Ret(*hook_type)(func_type, Args&...);
-
-        protected:
-            
-            // Stores the previous function pointer
-            static func_type& original()
-            { static func_type f; return f; }
-            
-            // Stores our hook pointer
-            static hook_type& hook()
-            { static hook_type h; return h; }
-
-            // The hook caller
-            static Ret call(Args... a)
-            {
-                return hook()(original(), a...);
-            }
-
-        public:
-            // Constructs passing information to the static variables
-            function_hooker(hook_type hooker)
-            {
-                hook() = hooker;
-                original() = MakeCALL(addr, raw_ptr(call)).get();
-            }
-            
-            // Restores the previous call before the hook happened
-            static void restore()
-            {
-                MakeCALL(addr, raw_ptr(original()));
-            }
-    };
-    
-    //
-    //
-    template<uintptr_t addr1, class Prototype>
-    struct function_hooker_fastcall;
-
-    template<uintptr_t addr1, class Ret, class ...Args>
-    struct function_hooker_fastcall<addr1, Ret(Args...)>
-    {
-        public:
-            static const uintptr_t addr = addr1;
-            typedef Ret(__fastcall *func_type)(Args...);
-            typedef Ret(*hook_type)(func_type, Args&...);
-
-        protected:
-            
-            // Stores the previous function pointer
-            static func_type& original()
-            { static func_type f; return f; }
-            
-            // Stores our hook pointer
-            static hook_type& hook()
-            { static hook_type h; return h; }
-
-            // The hook caller
-            static Ret __fastcall call(Args... a)
-            {
-                return hook()(original(), a...);
-            }
-
-        public:
-            // Constructs passing information to the static variables
-            function_hooker_fastcall(hook_type hooker)
-            {
-                hook() = hooker;
-                original() = MakeCALL(raw_ptr(addr), raw_ptr(call)).get();//TODO RESTORE
-            }
-            
-            // Restores the previous call before the hook happened
-            static void restore()
-            {
-                MakeCALL(addr, raw_ptr(original()));
-            }
-    };
-    
-    template<uintptr_t addr1, class Prototype>
-    struct function_hooker_stdcall;
-
-    template<uintptr_t addr1, class Ret, class ...Args>
-    struct function_hooker_stdcall<addr1, Ret(Args...)>
-    {
-        public:
-            static const uintptr_t addr = addr1;
-            typedef Ret(__stdcall *func_type)(Args...);
-            typedef Ret(*hook_type)(func_type, Args&...);
-
-        protected:
-            
-            // Stores the previous function pointer
-            static func_type& original()
-            { static func_type f; return f; }
-            
-            // Stores our hook pointer
-            static hook_type& hook()
-            { static hook_type h; return h; }
-
-            // The hook caller
-            static Ret __stdcall call(Args... a)
-            {
-                return hook()(original(), a...);
-            }
-
-        public:
-            // Constructs passing information to the static variables
-            function_hooker_stdcall(hook_type hooker)
-            {
-                hook() = hooker;
-                original() = MakeCALL(addr, raw_ptr(call)).get();
-            }
-            
-            // Restores the previous call before the hook happened
-            static void restore()
-            {
-                MakeCALL(addr, raw_ptr(original()));
-            }
-    };
-    
-    
-    
-    /* Helpers */
-    template<class T> inline
-    T make_function_hook(typename T::hook_type hooker)
-    {
-        return T(hooker);
-    }
-    
-    template<uintptr_t addr, class T, class U> inline
-    function_hooker<addr, T> make_function_hook(U hooker)
-    {
-        typedef function_hooker<addr, T> type;
-        return make_function_hook<type>(hooker);
-    }
-
-    
-    /*
-     *  RAII wrapper for the functions hookers
-     */
-    template<class T>
-    struct scoped_hook
-    {
-        scoped_hook(typename T::hook_type hooker)   { make_function_hook<T>(hooker); }
-        scoped_hook()                               {}
-        scoped_hook(const T&)                       {}
-        ~scoped_hook()                              { T::restore(); }
-    };
-
-#endif   
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    /*
-     *  Basic interface for the RAII wrappers present on this header
-     */
-    template<size_t bufsize>
-    struct scoped_basic
-    {
-        protected:
             memory_pointer_raw addr;        // Data saved from this address
             size_t  size;                   // Size saved
-            uint8_t buf[bufsize];           // Saved buffer
+            const size_t  bufsize;          // IMUTABLE - We need to store this because of our casting rule, the ctor of scoped_basic should set this
             bool    saved;                  // Something saved?
             bool    vp;                     // Virtual protect?
-        
+            bool    _rsv1, _rsv2;           // Padding
+            uint8_t buf[1];                 // Saved buffer start
+
         public:
-            
-            // Constructor, initialises
-            scoped_basic() : saved(false)
-            {}
-            
-            // Destructor, restore previous overwritten buffer
-            ~scoped_basic()
-            {
-                this->restore();
-            }
-            
             // Restore the previosly saved data
             // Problems may happen if someone else hooked the same place using the same method
             void restore()
             {
-                if(this->saved)
-                {
-                    WriteMemoryRaw(this->addr, this->buf, this->size, this->vp);
-                    this->saved = false;
-                }
+                #ifndef INJECTOR_SCOPED_NOSAVE_NORESTORE
+                    if(this->saved)
+                    {
+                        WriteMemoryRaw(this->addr, this->buf, this->size, this->vp);
+                        this->saved = false;
+                    }
+                #endif
             }
 
             // Save buffer at @addr with @size and virtual protect @vp
             void save(memory_pointer_tr addr, size_t size, bool vp)
             {
-                assert(size <= bufsize);            // Debug Safeness
-                this->restore();                    // Restore anything we have saved
-                this->saved = true;                 // Mark that we have data save
-                this->addr = addr.get<void>();      // Save address
-                this->size = size;                  // Save size
-                this->vp = vp;                      // Save virtual protect
-                ReadMemoryRaw(addr, buf, size, vp); // Save buffer
+                #ifndef INJECTOR_SCOPED_NOSAVE_NORESTORE
+                    assert(size <= bufsize);            // Debug Safeness
+                    this->restore();                    // Restore anything we have saved
+                    this->saved = true;                 // Mark that we have data save
+                    this->addr = addr.get<void>();      // Save address
+                    this->size = size;                  // Save size
+                    this->vp = vp;                      // Save virtual protect
+                    ReadMemoryRaw(addr, buf, size, vp); // Save buffer
+                #endif
+            }
+
+            template<class To, class From>
+            static To& cast(From& s) { return *static_cast<To*>(&s); }
+
+            template<class To>
+            To& cast() { return cast<To>(*this); }
+
+        protected:
+            // Constructor, initialises
+            scoped_base(size_t bufsize) : saved(false), bufsize(bufsize)
+            {}
+            
+            // Destructor, restore previous overwritten buffer
+            ~scoped_base()
+            {
+                this->restore();
+            }
+
+            // No copy construction, we can't do this! Sure we can move construct :)
+            scoped_base(const scoped_base&) = delete;
+            scoped_base(size_t bufsize, scoped_base&& rhs) : bufsize(bufsize)
+            {
+                *this = std::move(rhs);
+            }
+
+        public:
+            scoped_base& operator=(const scoped_base& rhs) = delete;
+            scoped_base& operator=(scoped_base&& rhs)
+            {
+                #ifndef INJECTOR_SCOPED_NOSAVE_NORESTORE
+                    if(this->saved = rhs.saved)
+                    {
+                        // Assert if we can hold the contents of the other buffer
+                        assert(this->bufsize >= rhs.size);
+
+                        // Copy basic fields
+                        this->addr = rhs.addr;
+                        this->size = rhs.size;
+                        this->vp = rhs.vp;
+
+                        // Copy the buffer
+                        memcpy(buf, rhs.buf, rhs.size);
+
+                        // Make rhs have non-saved state
+                        rhs.saved = false;  
+                    }
+                #endif
+                return *this;
             }
     };
+
+    /*
+     *  Basic interface for the RAII wrappers present on this header
+     *  Notice anything that inherits from this should have exactly the same size as it.
+     *  In other words, the child shouldn't have member variables
+     */
+    template<size_t bufsize_>
+    struct scoped_basic : scoped_base
+    {
+        public:
+            uint8_t buf_continue[bufsize_ - 1];  // Saved buffer continuation
+
+        public:
+            // Constructors, move constructors, assigment operators........ (MAKE SURE TO INIT bufsize)
+            scoped_basic() : scoped_base(bufsize_)
+            { assert(offsetof(scoped_basic, buf_continue) == 1 + offsetof(scoped_base, buf)); }
+            scoped_basic(const scoped_basic&) = delete;
+            scoped_basic(scoped_basic&& rhs) : scoped_base(bufsize_, std::move(rhs)) {}
+            scoped_basic& operator=(const scoped_basic& rhs) = delete;
+            scoped_basic& operator=(scoped_basic&& rhs)
+            { scoped_base::operator=(std::move(rhs)); return *this; }
+    };
+#pragma pack(pop)
+
     
+
+
+
+
+
+
     /*
      *  RAII wrapper for memory writes
      *  Can save only basic and POD types
      */
-    template<size_t bufsize = 10>
-    struct scoped_write : public scoped_basic<bufsize>
+    template<size_t bufsize_ = 10>
+    struct scoped_write : public scoped_basic<bufsize_>
     {
         public:
             // Save buffer at @addr with @size and virtual protect @vp and then overwrite it with @value
@@ -274,13 +183,22 @@ namespace injector
                 this->save(addr, sizeof(T), vp);
                 return WriteMemory<T>(addr, value, vp);
             }
+
+            // Constructors, move constructors, assigment operators........
+            scoped_write() = default;
+            scoped_write(const scoped_write&) = delete;
+            scoped_write(scoped_write&& rhs) : scoped_basic<bufsize_>(std::move(rhs)) {}
+            scoped_write& operator=(const scoped_write& rhs) = delete;
+            scoped_write& operator=(scoped_write&& rhs)
+            { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
+
     };
 
     /*
      *  RAII wrapper for filling
      */
-    template<size_t bufsize = 5>
-    struct scoped_fill : public scoped_basic<bufsize>
+    template<size_t bufsize_ = 5>
+    struct scoped_fill : public scoped_basic<bufsize_>
     {
         public:
             // Fills memory at @addr with value @value and size @size and virtual protect @vp
@@ -289,13 +207,21 @@ namespace injector
                 this->save(addr, size, vp);
                 return MemoryFill(addr, value, size, vp);
             }
+
+            // Constructors, move constructors, assigment operators........
+            scoped_fill() = default;
+            scoped_fill(const scoped_fill&) = delete;
+            scoped_fill(scoped_fill&& rhs) : scoped_basic<bufsize_>(std::move(rhs)) {}
+            scoped_fill& operator=(const scoped_fill& rhs) = delete;
+            scoped_fill& operator=(scoped_fill&& rhs)
+            { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
     };
     
     /*
      *  RAII wrapper for nopping
      */
-    template<size_t bufsize = 5>
-    struct scoped_nop : public scoped_basic<bufsize>
+    template<size_t bufsize_ = 5>
+    struct scoped_nop : public scoped_basic<bufsize_>
     {
         public:
             // Makes NOP at @addr with value @value and size @size and virtual protect @vp
@@ -304,12 +230,21 @@ namespace injector
                 this->save(addr, size, vp);
                 return MakeNOP(addr, size, vp);
             }
+
+            // Constructors, move constructors, assigment operators........
+            scoped_nop() = default;
+            scoped_nop(const scoped_nop&) = delete;
+            scoped_nop(scoped_nop&& rhs) : scoped_basic<bufsize_>(std::move(rhs)) {}
+            scoped_nop& operator=(const scoped_nop& rhs) = delete;
+            scoped_nop& operator=(scoped_nop&& rhs)
+            { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
     };
     
     /*
      *  RAII wrapper for MakeJMP 
      */
-    struct scoped_jmp : public scoped_basic<5>
+    template<size_t bufsize_ = 5>
+    struct scoped_jmp : public scoped_basic<bufsize_>
     {
         public:
             // Makes NOP at @addr with value @value and size @size and virtual protect @vp
@@ -318,12 +253,21 @@ namespace injector
                 this->save(at, 5, vp);
                 return MakeJMP(at, dest, vp);
             }
+
+            // Constructors, move constructors, assigment operators........
+            scoped_jmp() = default;
+            scoped_jmp(const scoped_jmp&) = delete;
+            scoped_jmp(scoped_jmp&& rhs) : scoped_basic<bufsize_>(std::move(rhs)) {}
+            scoped_jmp& operator=(const scoped_jmp& rhs) = delete;
+            scoped_jmp& operator=(scoped_jmp&& rhs)
+            { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
     };
     
     /*
      *  RAII wrapper for MakeCALL 
      */
-    struct scoped_call : public scoped_basic<5>
+    template<size_t bufsize_ = 5>
+    struct scoped_call : public scoped_basic<bufsize_>
     {
         public:
             // Makes NOP at @addr with value @value and size @size and virtual protect @vp
@@ -332,7 +276,219 @@ namespace injector
                 this->save(at, 5, vp);
                 return MakeCALL(at, dest, vp);
             }
+
+            // Constructors, move constructors, assigment operators........
+            scoped_call() = default;
+            scoped_call(const scoped_call&) = delete;
+            scoped_call(scoped_call&& rhs) : scoped_basic<bufsize_>(std::move(rhs)) {}
+            scoped_call& operator=(const scoped_call& rhs) = delete;
+            scoped_call& operator=(scoped_call&& rhs)
+            { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
     };
     
+
+
+#if __cplusplus >= 201103L || _MSC_VER >= 1800  // MSVC 2013
+
+
+    template<uintptr_t addr1, class FuncType, class Ret, class ...Args>
+    struct function_hooker_base : scoped_call<>
+    {
+        public:
+            static const uintptr_t addr = addr1;
+            typedef FuncType        func_type;
+            typedef std::function<Ret(func_type, Args&...)> functor_type;
+
+        public:
+            // Constructors, move constructors, assigment operators........
+            function_hooker_base() = default;
+            function_hooker_base(const function_hooker_base&) = delete;
+            function_hooker_base(function_hooker_base&& rhs) : scoped_call(std::move(rhs)) {}
+            function_hooker_base& operator=(const function_hooker_base& rhs) = delete;
+            function_hooker_base& operator=(function_hooker_base&& rhs)
+            { scoped_call::operator=(std::move(rhs)); return *this; }
+
+        protected:
+            struct hook_store
+            {
+                func_type       original;
+                functor_type    functor;
+            };
+
+            // Stores the previous function pointer
+            static hook_store& store()
+            { static hook_store s; return s; }
+
+    };
+
+    template<uintptr_t addr1, class Prototype>
+    struct function_hooker;
+
+    template<uintptr_t addr1, class Ret, class ...Args>
+    struct function_hooker<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(*)(Args...), Ret, Args...>
+    {
+        public:
+            // Makes the hook
+            void make_call(functor_type functor)
+            {
+                store().functor = std::move(functor);
+                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+            }
+
+
+            // The hook caller
+            static Ret call(Args... a)
+            {
+                return store().functor(store().original, a...);
+            }
+
+            // Constructors, move constructors, assigment operators........
+            function_hooker() = default;
+            function_hooker(const function_hooker&) = delete;
+            function_hooker(function_hooker&& rhs) : function_hooker_base(std::move(rhs)) {}
+            function_hooker& operator=(const function_hooker& rhs) = delete;
+            function_hooker& operator=(function_hooker&& rhs)
+            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+    };
+
+
+
+    template<uintptr_t addr1, class Prototype>
+    struct function_hooker_stdcall;
+
+    template<uintptr_t addr1, class Ret, class ...Args>
+    struct function_hooker_stdcall<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(__stdcall*)(Args...), Ret, Args...>
+    {
+        public:
+            // Constructors, move constructors, assigment operators........
+            function_hooker_stdcall() = default;
+            function_hooker_stdcall(const function_hooker_stdcall&) = delete;
+            function_hooker_stdcall(function_hooker_stdcall&& rhs) : function_hooker_base(std::move(rhs)) {}
+            function_hooker_stdcall& operator=(const function_hooker_stdcall& rhs) = delete;
+            function_hooker_stdcall& operator=(function_hooker_stdcall&& rhs)
+            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+
+            // Makes the hook
+            void make_call(functor_type functor)
+            {
+                store().functor = std::move(functor);
+                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+            }
+
+            // The hook caller
+            static Ret __stdcall call(Args... a)
+            {
+                return store().functor(store().original, a...);
+            }
+    };
+
+
+    template<uintptr_t addr1, class Prototype>
+    struct function_hooker_fastcall;
+
+    template<uintptr_t addr1, class Ret, class ...Args>
+    struct function_hooker_fastcall<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(__fastcall*)(Args...), Ret, Args...>
+    {
+        public:
+            // Constructors, move constructors, assigment operators........
+            function_hooker_fastcall() = default;
+            function_hooker_fastcall(const function_hooker_fastcall&) = delete;
+            function_hooker_fastcall(function_hooker_fastcall&& rhs) : function_hooker_base(std::move(rhs)) {}
+            function_hooker_fastcall& operator=(const function_hooker_fastcall& rhs) = delete;
+            function_hooker_fastcall& operator=(function_hooker_fastcall&& rhs)
+            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+
+            // Makes the hook
+            void make_call(functor_type functor)
+            {
+                store().functor = std::move(functor);
+                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+            }
+
+
+            // The hook caller
+            static Ret __fastcall call(Args... a)
+            {
+                return store().functor(store().original, a...);
+            }
+    };
+
+
+
+    template<uintptr_t addr1, class Prototype>
+    struct function_hooker_thiscall;
+
+    template<uintptr_t addr1, class Ret, class ...Args>
+    struct function_hooker_thiscall<addr1, Ret(Args...)> : function_hooker_base<addr1, Ret(__thiscall*)(Args...), Ret, Args...>
+    {
+        public:
+            // Constructors, move constructors, assigment operators........
+            function_hooker_thiscall() = default;
+            function_hooker_thiscall(const function_hooker_thiscall&) = delete;
+            function_hooker_thiscall(function_hooker_thiscall&& rhs) : function_hooker_base(std::move(rhs)) {}
+            function_hooker_thiscall& operator=(const function_hooker_thiscall& rhs) = delete;
+            function_hooker_thiscall& operator=(function_hooker_thiscall&& rhs)
+            { function_hooker_base::operator=(std::move(rhs)); return *this; }
+
+            // Makes the hook
+            void make_call(functor_type functor)
+            {
+                store().functor = std::move(functor);
+                store().original = scoped_call::make_call(addr, raw_ptr(call)).get();
+            }
+
+            // The hook caller
+            static Ret __thiscall call(Args... a)
+            {
+                return store().functor(store().original, a...);
+            }
+    };
+
+
+
+
+
+    // TODO STATICA
+    /* Helpers */
+    template<class T> inline
+    T& make_function_hook(typename T::functor_type functor)
+    {
+        static T a;
+        a.make_call(std::move(functor));
+        return a;
+    }
+    
+#if 0
+    /* Helpers */
+    template<class T> inline
+    T make_function_hook(typename T::hook_type hooker)
+    {
+        return T(hooker);
+    }
+    
+    template<uintptr_t addr, class T, class U> inline
+    function_hooker<addr, T> make_function_hook(U hooker)
+    {
+        typedef function_hooker<addr, T> type;
+        return make_function_hook<type>(hooker);
+    }
+#endif
+    
+#if 0
+    /*
+     *  RAII wrapper for the functions hookers
+     *  XXX this is not correct at all... This works by illusion... bad....
+     */
+    template<class T>
+    struct scoped_hook
+    {
+        scoped_hook(typename T::hook_type hooker)   { make_function_hook<T>(hooker); }
+        scoped_hook()                               {}
+        scoped_hook(const T&)                       {}
+        ~scoped_hook()                              { T::restore(); }
+    };
+#endif
+
+#endif   
 
 } 

@@ -198,6 +198,25 @@ void TheMenu::RegisterEvents()
     this->MainPageEvents();
     this->ModsPageEvents();
     this->ModPageEvents();
+
+    typedef function_hooker<0x53ECBD, void(int)> rr_hook;
+    make_function_hook<rr_hook>([this](rr_hook::func_type Idle, int& i)
+    {
+#if 0
+        static bool bPrevState = false, bCurrState = false;
+
+        bPrevState = bCurrState;
+        bCurrState = (GetKeyState(VK_F4) & 0x8000) != 0;
+
+        if(bPrevState && !bCurrState)
+            loader.ScanAndUpdate();
+#endif
+        if(HasJustPressedF(4))
+            loader.ScanAndUpdate();
+
+        return Idle(i);
+    });
+
 }
 
 
@@ -586,11 +605,19 @@ static std::unique_ptr<TheMenu> menu_ptr;
 
 void Loader::StartupMenu()
 {
-    if(loader.bEnableMenu)
-        menu_ptr.reset(new TheMenu());
+    if(try_address(0x8CE008))   // aScreens
+    {
+        if(loader.bEnableMenu)
+            menu_ptr.reset(new TheMenu());
+        else
+            Log("Menu disabled, not injecting one");
+    }
+    else
+        Log("No aScreen address, not injecting a menu");
 }
 
 void Loader::ShutdownMenu()
 {
+    Log("Shutting down menu...");
     menu_ptr.reset();
 }
