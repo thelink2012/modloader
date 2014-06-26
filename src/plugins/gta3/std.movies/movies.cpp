@@ -2,116 +2,133 @@
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-movies -- Standard Movies Plugin for San Andreas Mod Loader
- *      Overrides GTAtitles.mpg" and Logo.mpg files
- * 
- * 
+ *  std-movies -- Standard Movies Plugin for Mod Loader
+ *
  */
-#include <modloader.hpp>
-#include <modloader_util.hpp>
-#include <modloader_util_path.hpp>
-#include <modloader_util_injector.hpp>
+#include <modloader/modloader.hpp>
+#include <modloader/util/hash.hpp>
+#include <modloader/gta3/gta3.hpp>
 using namespace modloader;
 
 /*
  *  The plugin object
  */
-class CThePlugin : public modloader::CPlugin
+class MediaPlugin : public modloader::basic_plugin
 {
+    private:
+        uint32_t logo;              // Hash for logo.mpg
+        uint32_t GTAtitles;         // Hash for GTAtitles.mpg
+        uint32_t GTAtitlesGER;      // Hash for GTAtitlesGER.mpg
+
+        file_overrider<> logo_detour;
+        file_overrider<> titles_detour;
+
     public:
-        std::string GTAtitles, Logo;
-
-        const char* GetName();
-        const char* GetAuthor();
-        const char* GetVersion();
-        bool CheckFile(modloader::modloader::file& file);
-        bool ProcessFile(const modloader::modloader::file& file);
-        bool PosProcess();
+        const info& GetInfo();
+        bool OnStartup();
+        bool OnShutdown();
+        int GetBehaviour(modloader::file&);
+        bool InstallFile(const modloader::file&);
+        bool ReinstallFile(const modloader::file&);
+        bool UninstallFile(const modloader::file&);
         
-        const char** GetExtensionTable();
+} mpg_plugin;
 
-} plugin;
-
-/*
- *  Export plugin object data
- */
-extern "C" __declspec(dllexport)
-void GetPluginData(modloader_plugin_t* data)
-{
-    modloader::RegisterPluginData(plugin, data);
-}
+REGISTER_ML_PLUGIN(::mpg_plugin);
 
 /*
- *  Basic plugin informations
+ *  MediaPlugin::GetInfo
+ *      Returns information about this plugin 
  */
-const char* CThePlugin::GetName()
+const MediaPlugin::info& MediaPlugin::GetInfo()
 {
-    return "std-movies";
+    static const char* extable[] = { "mpg", 0 };
+    static const info xinfo      = { "std.movies", "R0.1", "LINK/2012", -1, extable };
+    return xinfo;
 }
 
-const char* CThePlugin::GetAuthor()
-{
-    return "LINK/2012";
-}
 
-const char* CThePlugin::GetVersion()
-{
-    return "RC1";
-}
 
-const char** CThePlugin::GetExtensionTable()
-{
-    static const char* table[] = { "mpg", 0 };
-    return table;
-}
+
 
 /*
- *  Check if the file is the one we're looking for
+ *  MediaPlugin::OnStartup
+ *      Startups the plugin
  */
-bool CThePlugin::CheckFile(modloader::modloader::file& file)
+bool MediaPlugin::OnStartup()
 {
-    if( !file.is_dir && IsFileExtension(file.filext, "mpg") &&
-        (  !strcmp(file.filename, "Logo.mpg",  false)                                                
-        || !strcmp(file.filename, "GTAtitles.mpg", false))
-      )
+    if(gvm.IsSA())
+    {
+        this->logo          = modloader::hash("logo.mpg");
+        this->GTAtitles     = modloader::hash("gtatitles.mpg");
+        this->GTAtitlesGER  = modloader::hash("gtatitlesger.mpg");
+
+        auto params = file_overrider<>::params(true, true, false, false);
+        logo_detour.SetParams(params).SetFileDetour(CreateVideoPlayerDetour<0x748B00>());
+        titles_detour.SetParams(params).SetFileDetour(CreateVideoPlayerDetour<0x748BF9>());
         return true;
+    }
     return false;
 }
 
 /*
- * Process the replacement
+ *  MediaPlugin::OnShutdown
+ *      Shutdowns the plugin
  */
-bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
+bool MediaPlugin::OnShutdown()
 {
-    std::string filepath = GetFilePath(file);
-    
-    if(file.filename[0] == 'L')
-        RegisterReplacementFile(*this, "Logo.mpg", this->Logo, filepath.c_str());
-    else if(file.filename[0] == 'G')
-        RegisterReplacementFile(*this, "GTAtitles.mpg", this->GTAtitles, filepath.c_str());
-
     return true;
+}
+
+
+/*
+ *  MediaPlugin::GetBehaviour
+ *      Gets the relationship between this plugin and the file
+ */
+int MediaPlugin::GetBehaviour(modloader::file& file)
+{
+    if(file.hash == logo)
+    {
+        file.behaviour = logo;
+        return MODLOADER_BEHAVIOUR_YES;
+    }
+    else if(file.hash == GTAtitles || file.hash == GTAtitlesGER)
+    {
+        file.behaviour = GTAtitles;
+        return MODLOADER_BEHAVIOUR_YES;
+    }
+    return MODLOADER_BEHAVIOUR_NO;
 }
 
 /*
- *  Called after all files have been processed
- *  Hooks everything needed
+ *  MediaPlugin::InstallFile
+ *      Installs a file using this plugin
  */
-bool CThePlugin::PosProcess()
+bool MediaPlugin::InstallFile(const modloader::file& file)
 {
-    // Replace Logo.mpg
-    if(this->Logo.size())
-    {
-        WriteMemory<const char*>(0x748AFA + 1, this->Logo.data(), true);
-    }
-    
-    // Replace GTAtitles.mpg (replace GTAtitlesGER.mpg too)
-    if(this->GTAtitles.size())
-    {
-        WriteMemory<const char*>(0x748BEC + 1, this->GTAtitles.data(), true);    // normal
-        WriteMemory<const char*>(0x748BF3 + 1, this->GTAtitles.data(), true);    // GER
-    }
-    
-    return true;
+    if(file.behaviour == logo)      return logo_detour.InstallFile(file);
+    if(file.behaviour == GTAtitles) return titles_detour.InstallFile(file);
+    return false;
 }
 
+/*
+ *  MediaPlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
+ */
+bool MediaPlugin::ReinstallFile(const modloader::file& file)
+{
+    if(file.behaviour == logo)      return logo_detour.ReinstallFile();
+    if(file.behaviour == GTAtitles) return titles_detour.ReinstallFile();
+    return false;
+}
+
+/*
+ *  MediaPlugin::UninstallFile
+ *      Uninstall a previosly installed file
+ */
+bool MediaPlugin::UninstallFile(const modloader::file& file)
+{
+    if(file.behaviour == logo)      return logo_detour.UninstallFile();
+    if(file.behaviour == GTAtitles) return titles_detour.UninstallFile();
+    return false;
+}

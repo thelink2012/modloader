@@ -80,7 +80,7 @@ void Loader::Patch()
         typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
 
         // Hook WinMain to run mod loader
-        injector::make_function_hook<winmain_hook>([](winmain_hook::func_type WinMain,
+        injector::make_static_hook<winmain_hook>([](winmain_hook::func_type WinMain,
                                                     HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
         {
             // Avoind circular looping forever

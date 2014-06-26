@@ -1,6 +1,6 @@
 # Standard Plugins
 # Sorted by time that it takes to build! From the fastest to the slowest.
-#add_subdirectory(std.movies)  - REDO
+add_subdirectory(std.movies)
 #add_subdirectory(std.scm)     - REDO
 #add_subdirectory(std.sprites) - REDO
 add_subdirectory(std.fx)

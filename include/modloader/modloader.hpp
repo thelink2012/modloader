@@ -23,6 +23,7 @@
 #define	MODLOADER_HPP
 #pragma once
 #include <modloader/modloader.h>
+#include <cstring>
 #include <string>
 
 namespace modloader

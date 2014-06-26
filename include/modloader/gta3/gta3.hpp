@@ -36,6 +36,7 @@ namespace modloader
         using LoadTxd = base<2>;
         using OpenFile = base<1>;
         using RwStreamOpen = base<3>;
+        using CreateVideoPlayer = base<2>;
     };
 
     template<uintptr_t addr>
@@ -52,6 +53,11 @@ namespace modloader
     using RwStreamOpenDetour = modloader::basic_file_detour<detours::RwStreamOpen,
                                             injector::function_hooker<addr, void*(int, int, const char*)>,
                                                                             void*, int, int, const char*>;
+
+    template<uintptr_t addr>
+    using CreateVideoPlayerDetour = modloader::basic_file_detour<detours::CreateVideoPlayer,
+                                            injector::function_hooker<addr, void*(int, const char*)>,
+                                                                            void*, int, const char*>; 
 }
 
 

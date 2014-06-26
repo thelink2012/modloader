@@ -120,15 +120,19 @@ namespace modloader
     template<unsigned int NumInjections = 1>
     struct file_overrider
     {
+        public:
+            typedef injector::scoped_basic<32> scoped_buffer_type;
+            static const auto num_injections = NumInjections;
+
         protected:
-            const modloader::file* file = nullptr;                      // The file being used as overrider
-            injector::scoped_basic<32> injection_buf[NumInjections];    // Buffer to store scoped injection
-            bool bCanReinstall = true;                                  // Can this overrider get reinstalled?
-            bool bCanUninstall = true;                                  // Can this overrider get uninstalled?
+            const modloader::file* file = nullptr;          // The file being used as overrider
+            scoped_buffer_type injection_buf[NumInjections];// Buffer to store scoped injection
+            bool bCanReinstall = false;                     // Can this overrider get reinstalled?
+            bool bCanUninstall = false;                     // Can this overrider get uninstalled?
 
             // Reinitialization time
             bool bReinitAfterStart = false;                 // Should call Reinit after game startup? (The game screen is there)
-            bool bReinitAfterLoad = true;                   // Should call Reinit after game load? (After loading screen)
+            bool bReinitAfterLoad = false;                  // Should call Reinit after game load? (After loading screen)
 
             // Events
             std::function<void(const modloader::file*)> mOnChange;      // Called when the file changes
@@ -136,8 +140,6 @@ namespace modloader
             std::function<void()>                       mReload;        // Reload the file on the game
 
         public:
-            static const auto num_injections = NumInjections;
-
             file_overrider() = default;                 
             file_overrider(const file_overrider&) = delete;     // cba to implement those
             file_overrider(file_overrider&&) = delete;          // ^^
@@ -197,11 +199,11 @@ namespace modloader
             {
                 std::reference_wrapper<scoped_base> d[] = { detourers_... };
                 for(int i = 0; i < sizeof...(Args); ++i)
-                    GetInjection(i) = std::move(*(scoped_base*)d[i].get().cast_to_void());
+                    GetInjection(i) = std::move(d[i].get().template cast<scoped_buffer_type>());
 
                 OnHook([this](const modloader::file* f)
                 {
-                    Hlp_SetFile<sizeof...(Args), std::nullptr_t, Args...>(f);
+                    Hlp_SetFile<sizeof...(Args), Args..., std::nullptr_t>(f);
                 });
             }
 
@@ -218,6 +220,15 @@ namespace modloader
                 params(std::nullptr_t) : params(false, false, false, false)
                 {}
             };
+
+            file_overrider& SetParams(const params& p)
+            {
+                this->bCanReinstall     = p.bCanReinstall;
+                this->bCanUninstall     = p.bCanUninstall;
+                this->bReinitAfterStart = p.bReinitAfterStart;
+                this->bReinitAfterLoad  = p.bReinitAfterLoad;
+                return *this;
+            }
 
 
             // Constructor - only params, more liberty
@@ -276,19 +287,19 @@ namespace modloader
                 }
             }
 
-        protected:  // OMG, so much tricks, thank you MSVC for you poor variadic template implementation
+        protected:  // OMG, so much tricks, thank you MSVC for your poor variadic template implementation
 
             template<size_t i, class T, class ...Args>
             typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
             {
-                T& detourer = GetInjection(i-1).cast<T>();      // Get this type
-                detourer->setfile(f? f->FileBuffer() : "");     // Set file
-                 return AAA<i-1, Args...>()                     // Continue to the next type
+                T& detourer = GetInjection(i-1).template cast<T>();      // Get this type
+                detourer.setfile(f? f->FileBuffer() : "");      // Set file
+                return Hlp_SetFile<i-1, Args...>(f);            // Continue to the next type
             }
 
             template<size_t i, class T, class ...Args>
             typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
-            {}  // The end of the args (in front) is represented with a nullptr_t
+            {}  // The end of the args is represented with a nullptr_t
     };
 
 }

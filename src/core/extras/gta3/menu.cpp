@@ -200,7 +200,7 @@ void TheMenu::RegisterEvents()
     this->ModPageEvents();
 
     typedef function_hooker<0x53ECBD, void(int)> rr_hook;
-    make_function_hook<rr_hook>([this](rr_hook::func_type Idle, int& i)
+    make_static_hook<rr_hook>([this](rr_hook::func_type Idle, int& i)
     {
 #if 0
         static bool bPrevState = false, bCurrState = false;

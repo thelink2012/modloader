@@ -48,9 +48,23 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5DD272] = 0x5DD272;   // call    _RwStreamOpen              ; "models/grass/grass%d_%d.dff"
     }
 
+    // std.text
+    if(true)
+    {
+        map[0x57A161] = 0x57A161;   // call    _ZN5CText3GetEPKc
+        map[0x6A0228] = 0x6A0228;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; @CText::Load
+        map[0x69FD5A] = 0x69FD5A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; @CText::LoadMissionText
+        map[0x57326E] = 0x57326E;   // jz      loc_573313                    ; Check for some menu stuff to avoid reloading text
+        map[0xBA6748] = 0xBA6748;   // CMenuManager FrontEndMenuManager
+        map[0x573260] = 0x573260;   // _ZN12CMenuManager33InitialiseChangedLanguageSettingsEv
+    }
 
-
-
+    // std.movies
+    if(true)
+    {
+        map[0x748B00] = 0x748B00;   //  call    _CreateVideoPlayer  ; "movies/Logo.mpg"
+        map[0x748BF9] = 0x748BF9;   //  call    _CreateVideoPlayer  ; "movies/GTAtitles.mpg"
+    }
 
 
     // AbstractFrontend | TheMenu

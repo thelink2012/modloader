@@ -87,8 +87,6 @@ namespace injector
             template<class To>
             To& cast() { return cast<To>(*this); }
 
-            void* cast_to_void() { return (void*)(this); }
-
         protected:
             // Constructor, initialises
             scoped_base(size_t bufsize) : saved(false), bufsize(bufsize)
@@ -306,7 +304,7 @@ namespace injector
             function_hooker_base(function_hooker_base&& rhs) : scoped_call(std::move(rhs)) {}
             function_hooker_base& operator=(const function_hooker_base& rhs) = delete;
             function_hooker_base& operator=(function_hooker_base&& rhs)
-            { scoped_call<>::operator=(std::move(rhs)); return *this; }
+            { scoped_call::operator=(std::move(rhs)); return *this; }
 
         protected:
             struct hook_store
@@ -401,7 +399,7 @@ namespace injector
             void make_call(typename base::functor_type functor)
             {
                 base::store().functor = std::move(functor);
-                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
+                base::store().original = scoped_call::make_call(addr1, raw_ptr(call)).get();
             }
 
 
@@ -435,7 +433,7 @@ namespace injector
             void make_call(typename base::functor_type functor)
             {
                 base::store().functor = std::move(functor);
-                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
+                base::store().original = scoped_call::make_call(addr1, raw_ptr(call)).get();
             }
 
 
@@ -456,48 +454,14 @@ namespace injector
 
 
 
-
-
-    // TODO STATICA
     /* Helpers */
     template<class T, class F> inline
-    T& make_function_hook(F functor)
+    T& make_static_hook(F functor)
     {
         static T a;
-        a.make_call(functor); // TODO STD MOVE
+        a.make_call(std::move(functor));
         return a;
     }
-    
-#if 0
-    /* Helpers */
-    template<class T> inline
-    T make_function_hook(typename T::hook_type hooker)
-    {
-        return T(hooker);
-    }
-    
-    template<uintptr_t addr, class T, class U> inline
-    function_hooker<addr, T> make_function_hook(U hooker)
-    {
-        typedef function_hooker<addr, T> type;
-        return make_function_hook<type>(hooker);
-    }
-#endif
-    
-#if 0
-    /*
-     *  RAII wrapper for the functions hookers
-     *  XXX this is not correct at all... This works by illusion... bad....
-     */
-    template<class T>
-    struct scoped_hook
-    {
-        scoped_hook(typename T::hook_type hooker)   { make_function_hook<T>(hooker); }
-        scoped_hook()                               {}
-        scoped_hook(const T&)                       {}
-        ~scoped_hook()                              { T::restore(); }
-    };
-#endif
 
 #endif   
 
