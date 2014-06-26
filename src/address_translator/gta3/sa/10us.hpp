@@ -22,11 +22,12 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // std.fx
     if(true)
     {
+        map[0x5900D2] = 0x5900D2;   // call    _ZN9CTxdStore7LoadTxdEiPKc ; "loadscs.txd"
         map[0x5B8F5E] = 0x5B8F5E;   // call    _ZN9CTxdStore7LoadTxdEiPKc ; "models/generic/vehicle.txd"
         map[0x5BF8B7] = 0x5BF8B7;   // call    _ZN9CTxdStore7LoadTxdEiPKc ; "models/particle.txd"
         map[0x5C248F] = 0x5C248F;   // call    _ZN9CTxdStore7LoadTxdEiPKc ; "models/effectsPC.txd"
         map[0x5C24B1] = 0x5C24B1;   // call    _Z8OpenFilePKcS0_          ; "models/effects.fxp"
-
+        
         map[0x5BA850] = 0x5BA850;   // _ZN4CHud10InitialiseEv
         map[0x588850] = 0x588850;   // _ZN4CHud8ShutdownEv
         map[0x5827D0] = 0x5827D0;   // _ZN6CRadar12LoadTexturesEv
@@ -64,6 +65,19 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     {
         map[0x748B00] = 0x748B00;   //  call    _CreateVideoPlayer  ; "movies/Logo.mpg"
         map[0x748BF9] = 0x748BF9;   //  call    _CreateVideoPlayer  ; "movies/GTAtitles.mpg"
+    }
+
+    // std.scm
+    if(true)
+    {
+        map[0x468EC9] = 0x468EC9;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; "main.scm" @CTheScripts
+        map[0x489A4A] = 0x489A4A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; "main.scm" @CRunningScript
+    }
+
+    // std.sprites
+    if(true)
+    {
+        map[0x48418A] = 0x48418A;   // call    _ZN9CTxdStore7LoadTxdEiPKc
     }
 
 

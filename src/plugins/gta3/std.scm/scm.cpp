@@ -16,7 +16,7 @@ using namespace modloader;
 /*
  *  The plugin object
  */
-class ThePlugin : public modloader::basic_plugin
+class ScmPlugin : public modloader::basic_plugin
 {
     private:
         uint32_t main_scm;
@@ -31,15 +31,15 @@ class ThePlugin : public modloader::basic_plugin
         bool ReinstallFile(const modloader::file&);
         bool UninstallFile(const modloader::file&);
         
-} plugin;
+} scm_plugin;
 
-REGISTER_ML_PLUGIN(::plugin);
+REGISTER_ML_PLUGIN(::scm_plugin);
 
 /*
- *  ThePlugin::GetInfo
+ *  ScmPlugin::GetInfo
  *      Returns information about this plugin 
  */
-const ThePlugin::info& ThePlugin::GetInfo()
+const ScmPlugin::info& ScmPlugin::GetInfo()
 {
     static const char* extable[] = { "scm", 0 };
     static const info xinfo      = { "std.scm", "R0.1", "LINK/2012", -1, extable };
@@ -51,10 +51,10 @@ const ThePlugin::info& ThePlugin::GetInfo()
 
 
 /*
- *  ThePlugin::OnStartup
+ *  ScmPlugin::OnStartup
  *      Startups the plugin
  */
-bool ThePlugin::OnStartup()
+bool ScmPlugin::OnStartup()
 {
     if(gvm.IsSA())
     {
@@ -67,20 +67,20 @@ bool ThePlugin::OnStartup()
 }
 
 /*
- *  ThePlugin::OnShutdown
+ *  ScmPlugin::OnShutdown
  *      Shutdowns the plugin
  */
-bool ThePlugin::OnShutdown()
+bool ScmPlugin::OnShutdown()
 {
     return true;
 }
 
 
 /*
- *  ThePlugin::GetBehaviour
+ *  ScmPlugin::GetBehaviour
  *      Gets the relationship between this plugin and the file
  */
-int ThePlugin::GetBehaviour(modloader::file& file)
+int ScmPlugin::GetBehaviour(modloader::file& file)
 {
     if(file.hash == main_scm)
     {
@@ -91,28 +91,28 @@ int ThePlugin::GetBehaviour(modloader::file& file)
 }
 
 /*
- *  ThePlugin::InstallFile
+ *  ScmPlugin::InstallFile
  *      Installs a file using this plugin
  */
-bool ThePlugin::InstallFile(const modloader::file& file)
+bool ScmPlugin::InstallFile(const modloader::file& file)
 {
     return overrider.InstallFile(file);
 }
 
 /*
- *  ThePlugin::ReinstallFile
+ *  ScmPlugin::ReinstallFile
  *      Reinstall a file previosly installed that has been updated
  */
-bool ThePlugin::ReinstallFile(const modloader::file& file)
+bool ScmPlugin::ReinstallFile(const modloader::file& file)
 {
     return overrider.ReinstallFile();
 }
 
 /*
- *  ThePlugin::UninstallFile
+ *  ScmPlugin::UninstallFile
  *      Uninstall a previosly installed file
  */
-bool ThePlugin::UninstallFile(const modloader::file& file)
+bool ScmPlugin::UninstallFile(const modloader::file& file)
 {
     return overrider.UninstallFile();
 }

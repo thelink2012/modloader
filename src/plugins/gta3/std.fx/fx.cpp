@@ -169,6 +169,7 @@ bool FxPlugin::OnStartup()
         const auto no_reinstall          = file_overrider<>::params(nullptr);
 
         // Files hashes
+        const auto loadscs_txd       = modloader::hash("loadscs.txd");
         const auto hud_txd           = modloader::hash("hud.txd");
         const auto particle_txd      = modloader::hash("particle.txd");
         const auto effects_fxp       = modloader::hash("effects.fxp");
@@ -229,6 +230,9 @@ bool FxPlugin::OnStartup()
 
         // Insert unused dff/txd files in the models/ folder there, so the img plugin won't load those
         for(auto& unused : unused_table) AddDummy(unused);
+
+        // Detouring for LOADSCS
+        AddDetour(loadscs_txd, reinstall_since_start, LoadTxdDetour<0x5900D2>());
 
         // Detouring for HUD
         AddDetour(hud_txd, reinstall_since_load, LoadTxdDetour<0x5BA865>(), ReloadHud);

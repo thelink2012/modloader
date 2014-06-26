@@ -7,165 +7,130 @@
  *      Sprites are placed at "models/txd" folder
  *
  */
-#include <modloader.hpp>
-#include <modloader_util.hpp>
-#include <modloader_util_path.hpp>
-#include <modloader_util_injector.hpp>
+#include <map>
+#include <modloader/modloader.hpp>
+#include <modloader/gta3/gta3.hpp>
+#include <modloader/util/hash.hpp>
+#include <modloader/util/path.hpp>
 using namespace modloader;
-#include <list>
-
 
 
 /*
  *  The plugin object
  */
-class CThePlugin* spritesPlugin;
-class CThePlugin : public modloader::CPlugin
+class ScriptSpritesPlugin : public modloader::basic_plugin
 {
+    private:
+        std::map<std::string, const modloader::file*> dictionaries;
+
     public:
-        const char* GetName();
-        const char* GetAuthor();
-        const char* GetVersion();
-        bool CheckFile(modloader::modloader::file& file);
-        bool ProcessFile(const modloader::modloader::file& file);
-        bool PosProcess();
+        const info& GetInfo();
+        bool OnStartup();
+        bool OnShutdown();
+        int GetBehaviour(modloader::file&);
+        bool InstallFile(const modloader::file&);
+        bool ReinstallFile(const modloader::file&);
+        bool UninstallFile(const modloader::file&);
         
-        const char** GetExtensionTable();
+} scr_spr_plugin;
 
-        std::string loadscs;
-        
-        struct SSpriteFile
-        {
-            std::string txdfile;    /* e.g. "file.txd" */
-            std::string path;       /* e.g. "modloader/mymod/models/txd/file.txd" */
-
-            SSpriteFile(const modloader::file& file)
-            {
-                this->txdfile = NormalizePath(file.filename);
-                this->path    = GetFilePath(file);
-            }
-        };
-        
-        std::list<SSpriteFile> sprites;
-        
-} plugin;
+REGISTER_ML_PLUGIN(::scr_spr_plugin);
 
 /*
- *  Export plugin object data
+ *  ScriptSpritesPlugin::GetInfo
+ *      Returns information about this plugin 
  */
-extern "C" __declspec(dllexport)
-void GetPluginData(modloader_plugin_t* data)
+const ScriptSpritesPlugin::info& ScriptSpritesPlugin::GetInfo()
 {
-    spritesPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data);
+    static const char* extable[] = { "txd", 0 };
+    static const info xinfo      = { "std.sprites", "R0.1", "LINK/2012", 49, extable };
+    return xinfo;
 }
+
+
 
 
 
 /*
- *  Basic plugin informations
+ *  ScriptSpritesPlugin::OnStartup
+ *      Startups the plugin
  */
-const char* CThePlugin::GetName()
+bool ScriptSpritesPlugin::OnStartup()
 {
-    return "std-sprites";
-}
-
-const char* CThePlugin::GetAuthor()
-{
-    return "LINK/2012";
-}
-
-const char* CThePlugin::GetVersion()
-{
-    return "RC2";
-}
-
-const char** CThePlugin::GetExtensionTable()
-{
-    /* Put the extensions  this plugin handles on @table */
-    static const char* table[] = { "txd", 0 };
-    return table;
-}
-
-/*
- *  Check if the file is the one we're looking for
- */
-bool CThePlugin::CheckFile(modloader::modloader::file& file)
-{
-    if(!file.is_dir)
+    if(gvm.IsSA())
     {
-        if(IsFileExtension(file.filext, "txd"))
+        typedef function_hooker<0x48418A, int(int, const char*)> hooker;
+        
+        // Hooker function, hooks the CTxdStore::LoadTxd at the script engine
+        make_static_hook<hooker>([this](hooker::func_type LoadTxd, int& index, const char*& filepath)
         {
-            if(IsFileInsideFolder(file.filepath, true, "models/txd"))
-                return true;
-            else if(!strcmp(file.filename, "loadscs.txd", false))
-                return true;
-        }
+            std::string filename = filepath;
+            filename = &filepath[GetLastPathComponent(filename)];
+
+            // Find replacement for sprite dictionary at filepath
+            auto it = dictionaries.find(filename);
+            if(it != dictionaries.end()) filepath = it->second->FileBuffer();
+
+            // Jump to the original call to LoadTxd
+            Log("Loading script sprite \"%s\"", filepath);
+            return LoadTxd(index, filepath);
+        });
+
+        return true;
     }
     return false;
 }
 
 /*
- * Process the replacement
+ *  ScriptSpritesPlugin::OnShutdown
+ *      Shutdowns the plugin
  */
-bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
+bool ScriptSpritesPlugin::OnShutdown()
 {
-    /* Load screens sprite is used by the game code, not scripts */
-    if(!strcmp(file.filename, "loadscs.txd", false))
+    return true;
+}
+
+
+/*
+ *  ScriptSpritesPlugin::GetBehaviour
+ *      Gets the relationship between this plugin and the file
+ */
+int ScriptSpritesPlugin::GetBehaviour(modloader::file& file)
+{
+    if(file.IsExtension("txd") && IsFileInsideFolder(file.FilePath(), false, "models/txd/"))
     {
-        if(!RegisterReplacementFile(*this, "loadscs.txd", loadscs, GetFilePath(file).c_str()))
-            return false;
+        file.behaviour = file.hash;
+        return MODLOADER_BEHAVIOUR_YES;
     }
-    else
-    {
-        /* Just register this file existence */
-        this->sprites.emplace_back(file);
-    }
+    return MODLOADER_BEHAVIOUR_NO;
+}
+
+/*
+ *  ScriptSpritesPlugin::InstallFile
+ *      Installs a file using this plugin
+ */
+bool ScriptSpritesPlugin::InstallFile(const modloader::file& file)
+{
+    dictionaries.emplace(file.FileName(), &file);
     return true;
 }
 
 /*
- * Called after all files have been processed
+ *  ScriptSpritesPlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
  */
-bool CThePlugin::PosProcess()
+bool ScriptSpritesPlugin::ReinstallFile(const modloader::file& file)
 {
-    /* Patch the game only if there's any custom sprite */
-    if(this->sprites.size())
-    {
-        typedef function_hooker<0x48418A, int(int, const char*)> hooker;
-        
-        // Hooker function, hooks the CTxdStore::LoadTxd at the script engine
-        make_function_hook<hooker>([](hooker::func_type LoadTxd, int& index, const char*& filepath)
-        {
-            /* Make sure that it's the original game string, no one hooked it */
-            if(!strcmp(filepath, "models\\txd\\", 11, false))
-            {
-                std::string filename = NormalizePath(&filepath[11]);
+    // No need to reinstall, it is always "reinstalled"
+    return true;
+}
 
-                /* See if we have a replacement for this texture request */
-                for(auto& sprite : spritesPlugin->sprites)
-                {
-                    if(sprite.txdfile == filename)
-                    {
-                        filepath = sprite.path.data();
-                        break;
-                    }
-                }
-            }
-
-            /* Jump to the original call to LoadTxd */
-            spritesPlugin->Log("Loading script sprite \"%s\"", filepath);
-            return LoadTxd(index, filepath);
-        });
-    }
-    
-    // loadscs patch
-    if(this->loadscs.size())
-    {
-        // Replace "loadscs.txd" string with our path
-        loadscs.insert(0, "../../");     // Relative to "models/txd" folder
-        WriteMemory<const char*>(0x5900CC + 1, loadscs.data(), true);
-    }
-    
+/*
+ *  ScriptSpritesPlugin::UninstallFile
+ *      Uninstall a previosly installed file
+ */
+bool ScriptSpritesPlugin::UninstallFile(const modloader::file& file)
+{
+    dictionaries.erase(file.FileName());
     return true;
 }
