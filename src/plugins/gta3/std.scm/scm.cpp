@@ -8,102 +8,111 @@
  *      NOTE: script.img is taken care by the img plugin!
  * 
  */
-#include <modloader.hpp>
-#include <modloader_util.hpp>
-#include <modloader_util_path.hpp>
-#include <modloader_util_injector.hpp>
+#include <modloader/modloader.hpp>
+#include <modloader/util/hash.hpp>
+#include <modloader/gta3/gta3.hpp>
 using namespace modloader;
 
 /*
  *  The plugin object
  */
-class CThePlugin : public modloader::CPlugin
+class ThePlugin : public modloader::basic_plugin
 {
-    public:
-        std::string mainScm;
-        
-        const char* GetName();
-        const char* GetAuthor();
-        const char* GetVersion();
-        bool CheckFile(modloader::modloader::file& file);
-        bool ProcessFile(const modloader::modloader::file& file);
-        bool PosProcess();
-        
-        const char** GetExtensionTable();
+    private:
+        uint32_t main_scm;
+        file_overrider<2> overrider;
 
+    public:
+        const info& GetInfo();
+        bool OnStartup();
+        bool OnShutdown();
+        int GetBehaviour(modloader::file&);
+        bool InstallFile(const modloader::file&);
+        bool ReinstallFile(const modloader::file&);
+        bool UninstallFile(const modloader::file&);
+        
 } plugin;
 
-/*
- *  Export plugin object data
- */
-extern "C" __declspec(dllexport)
-void GetPluginData(modloader_plugin_t* data)
-{
-    modloader::RegisterPluginData(plugin, data);
-}
-
-
+REGISTER_ML_PLUGIN(::plugin);
 
 /*
- *  Basic plugin informations
+ *  ThePlugin::GetInfo
+ *      Returns information about this plugin 
  */
-const char* CThePlugin::GetName()
+const ThePlugin::info& ThePlugin::GetInfo()
 {
-    return "std-scm";
+    static const char* extable[] = { "scm", 0 };
+    static const info xinfo      = { "std.scm", "R0.1", "LINK/2012", -1, extable };
+    return xinfo;
 }
 
-const char* CThePlugin::GetAuthor()
-{
-    return "LINK/2012";
-}
 
-const char* CThePlugin::GetVersion()
-{
-    return "RC1";
-}
 
-const char** CThePlugin::GetExtensionTable()
-{
-    /* Put the extensions  this plugin handles on @table */
-    static const char* table[] = { "scm", 0 };
-    return table;
-}
+
 
 /*
- *  Check if the file is the one we're looking for
+ *  ThePlugin::OnStartup
+ *      Startups the plugin
  */
-bool CThePlugin::CheckFile(modloader::modloader::file& file)
+bool ThePlugin::OnStartup()
 {
-    if(!file.is_dir
-    && !strcmp(file.filename, "main.scm", false)
-    )//&& IsFileInsideFolder(file.filepath, true, "data/script"))
+    if(gvm.IsSA())
+    {
+        this->main_scm = modloader::hash("main.scm");
+        this->overrider.SetParams(file_overrider<2>::params(true, true, true, true));
+        this->overrider.SetFileDetour(OpenFileDetour<0x468EC9>(), OpenFileDetour<0x489A4A>());
         return true;
+    }
     return false;
 }
 
 /*
- * Process the replacement
+ *  ThePlugin::OnShutdown
+ *      Shutdowns the plugin
  */
-bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
+bool ThePlugin::OnShutdown()
 {
-    return RegisterReplacementFile(*this, "main.scm", mainScm, GetFilePath(file).c_str());
+    return true;
 }
 
 
 /*
- * Called after all files have been processed
+ *  ThePlugin::GetBehaviour
+ *      Gets the relationship between this plugin and the file
  */
-bool CThePlugin::PosProcess()
+int ThePlugin::GetBehaviour(modloader::file& file)
 {
-    /* Patch the game only if there's a replacement */
-    if(mainScm.size())
+    if(file.hash == main_scm)
     {
-        /* chdir into root directory instead of "data/script" */
-        WriteMemory<const char*>(0x468EB5+1, "", true);
-
-        /* Replace references to "~/main.scm" string */
-        WriteMemory<const char*>(0x468EC4 + 1, mainScm.data(), true);
-        WriteMemory<const char*>(0x489A45 + 1, mainScm.data(), true);
+        file.behaviour = file.hash;
+        return MODLOADER_BEHAVIOUR_YES;
     }
-    return true;
+    return MODLOADER_BEHAVIOUR_NO;
+}
+
+/*
+ *  ThePlugin::InstallFile
+ *      Installs a file using this plugin
+ */
+bool ThePlugin::InstallFile(const modloader::file& file)
+{
+    return overrider.InstallFile(file);
+}
+
+/*
+ *  ThePlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
+ */
+bool ThePlugin::ReinstallFile(const modloader::file& file)
+{
+    return overrider.ReinstallFile();
+}
+
+/*
+ *  ThePlugin::UninstallFile
+ *      Uninstall a previosly installed file
+ */
+bool ThePlugin::UninstallFile(const modloader::file& file)
+{
+    return overrider.UninstallFile();
 }
