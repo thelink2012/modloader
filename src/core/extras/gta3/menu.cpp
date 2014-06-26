@@ -283,15 +283,18 @@ void TheMenu::RetrieveModsList(const std::string& keywords_string)
     // Gets all mods........
     for(auto& mod : loader.mods.GetModsByName())
     {
+        bool hasKeywords = true;
         for(auto& kw : keywords)
         {
-            // ..... check if it's name contain any of the keywords .....
-            if(mod.get().GetName().find(kw) != std::string::npos)
+            // ..... check if it's name contain the keywords .....
+            if(mod.get().GetName().find(kw) == std::string::npos)
             {
-                this->mMods.emplace_back(mod);
+                hasKeywords = false;
                 break;
             }
         }
+
+        if(hasKeywords) mMods.emplace_back(mod);
     }
 }
 

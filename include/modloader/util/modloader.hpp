@@ -48,6 +48,7 @@ namespace modloader
             // Store for the path (relative to gamedir)
             struct store_type {
                 std::string path;
+                std::function<std::string(std::string)> transform;
             };
 
             static store_type& store()
@@ -61,6 +62,10 @@ namespace modloader
 
                 auto& arg = std::get<pos>(std::forward_as_tuple(args...));
                 std::string fullpath;
+
+                // If has transform functor, use it to get new path
+                if(store().transform)
+                    store().path = store().transform(arg);
 
                 if(!store().path.empty())   // Has any path to override the original with?
                 {
@@ -99,6 +104,11 @@ namespace modloader
                 make_call();
                 store().path = std::move(path);
             }
+
+            void OnTransform(std::function<std::string(std::string)> functor)
+            {
+                store().transform = std::move(functor);
+            }
     };
 
 
@@ -107,13 +117,14 @@ namespace modloader
             Made to easily override some game file
             Works better in conjunction with a file detour (basic_file_detour)
     */
+    template<unsigned int NumInjections = 1>
     struct file_overrider
     {
         protected:
-            const modloader::file* file = nullptr;          // The file being used as overrider
-            injector::scoped_basic<32> injection_buf;       // Buffer to store scoped injection
-            bool bCanReinstall = true;                      // Can this overrider get reinstalled?
-            bool bCanUninstall = true;                      // Can this overrider get uninstalled?
+            const modloader::file* file = nullptr;                      // The file being used as overrider
+            injector::scoped_basic<32> injection_buf[NumInjections];    // Buffer to store scoped injection
+            bool bCanReinstall = true;                                  // Can this overrider get reinstalled?
+            bool bCanUninstall = true;                                  // Can this overrider get uninstalled?
 
             // Reinitialization time
             bool bReinitAfterStart = false;                 // Should call Reinit after game startup? (The game screen is there)
@@ -125,14 +136,16 @@ namespace modloader
             std::function<void()>                       mReload;        // Reload the file on the game
 
         public:
+            static const auto num_injections = NumInjections;
+
             file_overrider() = default;                 
             file_overrider(const file_overrider&) = delete;     // cba to implement those
             file_overrider(file_overrider&&) = delete;          // ^^
 
             // Get the injection buffer
-            injector::scoped_base* GetInjection()
+            injector::scoped_base& GetInjection(unsigned int i = 0)
             {
-                return &injection_buf;
+                return injection_buf[i];
             }
             
             // Call to install/reinstall/uninstall the file (no file should be installed)
@@ -180,16 +193,17 @@ namespace modloader
 
             // Set the file detourer (important to call, otherwise no effect will happen)
             // This overrides OnHook
-            template<class T> void SetFileDetour(T&& detourer_)
+            template<class ...Args> void SetFileDetour(Args&&... detourers_)
             {
-                injection_buf = std::move(*(scoped_basic<32>*)detourer_.cast_to_void());
+                std::reference_wrapper<scoped_base> d[] = { detourers_... };
+                for(int i = 0; i < sizeof...(Args); ++i)
+                    GetInjection(i) = std::move(*(scoped_base*)d[i].get().cast_to_void());
+
                 OnHook([this](const modloader::file* f)
                 {
-                    T& detourer = injection_buf.cast<T>();
-                    detourer.setfile(f? f->FileBuffer() : "");
+                    Hlp_SetFile<sizeof...(Args), std::nullptr_t, Args...>(f);
                 });
             }
-
 
         public: // Helpers for construction
             // Pack of basic boolean states to help the initialization of this object
@@ -227,8 +241,6 @@ namespace modloader
                 this->SetFileDetour(std::move(detour));
             }
 
-
-        protected:
             // Perform a install for the specified file, if null, it will uninstall the currently installed file
             bool PerformInstall(const modloader::file* file)
             {
@@ -238,6 +250,7 @@ namespace modloader
                 return true;
             }
 
+        protected:
             // Installs the necessary hooking to load the specified file
             void InstallHook()
             {
@@ -262,6 +275,20 @@ namespace modloader
                     }
                 }
             }
+
+        protected:  // OMG, so much tricks, thank you MSVC for you poor variadic template implementation
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
+            {
+                T& detourer = GetInjection(i-1).cast<T>();      // Get this type
+                detourer->setfile(f? f->FileBuffer() : "");     // Set file
+                 return AAA<i-1, Args...>()                     // Continue to the next type
+            }
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
+            {}  // The end of the args (in front) is represented with a nullptr_t
     };
 
 }

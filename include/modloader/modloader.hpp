@@ -23,6 +23,7 @@
 #define	MODLOADER_HPP
 #pragma once
 #include <modloader/modloader.h>
+#include <string>
 
 namespace modloader
 {
@@ -40,6 +41,7 @@ namespace modloader
         uint64_t Time() const         { return time; }
 
         // TODO RENAME THOSE
+        std::string FullPath() const;
 
         const char* FilePath() const  { return FileBuffer(pos_filepath);  }
         const char* FileName() const  { return FileBuffer(pos_filename);  }
@@ -48,6 +50,9 @@ namespace modloader
         const char* FileBuffer(size_t idx = 0) const { return &buffer[idx];      }
         size_t FileBufferLength() const              { return (size_t)(pos_eos); }
         
+        bool IsExtension(const char* e) { return !_stricmp(e, FileExt()); }
+
+
         // Has file changed in comparation with c
         // Checks only for file size and file time, returns false for directories
         bool HasFileChanged(const file& c) const
@@ -91,7 +96,6 @@ namespace modloader
             // Checkout modloader.h or "doc/Creating Your Own Plugin.txt" for details on those callbacks
             virtual bool OnStartup()    { return true; }
             virtual bool OnShutdown()   { return true; }
-            virtual bool OnReload()     { return true; }
             virtual int  GetBehaviour(file&)=0;
             virtual bool InstallFile(const file&)=0;
             virtual bool ReinstallFile(const file&)=0;
@@ -153,11 +157,6 @@ namespace modloader
         static int UninstallFile(modloader_plugin_t* data, const modloader_file_t* file)
         {
             return !GetThis(data).UninstallFile(GetFile(file));
-        }
-        
-        static int OnReload(modloader_plugin_t* data)
-        {
-            return !GetThis(data).OnReload();
         }
         
     };
@@ -223,6 +222,12 @@ namespace modloader
         *major = MODLOADER_VERSION_MAJOR;
         *minor = MODLOADER_VERSION_MINOR;
         *revision = MODLOADER_VERSION_REVISION;
+    }
+
+
+    inline std::string file::FullPath() const
+    {
+        return (std::string(plugin_ptr->loader->gamepath) + this->FileBuffer());
     }
 
     

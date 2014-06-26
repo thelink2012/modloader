@@ -3,7 +3,7 @@
  *  Use this (copy-pasting) to help you in starting a plugin project
  * 
  */
-#include <modloader.hpp>
+#include <modloader/modloader.hpp>
 
 /*
  *  The plugin object

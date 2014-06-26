@@ -77,12 +77,12 @@ struct grass_dff_detour : RwStreamOpenDetour<addr>
 class FxPlugin : public modloader::basic_plugin
 {
     private:
-        std::map<size_t, modloader::file_overrider> ovmap;      // Map of files to be overriden, map<hash, overrider>
+        std::map<size_t, modloader::file_overrider<>> ovmap;      // Map of files to be overriden, map<hash, overrider>
         grass_dff_detour<0x5DD272> grass_detour;                // Grass needs a specialized detouring
 
     protected:
         // Adds a detour for the file with the specified hash to the overrider subsystem
-        template<class ...Args> file_overrider& AddDetour(size_t hash, Args&&... args)
+        template<class ...Args> file_overrider<>& AddDetour(size_t hash, Args&&... args)
         {
             return ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
@@ -92,7 +92,7 @@ class FxPlugin : public modloader::basic_plugin
 
         // Add dummy detour (does nothing ever) to the overrider subsystem
         // Useful for files that should've been handled by us but won't take any effect in game because they're unused files
-        file_overrider& AddDummy(size_t hash)
+        file_overrider<>& AddDummy(size_t hash)
         {
             return ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
@@ -101,7 +101,7 @@ class FxPlugin : public modloader::basic_plugin
         }
 
         // Add a manual detourer to the overrider subsystem
-        file_overrider& AddManualDetour(size_t hash, const file_overrider::params& p)
+        file_overrider<>& AddManualDetour(size_t hash, const file_overrider<>::params& p)
         {
             return ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash), std::forward_as_tuple(p)
@@ -112,7 +112,7 @@ class FxPlugin : public modloader::basic_plugin
         void AddGrass(int i, int j)
         {
             char buf[64]; sprintf(buf, "grass%d_%d.dff", i, j);
-            AddManualDetour(modloader::hash(buf), file_overrider::params(nullptr)).OnChange([this, i, j](const modloader::file* f)
+            AddManualDetour(modloader::hash(buf), file_overrider<>::params(nullptr)).OnChange([this, i, j](const modloader::file* f)
             {
                 grass_detour.setfile(f? f->FileBuffer() : "", i, j);
             });
@@ -120,7 +120,7 @@ class FxPlugin : public modloader::basic_plugin
 
     public:
         // Finds overrider for the file with the specified hash, rets null if not found
-        file_overrider* FindOverrider(size_t hash)
+        file_overrider<>* FindOverrider(size_t hash)
         {
             auto it = ovmap.find(hash);
             if(it != ovmap.end()) return &it->second;
@@ -150,7 +150,7 @@ REGISTER_ML_PLUGIN(::fx_plugin)
 const FxPlugin::info& FxPlugin::GetInfo()
 {
     static const char* extable[] = { "dff", "txd", "fxp", 0 };
-    static const info xinfo      = { "FX Loader", "Reloaded 0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "FX Loader", "R0.1", "LINK/2012", -1, extable };
     return xinfo;
 }
 
@@ -164,9 +164,9 @@ bool FxPlugin::OnStartup()
     if(gvm.IsSA())
     {
         // File overrider params
-        const auto reinstall_since_start = file_overrider::params(true, true, true, true);
-        const auto reinstall_since_load  = file_overrider::params(true, true, false, true);
-        const auto no_reinstall          = file_overrider::params(nullptr);
+        const auto reinstall_since_start = file_overrider<>::params(true, true, true, true);
+        const auto reinstall_since_load  = file_overrider<>::params(true, true, false, true);
+        const auto no_reinstall          = file_overrider<>::params(nullptr);
 
         // Files hashes
         const auto hud_txd           = modloader::hash("hud.txd");

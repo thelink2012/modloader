@@ -2,201 +2,178 @@
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-text -- Standard GTA Text Loader Plugin for San Andreas Mod Loader
- *      This plugin overrides gxt files
- *      It also loads fake gta text (fxt) files
+ *  std-text -- Standard GTA Text Loader Plugin for Mod Loader
  *
  */
-#include <modloader.hpp>
-#include <modloader_util.hpp>
-#include <modloader_util_fxt.hpp>
-#include <modloader_util_path.hpp>
-#include <modloader_util_injector.hpp>
-#include <list>
+#include <modloader/modloader.hpp>
+#include <modloader/gta3/gta3.hpp>
+#include <modloader/util/fxt.hpp>
 using namespace modloader;
+
+static const uint64_t hash_mask   = 0x00000000FFFFFFFF;     // Mask for the hash on the behaviour
+static const uint64_t is_fxt_mask = 0x0000000100000000;     // Mask for is_fxt on the behaviour
 
 /*
  *  The plugin object
  */
-class CThePlugin *textPlugin;
-class CThePlugin : public modloader::CPlugin
+class TextPlugin : public modloader::basic_plugin
 {
+    private:
+        std::map<uint32_t, const modloader::file*> gxt; // GXT Files Map<hash, file>
+        modloader::fxt_manager fxt;                     // FXT Files Manager
+
+        OpenFileDetour<0x6A0228> gxt_d1;                // CText::Load detour
+        OpenFileDetour<0x69FD5A> gxt_d2;                // CText::LoadMissionText detour
+
+        void ReloadGXT();                               // Reload current language file
+
     public:
-        const char* GetName();
-        const char* GetAuthor();
-        const char* GetVersion();
-        bool CheckFile(modloader::modloader::file& file);
-        bool ProcessFile(const modloader::modloader::file& file);
-        bool PosProcess();
-        
-        const char** GetExtensionTable();
-        
-        // Overrider object
-        struct GxtOverrider
+         // Standard plugin methods
+        const info& GetInfo();
+        bool OnStartup();
+        bool OnShutdown();
+        int GetBehaviour(modloader::file&);
+        bool InstallFile(const modloader::file&);
+        bool ReinstallFile(const modloader::file&);
+        bool UninstallFile(const modloader::file&);
+
+} text_plugin;
+
+REGISTER_ML_PLUGIN(::text_plugin);
+
+/*
+ *  TextPlugin::GetInfo
+ *      Returns information about this plugin 
+ */
+const TextPlugin::info& TextPlugin::GetInfo()
+{
+    static const char* extable[] = { "gxt", "fxt", 0 };
+    static const info xinfo      = { "std.text", "R0.1", "LINK/2012", -1, extable };
+    return xinfo;
+}
+
+/*
+ *  TextPlugin::OnStartup
+ *      Startups the plugin
+ */
+bool TextPlugin::OnStartup()
+{
+    if(gvm.IsSA())
+    {
+        // Returns the overriden gxt file path (relative to gamedir)
+        auto transformer = [this](std::string filename)
         {
-            const char* original;   // The original filename (e.g. "american.gxt")
-            std::string replace;    // The replacement file path
-            
-            // Setup the structure
-            void Setup(const char* original)
-            {
-                this->original = original;
-            }
-            
-            // Register a replacement
-            bool Replace(const char* withfile)
-            {
-                return RegisterReplacementFile(*textPlugin, original, replace, withfile);
-            }
-            
-            // Gets the replacement file for original (based on game root directory)
-            // If no replacement has been registered, returns "text\@original"
-            const char* GetReplacement()
-            {
-                if(replace.empty()) replace = std::string("text/") + original;
-                return replace.c_str();
-            }
-            
+            auto it = gxt.find(modloader::hash(filename, ::tolower));
+            return std::string(it != gxt.end()? it->second->FileBuffer() : "");
         };
         
-        
-        
-        
-        //
-        std::list<std::string> fxt_files;
-        modloader::fxt_manager fxt_manager;
-        GxtOverrider gxt[5];
-        
-        CThePlugin()
-        {
-            // Setup gxt overriders
-            gxt[0].Setup("american.gxt");
-            gxt[1].Setup("spanish.gxt");
-            gxt[2].Setup("german.gxt");
-            gxt[3].Setup("italian.gxt");
-            gxt[4].Setup("french.gxt");
-        }
-        
-        // Finds a gxt overrider based on the original filename
-        GxtOverrider* GetOverrider(const char* filename)
-        {
-            for(int i = 0; i < 5; ++i)
-            {
-                auto& x = gxt[i];
-                if(!strcmp(x.original, filename, false))
-                    return &x;
-            }
-            return nullptr;
-        }
-
-} plugin;
-
-
-
-/*
- *  Export plugin object data
- */
-extern "C" __declspec(dllexport)
-void GetPluginData(modloader_plugin_t* data)
-{
-    textPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data);
-}
-
-
-
-/*
- *  Basic plugin informations
- */
-const char* CThePlugin::GetName()
-{
-    return "std-text";
-}
-
-const char* CThePlugin::GetAuthor()
-{
-    return "LINK/2012";
-}
-
-const char* CThePlugin::GetVersion()
-{
-    return "RC3";
-}
-
-const char** CThePlugin::GetExtensionTable()
-{
-    static const char* table[] = { "gxt", "fxt", 0 };
-    return table;
-}
-
-/*
- *  Check if the file is the one we're looking for
- */
-bool CThePlugin::CheckFile(modloader::modloader::file& file)
-{
-    if(!file.is_dir
-    && (IsFileExtension(file.filext, "gxt") || IsFileExtension(file.filext, "fxt")))
+        // Patch the game with detours
+        gxt_d1.make_call();
+        gxt_d2.make_call();
+        gxt_d1.OnTransform(transformer);
+        gxt_d2.OnTransform(transformer);
         return true;
+    }
     return false;
 }
 
 /*
- * Process the replacement
+ *  TextPlugin::OnShutdown
+ *      Shutdowns the plugin
  */
-bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
+bool TextPlugin::OnShutdown()
 {
-    if(IsFileExtension(file.filext, "gxt"))
+    return true;
+}
+
+
+/*
+ *  TextPlugin::GetBehaviour
+ *      Gets the relationship between this plugin and the file
+ */
+int TextPlugin::GetBehaviour(modloader::file& file)
+{
+    if(file.IsExtension("fxt"))
     {
-        if(auto* gxt = GetOverrider(file.filename))
-        {
-            if(gxt->Replace(GetFilePath(file).c_str()))
-                return true;
-        }
+        file.behaviour = file.hash | is_fxt_mask;
+        return MODLOADER_BEHAVIOUR_YES;
+    }
+    else if(file.IsExtension("gxt"))
+    {
+        file.behaviour = file.hash;
+        return MODLOADER_BEHAVIOUR_YES;
+    }
+    return MODLOADER_BEHAVIOUR_NO;
+}
+
+/*
+ *  TextPlugin::InstallFile
+ *      Installs a file using this plugin
+ */
+bool TextPlugin::InstallFile(const modloader::file& file)
+{
+    if(file.behaviour & is_fxt_mask)    // Is FXT
+    {
+        auto table = (uint32_t)(file.behaviour & hash_mask);
+
+        // Remove the previous table related to this FXT then load it again
+        this->fxt.remove_table(table);
+        if(ParseFXT(this->fxt, file.FullPath().c_str(), table))
+            return true;
+
+        Log("Failed to inject FXT file \"%s\"", file.FileBuffer());
+    }
+    else // Is GXT
+    {
+        this->gxt[file.hash] = &file;
+        this->ReloadGXT();
+        return true;
+    }
+    return false;
+}
+
+/*
+ *  TextPlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
+ */
+bool TextPlugin::ReinstallFile(const modloader::file& file)
+{
+    return InstallFile(file);
+}
+
+/*
+ *  TextPlugin::UninstallFile
+ *      Uninstall a previosly installed file
+ */
+bool TextPlugin::UninstallFile(const modloader::file& file)
+{
+    if(file.behaviour & is_fxt_mask)
+    {
+        // Simply remove it from the fxt manager table
+        this->fxt.remove_table(file.hash);
+        return true;
     }
     else
     {
-        fxt_files.emplace_back(GetFilePath(file));
+        //  Erase from our gxt map and reload the current gxt
+        this->gxt.erase(file.hash);
+        this->ReloadGXT();
         return true;
     }
     return false;
 }
 
-
 /*
- * Called after all files have been processed
- * Hook things up
+ *  TextPlugin::ReloadGXT
+ *      Reloads the current GXT file
  */
-bool CThePlugin::PosProcess()
+void TextPlugin::ReloadGXT()
 {
-    typedef int(*fopen_type)(const char*, const char*);
-    typedef int(*hook_type)(fopen_type fopen, const char*& file, const char*& mode);
-
-    // Hook that replaces the fopen that opens GXT files (there's two calls)
-    // Remember, the filename received is based on "text" folder but we are on the root folder!
-    hook_type hook = [](fopen_type fopen, const char*& filename, const char*& mode)
+    if(loader->has_game_started)    // Only if game has started up...
     {
-        if(auto* gxt = textPlugin->GetOverrider(filename))
-        {
-            // Found overrider!
-            return fopen((std::string("../") + gxt->GetReplacement()).c_str(), mode);
-        }
-        else
-        {
-            // Nope, open filename on text folder
-            return fopen(filename, mode);
-        }
-    };
-    
-    // Hook the gxt fopen's
-    make_function_hook<0x6A0228, int(const char*, const char*)>(hook);
-    make_function_hook<0x69FD5A, int(const char*, const char*)>(hook);
-
-    // Inject fxt files
-    for(auto& file : this->fxt_files)
-    {
-        Log("Injecting FXT file \"%s\"", file.c_str());
-        injector::ParseFXT(this->fxt_manager, file.c_str());
+        injector::scoped_nop<10> nop_check;
+        nop_check.make_nop(0x57326E, 6);                                        // NOP some menu field check that avoids reloading of text
+        void* menumgr = lazy_pointer<0xBA6748>().get();                         // FrontEndManager
+        injector::thiscall<void(void*, bool)>::call(0x573260, menumgr, false);  // CMenuManager::InitialiseChangedLanguageSettings
     }
-    
-    return true;
 }

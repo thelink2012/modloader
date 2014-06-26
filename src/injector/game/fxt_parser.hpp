@@ -24,7 +24,7 @@ namespace injector
      *  If unable to open the file, returns false, otherwise returns true
      */
     template<class TextManager>
-    bool ParseFXT(TextManager& manager, const char* filename)
+    bool ParseFXT(TextManager& manager, const char* filename, typename TextManager::hash_type table = 0)
     {
         if(FILE* f = fopen(filename, "r"))
         {
@@ -67,7 +67,7 @@ namespace injector
                 }
 
                 // Adds into the text map only if found both key and value
-                if(key && value) manager.add(key, value);
+                if(key && value) manager.add(key, value, table);
             }
 
             // Done

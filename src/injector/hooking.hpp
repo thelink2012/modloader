@@ -222,7 +222,7 @@ namespace injector
     /*
      *  RAII wrapper for nopping
      */
-    template<size_t bufsize_ = 5>
+    template<size_t bufsize_>
     struct scoped_nop : public scoped_basic<bufsize_>
     {
         public:
@@ -245,8 +245,7 @@ namespace injector
     /*
      *  RAII wrapper for MakeJMP 
      */
-    template<size_t bufsize_ = 5>
-    struct scoped_jmp : public scoped_basic<bufsize_>
+    struct scoped_jmp : public scoped_basic<5>
     {
         public:
             // Makes NOP at @addr with value @value and size @size and virtual protect @vp
@@ -259,17 +258,16 @@ namespace injector
             // Constructors, move constructors, assigment operators........
             scoped_jmp() = default;
             scoped_jmp(const scoped_jmp&) = delete;
-            scoped_jmp(scoped_jmp&& rhs) : scoped_basic<bufsize_>(std::move(rhs)) {}
+            scoped_jmp(scoped_jmp&& rhs) : scoped_basic<5>(std::move(rhs)) {}
             scoped_jmp& operator=(const scoped_jmp& rhs) = delete;
             scoped_jmp& operator=(scoped_jmp&& rhs)
-            { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
+            { scoped_basic<5>::operator=(std::move(rhs)); return *this; }
     };
     
     /*
      *  RAII wrapper for MakeCALL 
      */
-    template<size_t bufsize_ = 5>
-    struct scoped_call : public scoped_basic<bufsize_>
+    struct scoped_call : public scoped_basic<5>
     {
         public:
             // Makes NOP at @addr with value @value and size @size and virtual protect @vp
@@ -282,10 +280,10 @@ namespace injector
             // Constructors, move constructors, assigment operators........
             scoped_call() = default;
             scoped_call(const scoped_call&) = delete;
-            scoped_call(scoped_call&& rhs) : scoped_basic<bufsize_>(std::move(rhs)) {}
+            scoped_call(scoped_call&& rhs) : scoped_basic<5>(std::move(rhs)) {}
             scoped_call& operator=(const scoped_call& rhs) = delete;
             scoped_call& operator=(scoped_call&& rhs)
-            { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
+            { scoped_basic<5>::operator=(std::move(rhs)); return *this; }
     };
     
 
@@ -294,7 +292,7 @@ namespace injector
 
 
     template<uintptr_t addr1, class FuncType, class Ret, class ...Args>
-    struct function_hooker_base : scoped_call<>
+    struct function_hooker_base : scoped_call
     {
         public:
             static const uintptr_t addr = addr1;
@@ -305,7 +303,7 @@ namespace injector
             // Constructors, move constructors, assigment operators........
             function_hooker_base() = default;
             function_hooker_base(const function_hooker_base&) = delete;
-            function_hooker_base(function_hooker_base&& rhs) : scoped_call<>(std::move(rhs)) {}
+            function_hooker_base(function_hooker_base&& rhs) : scoped_call(std::move(rhs)) {}
             function_hooker_base& operator=(const function_hooker_base& rhs) = delete;
             function_hooker_base& operator=(function_hooker_base&& rhs)
             { scoped_call<>::operator=(std::move(rhs)); return *this; }
@@ -336,7 +334,7 @@ namespace injector
             void make_call(typename base::functor_type functor)
             {
                 base::store().functor = std::move(functor);
-                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
+                base::store().original = scoped_call::make_call(addr1, raw_ptr(call)).get();
             }
 
 
@@ -370,7 +368,7 @@ namespace injector
             void make_call(typename base::functor_type functor)
             {
                 base::store().functor = std::move(functor);
-                base::store().original = scoped_call<>::make_call(addr1, raw_ptr(call)).get();
+                base::store().original = scoped_call::make_call(addr1, raw_ptr(call)).get();
             }
 
 
