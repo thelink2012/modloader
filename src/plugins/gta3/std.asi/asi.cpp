@@ -3,182 +3,197 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  std-asi -- Standard ASI Loader Plugin for San Andreas Mod Loader
- *      Loads ASI files as libraries
+ *      Loads ASI files as libraries and CLEO scripts
  * 
  */
-#include "asi.h"
-#include <modloader_util.hpp>
-#include <modloader_util_path.hpp>
 #include <map>
+#include "asi.h"
+#include <modloader/util/modloader.hpp>
+#include <modloader/util/path.hpp>
 using namespace modloader;
 
+// TODO THIS PLUGIN NEEDS REVISION -- AFTER THE CORE CHANGE MOST OF THE CODE HERE IS LEGACY
+// TODO LOOK AT THIS LOOKS LIKE IT'S NOT WORKING CORRETLY WITH ASIS WITH EXTERNAL FILES (AGAIN), TRIED WITH "Project 2DFX 1.6"
 
-//
-CThePlugin* asiPlugin;
-static CThePlugin plugin;
 
-// <lower_case_asi_name, file_size>
+
+// <normalized_asi_name, file_size>
 static std::map<std::string, size_t> incompatible;
 
-/*
- *  Export plugin object data
- */
-extern "C" __declspec(dllexport)
-void GetPluginData(modloader_plugin_t* data)
-{
-    asiPlugin = &plugin;
-    modloader::RegisterPluginData(plugin, data);
-}
+static const uint64_t hash_mask   = 0x00000000FFFFFFFF;     // Mask for the hash on the behaviour
+static const uint64_t is_asi_mask = 0x0000000100000000;     // Mask for is_asi on the behaviour
+static const uint64_t is_cs_mask  = 0x0000000200000000;     // Mask for is_cs on the behaviour
+
+static ThePlugin plugin;
+REGISTER_ML_PLUGIN(::plugin);
+
 
 /*
- *  Basic plugin informations
+ *  ThePlugin::GetInfo
+ *      Returns information about this plugin 
  */
-const char* CThePlugin::GetName()
+const ThePlugin::info& ThePlugin::GetInfo()
 {
-    return "std-asi";
+    static const char* extable[] = { "asi", "dll", "cleo", "cm", "cs", "cs3", "cs4", "cs5", 0 };
+    static const info xinfo      = { "std.asi", "R0.1", "LINK/2012", -1, extable };
+    return xinfo;
 }
 
-const char* CThePlugin::GetAuthor()
-{
-    return "LINK/2012";
-}
 
-const char* CThePlugin::GetVersion()
-{
-    return "0.11";
-}
 
-const char** CThePlugin::GetExtensionTable()
-{
-    static const char* table[] = {  "asi", "dll", "cleo",
-                                    "cm", "cs", "cs3", "cs4", "cs5",
-                                    0 };
-    return table;
-}
+
 
 /*
- *  Startup / Shutdown
+ *  ThePlugin::OnStartup
+ *      Startups the plugin
  */
-bool CThePlugin::OnStartup()
+bool ThePlugin::OnStartup()
 {
     // Register GTA module for some arg translation
-    this->asiList.emplace_front("gta");
+    this->asiList.emplace_front("gta", nullptr, GetModuleHandleA(0));
+    this->asiList.front().PatchImports();
     
+    // Find CLEO.asi
+    this->LocateCleo();
+
     // Register incompatibilities
-    incompatible.emplace("ragdoll.asi", 198656);
-    incompatible.emplace("normalmap.asi", 83456);
-    incompatible.emplace("outfit.asi", 88064);
-    incompatible.emplace("colormod.asi", 111104);
-    incompatible.emplace("dof.asi", 110592);
-    incompatible.emplace("bullet.asi", 97280);
-    incompatible.emplace("google.asi", 112128);
-    incompatible.emplace("airlimit.asi", 79872);
-    incompatible.emplace("killlog.asi", 98816);
-    incompatible.emplace("weaponlimit.asi", 99840);
-    incompatible.emplace("maplimit.asi", 50688);
-    incompatible.emplace("GTA_IV_HUD.asi", 50688);
-    incompatible.emplace("HandlingAdder.asi", 55296);
-    
+    incompatible.emplace(NormalizePath("ragdoll.asi"),          198656);
+    incompatible.emplace(NormalizePath("normalmap.asi"),        83456);
+    incompatible.emplace(NormalizePath("outfit.asi"),           88064);
+    incompatible.emplace(NormalizePath("colormod.asi"),         111104);
+    incompatible.emplace(NormalizePath("dof.asi"),              110592);
+    incompatible.emplace(NormalizePath("bullet.asi"),           97280);
+    incompatible.emplace(NormalizePath("google.asi"),           112128);
+    incompatible.emplace(NormalizePath("airlimit.asi"),         79872);
+    incompatible.emplace(NormalizePath("killlog.asi"),          98816);
+    incompatible.emplace(NormalizePath("weaponlimit.asi"),      99840);
+    incompatible.emplace(NormalizePath("maplimit.asi"),         50688);
+    incompatible.emplace(NormalizePath("GTA_IV_HUD.asi"),       50688);
+    incompatible.emplace(NormalizePath("HandlingAdder.asi"),    55296);
     return true;
 }
 
-bool CThePlugin::OnShutdown()
+/*
+ *  ThePlugin::OnShutdown
+ *      Shutdowns the plugin
+ */
+bool ThePlugin::OnShutdown()
 {
-    // Free the asi files we loaded
     for(auto& asi : this->asiList) asi.Free();
     return true;
 }
 
+
 /*
- *  Check if the file is the one we're looking for
+ *  ThePlugin::GetBehaviour
+ *      Gets the relationship between this plugin and the file
  */
-bool CThePlugin::CheckFile(modloader::modloader::file& file)
+int ThePlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.is_dir)
+    if(!file.IsDirectory())
     {
         char dummy;
-        
-        if(IsFileExtension(file.filext, "asi") || IsFileExtension(file.filext, "cleo") || IsFileExtension(file.filext, "dll"))
+        if(file.IsExtension("asi") || file.IsExtension("cleo") || file.IsExtension("dll"))
         {
-            if(IsFileExtension(file.filext, "asi"))
+            if(file.IsExtension("asi"))
             {
                 // Don't load CLEO neither modloader!
-                if(!strcmp(file.filename, "cleo.asi", false) || !strcmp(file.filename, "modloader.asi", false))
+                if(!strcmp(file.FileName(), "cleo.asi", false) || !strcmp(file.FileName(), "modloader.asi", false))
                 {
-                    Log("Warning: Forbidden ASI file found \"%s\"", GetFilePath(file).c_str());
-                    return false;
+                    Log("Warning: Forbidden ASI file found \"%s\"", file.FileBuffer());
+                    return MODLOADER_BEHAVIOUR_NO;
                 }
             }
-            else if(IsFileExtension(file.filext, "cleo"))
+            else if(file.IsExtension("cleo"))                       // Allow
             { }
-            else if(strcmp(file.filename, "d3d9.dll", false))
-                return false;
+            else if(strcmp(file.FileName(), "d3d9.dll", false))   // Not D3D9 either?
+                return MODLOADER_BEHAVIOUR_NO;
 
             // Check out if the file is incompatible
-            std::string filename = file.filename;
-            auto it = incompatible.find(modloader::tolower(filename));
+            std::string filename = file.FileName();
+            auto it = incompatible.find(filename);
             if(it != incompatible.end())
             {
-                auto size = modloader::GetFileSize(file.filepath);
-                if(size == it->second)
+                if(file.size == it->second)
                 {
                     Error("Incompatible ASI file found: %s\nPlease install it at the game root directory.\nSkipping it!",
-                          file.filename);
-                    return false;
+                          file.FileName());
+                    return MODLOADER_BEHAVIOUR_NO;
                 }
             }
-            return true;
+
+            file.behaviour = file.hash | is_asi_mask;
+            return MODLOADER_BEHAVIOUR_YES;
         }
-        else if(IsFileExtension(file.filext, "cm") || CsInfo::GetVersionFromExtension(file.filext, dummy))
+        else if(file.IsExtension("cm") || CsInfo::GetVersionFromExtension(file.FileExt(), dummy))
         {
             // Cleo script, true
-            return true;
+            file.behaviour = file.hash | is_cs_mask;
+            return MODLOADER_BEHAVIOUR_YES;
         }
+    }
+    return MODLOADER_BEHAVIOUR_NO;
+}
+
+/*
+ *  ThePlugin::InstallFile
+ *      Installs a file using this plugin
+ */
+bool ThePlugin::InstallFile(const modloader::file& file)
+{
+    if(file.behaviour & is_asi_mask)
+    {
+        auto& asi = *asiList.emplace(asiList.end(), file.FileBuffer(), &file, nullptr);
+        
+        if(!asi.Load())
+        {
+            Log(false ? "[%s] %s \"%s\"" : "[%s] %s \"%s\"; errcode: 0x%X",                     // Formated string
+                (asi.bIsASI ? "ASI" : asi.bIsD3D9 ? "D3D9" : asi.bIsCleo ? "CLEO" : "???"),     // What
+                (false ? "Module has been loaded:" : "Failed to load module"),                  // Loaded properly?
+                file.FilePath(),                                                                // Path
+                GetLastError());                                                                // [extra] Error code
+
+            asiList.pop_back();
+            return false;
+        }
+
+        return true;
+    }
+    else if(file.behaviour & is_cs_mask)
+    {
+        csList.emplace_back(&file);
+        return true;
     }
     return false;
 }
 
 /*
- * Process the replacement
+ *  ThePlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
  */
-bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
+bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
-    
-    // Check if asi plugin (or dll injection...)
-    if(IsFileExtension(file.filext, "asi")  || IsFileExtension(file.filext, "cleo") || IsFileExtension(file.filext, "dll"))
-        this->asiList.emplace_back(GetFilePath(file));
-    else    // Nope? Then it's a cleo script
-        this->csList.emplace_back(file);
-    
-    return true;
+    if(file.behaviour & is_cs_mask) return true;
+    return false;
 }
 
 /*
- * Called after all files have been processed
+ *  ThePlugin::UninstallFile
+ *      Uninstall a previosly installed file
  */
-bool CThePlugin::PosProcess()
+bool ThePlugin::UninstallFile(const modloader::file& file)
 {
-    // Find CLEO.asi and already loaded .cleo plugins (loaded by CLEO.asi)
-    this->LocateCleo();
-    
-    // Iterate on the asi list loading each asi file
-    for(auto& asi : this->asiList)
+    if(file.behaviour & is_cs_mask)
     {
-        scoped_chdir xdir(asi.folder.c_str());
-        SetLastError(0);
-        
-        // ....
-        bool bLoaded = asi.Load();
-        if(asi.bIsMainExecutable == false)
+        for(auto it = csList.begin(); it != csList.end(); ++it)
         {
-            Log(bLoaded? "[%s] %s \"%s\"" : "[%s] %s \"%s\"; errcode: 0x%X",                    // Formated string
-                (asi.bIsASI? "ASI" : asi.bIsD3D9? "D3D9" : asi.bIsCleo? "CLEO" : "???"),        // What
-                (bLoaded? "Module has been loaded:" : "Failed to load module"),                 // Loaded properly?
-                asi.path.c_str(),                                                               // Path
-                GetLastError());                                                                // [extra] Error code
+            if(it->file == &file)
+            {
+                csList.erase(it);
+                break;
+            }
         }
+        return true;
     }
-
-    return true;
+    return false;
 }
-

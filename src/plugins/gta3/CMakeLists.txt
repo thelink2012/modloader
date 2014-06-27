@@ -8,5 +8,5 @@ add_subdirectory(std.text)
 #add_subdirectory(std.tracks)  - TODO
 #add_subdirectory(std.bank)    - REDO
 #add_subdirectory(std.img)     - REDO
-#add_subdirectory(std.asi)     - REDO
+add_subdirectory(std.asi)
 #add_subdirectory(std.data)    - REDO

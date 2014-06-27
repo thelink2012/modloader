@@ -97,7 +97,7 @@ bool ScriptSpritesPlugin::OnShutdown()
  */
 int ScriptSpritesPlugin::GetBehaviour(modloader::file& file)
 {
-    if(file.IsExtension("txd") && IsFileInsideFolder(file.FilePath(), false, "models/txd/"))
+    if(!file.IsDirectory() && file.IsExtension("txd") && IsFileInsideFolder(file.FilePath(), false, "models/txd/"))
     {
         file.behaviour = file.hash;
         return MODLOADER_BEHAVIOUR_YES;

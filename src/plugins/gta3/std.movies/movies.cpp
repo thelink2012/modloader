@@ -87,15 +87,18 @@ bool MediaPlugin::OnShutdown()
  */
 int MediaPlugin::GetBehaviour(modloader::file& file)
 {
-    if(file.hash == logo)
+    if(!file.IsDirectory())
     {
-        file.behaviour = logo;
-        return MODLOADER_BEHAVIOUR_YES;
-    }
-    else if(file.hash == GTAtitles || file.hash == GTAtitlesGER)
-    {
-        file.behaviour = GTAtitles;
-        return MODLOADER_BEHAVIOUR_YES;
+        if(file.hash == logo)
+        {
+            file.behaviour = logo;
+            return MODLOADER_BEHAVIOUR_YES;
+        }
+        else if(file.hash == GTAtitles || file.hash == GTAtitlesGER)
+        {
+            file.behaviour = GTAtitles;
+            return MODLOADER_BEHAVIOUR_YES;
+        }
     }
     return MODLOADER_BEHAVIOUR_NO;
 }

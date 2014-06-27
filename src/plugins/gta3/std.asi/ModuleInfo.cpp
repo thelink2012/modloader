@@ -23,7 +23,7 @@ static bool ModulesWalk(uint32_t pid, F functor);
  *  Constructs a ModuleInfo object
  *  It takes a rvalue for a relative path string
  */
-CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
+ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file, HMODULE mod) : file(file)
 {
     size_t last = GetLastPathComponent(path);
     bIsMainExecutable = bIsASI = bIsD3D9 = bIsMainCleo = bIsCleo = false;
@@ -63,18 +63,21 @@ CThePlugin::ModuleInfo::ModuleInfo(std::string&& path)
     }
     
     // Setup fields
-    this->module = 0;
+    this->module = mod;
     this->folder = path.substr(0, last);
-    this->name   = filename;
-    this->path = std::move(path);
 }
 
 
 /*
  *  Find all cleo plugins already loaded and push them into asi list 
  */
-void CThePlugin::LocateCleo()
+void ThePlugin::LocateCleo()
 {
+    static bool bDidIt = false;
+    if(!bDidIt) { bDidIt = true; }
+    else return;
+
+
     HMODULE hCleo = GetModuleHandleA("CLEO.asi");
 
     // We need CLEO.asi module for cleo script injection
@@ -83,16 +86,18 @@ void CThePlugin::LocateCleo()
         char buffer[MAX_PATH];
         if(GetModuleFileNameA(hCleo, buffer, sizeof(buffer)))
         {
-            if(const char* p = path_translator_base::CallInfo::GetCurrentDir(buffer, this->modloader->gamepath, -1))
+            if(const char* p = path_translator_base::CallInfo::GetCurrentDir(buffer, this->loader->gamepath, -1))
             {
                 // Find the library version
                 auto CLEO_GetVersion = (int (__stdcall*)()) GetProcAddress(hCleo, "_CLEO_GetVersion@0");
                 this->iCleoVersion = CLEO_GetVersion? CLEO_GetVersion() : 0;
                 
                 Log("CLEO library version %X found at \"%s\"", iCleoVersion, p);
-                if(this->bHasNoCleoFolder = !IsPath("./CLEO/")) Log("Warning: No CLEO folder found, may cause problems");
+                if(this->bHasNoCleoFolder = !IsPath((std::string(loader->gamepath) + "./CLEO/").c_str()))
+                    Log("Warning: No CLEO folder found, may cause problems");
                 
-                this->asiList.emplace_back(p);
+                this->asiList.emplace_back(p, nullptr, hCleo);
+                this->asiList.back().PatchImports();
             }
         }
         else
@@ -111,8 +116,11 @@ void CThePlugin::LocateCleo()
                 if(IsFileExtension(p+1, "cleo"))
                 {
                     // Yep, take the relative path and push it to the asi list
-                    if(p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->modloader->gamepath, -1))
-                        this->asiList.emplace_back(p);
+                    if(p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->loader->gamepath, -1))
+                    {
+                        this->asiList.emplace_back(p, nullptr, entry.hModule);
+                        this->asiList.back().PatchImports();
+                    }
                 }
             }
 
@@ -125,26 +133,22 @@ void CThePlugin::LocateCleo()
 /*
  *  Loads the module assigned to our field path 
  */
-bool CThePlugin::ModuleInfo::Load()
+bool ThePlugin::ModuleInfo::Load()
 {
     if(!this->module)
     {
+        // Chdir to the asi path, so it can do stuff on DllMain properly
+        scoped_chdir xdir((std::string(plugin_ptr->loader->gamepath) + this->folder).c_str());
+
         // We need the fullpath into the module because of the way Windows load dlls
         // More info at: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682586(v=vs.85).aspx
-        char fullpath[MAX_PATH];
-        if(GetFullPathNameA(name.c_str(), sizeof(fullpath), fullpath, 0))
-        {
-            // Let Windows search for dependencies in this folder too
-            //SetDllDirectoryA(test.c_str());       -- Doesn't work on some older Wine version... grh...
-            {
-                // Load the library module into our module field
-                this->module = bIsMainExecutable? GetModuleHandleA(0) : LoadLibraryA(fullpath);
-                
-                // Patch the module imports to pass throught args translation.
-                if(this->module) this->PatchImports();
-            }
-            //SetDllDirectoryA(NULL);
-        }
+
+        // Load the library module into our module field
+        SetLastError(0);
+        this->module = bIsMainExecutable? GetModuleHandleA(0) : LoadLibraryA(file->FullPath().c_str());
+
+        // Patch the module imports to pass throught args translation.
+        if(this->module) this->PatchImports();
     }
     return this->module != 0;
 }
@@ -152,7 +156,7 @@ bool CThePlugin::ModuleInfo::Load()
 /*
  *  Unloads the module assigned to this object 
  */
-void CThePlugin::ModuleInfo::Free()
+void ThePlugin::ModuleInfo::Free()
 {
     if(this->module)
     {
@@ -187,7 +191,7 @@ void CThePlugin::ModuleInfo::Free()
 /*
  *  Translator finder for a specific ASI object 
  */
-path_translator_base* CThePlugin::ModuleInfo::FindTranslatorFrom(const char* symbol, const char* libname)
+path_translator_base* ThePlugin::ModuleInfo::FindTranslatorFrom(const char* symbol, const char* libname)
 {
     // Find translator for symbol and libname
     for(auto& t : this->translators)
@@ -230,7 +234,7 @@ static path_translator_base::list_type& GetTranslators()
 /*
  *  Patches an ASI Import Table for proper path translation
  */
-void CThePlugin::ModuleInfo::PatchImports()
+void ThePlugin::ModuleInfo::PatchImports()
 {
     // Converts a rva pointer to a actual pointer in the process space from this ASI
     auto rva_to_ptr = [this](long rva)
@@ -345,7 +349,7 @@ void CThePlugin::ModuleInfo::PatchImports()
 /*
  *  Unpatches all patches made in this module IAT 
  */
-void CThePlugin::ModuleInfo::RestoreImports()
+void ThePlugin::ModuleInfo::RestoreImports()
 {
     for(auto& t : this->translators)
     {

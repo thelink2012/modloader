@@ -286,10 +286,13 @@ bool FxPlugin::OnShutdown()
  */
 int FxPlugin::GetBehaviour(modloader::file& file)
 {
-    if(this->FindOverrider(file.hash))
+    if(!file.IsDirectory())
     {
-        file.behaviour = file.hash;
-        return MODLOADER_BEHAVIOUR_YES;
+        if(this->FindOverrider(file.hash))
+        {
+            file.behaviour = file.hash;
+            return MODLOADER_BEHAVIOUR_YES;
+        }
     }
     return MODLOADER_BEHAVIOUR_NO;
 }

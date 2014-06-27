@@ -93,15 +93,18 @@ bool TextPlugin::OnShutdown()
  */
 int TextPlugin::GetBehaviour(modloader::file& file)
 {
-    if(file.IsExtension("fxt"))
+    if(!file.IsDirectory())
     {
-        file.behaviour = file.hash | is_fxt_mask;
-        return MODLOADER_BEHAVIOUR_YES;
-    }
-    else if(file.IsExtension("gxt"))
-    {
-        file.behaviour = file.hash;
-        return MODLOADER_BEHAVIOUR_YES;
+        if(file.IsExtension("fxt"))
+        {
+            file.behaviour = file.hash | is_fxt_mask;
+            return MODLOADER_BEHAVIOUR_YES;
+        }
+        else if(file.IsExtension("gxt"))
+        {
+            file.behaviour = file.hash;
+            return MODLOADER_BEHAVIOUR_YES;
+        }
     }
     return MODLOADER_BEHAVIOUR_NO;
 }

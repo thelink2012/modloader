@@ -51,7 +51,7 @@ namespace modloader
         const char* FileBuffer(size_t idx = 0) const { return &buffer[idx];      }
         size_t FileBufferLength() const              { return (size_t)(pos_eos); }
         
-        bool IsExtension(const char* e) { return !_stricmp(e, FileExt()); }
+        bool IsExtension(const char* e) const { return !_stricmp(e, FileExt()); }
 
 
         // Has file changed in comparation with c
@@ -89,6 +89,9 @@ namespace modloader
             modloader_fLog              Log;
             modloader_fvLog             vLog;
             modloader_fError            Error;
+
+            template<class To>
+            To& cast() { return *static_cast<To*>(this); }
 
         public:
             // Gets the plugin information such as name, version and author

@@ -26,7 +26,7 @@ inline bool  path_translator_base::CallInfo::CxBuildPath(T* p, const M& module, 
 
     // We have to take care when CLEO is trying to open a new custom script, it will try to do so
     // from [chdir("CLEO")] so we need to get one level back in the directory tree
-    if(asi->bIsMainCleo && base->bCreateFile && !stricmp(currdir, "CLEO"))
+    if(asi->bIsMainCleo && base->bCreateFile && !_stricmp(currdir, "CLEO"))
     {
         // Cleo is probably trying to open a new custom script
         sprintf(tmp, "..\\%s", prefix);     // Get back in the directory tree
@@ -35,7 +35,7 @@ inline bool  path_translator_base::CallInfo::CxBuildPath(T* p, const M& module, 
     // In case of the need of an full path, do it on the prefix
     else if(this->bAbsolutePath)
     {
-        sprintf(tmp, "%s%s", asiPlugin->modloader->gamepath, prefix);
+        sprintf(tmp, "%s%s", plugin_ptr->loader->gamepath, prefix);
         prefix = tmp;
     }
     
@@ -64,7 +64,7 @@ inline bool  path_translator_base::CallInfo::GetCurrentDir(const T*& arg, char t
     if(this->bAbsolutePath) // This argument is an absolute path?
     {
         // Get current directory assuming argument is the fullpath
-        currdir = GetCurrentDir( (const char*) arg, asiPlugin->modloader->gamepath, -1);
+        currdir = GetCurrentDir( (const char*) arg, plugin_ptr->loader->gamepath, -1);
 
         // If could get the currdir, set up some stuff and go ahead on the translation
         // For SetDir, if currdir is empty, that means it should chdir into base dir, so don't touch it
@@ -128,7 +128,7 @@ inline void path_translator_base::CallInfo::TranslatePathForMainExecutable(const
                 // Iterate on each asi module trying to find a file in it's path
                 if(!bSet)
                 {
-                    for(auto& module : asiPlugin->asiList)
+                    for(auto& module : plugin_ptr->cast<ThePlugin>().asiList)
                     {
                         if(!module.bIsMainExecutable && !module.bIsMainCleo)
                         {
@@ -145,7 +145,7 @@ inline void path_translator_base::CallInfo::TranslatePathForMainExecutable(const
                 // Iterate on each cleo script trying to find a file in it's path
                 if(!bSet)
                 {
-                    for(auto& script : asiPlugin->csList)
+                    for(auto& script : plugin_ptr->cast<ThePlugin>().csList)
                     {
                         if(bSet = CxBuildPath(p, script, currdir, arg, build_path, false))
                             break;

@@ -82,7 +82,7 @@ bool ScmPlugin::OnShutdown()
  */
 int ScmPlugin::GetBehaviour(modloader::file& file)
 {
-    if(file.hash == main_scm)
+    if(!file.IsDirectory() && file.hash == main_scm)
     {
         file.behaviour = file.hash;
         return MODLOADER_BEHAVIOUR_YES;

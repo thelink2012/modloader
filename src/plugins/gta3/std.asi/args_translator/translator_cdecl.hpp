@@ -23,7 +23,7 @@ template<const char* Symbol, const char* LibName, class Ret, class... Args>
 struct path_translator_cdecl<Symbol, LibName, Ret(Args...)> : public path_translator_basic<Symbol, LibName>
 {
     typedef path_translator_basic<Symbol, LibName> super;
-    typedef CThePlugin::ModuleInfo ModuleInfo;
+    typedef ThePlugin::ModuleInfo ModuleInfo;
     typedef Ret(__cdecl *func_type)(Args...);
     static const int num_args = sizeof...(Args);        // number of Args
 

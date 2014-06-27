@@ -4,8 +4,8 @@
  * 
  */
 #include "asi.h"
-#include <modloader_util.hpp>
-#include <modloader_util_path.hpp>
+#include <modloader/util/modloader.hpp>
+#include <modloader/util/path.hpp>
 using namespace modloader;
 
 
@@ -13,29 +13,30 @@ using namespace modloader;
  *  Constructs a CsInfo
  *  This stores information about cleo scripts 
  */
-CThePlugin::CsInfo::CsInfo(const modloader::modloader::file& file)
+ThePlugin::CsInfo::CsInfo(const modloader::file* file) : file(file)
 {
     // Do basic initial setup
-    this->path = GetFilePath(file);
     this->bIsMission = false;                   
     this->iVersion = CLEO_VER_NONE;
     
+    std::string path = file->FileBuffer();
+
     // Get path used to search files when a script tries to open a file (fopen etc)
-    if(IsFileInsideFolder(file.filepath, true, "CLEO"))  // If inside a CLEO folder, use the path before it
+    if(IsFileInsideFolder(file->FilePath(), true, "CLEO"))  // If inside a CLEO folder, use the path before it
         this->folder = path.substr(0, GetLastPathComponent(path, 2));
     else                                        // Use this path
         this->folder = path.substr(0, GetLastPathComponent(path, 1));
 
     // Get script attributes
-    if(IsFileExtension(file.filext, "cm"))
+    if(file->IsExtension("cm"))
     {
         // Custom Mission
         this->bIsMission = true;
     }
     else
     {
-        if(IsFileInsideFolder(file.filepath, false, "CLEO")
-        && !IsFileInsideFolder(file.filepath, true, "CLEO"))
+        if(IsFileInsideFolder(file->FilePath(), false, "CLEO")
+        && !IsFileInsideFolder(file->FilePath(), true, "CLEO"))
         {
             // Ignore scripts that are inside a subfolder in CLEO folder
             this->bIsMission = true;
@@ -43,7 +44,7 @@ CThePlugin::CsInfo::CsInfo(const modloader::modloader::file& file)
         else
         {
             // Get .cs version
-            if(char* p = strrchr(file.filename, '.'))
+            if(auto* p = strrchr(file->FileName(), '.'))
                 this->GetVersionFromExtension(p+1, this->iVersion);
         }
     }
@@ -55,10 +56,10 @@ CThePlugin::CsInfo::CsInfo(const modloader::modloader::file& file)
  *  Returns true if it is an cleo script and sets version for the proper version
  *  Returns false if it is not an cleo script and sets version to CLEO_VER_NONE
  */
-bool CThePlugin::CsInfo::GetVersionFromExtension(const char* p, char& version)
+bool ThePlugin::CsInfo::GetVersionFromExtension(const char* p, char& version)
 {
     // Checks if extension starts with 'cs' or 'clo' (dose leaks)
-    if(!strnicmp(p, "cs", 2) || !strnicmp(p, "clo", 3))
+    if(!_strnicmp(p, "cs", 2) || !_strnicmp(p, "clo", 3))
     {
         // Checks if there's no compatibility version on the extension
         if(p[2] == 0)

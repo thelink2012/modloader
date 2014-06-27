@@ -19,11 +19,15 @@
 #include <cwchar>
 
 
-#if defined _WIN32 && defined __GNUG__
-	// on MinGW, check if have broken vswprintf
-	#ifndef _GLIBCXX_HAVE_BROKEN_VSWPRINTF
-		#define CHAR_OVERLOAD_FIXED_BROKEN_SPRINTF
-	#endif
+#if defined _WIN32
+    #if defined __GNUG__
+	    // on MinGW, check if have broken vswprintf
+	    #ifndef _GLIBCXX_HAVE_BROKEN_VSWPRINTF
+		    #define CHAR_OVERLOAD_FIXED_BROKEN_SPRINTF
+	    #endif
+    #elif _MSC_VER >= 1400 // MSVC 2005
+        #define CHAR_OVERLOAD_FIXED_BROKEN_SPRINTF
+    #endif
 #endif
 
 
@@ -417,12 +421,12 @@ inline size_t strxfrm(wchar_t* destination, const wchar_t* source, size_t num)
 
 inline int stricmp(const wchar_t* a1, const wchar_t* a2)
 {
-    return wcsicmp(a1, a2);
+    return _wcsicmp(a1, a2);
 }
 
 inline int strnicmp(const wchar_t* a1, const wchar_t* a2, size_t num)
 {
-    return wcsnicmp(a1, a2, num);
+    return _wcsnicmp(a1, a2, num);
 }
 
 #endif

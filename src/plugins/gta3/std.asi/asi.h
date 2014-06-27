@@ -10,8 +10,8 @@
 #include <string>
 #include <list>
 #include <vector>
-#include <modloader.hpp>
-#include <modloader_util_path.hpp>
+#include <modloader/modloader.hpp>
+#include <modloader/util/path.hpp>
 using namespace modloader;
 
 // Forward path_translator_base from args_translator.h
@@ -30,21 +30,16 @@ enum
 /*
  *  The plugin object
  */
-extern class CThePlugin* asiPlugin;
-class CThePlugin : public modloader::CPlugin
+class ThePlugin : public modloader::basic_plugin
 {
     public:
-
-        //
-        const char* GetName();
-        const char* GetAuthor();
-        const char* GetVersion();
+        const info& GetInfo();
         bool OnStartup();
         bool OnShutdown();
-        bool CheckFile(modloader::modloader::file& file);
-        bool ProcessFile(const modloader::modloader::file& file);
-        bool PosProcess();
-        const char** GetExtensionTable();
+        int GetBehaviour(modloader::file&);
+        bool InstallFile(const modloader::file&);
+        bool ReinstallFile(const modloader::file&);
+        bool UninstallFile(const modloader::file&);
         
         /*
          *  Information about asi plugins (and more)
@@ -64,14 +59,12 @@ class CThePlugin : public modloader::CPlugin
             } hacks;
             
             HMODULE module;         // The module handle
-            std::string name;       // The asi filename, like "bbb.asi"
-            std::string path;       // The asi path, like "modloader/aaa/bbb.asi"
             std::string folder;     // The folder where the asi is at, like "modloader/aaa/"
             std::vector<path_translator_base*> translators;
 
             
 
-            ModuleInfo(std::string&& path);
+            ModuleInfo(std::string path, const modloader::file* file, HMODULE mod);
             bool Load();            // Loads the module
             void Free();            // Frees the module
             
@@ -80,6 +73,9 @@ class CThePlugin : public modloader::CPlugin
             
             // Find translator for @symbol and @libname on translators list
             path_translator_base* FindTranslatorFrom(const char* symbol, const char* libname);
+
+            private:
+                const modloader::file*  file; // The module file (may be null)
         };
         
         /*
@@ -90,11 +86,13 @@ class CThePlugin : public modloader::CPlugin
             char        iVersion;
             bool        bIsMission;
             
-            std::string path;       // e.g. "modloader/foo/script.cs"
+            const modloader::file* file;
             std::string folder;     // e.g. "modloader/foo/"
             
-            CsInfo(const modloader::modloader::file& file);
+            CsInfo(const modloader::file* file);
             static bool GetVersionFromExtension(const char* ext, char& version);
+
+            static void Initialise();
         };
         
         

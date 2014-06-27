@@ -33,7 +33,7 @@ namespace hacks
             bool bDidMainSearch;                            // Finished main (WinAPI) search?
             bool bDoingExtraSearch;                         // Working on extra search using iterator?
             bool bDidExtraSearch;                           // Finished the extra search?
-            CThePlugin::CsInfoList::iterator iterator;      // Iterator for extra search
+            ThePlugin::CsInfoList::iterator iterator;      // Iterator for extra search
             
             // Constructor takes the WinAPI search handle
             PseudoHandle(HANDLE hFind, char iVersion) :
@@ -74,12 +74,12 @@ namespace hacks
                     // Get the file data...
                     if(this->GetFindData(lpFindFileData))
                     {
-                        asiPlugin->Log("Injecting cleo script \"%s\"", this->GetPath());
+                        plugin_ptr->Log("Injecting cleo script \"%s\"", this->GetPath());
                         return true;
                     }
                         
                     // Failed to get file data, skip into the next file
-                    asiPlugin->Log("Failed to get find data for cleo script \"%s\"", this->GetPath());
+                    plugin_ptr->Log("Failed to get find data for cleo script \"%s\"", this->GetPath());
                 }
                 
                 // No more files
@@ -106,7 +106,7 @@ namespace hacks
                         DoneMainSearch();
                         bDoingExtraSearch = true;
                         bJustStarted = true;
-                        iterator = asiPlugin->csList.begin();
+                        iterator = plugin_ptr->cast<ThePlugin>().csList.begin();
                     }
                     else
                     {
@@ -121,11 +121,11 @@ namespace hacks
                 }
                 
                 // Find next script with compatibility for iVersion and that is not a custom mission (.cm)
-                while(iterator != asiPlugin->csList.end() && (iterator->iVersion != this->iVersion || iterator->bIsMission))
+                while(iterator != plugin_ptr->cast<ThePlugin>().csList.end() && (iterator->iVersion != this->iVersion || iterator->bIsMission))
                     ++iterator;
 
                 // No more files to work with?
-                if(bNoMoreFiles || iterator == asiPlugin->csList.end())
+                if(bNoMoreFiles || iterator == plugin_ptr->cast<ThePlugin>().csList.end())
                 {
                     // Finish the extra search
                     this->DoneExtaSearch();
@@ -133,7 +133,7 @@ namespace hacks
                 }
                 else if(bJustStarted)
                 {
-                    asiPlugin->Log("Injecting extra scripts into search %p...", this);
+                    plugin_ptr->Log("Injecting extra scripts into search %p...", this);
                 }
                 
                 return true;
@@ -164,7 +164,7 @@ namespace hacks
             // Get full path in iterator
             char* GetFullPath(char* buf)
             {
-                sprintf(buf, "%s%s", asiPlugin->modloader->gamepath, GetPath());
+                sprintf(buf, "%s%s", plugin_ptr->loader->gamepath, GetPath());
                 return buf;
             }
             
@@ -172,7 +172,7 @@ namespace hacks
             char* GetCleoCompatiblePath(char* buf)
             {
                 // CLEO 4.3 needs a existing CLEO folder for the path relativity to work
-                if(asiPlugin->iCleoVersion > 0x401011E && asiPlugin->bHasNoCleoFolder)
+                if(plugin_ptr->cast<ThePlugin>().iCleoVersion > 0x401011E && plugin_ptr->cast<ThePlugin>().bHasNoCleoFolder)
                     return GetFullPath(buf);
                 
                 sprintf(buf, "..\\%s", GetPath());
@@ -182,7 +182,7 @@ namespace hacks
             // Get relative path in iterator
             const char* GetPath()
             {
-                return iterator->path.c_str();
+                return iterator->file->FileBuffer();
             }
         };
         
@@ -205,7 +205,7 @@ namespace hacks
         static PseudoHandle* AddHandle(HANDLE hFind, char iVersion)
         {
             auto* ph = &(*GetList().emplace(GetList().end(), hFind, iVersion));
-            asiPlugin->Log("Starting injected cleo script search %p for version '%c'...", ph, ph->iVersion? ph->iVersion : '0');
+            plugin_ptr->Log("Starting injected cleo script search %p for version '%c'...", ph, ph->iVersion? ph->iVersion : '0');
             return ph;
         }
         
@@ -225,7 +225,7 @@ namespace hacks
                     // Store original handle and erase this pseudo handle
                     hResult = it->hFind;
                     list.erase(it);
-                    asiPlugin->Log("Finishing injected cleo script search %p...", hFind);
+                    plugin_ptr->Log("Finishing injected cleo script search %p...", hFind);
                     break;
                 }
             }
@@ -255,12 +255,12 @@ namespace hacks
         auto* p = strrchr(lpFileName, '.');
         
         // Check if before the extension there's a '*' (for search all with...) and after the extension an 'cs' string (for cs scripts)
-        if(p && p != lpFileName && *(p-1) == '*' && CThePlugin::CsInfo::GetVersionFromExtension(p+1, version))
+        if(p && p != lpFileName && *(p-1) == '*' && ThePlugin::CsInfo::GetVersionFromExtension(p+1, version))
         {
             bool bFailed = false;       // Real failure on FindFirstFileA
             bool bNoMoreFiles = false;  // No more files on FindFirstFileA
             
-            if(!asiPlugin->bHasNoCleoFolder)
+            if(!plugin_ptr->cast<ThePlugin>().bHasNoCleoFolder)
             {
                 // Start the search
                 result = FindFirstFileA(lpFileName, lpFindFileData);

@@ -14,9 +14,9 @@
 #include <memory>
 #include <charov.hpp>
 #include <type_traits>
-#include <modloader_util_path.hpp>
-#include <modloader_util_container.hpp>
-#include <modloader_util_injector.hpp>
+#include <modloader/util/path.hpp>
+#include <modloader/util/container.hpp>
+#include <modloader/util/injector.hpp>
 
 #include "xtranslator.hpp"
 #include "hacks/RyosukeSetModule.hpp"
@@ -33,7 +33,7 @@ using namespace cwc;
  */
 struct path_translator_base
 {
-    typedef CThePlugin::ModuleInfo ModuleInfo;
+    typedef ThePlugin::ModuleInfo ModuleInfo;
     typedef std::vector<path_translator_base*> list_type;
     typedef path_translator_base* smart_ptr;
     
@@ -259,7 +259,7 @@ struct path_translator_base
         template<class T> void TranslatePath(T&&, char)
         {
             // ...He, no, what is this type?
-            asiPlugin->Error("std-asi: TranslatePath called with unknown type\n"
+            plugin_ptr->Error("std-asi: TranslatePath called with unknown type\n"
                          "Symbol: %s\nLibrary: %s",
                          base->GetSymbol(), base->GetLibName());
         }
@@ -348,7 +348,7 @@ struct path_translator_base
                     }
                     else
                     {
-                        asiPlugin->Error("std-asi error at TranslatePath<T,F>");
+                        plugin_ptr->Error("std-asi error at TranslatePath<T,F>");
                     }
                 }
             }
@@ -380,7 +380,7 @@ struct path_translator_base
             if(GetCurrentDirectoryA(max, fullpath))
             {
                 // Do the hard work there...
-                currdir = GetCurrentDir(fullpath, asiPlugin->modloader->gamepath, max);
+                currdir = GetCurrentDir(fullpath, plugin_ptr->loader->gamepath, max);
             }
             
             return currdir;
@@ -475,10 +475,10 @@ struct path_translator_basic : public path_translator_base
                 }
                     
                 // Identify the caller ASI from code segment pointer
-                if(SetupASI(asiPlugin->FindModuleFromAddress(pCaller), Symbol, LibName))
+                if(SetupASI(plugin_ptr->cast<ThePlugin>().FindModuleFromAddress(pCaller), Symbol, LibName))
                     return true;
                 else
-                    asiPlugin->Error("std-asi: translator.SetupASI failed to identify caller ASI!");
+                    plugin_ptr->Error("std-asi: translator.SetupASI failed to identify caller ASI!");
             }
             else
             {
@@ -490,7 +490,7 @@ struct path_translator_basic : public path_translator_base
                 if(!bAntiFlood)
                 {
                     // Let's log about this situation we have here...
-                    asiPlugin->Log("Warning: std-asi failed to CaptureStackBackTrace for %s:%s! Trying singleton!",
+                    plugin_ptr->Log("Warning: std-asi failed to CaptureStackBackTrace for %s:%s! Trying singleton!",
                                    LibName, Symbol);
                     bAntiFlood = true;
                 }
