@@ -433,7 +433,7 @@ namespace injector
             void make_call(typename base::functor_type functor)
             {
                 base::store().functor = std::move(functor);
-                base::store().original = scoped_call::make_call(addr1, raw_ptr(call)).get();
+                base::store().original = (Ret(__thiscall*)(Args...)) scoped_call::make_call(addr1, raw_ptr(call)).get<void>();
             }
 
 
@@ -459,6 +459,15 @@ namespace injector
     T& make_static_hook(F functor)
     {
         static T a;
+        a.make_call(std::move(functor));
+        return a;
+    }
+
+    // TODO rename to 1 after has fixed entire Mod Loader
+    template<class T, class F> inline
+    T make_function_hook2(F functor)
+    {
+        T a;
         a.make_call(std::move(functor));
         return a;
     }

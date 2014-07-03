@@ -33,6 +33,9 @@ namespace modloader
 {
     using namespace injector;
 
+    // Ref to the game version manager
+    static modloader::address_manager& gvm = injector::address_manager::singleton();
+
     static const uintptr_t gta3_specific  = 0xF3000000;
     static const uintptr_t gtavc_specific = 0xF4000000;
     static const uintptr_t gtasa_specific = 0xF5000000;

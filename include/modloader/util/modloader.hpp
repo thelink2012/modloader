@@ -22,14 +22,13 @@
 #include <modloader/util/path.hpp>
 #include <tuple>
 
+// TODO maybe move those to util/injector
+
 namespace modloader
 {
     // Tag type
     struct tag_detour_t {};
     static const tag_detour_t tag_detour;
-
-    // Ref to the game version manager
-    static modloader::address_manager& gvm = injector::address_manager::singleton();
     
 
     /*

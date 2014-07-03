@@ -22,6 +22,7 @@
 #include <functional>
 #include <cctype>
 #include <vector>
+#include <deque>
 
 /*
  *  Containers and Strings utility functions

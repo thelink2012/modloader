@@ -34,15 +34,17 @@ namespace modloader
     
     struct file : public modloader_file_t
     {
+        // TODO RENAME THOSE
+
         bool IsDirectory() const      { return (flags & MODLOADER_FF_IS_DIRECTORY) != 0; }
         
         //uint64_t Behaviour() const    { return behaviour; }
 
         uint64_t Size() const         { return size; }
         uint64_t Time() const         { return time; }
-
-        // TODO RENAME THOSE
+        
         std::string FullPath() const;
+        std::string& file::FullPath(std::string& out) const;
 
         const char* FilePath() const  { return FileBuffer(pos_filepath);  }
         const char* FileName() const  { return FileBuffer(pos_filename);  }
@@ -228,12 +230,19 @@ namespace modloader
         *revision = MODLOADER_VERSION_REVISION;
     }
 
+    inline std::string& file::FullPath(std::string& out) const
+    {
+        out.assign(std::string(plugin_ptr->loader->gamepath));
+        out.append(this->FileBuffer());
+        return out;
+    }
 
     inline std::string file::FullPath() const
     {
-        return (std::string(plugin_ptr->loader->gamepath) + this->FileBuffer());
+        std::string out;
+        this->FullPath(out);
+        return out;
     }
-
     
 #endif
 

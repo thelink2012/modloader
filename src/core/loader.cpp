@@ -11,6 +11,7 @@
 using namespace modloader;
 
 // TODO SEPARATE ENABLE AND PRIORITY
+// TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
 
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
@@ -303,8 +304,11 @@ void Loader::ParseCommandLine()
             wchar_t *arg = (i+1 < argc? argv[i+1] : nullptr);
             wchar_t *argname = &argv[i][1];
 
-            // Mod argument
-            if(!_wcsicmp(argname, L"mod"))
+            if(!_wcsicmp(argname, L"nomods"))
+            {
+                mods.SetIgnoreAll(true);
+            }
+            else if(!_wcsicmp(argname, L"mod"))
             {
                 // Is argument after mod argument valid?
                 if(arg == nullptr)

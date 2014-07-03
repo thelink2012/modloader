@@ -6,9 +6,9 @@
 #pragma pack(push, 1)
 struct CImgDescriptor	// sizeof = 0x30
 {
-	BYTE name[40];
-	BYTE isNotPlayerImg;
-	BYTE __align[3];
+	char name[40];
+	char isNotPlayerImg;
+	char __align[3];
 	DWORD streamHandle;
 };
 #pragma pack(pop)

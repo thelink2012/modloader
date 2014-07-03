@@ -88,8 +88,8 @@ void __declspec(naked) HOOK_SetImgDscName()
         add esp, 4
         /* eax = szImgNameBuffer */
 
-        mov dword ptr[ebx + 0], 0x3F   /* strncpy(CImgDescriptor.dummy, "?", 4) */
-        mov dword ptr[ebx + 4], eax    /* CImgDescriptor.customName = eax */
+        mov dword ptr [ebx + 0], 0x3F   /* strncpy(CImgDescriptor.dummy, "?", 4) */
+        mov dword ptr [ebx + 4], eax    /* CImgDescriptor.customName = eax */
 
         pop ebx
         ret
