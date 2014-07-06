@@ -19,10 +19,10 @@
 
 /* vars */
 .globl  _ms_aInfoForModel
-.globl  _iNextModelBeingLoaded
 
 /* funcs */
 .globl _AllocBufferForString
+.globl _RegisterNextModelRead
 
 .text
 
@@ -32,7 +32,12 @@
         Used to tell us which model will get loaded ahead, so we know if it's a imported one
 */
 _HOOK_RegisterNextModelRead:
-        mov dword ptr [_iNextModelBeingLoaded], esi
+        pushad
+        push esi
+        call RegisterNextModelRead
+        add esp, 4
+        popad
+
         # Run replaced code:
         mov edx,  dword ptr [_ms_aInfoForModel]
         mov edx, [edx+0xC+eax*4]    # edx = ms_aInfoForModel[iLoadingModelIndex].iBlockCount

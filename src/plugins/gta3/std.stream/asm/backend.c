@@ -12,11 +12,10 @@ extern void* CallGetAbstractHandle(void*);
 
 /* vars */
 extern void* ms_aInfoForModel;
-extern int iNextModelBeingLoaded;
 
 /* funcs */
 extern char* AllocBufferForString(const char*);
-
+extern void RegisterNextModelRead(int id);
 
 /*
     void _nakedcall HOOK_RegisterNextModelRead(esi = objectIndex, eax = someOffsetAt_aInfoForModel)
@@ -26,7 +25,12 @@ void __declspec(naked) HOOK_RegisterNextModelRead()
 {
     _asm
     {
-        mov dword ptr[iNextModelBeingLoaded], esi
+        pushad
+        push esi
+        call RegisterNextModelRead
+        add esp, 4
+        popad
+
         /* Run replaced code: */
         mov edx, dword ptr[ms_aInfoForModel]
         mov edx, [edx + 0xC + eax * 4]    /* edx = ms_aInfoForModel[iLoadingModelIndex].iBlockCount */

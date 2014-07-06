@@ -23,8 +23,8 @@ extern "C"
 
     auto CDirectory__FindItem2 = (CDirectoryEntry* (__thiscall*)(CDirectory*, const char*)) memory_pointer(0x532450).get<void>();
 
-    // Hooks
-    int  iNextModelBeingLoaded = -1;            // Set by HOOK_RegisterNextModelRead, will then be sent to iModelBeingLoaded
+    // Next model read registers. It's important to have those two vars! Don't leave only one!
+    int  iNextModelBeingLoaded = -1;            // Set by RegisterNextModelRead, will then be sent to iModelBeingLoaded
     int  iModelBeingLoaded = -1;                // Model currently passing throught CdStreamRead
 
     // Allocates a buffer that lives for the entire life time of the app
@@ -40,6 +40,12 @@ extern "C"
     {
         if(iModelBeingLoaded == -1) return hFile;
         return streaming.TryOpenAbstractHandle(iModelBeingLoaded, hFile);
+    }
+
+    void RegisterNextModelRead(int id)
+    {
+        iNextModelBeingLoaded = id;
+        streaming.MakeSureModelIsOnDisk(id);
     }
 
     // Finds the hooked cd stream path (first field from CImgDescriptor)
@@ -157,7 +163,9 @@ HANDLE CAbstractStreaming::TryOpenAbstractHandle(int index, HANDLE hFile)
     auto it = streaming.imports.find(index);
     if(it != streaming.imports.end())
     {
-        f = streaming.OpenModel(it->second, it->first);
+         // Don't use our custom model if we're falling back to the original file because of an error
+        if(it->second.isFallingBack == false)
+            f = streaming.OpenModel(it->second, it->first);
     }
     
     // Returns the file from the abstract streaming if available
@@ -170,7 +178,6 @@ HANDLE CAbstractStreaming::TryOpenAbstractHandle(int index, HANDLE hFile)
  */
 auto CAbstractStreaming::OpenModel(ModelInfo& file, int index) -> AbctFileHandle*
 {
-    static std::string fbuffer(MAX_PATH, '\0'); // To avoid a dynamic allocation everytime we open a model
     DWORD flags = FILE_FLAG_SEQUENTIAL_SCAN | (*pStreamCreateFlags & FILE_FLAG_OVERLAPPED);
     
     HANDLE hFile = CreateFileA(file.file->FullPath(fbuffer).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
@@ -419,15 +426,13 @@ bool CAbstractStreaming::GenericRegisterEntry(CStreamingInfo& model, bool hasMod
 
     auto original = cd_dir.find(index);
 
-    ModelInfo a;
-    a.file = file;
-    a.original = original != cd_dir.end()? &original->second : nullptr;
-    imports.emplace(index, a);
+    auto& b = imports[index];
+    b.file = file;
+    b.original = original != cd_dir.end()? &original->second : nullptr;
+    b.isFallingBack = false;
 
-    model.iBlockOffset = 0;
-    model.iBlockCount = GetSizeInBlocks(file->Size());
-    model.uiUnknown1 = -1;                    // TODO find the one pointing to me and do -1 on it
-    if(!this->bHasInitializedStreaming) model.uiUnknown2_ld = 0;
-    if(!hasModel) model.ucImgId = AbstractImgId;
+    this->SetInfoForModel(index, 0, GetSizeInBlocks(file->Size()), AbstractImgId);
+    // TODO maybe not AbstractImgId but std (if(!hasModel) model.ucImgId = AbstractImgId;)
+
     return true;
 }

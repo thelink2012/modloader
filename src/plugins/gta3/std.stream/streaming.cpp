@@ -120,17 +120,6 @@ void CAbstractStreaming::RemoveModel(id_t id)
 }
 
 /*
- *  CAbstractStreaming::ReloadModel
- *      Reloads the specified resource on the streaming
- *      Notice the model will not be available right after the call, it's necessary to wait for it.
- */
-void CAbstractStreaming::ReloadModel(id_t id)
-{
-    this->RemoveModel(id);
-    this->RequestModel(id, InfoForModel(id)->uiUnknown2_ld);
-}
-
-/*
  *  CAbstractStreaming::LoadAllRequestedModels
  *      Free ups the streaming bus by loading everything previosly requested
  */
@@ -139,6 +128,16 @@ void CAbstractStreaming::LoadAllRequestedModels()
     injector::cstd<void()>::call(0x5619D0);         // CTimer::StartUserPause
     injector::cstd<void(int)>::call(0x40EA10, 0);   // CStreaming::LoadAllRequestedModels
     injector::cstd<void()>::call(0x561A00);         // CTimer::EndUserPause
+}
+
+/*
+ *  CAbstractStreaming::RemoveUnusedResources
+ *      Free ups the streaming by removing any unused resource
+ */
+void CAbstractStreaming::RemoveUnusedResources()
+{
+    injector::cstd<void()>::call(0x40CF80);                 // CStreaming::RemoveAllUnusedModels
+    injector::cstd<char(uint32_t)>::call(0x40CFD0, 0x20);   // CStreaming::RemoveLeastUsedModel
 }
 
 
@@ -269,20 +268,35 @@ void CAbstractStreaming::ImportModels(ref_list<const modloader::file*> files)
 
 void CAbstractStreaming::UnimportModel(id_t index)
 {
-    auto cd_it    = cd_dir.find(index);         // TODO CHECK FOR FAILURE (IF FAIL NOT ORIGINAL)
-
-    auto& cd = cd_it->second;
-
-    // TODO PUSH THIS TO A FUNC
-    auto& model = *InfoForModel(index);
-    model.iBlockOffset = cd.offset;
-    model.iBlockCount = cd.blocks;
-    model.uiUnknown1 = -1;                    // TODO find the one pointing to me and do -1 on it
-    model.uiUnknown2_ld = 0;                  // TODO what to do with this one?? It's set during gameplay
-    model.ucImgId = cd.img;
-
-    imports.erase(index);
+    this->RestoreInfoForModel(index);
+    this->imports.erase(index);
 }
+
+
+/*
+ *  CAbstractStreaming::MakeSureModelIsOnDisk
+ *      If the specified model id is under our control, make entirely sure it's present on disk.
+ *      If it isn't, we'll fallback to the original mode on img files.
+ */
+void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
+{
+    auto it = imports.find(index);
+    if(it != imports.end())
+    {
+        auto& m = it->second;
+        if(m.isFallingBack == false)    // If already falling back, don't check again
+        {
+            // If file isn't on disk we should fall back to the stock model
+            if(!IsPath(m.file->FullPath(fbuffer).c_str()))
+            {
+                plugin_ptr->Log("Model file \"%s\" has been deleted, falling back to stock model.", m.file->FileBuffer());
+                this->RestoreInfoForModel(index);
+                m.isFallingBack = true;
+            }
+        }
+    }
+}
+
 
 
 /*

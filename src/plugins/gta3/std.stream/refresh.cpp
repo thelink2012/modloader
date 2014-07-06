@@ -72,9 +72,12 @@ class Refresher : private T
             {
                 if(auto* pEntity = pEntityPool->GetAt(i))
                 {
-                    // If this entity id is on the refresh list, place it on the entity association map
-                    auto id = GetEntityModel(pEntity);
-                    if(mToRefresh.count(id)) this->mEntityAssoc[id].emplace_back((void*)(pEntity));
+                    if(GetEntityRwObject(pEntity))  //Has a RwObject attached to it?
+                    {
+                        // If this entity id is on the refresh list, place it on the entity association map
+                        auto id = GetEntityModel(pEntity);
+                        if(mToRefresh.count(id)) this->mEntityAssoc[id].emplace_back((void*)(pEntity));
+                    }
                 }
             }
         }
@@ -105,6 +108,10 @@ Refresher<T>::Refresher(CAbstractStreaming& s)
 {
     // Before we do anything we should have the streaming bus empty!
     streaming.LoadAllRequestedModels();
+
+    // Remove all unused models on the streaming, so our reloading process will be less painful (faster),
+    // we won't end up reloading unused models
+    streaming.RemoveUnusedResources();
 
     // Setup the refresher (order matters)
     this->BuildTxdAssociationMap();

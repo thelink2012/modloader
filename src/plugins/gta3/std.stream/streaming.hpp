@@ -140,6 +140,8 @@ class CAbstractStreaming
         bool bIs2048AlignedSector;                      // not used, maybe in the future
         CRITICAL_SECTION cs;                            // this must be used together with imported files list for thread-safety
 
+        std::string fbuffer;                            // To avoid a dynamic allocation everytime we open a model
+
     public:
         struct CdDirectoryItem
         {
@@ -167,6 +169,7 @@ class CAbstractStreaming
         {
             const modloader::file* file = nullptr;      // The file this model is bound to
             CdDirectoryItem*  original  = nullptr;      // The original directory entry
+            bool isFallingBack          = false;        // If file isn't on disk, we're falling back to the original entry
             bool isSpecialModel         = false;
             bool isClothes              = false;
             bool isForcedClothes        = false;
@@ -244,16 +247,15 @@ class CAbstractStreaming
         bool UninstallFile(const modloader::file& file);
         void Update();
 
-        // Imports or Removes a model file (non-clothing)
-        //uint32_t ImportModel(const modloader::file& file);
-        //uint32_t RemoveModel(const modloader::file& file);
-        //void TellToRefreshModel(id_t id);
+
+
 
         // TODO
         void BuildClothesMap() {}
         bool IsClothes(const modloader::file& file) {return false;}
 
         void LoadAllRequestedModels();
+        void RemoveUnusedResources();
 
         static HANDLE TryOpenAbstractHandle(int index, HANDLE hFile);
 
@@ -262,6 +264,8 @@ class CAbstractStreaming
         void RemoveModel(id_t id);
         void RequestModel(id_t id, uint32_t flags);
         void ReloadModel(id_t id);
+
+        void MakeSureModelIsOnDisk(id_t id);
 
     protected:
         void GenericReadEntry(CDirectoryEntry& entry, const modloader::file* file);
@@ -278,6 +282,34 @@ class CAbstractStreaming
         // Call those only if the streaming bus is empty
         void ImportModels(ref_list<const modloader::file*> files);
         void UnimportModel(id_t index);
+
+        void SetInfoForModel(id_t index, uint32_t iBlockOffset, uint32_t iBlockCount, uint8_t ucImgId)
+        {
+            auto& model = *this->InfoForModel(index);
+            model.iBlockOffset = iBlockOffset;
+            model.iBlockCount  = iBlockCount;
+            model.ucImgId      = ucImgId;
+            model.uiUnknown1   = -1;                    // TODO find the one pointing to me and do -1 on it
+            if(!this->bHasInitializedStreaming) model.uiUnknown2_ld = 0;
+        }
+
+        void RestoreInfoForModel(id_t index)
+        {
+            auto it = this->cd_dir.find(index);
+            if(it != cd_dir.end())
+            {
+                auto& cd = it->second;
+                this->SetInfoForModel(index, cd.offset, cd.blocks, cd.img);
+            }
+            else
+            {
+                this->SetInfoForModel(index, 0, 0, 0);
+            }
+        }
+
+
+
+
 
 
         id_t FindModelFromHash(hash_t hash) // TODO pair
