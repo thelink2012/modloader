@@ -261,8 +261,7 @@ class AbstractFrontend : public AbstractFrontendBase
         {
             // XXX LOOK AT THIS PUT ON ADDR
             // 0x506EA0       CReference* CAudioEngine::ReportFrontendAudioEvent(CAudioEngine *this, int eventId, float volumeChange, float speed)
-            injector::thiscall<void(void*, int, float, float)>::call(
-                                                    0x506EA0,
+            injector::thiscall<void(void*, int, float, float)>::call<0x506EA0>(
                                                     (void*) injector::lazy_pointer<0xB6BC90>().get(),
                                                     id, volumeChange, speed);
         }
@@ -296,7 +295,7 @@ class AbstractFrontend : public AbstractFrontendBase
             {
                 // XXX LOOK AT THIS PUT ON ADDR
                 // 0x57E240       CMenuManager::DisplayHelperText(CMenuManager* this, const char* gxtentry)
-                injector::thiscall<void(CMenuManager*, const char*)>::call(0x57E240, GetMenuManager(), entry.first.data());
+                injector::thiscall<void(CMenuManager*, const char*)>::call<0x57E240>(GetMenuManager(), entry.first.data());
             }
         }
 
@@ -306,7 +305,7 @@ class AbstractFrontend : public AbstractFrontendBase
             {
                 // XXX LOOK AT THIS PUT ON ADDR
                 // 0x579330       int CMenuManager::MessageScreen(CMenuManager* this, const char* gxtentry, char bFillScreenBlack, char bFillOnce)
-                injector::thiscall<void(CMenuManager*, const char*, char, char)>::call(0x579330, GetMenuManager(), entry.first.data(), 0, 0);
+                injector::thiscall<void(CMenuManager*, const char*, char, char)>::call<0x579330>(GetMenuManager(), entry.first.data(), 0, 0);
             }
         }
 

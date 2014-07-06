@@ -386,8 +386,8 @@ void CAbstractStreaming::LoadCustomCdDirectory(ref_list<const modloader::file*> 
                 tempStreamingBufSize * align);
 
             // Reallocate the buffer
-            injector::cstd<void(void*)>::call(0x72F4F0, pStreamingBuffer[0]);                                       // CMemoryMgr::FreeAlign
-            auto* mem = injector::cstd<void*(size_t, size_t)>::call(0x72F4C0, tempStreamingBufSize * align, align); // CMemoryMgr::MallocAlign
+            injector::cstd<void(void*)>::call<0x72F4F0>(pStreamingBuffer[0]);                                       // CMemoryMgr::FreeAlign
+            auto* mem = injector::cstd<void*(size_t, size_t)>::call<0x72F4C0>(tempStreamingBufSize * align, align); // CMemoryMgr::MallocAlign
 
             // Reassign buffer variables
             streamingBufferSize = tempStreamingBufSize / 2;

@@ -106,7 +106,7 @@ bool CAbstractStreaming::IsModelOnStreaming(id_t id)
  */
 void CAbstractStreaming::RequestModel(id_t id, uint32_t flags)
 {
-    injector::cstd<void(int, int)>::call(0x4087E0, id, flags);
+    injector::cstd<void(int, int)>::call<0x4087E0>(id, flags);
 }
 
 /*
@@ -116,7 +116,7 @@ void CAbstractStreaming::RequestModel(id_t id, uint32_t flags)
  */
 void CAbstractStreaming::RemoveModel(id_t id)
 {
-    injector::cstd<void(int)>::call(0x4089A0, id);
+    injector::cstd<void(int)>::call<0x4089A0>(id);
 }
 
 /*
@@ -125,9 +125,11 @@ void CAbstractStreaming::RemoveModel(id_t id)
  */
 void CAbstractStreaming::LoadAllRequestedModels()
 {
-    injector::cstd<void()>::call(0x5619D0);         // CTimer::StartUserPause
-    injector::cstd<void(int)>::call(0x40EA10, 0);   // CStreaming::LoadAllRequestedModels
-    injector::cstd<void()>::call(0x561A00);         // CTimer::EndUserPause
+    injector::cstd<void()>::call<0x5619D0>();       // CTimer::StartUserPause
+    injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
+    injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
+    injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
+    injector::cstd<void()>::call<0x561A00>();       // CTimer::EndUserPause
 }
 
 /*
@@ -136,8 +138,8 @@ void CAbstractStreaming::LoadAllRequestedModels()
  */
 void CAbstractStreaming::RemoveUnusedResources()
 {
-    injector::cstd<void()>::call(0x40CF80);                 // CStreaming::RemoveAllUnusedModels
-    injector::cstd<char(uint32_t)>::call(0x40CFD0, 0x20);   // CStreaming::RemoveLeastUsedModel
+    injector::cstd<void()>::call<0x40CF80>();               // CStreaming::RemoveAllUnusedModels
+    injector::cstd<char(uint32_t)>::call<0x40CFD0>(0x20);   // CStreaming::RemoveLeastUsedModel
 }
 
 

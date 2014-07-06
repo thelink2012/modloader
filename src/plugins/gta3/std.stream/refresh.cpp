@@ -280,8 +280,6 @@ template<class T> void Refresher<T>::RequestModels()
 
     // Load all requested models now!!!! We're in hurry!!!
     streaming.LoadAllRequestedModels();     // Stream those models in now!
-    streaming.LoadAllRequestedModels();     // Yeah, let's make sure the previous call didn't add anything to the queue
-    streaming.LoadAllRequestedModels();     // Why am I doing this three times in a row?
 }
 
 /*
@@ -339,7 +337,7 @@ template<class T> void Refresher<T>::SetupEntityEvents()
         // Remove ped tasks before destroying the ped, this seems to help with the crash after we refresh them
         ped.Destroy = [](void* entity)
         {
-            injector::thiscall<void(void*, int)>::call(0x601640, GetPedIntelligence(entity), true);  // CPedIntelligence::Reset
+            injector::thiscall<void(void*, int)>::call<0x601640>(GetPedIntelligence(entity), true);  // CPedIntelligence::Reset
             DestroyModel(entity);
         };
     }

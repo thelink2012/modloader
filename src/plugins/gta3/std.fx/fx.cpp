@@ -208,23 +208,23 @@ bool FxPlugin::OnStartup()
 
         auto ReloadFonts = []
         {
-            injector::cstd<void()>::call(0x7189B0); // CFont::Shutdown 
-            injector::cstd<void()>::call(0x5BA690); // CFont::Initialise
+            injector::cstd<void()>::call<0x7189B0>(); // CFont::Shutdown 
+            injector::cstd<void()>::call<0x5BA690>(); // CFont::Initialise
         };
 
         auto ReloadFronten = []
         {
             void* menumgr = lazy_pointer<0xBA6748>().get();           // FrontEndManager
-            injector::thiscall<void(void*)>::call(0x574630, menumgr); // CMenuManager::UnloadTextures
-            injector::thiscall<void(void*)>::call(0x572EC0, menumgr); // CMenuManager::LoadTextures
+            injector::thiscall<void(void*)>::call<0x574630>(menumgr); // CMenuManager::UnloadTextures
+            injector::thiscall<void(void*)>::call<0x572EC0>(menumgr); // CMenuManager::LoadTextures
         };
 
         auto ReloadHud = []
         {
-            injector::cstd<void()>::call(0x588850); // CHud::Shutdown 
-            injector::cstd<void()>::call(0x5827D0); // CRadar::LoadTextures
-            injector::cstd<void()>::call(0x5BA850); // CHud::Initialise
-            injector::cstd<void()>::call(0x5827D0); // CRadar::LoadTextures
+            injector::cstd<void()>::call<0x588850>(); // CHud::Shutdown 
+            injector::cstd<void()>::call<0x5827D0>(); // CRadar::LoadTextures
+            injector::cstd<void()>::call<0x5BA850>(); // CHud::Initialise
+            injector::cstd<void()>::call<0x5827D0>(); // CRadar::LoadTextures
         };
 
 

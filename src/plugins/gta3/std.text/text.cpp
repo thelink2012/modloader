@@ -177,6 +177,6 @@ void TextPlugin::ReloadGXT()
         injector::scoped_nop<10> nop_check;
         nop_check.make_nop(0x57326E, 6);                                        // NOP some menu field check that avoids reloading of text
         void* menumgr = lazy_pointer<0xBA6748>().get();                         // FrontEndManager
-        injector::thiscall<void(void*, bool)>::call(0x573260, menumgr, false);  // CMenuManager::InitialiseChangedLanguageSettings
+        injector::thiscall<void(void*, bool)>::call<0x573260>(menumgr, false);  // CMenuManager::InitialiseChangedLanguageSettings
     }
 }

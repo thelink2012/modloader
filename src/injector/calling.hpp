@@ -46,6 +46,12 @@ namespace injector
             auto fn = (Ret(*)(Args...)) p.get<void>();
             return fn(std::forward<Args>(a)...);
         }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
+        }
     };
 
     template<class Prototype>
@@ -60,6 +66,12 @@ namespace injector
             auto fn = (Ret(__stdcall *)(Args...)) p.get<void>();
             return fn(std::forward<Args>(a)...);
         }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
+        }
     };
 
     template<class Prototype>
@@ -73,6 +85,12 @@ namespace injector
         {
             auto fn = (Ret(__fastcall *)(Args...)) p.get<void>();;
             return fn(std::forward<Args>(a)...);
+        }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
         }
     };
 
@@ -96,6 +114,12 @@ namespace injector
             auto obj = raw_ptr(std::get<0>(std::forward_as_tuple(a...)));
             auto p   = raw_ptr( (*obj.get<void**>()) [i] );
             return call(p, std::forward<Args>(a)...);
+        }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
         }
     };
 } 
