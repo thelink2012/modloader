@@ -80,13 +80,22 @@ namespace injector
     struct thiscall;
 
     template<class Ret, class ...Args>
-    struct thiscall<Ret(Args...)>
+    struct thiscall<Ret(Args...)>   // TODO MAKE FIRST BE POINTER_TR
     {
         // Call function at @p returning @Ret with args @Args
         static Ret call(memory_pointer_tr p, Args... a)
         {
             auto fn = (Ret(__thiscall *)(Args...)) p.get<void>();
             return fn(std::forward<Args>(a)...);
+        }
+
+        // Call function at the index @i from the vtable of the object @a[0]
+        template<size_t i>
+        static Ret vtbl(Args... a)
+        {
+            auto obj = raw_ptr(std::get<0>(std::forward_as_tuple(a...)));
+            auto p   = raw_ptr( (*obj.get<void**>()) [i] );
+            return call(p, std::forward<Args>(a)...);
         }
     };
 } 

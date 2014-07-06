@@ -86,6 +86,12 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x836F3B] = 0x836F3B;   // SetCurrentDirectory return pointer for _chdir
     }
 
+    // std.stream
+    if(true)
+    {
+        // !!!!! REMEMBER TO CHECK TRAITS
+    }
+
     // AbstractFrontend | TheMenu
     if(true)
     {

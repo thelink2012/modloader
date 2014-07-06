@@ -106,6 +106,7 @@ namespace modloader
             virtual bool InstallFile(const file&)=0;
             virtual bool ReinstallFile(const file&)=0;
             virtual bool UninstallFile(const file&)=0;
+            virtual void Update() {}
     };
     
     
@@ -164,6 +165,11 @@ namespace modloader
         {
             return !GetThis(data).UninstallFile(GetFile(file));
         }
+
+        static void Update(modloader_plugin_t* data)
+        {
+            return GetThis(data).Update();
+        }
         
     };
 
@@ -182,14 +188,15 @@ namespace modloader
         data->pThis = &interfc;
 
         // Callbacks
-        data->GetVersion = &basic_plugin_wrapper::GetVersion;
-        data->GetAuthor = &basic_plugin_wrapper::GetAuthor;
-        data->OnStartup = &basic_plugin_wrapper::OnStartup;
-        data->OnShutdown = &basic_plugin_wrapper::OnShutdown;
-        data->GetBehaviour = &basic_plugin_wrapper::GetBehaviour;
-        data->InstallFile = &basic_plugin_wrapper::InstallFile;
-        data->UninstallFile = &basic_plugin_wrapper::UninstallFile;
+        data->GetVersion    = &basic_plugin_wrapper::GetVersion;
+        data->GetAuthor     = &basic_plugin_wrapper::GetAuthor;
+        data->OnStartup     = &basic_plugin_wrapper::OnStartup;
+        data->OnShutdown    = &basic_plugin_wrapper::OnShutdown;
+        data->GetBehaviour  = &basic_plugin_wrapper::GetBehaviour;
+        data->InstallFile   = &basic_plugin_wrapper::InstallFile;
         data->ReinstallFile = &basic_plugin_wrapper::ReinstallFile;
+        data->UninstallFile = &basic_plugin_wrapper::UninstallFile;
+        data->Update        = &basic_plugin_wrapper::Update;
         
         // Custom priority
         if(priority != -1) data->priority = priority;

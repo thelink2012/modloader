@@ -255,6 +255,11 @@ bool Loader::PluginInformation::UninstallFile(const modloader::file& m)
     return base::UninstallFile? !base::UninstallFile(this, &m) : false;
 }
 
+void Loader::PluginInformation::Update()
+{
+    if(base::Update) base::Update(this);
+}
+
 
 /*
  *  PluginInformation::FindFileWithBehaviour

@@ -355,6 +355,10 @@ void Loader::ScanAndUpdate()
 {
     mods.Scan();
     mods.Update();
+
+    // Do plugin update after this serie of install/uninstalls
+    for(auto& plugin : this->plugins)
+        plugin.Update();
 }
 
 /*

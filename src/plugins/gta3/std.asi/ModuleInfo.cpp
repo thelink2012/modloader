@@ -77,8 +77,8 @@ void ThePlugin::LocateCleo()
     if(!bDidIt) { bDidIt = true; }
     else return;
 
-
-    HMODULE hCleo = GetModuleHandleA("CLEO.asi");
+    // Find CLEO.asi module
+    HMODULE hCleo = LoadLibraryA("CLEO.asi");
 
     // We need CLEO.asi module for cleo script injection
     if(hCleo)

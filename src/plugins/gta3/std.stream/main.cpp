@@ -31,6 +31,7 @@ class ThePlugin : public modloader::basic_plugin
         bool InstallFile(const modloader::file&);
         bool ReinstallFile(const modloader::file&);
         bool UninstallFile(const modloader::file&);
+        void Update();
         
 } plugin;
 REGISTER_ML_PLUGIN(::plugin);
@@ -162,3 +163,7 @@ bool ThePlugin::UninstallFile(const modloader::file& file)
     return false;
 }
 
+void ThePlugin::Update()
+{
+    streaming.Update();
+}

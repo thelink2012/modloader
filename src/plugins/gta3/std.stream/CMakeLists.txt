@@ -1,3 +1,12 @@
-add_library(std.stream SHARED plugin.cpp streaming.cpp streaming.hpp "asm/backend.${ASM_EXT}" $<TARGET_OBJECTS:addr>)
+set(SOURCE_FILES
+main.cpp
+streaming.cpp
+streaming.hpp
+directory.cpp
+refresh.cpp
+asm/backend.${ASM_EXT}
+)
+
+add_library(std.stream SHARED ${SOURCE_FILES} $<TARGET_OBJECTS:addr>)
 install(TARGETS std.stream RUNTIME DESTINATION "./modloader/.data/plugins/gta3")
 

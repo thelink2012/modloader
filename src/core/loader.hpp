@@ -152,6 +152,7 @@ class Loader : public modloader_t
                 bool Install(FileInformation& file);
                 bool Reinstall(FileInformation& file);
                 bool Uninstall(FileInformation& file);
+                void Update();
                 
                 
             protected:

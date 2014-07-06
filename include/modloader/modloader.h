@@ -241,6 +241,16 @@ typedef int (*modloader_fReinstallFile)(modloader_plugin_t* data, const modloade
 typedef int (*modloader_fUninstallFile)(modloader_plugin_t* data, const modloader_file_t* file);
 
 
+/*
+ * Update
+ *      Update is called after a serie of install/uninstalls, maybe you need a delayed refresh
+ *      @data: The plugin data
+ */
+typedef void (*modloader_fUpdate)(modloader_plugin_t* data);
+
+
+
+
 /* ---- Interface ---- Should be compatible with all versions of modloader.asi */
 typedef struct modloader_plugin_t
 {
@@ -276,6 +286,7 @@ typedef struct modloader_plugin_t
     modloader_fInstallFile      InstallFile;
     modloader_fReinstallFile    ReinstallFile;
     modloader_fUninstallFile    UninstallFile;
+    modloader_fUpdate           Update;
     
 } modloader_plugin_t;
 

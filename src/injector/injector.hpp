@@ -364,28 +364,6 @@ inline memory_pointer_raw  raw_ptr(T p)
 }
 
 
-/*
-  *  lazy_pointer
-  *      Lazy pointer, where it's final value will get evaluated only once when finally needed.
-  */
- template<uintptr_t addr>
- struct lazy_pointer
- {
-     // Returns the final pointer
-     static memory_pointer_raw xget()
-     {
-         static void* ptr = nullptr;
-         if(!ptr) ptr = memory_pointer(addr).get();
-         return memory_pointer_raw(ptr);
-     }
- 
-     // Returns the final raw pointer
-     static auto_ptr_cast get()
-     {
-         return xget().get();
-     }
- };
-
 
 /*
  *  memory_pointer_tr
@@ -711,6 +689,57 @@ inline void MakeRET(memory_pointer_tr at, uint16_t pop = 0, bool vp = true)
 }
 
 
+
+
+
+/*
+  *  lazy_pointer
+  *      Lazy pointer, where it's final value will get evaluated only once when finally needed.
+  */
+ template<uintptr_t addr>
+ struct lazy_pointer
+ {
+     // Returns the final pointer
+     static memory_pointer_raw xget()
+     {
+         static void* ptr = nullptr;
+         if(!ptr) ptr = memory_pointer(addr).get();
+         return memory_pointer_raw(ptr);
+     }
+ 
+     // Returns the final raw pointer
+     static auto_ptr_cast get()
+     {
+         return xget().get();
+     }
+
+     template<class T>
+     static T* get()
+     {
+         return xget().get<T>();
+     }
+ };
+
+ template<uintptr_t addr, class T>
+ struct lazy_object
+ {
+     static T& xget()
+     {
+         static T data;
+         static bool has_data = false;
+         if(!has_data)
+         {
+             ReadObject<T>(addr, data, true);
+             has_data = true;
+         }
+         return data;
+     }
+
+     static T& get()
+     {
+         return xget();
+     }
+ };
 
 
 

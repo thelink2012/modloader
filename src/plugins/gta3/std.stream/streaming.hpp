@@ -7,6 +7,7 @@
 #define	STREAMING_HPP
 
 #include <map>
+#include <set>
 #include <string>
 #include <deque>
 #include <list>
@@ -17,7 +18,9 @@
 
 struct CImgDescriptor;
 struct CStreamingInfo;
+
 #include "CDirectoryEntry.h"
+#include "CStreamingInfo.h"
 
 
 
@@ -29,7 +32,7 @@ using namespace modloader;
 enum class FileType : uint8_t // max 4 bits (value 15)
 {
     None            = 0,        // Unknown
-    Clump           = 1,        // DFF (may be Atomic, but whatever)
+    Model           = 1,        // DFF (may be Atomic, but whatever)
     TexDictionary   = 2,        // TXD
     Collision       = 3,        // COL
     StreamedScene   = 4,        // IPL
@@ -67,7 +70,7 @@ inline FileType GetFileTypeFromExtension(const char* ext)
 {
     if(ext && ext[0])   // Make sure we have ext, we're allowed to send a null string
     {
-        if(!_stricmp(ext, "dff"))         return FileType::Clump;
+        if(!_stricmp(ext, "dff"))         return FileType::Model;
         else if(!_stricmp(ext, "txd"))    return FileType::TexDictionary;
         else if(!_stricmp(ext, "col"))    return FileType::Collision;
         else if(!_stricmp(ext, "ifp"))    return FileType::AnimFile;
@@ -110,6 +113,7 @@ static void FillDirectoryEntry(CDirectoryEntry& entry, const modloader::file& mo
 }
 
 
+// TODO RENAME STUFF BASED ON RESOURCE INSTEAD OF MODEL
 
 
 
@@ -123,13 +127,16 @@ static void FillDirectoryEntry(CDirectoryEntry& entry, const modloader::file& mo
 class CAbstractStreaming
 {
     public:
-        using id_t      = uint32_t;
+        using id_t      = uint32_t;     // should have sizeof(int) to allow -1 comparision
         using hash_t    = uint32_t;
+
+        template<class T> friend class Refresher;
         friend int __stdcall CdStreamThread();
 
     protected:
         static const uint8_t AbstractImgId = 0;         // our abstract img id, let's use 0 (TODO SOME OTHER)
         bool bHasInitializedStreaming   = false;
+        bool bIsUpdating                = false;
         bool bIs2048AlignedSector;                      // not used, maybe in the future
         CRITICAL_SECTION cs;                            // this must be used together with imported files list for thread-safety
 
@@ -144,12 +151,15 @@ class CAbstractStreaming
 
             CdDirectoryItem(const char* filename, const CDirectoryEntry& entry, int img_id)
             {
+                auto* ext = strrchr(filename, '.');
+                if(ext) ++ext;
+
                 // Has separate filename because entry filename is incomplete (without extension)
                 this->hash   = modloader::hash(filename, ::tolower);
                 this->offset = entry.fileOffset;
                 this->blocks = entry.sizePriority1? entry.sizePriority1 : entry.sizePriority2;
                 this->img    = (uint8_t)(img_id);
-                this->type   = GetFileTypeFromExtension(entry.filename);
+                this->type   = GetFileTypeFromExtension(ext);
             }
         };
 
@@ -204,6 +214,8 @@ class CAbstractStreaming
         std::map<id_t, ModelInfo>     imports;  // <indice, model>
         //std::map<uint32_t, ModelInfo> clothes;  // <offset, model>
 
+        //std::set<id_t> mToRefresh;
+
     public:
         CAbstractStreaming();
         ~CAbstractStreaming();
@@ -211,8 +223,13 @@ class CAbstractStreaming
 
         void FetchCdDirectory(TempCdDir_t& cd_dir, CImgDescriptor*& descriptor, int id);
         void FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)());
-        void LoadCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectory)(CImgDescriptor*, int));
-        void LoadCustomCdDirectory(ref_list<const modloader::file*> files, void(*LoadCdDirectory)(CImgDescriptor*, int));
+        void LoadCdDirectories(TempCdDir_t& cd_dir);
+        void LoadCustomCdDirectory(ref_list<const modloader::file*> files);
+
+        void ProcessRefreshes();
+        void FilterRefreshList();
+
+        CStreamingInfo* InfoForModel(id_t id = 0);
 
     public:
         
@@ -225,17 +242,26 @@ class CAbstractStreaming
         bool InstallFile(const modloader::file& file);
         bool ReinstallFile(const modloader::file& file);
         bool UninstallFile(const modloader::file& file);
+        void Update();
 
         // Imports or Removes a model file (non-clothing)
-        uint32_t ImportModel(const modloader::file& file);
-        uint32_t RemoveModel(const modloader::file& file);
-        bool TellToRefreshModel(uint32_t id){return true;/**/;}
+        //uint32_t ImportModel(const modloader::file& file);
+        //uint32_t RemoveModel(const modloader::file& file);
+        //void TellToRefreshModel(id_t id);
 
         // TODO
         void BuildClothesMap() {}
         bool IsClothes(const modloader::file& file) {return false;}
 
+        void LoadAllRequestedModels();
+
         static HANDLE TryOpenAbstractHandle(int index, HANDLE hFile);
+
+        
+        bool IsModelOnStreaming(id_t id);
+        void RemoveModel(id_t id);
+        void RequestModel(id_t id, uint32_t flags);
+        void ReloadModel(id_t id);
 
     protected:
         void GenericReadEntry(CDirectoryEntry& entry, const modloader::file* file);
@@ -245,8 +271,67 @@ class CAbstractStreaming
         std::list<AbctFileHandle> stm_files;                    // List of custom files currently open for reading
         AbctFileHandle* OpenModel(ModelInfo& file, int index);  // Opens a new file for the model to be read by the streaming
         void CloseModel(AbctFileHandle* file);                  // Closes the previosly open model, was readen
+
+        uint32_t tempStreamingBufSize;
+        std::map<hash_t, const modloader::file*> mToImportList; // null file means uninstall
+
+        // Call those only if the streaming bus is empty
+        void ImportModels(ref_list<const modloader::file*> files);
+        void UnimportModel(id_t index);
+
+
+        id_t FindModelFromHash(hash_t hash) // TODO pair
+        {
+            auto it = this->indices.find(hash);
+            return it != indices.end()? it->second : -1;
+        }
+
+        std::pair<hash_t, bool> FindHashFromModel(id_t id)
+        {
+            auto it = this->cd_dir.find(id);
+            return it != cd_dir.end()? std::pair<hash_t, bool>(it->second.hash, true) : std::pair<hash_t, bool>(0, false);
+        }
+
+        FileType GetIdType(int id)
+        {
+            auto it = this->cd_dir.find(id);
+            return it != cd_dir.end()? it->second.type : FileType::None;
+        }
+
+        id_t InfoForModelIndex(const CStreamingInfo& model)
+        {
+            return (&model - InfoForModel());
+        }
+
+        void BeginUpdate()
+        {
+            if(this->bIsUpdating == false)
+            {
+                this->LoadAllRequestedModels();
+                this->LoadAllRequestedModels();
+                this->LoadAllRequestedModels();
+                this->bIsUpdating = true;
+            }
+        }
+
+        void EndUpdate()
+        {
+            this->bIsUpdating = false;
+        }
+
+        bool IsUpdating()
+        {
+            return this->bIsUpdating;
+        }
 };
+
+
+
 extern CAbstractStreaming streaming;
+extern "C" int iNextModelBeingLoaded;
+extern "C" int iModelBeingLoaded;
+extern "C" const char* GetCdStreamPath(const char* filename);
+
 
 
 #endif
