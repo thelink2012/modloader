@@ -10,8 +10,6 @@
 #include <modloader/util/ini.hpp>
 using namespace modloader;
 
-// TODO SEPARATE ENABLE AND PRIORITY
-// TODO scoped_update
 // TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
 
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
@@ -21,34 +19,6 @@ REGISTER_ML_NULL();
 
 // Mod Loader object
 Loader loader;
-
-
-/*
- *
- *
- */
-
-extern void test_menu();
-
-#if USE_TEST
-
-int __stdcall test_winmain(HINSTANCE, HINSTANCE, LPSTR, int) {         int i;
-        sscanf("0x1337", "%i", &i);
-        printf("%i", i); test(); return 1; }
-
-void test()
-{
-    while(true)
-    {
-        auto func = (int(*)())0;
-        //func();
-        Sleep(1000);
-        loader.ScanAndUpdate();
-    }
-}
-#endif
-
-
 
 
 /*
@@ -354,13 +324,22 @@ void Loader::LogGameVersion()
  */
 void Loader::ScanAndUpdate()
 {
+    Updating xup;
     mods.Scan();
     mods.Update();
+}
 
-    // Do plugin update after this serie of install/uninstalls
+/*
+ *  Loader::NotifyUpdateForPlugins
+ *       Notify the plugins that we've installed/uninstalled stuff
+ *       This normally happens after a rescan
+ */
+void Loader::NotifyUpdateForPlugins()
+{
     for(auto& plugin : this->plugins)
         plugin.Update();
 }
+
 
 /*
  *  Loader::FindHandlerForFile

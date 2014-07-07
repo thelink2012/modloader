@@ -282,6 +282,7 @@ class Loader : public modloader_t
                 int GetPriority(const std::string& name);
                 void Include(std::string name);
                 void IgnoreFileGlob(std::string glob);
+                void IgnoreMod(std::string md);
                 
                 // Sets flags
                 void SetIgnoreAll(bool bSet);
@@ -325,10 +326,11 @@ class Loader : public modloader_t
                 
                 // List of settings, all strings are normalized!!!!!
                 std::map<std::string, int> mods_priority;   // List of priorities to be applied to mods
+                std::set<std::string> ignore_mods;          // All mods inside this list shall be ignored (this isn't a glob)
                 std::set<std::string> include_mods;         // All mod globs inside this list shall be included when bExcludeAll is true
-                std::set<std::string> exclude_files;        // All file globs inside this list shall be ignored
+                std::set<std::string> ignore_files;        // All file globs inside this list shall be ignored
                 std::string include_mods_glob;              // include_mods built into a single glob
-                std::string exclude_files_glob;             // exclude_files built into a single glob
+                std::string ignore_files_glob;             // ignore_files built into a single glob
                 
                 // Folder flags
                 bool bIgnoreAll    = false;     // When true, no mod will be readen
@@ -344,9 +346,12 @@ class Loader : public modloader_t
 
         
     protected:
+        friend struct Updating;
         friend struct scoped_gdir;
         friend class  TheMenu;
-        
+
+        uint32_t       mUpdateRefCount = 0;
+
         // Configs
         uint64_t        maxBytesInLog;          // Maximum number of bytes in the logging stream 
         uint64_t        numBytesInLog;          // Number of bytes currently written to the logging stream
@@ -396,6 +401,8 @@ class Loader : public modloader_t
         // Loads / Unloads plugins during run-time
         bool LoadPlugin(std::string filename);
         bool UnloadPlugin(PluginInformation& plugin);
+
+        void NotifyUpdateForPlugins();
 
         // Rebuilds the extMap object
         void RebuildExtensionMap();
@@ -499,6 +506,21 @@ class Loader : public modloader_t
                 }
             }
         }
+
+
+        // Whenever you're updating the virtual data of the files, instantiate this on your scope!
+        struct Updating
+        {
+            // Constructor increases update ref counting
+            Updating() { ++loader.mUpdateRefCount; };
+
+            // Destructor notifies about update when the count reaches 0
+            ~Updating()
+            {
+                if(--loader.mUpdateRefCount == 0)
+                    loader.NotifyUpdateForPlugins();
+            }
+        };
         
 };
 

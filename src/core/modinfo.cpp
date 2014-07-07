@@ -143,6 +143,7 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
 {
     if(this->status != Status::Unchanged)
     {
+        Updating xup;
         Log("Extinguishing some files from \"%s\"...", this->path.c_str());
 
         // Remove all files if this mod has been removed
@@ -174,6 +175,7 @@ void Loader::ModInformation::InstallNecessaryFiles()
 {
     if(this->status != Status::Unchanged)
     {
+        Updating xup;
         Log("Installing some files for \"%s\"...", this->path.c_str());
         
         for (auto it = this->files.begin(); it != this->files.end(); ++it)
@@ -228,6 +230,7 @@ bool Loader::FileInformation::Update(const modloader::file& m)
  */
 bool Loader::FileInformation::Install()
 {
+    Updating xup;
     FileInstallLog xlog(*this, "Install");
     
     // Make sure file is not installed, otherwise something is very wrong
@@ -253,6 +256,7 @@ bool Loader::FileInformation::Reinstall()
 {
     if(this->installed)
     {
+        Updating xup;
         FileInstallLog xlog(*this, "Reinstall");
         
         // Reinstall with the main handler then with callme handlers
@@ -280,6 +284,7 @@ bool Loader::FileInformation::Uninstall()
 {
     if(this->installed)
     {
+        Updating xup;
         FileInstallLog xlog(*this, "Uninstall", true);
         
         // Uninstall with the main handler then with callme handlers

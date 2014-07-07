@@ -34,7 +34,7 @@ void Loader::FolderInformation::Clear()
     childs.clear();
     mods_priority.clear();
     include_mods.clear();
-    exclude_files.clear();
+    ignore_files.clear();
     RebuildExcludeFilesGlob();
     RebuildIncludeModsGlob();
 }
@@ -52,8 +52,12 @@ bool Loader::FolderInformation::IsIgnored(const std::string& name)
         return (MatchGlob(name, include_mods_glob) == false);
     else
     {
-        auto it = mods_priority.find(name);
-        return (it != mods_priority.end() && it->second == 0);
+        if(ignore_mods.find(name) == ignore_mods.end()) // Check if not on ignore mods list
+        {
+            auto it = mods_priority.find(name);
+            return (it != mods_priority.end() && it->second == 0);  // If priority is 0 ignore this mod
+        }
+        else return true;
     }
 }
 
@@ -64,7 +68,7 @@ bool Loader::FolderInformation::IsIgnored(const std::string& name)
  */
 bool Loader::FolderInformation::IsFileIgnored(const std::string& name)
 {
-    if(MatchGlob(name, exclude_files_glob)) return true;
+    if(MatchGlob(name, ignore_files_glob)) return true;
     return (this->parent? parent->IsFileIgnored(name) : false);
 }
 
@@ -131,8 +135,17 @@ void Loader::FolderInformation::Include(std::string name)
  */
 void Loader::FolderInformation::IgnoreFileGlob(std::string glob)
 {
-    exclude_files.emplace(std::move(glob));
+    ignore_files.emplace(std::move(glob));
     RebuildExcludeFilesGlob();
+}
+
+/*
+ *  FolderInformation::IgnoreMod
+ *      Adds a mod @mod (normalized) to be ignored
+ */
+void Loader::FolderInformation::IgnoreMod(std::string mod)
+{
+    ignore_mods.emplace(std::move(mod));
 }
 
 
@@ -143,7 +156,7 @@ void Loader::FolderInformation::IgnoreFileGlob(std::string glob)
 
 void Loader::FolderInformation::RebuildExcludeFilesGlob()
 {
-    BuildGlobString(this->exclude_files, this->exclude_files_glob);
+    BuildGlobString(this->ignore_files, this->ignore_files_glob);
 }
 
 void Loader::FolderInformation::RebuildIncludeModsGlob()
@@ -291,6 +304,7 @@ void Loader::FolderInformation::Update()
 {
     if(this->status != Status::Unchanged)
     {
+        Updating xup;
         Log("\nUpdating mods for \"%s\"...", this->path.c_str());
 
         auto mods = this->GetModsByPriority();
@@ -314,7 +328,7 @@ void Loader::FolderInformation::Update()
             child.second.Update();
         }
 
-        // Collect garbaged mods and childs
+        // Collect garbaged data (mods and childs that are unused atm)
         CollectInformation(this->mods);
         CollectInformation(this->childs);
         this->SetUnchanged();
@@ -327,6 +341,7 @@ void Loader::FolderInformation::Update()
  */
 void Loader::FolderInformation::Update(ModInformation& mod)
 {
+    Updating xup;
     mod.parent.Update();
 }
 
@@ -357,8 +372,14 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
         for(auto& pair : kv) this->SetPriority(NormalizePath(pair.first), std::strtol(pair.second.c_str(), 0, 0));
     };
 
-    // Reads the [ExcludeFiles] section
-    auto ReadExcludeFiles = [this](const modloader::ini::key_container& kv)
+    // Reads the [IgnoreMods] section
+    auto ReadIgnoreMods = [this](const modloader::ini::key_container& kv)
+    {
+        for(auto& pair : kv) this->IgnoreMod(NormalizePath(pair.first));
+    };
+
+    // Reads the [IgnoreFiles] section
+    auto ReadIgnoreFiles = [this](const modloader::ini::key_container& kv)
     {
         for(auto& pair : kv) this->IgnoreFileGlob(NormalizePath(pair.first));
     };
@@ -374,8 +395,10 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
     {
         ReadConfig(cfg["Config"]);
         ReadPriorities(cfg["Priority"]);
-        ReadExcludeFiles(cfg["ExcludeFiles"]);
+        ReadIgnoreMods(cfg["IgnoreMods"]);
+        ReadIgnoreFiles(cfg["IgnoreFiles"]);
         ReadIncludeMods(cfg["IncludeMods"]);
+        
     }
     else
         Log("Failed to load folder config file");
