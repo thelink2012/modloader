@@ -338,10 +338,6 @@ void CAbstractStreaming::LoadCustomCdDirectory(ref_list<const modloader::file*> 
     auto realStreamingBufferSize = bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
     this->tempStreamingBufSize = realStreamingBufferSize;
 
-    // Make sure there's nothing on the streaming bus before this process!!
-    if(this->bHasInitializedStreaming)
-        this->LoadAllRequestedModels();
-
     // Fill entry buffer and advance iterator
     auto ReadEntry = [&](CDirectoryEntry& entry)
     {
@@ -432,7 +428,7 @@ bool CAbstractStreaming::GenericRegisterEntry(CStreamingInfo& model, bool hasMod
     b.isFallingBack = false;
 
     this->SetInfoForModel(index, 0, GetSizeInBlocks(file->Size()), AbstractImgId);
-    // TODO maybe not AbstractImgId but std (if(!hasModel) model.ucImgId = AbstractImgId;)
+    // TODO maybe not AbstractImgId but std (if(!hasModel) model.img_id = AbstractImgId;)
 
     return true;
 }

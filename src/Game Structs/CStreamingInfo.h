@@ -2,19 +2,18 @@
 #pragma once
 #include <windows.h>
 
-
 #pragma pack(push, 1)
 struct CStreamingInfo	// sizeof = 0x14
 {
-	WORD usNext;
-	WORD usPrev;
-	WORD uiUnknown1;
-	BYTE uiUnknown2_ld;
-	BYTE ucImgId;
-	DWORD iBlockOffset;
-	DWORD iBlockCount;
-	BYTE uiLoadFlag;
-	BYTE field_11[3];
+	unsigned short next;
+	unsigned short prev;
+	unsigned short nextOnCd;
+	unsigned char  flags;
+	unsigned char  img_id;
+	unsigned int   offset;
+    unsigned int   blocks;
+    unsigned char  load_status;
+	unsigned char  _pad[3];
 };
 #pragma pack(pop)
 

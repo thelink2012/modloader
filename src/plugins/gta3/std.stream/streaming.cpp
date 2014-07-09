@@ -24,7 +24,7 @@ using namespace modloader;
 
 // TODO needs to refresh ifp too
 // TODO remove is hoodlum
-// TODO avoid CdStream optimization of uiUnknown1 / lastposn / etc (?)
+// TODO avoid CdStream optimization of nextOnCd / lastposn / etc (?)
 // TODO fix non find (only add) on LoadCdDirectory (GAME FOR COL/IFP/RRR/ETC)
 // TODO special model
 // TODO clothes
@@ -95,7 +95,7 @@ CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
  */
 bool CAbstractStreaming::IsModelOnStreaming(id_t id)
 {
-    return InfoForModel(id)->uiLoadFlag != 0;
+    return InfoForModel(id)->load_status != 0;
 }
 
 /*
@@ -128,7 +128,17 @@ void CAbstractStreaming::LoadAllRequestedModels()
     injector::cstd<void()>::call<0x5619D0>();       // CTimer::StartUserPause
     injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
     injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
-    injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
+    injector::cstd<void()>::call<0x561A00>();       // CTimer::EndUserPause
+}
+
+/*
+ *  CAbstractStreaming::FlushChannels
+ *      Flushes the streaming channels loading anything on the bus
+ */
+void CAbstractStreaming::FlushChannels()
+{
+    injector::cstd<void()>::call<0x5619D0>();       // CTimer::StartUserPause
+    injector::cstd<void(int)>::call<0x40E460>(0);   // CStreaming::FlushChannels
     injector::cstd<void()>::call<0x561A00>();       // CTimer::EndUserPause
 }
 

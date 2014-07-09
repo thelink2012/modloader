@@ -255,6 +255,7 @@ class CAbstractStreaming
         bool IsClothes(const modloader::file& file) {return false;}
 
         void LoadAllRequestedModels();
+        void FlushChannels();
         void RemoveUnusedResources();
 
         static HANDLE TryOpenAbstractHandle(int index, HANDLE hFile);
@@ -283,14 +284,14 @@ class CAbstractStreaming
         void ImportModels(ref_list<const modloader::file*> files);
         void UnimportModel(id_t index);
 
-        void SetInfoForModel(id_t index, uint32_t iBlockOffset, uint32_t iBlockCount, uint8_t ucImgId)
+        void SetInfoForModel(id_t index, uint32_t offset, uint32_t blocks, uint8_t img_id)
         {
             auto& model = *this->InfoForModel(index);
-            model.iBlockOffset = iBlockOffset;
-            model.iBlockCount  = iBlockCount;
-            model.ucImgId      = ucImgId;
-            model.uiUnknown1   = -1;                    // TODO find the one pointing to me and do -1 on it
-            if(!this->bHasInitializedStreaming) model.uiUnknown2_ld = 0;
+            model.offset    = offset;
+            model.blocks    = blocks;
+            model.img_id    = img_id;
+            model.nextOnCd  = -1;                    // TODO find the one pointing to me and do -1 on it
+            if(!bHasInitializedStreaming) model.flags = 0;
         }
 
         void RestoreInfoForModel(id_t index)
@@ -339,9 +340,7 @@ class CAbstractStreaming
         {
             if(this->bIsUpdating == false)
             {
-                this->LoadAllRequestedModels();
-                this->LoadAllRequestedModels();
-                this->LoadAllRequestedModels();
+                this->FlushChannels();
                 this->bIsUpdating = true;
             }
         }

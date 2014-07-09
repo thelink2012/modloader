@@ -50,9 +50,11 @@ void Loader::Patch()
     else
     {
         typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
+        typedef function_hooker<0x53ECBD, void(int)> ridle_hook;
+        typedef function_hooker<0x53ECCB, void(int)> rfidle_hook;   // Actually void() but... meh
 
         // Hook WinMain to run mod loader
-        injector::make_static_hook<winmain_hook>([](winmain_hook::func_type WinMain,
+        injector::make_static_hook<winmain_hook>([this](winmain_hook::func_type WinMain,
                                                     HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
         {
             // Avoind circular looping forever
@@ -67,17 +69,28 @@ void Loader::Patch()
             // Install exception filter to log crashes
             InstallExceptionCatcher([](const char* buffer)
             {
+                Log("\n\n");
                 LogGameVersion();
                 Log(buffer);
                 loader.Shutdown();
             });
 
+            // To be called each frame
+            auto CallTick = [this](ridle_hook::func_type Idle, int& i)
+            {
+                this->Tick();
+                return Idle(i);
+            };
+
+            make_static_hook<ridle_hook>(CallTick);
+            make_static_hook<rfidle_hook>(CallTick);
+
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
             // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
-            loader.Startup();
+            this->Startup();
             WinMain = ReadRelativeOffset(winmain_hook::addr + 1).get();
             auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
-            loader.Shutdown();
+            this->Shutdown();
 
             return result;
         });
@@ -190,6 +203,16 @@ void Loader::Shutdown()
         this->bRunning = false;
     }
 }
+
+/*
+ *  Loader::Shutdown
+ *      This is called every frame
+ */
+void Loader::Tick()
+{
+    this->TestHotkeys();
+}
+
 
 /*
  *  Loader::ReadBasicConfig

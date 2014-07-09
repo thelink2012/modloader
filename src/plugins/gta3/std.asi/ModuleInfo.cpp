@@ -238,7 +238,7 @@ void ThePlugin::ModuleInfo::PatchImports()
 {
     // Converts a rva pointer to a actual pointer in the process space from this ASI
     auto rva_to_ptr = [this](long rva)
-    { return auto_ptr_cast((void*)((char*)(this->module) + rva)); };
+    { return auto_pointer((void*)((char*)(this->module) + rva)); };
     
     // Used to find translators lowerbound at a sorted list of translators by library name
     auto fn_compare_translator_with_lib_lb = [](path_translator_base* a, const char* b)

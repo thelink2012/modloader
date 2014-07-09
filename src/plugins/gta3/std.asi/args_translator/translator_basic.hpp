@@ -176,7 +176,7 @@ struct path_translator_base
         {}
         
         // Allocates a path in the pool. @size is the num characters the path will need.
-        auto_ptr_cast AllocPath(size_t size)
+        auto_pointer AllocPath(size_t size)
         {
             if(!path_pool)  // Lazy pool allocation ;)
             {
@@ -188,7 +188,7 @@ struct path_translator_base
             // Get space on it
             void* p = &path_pool[path_pool_used];
             path_pool_used += size;
-            return auto_ptr_cast(p);
+            return auto_pointer(p);
         }
         
         

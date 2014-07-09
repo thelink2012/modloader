@@ -33,7 +33,7 @@ void __declspec(naked) HOOK_RegisterNextModelRead()
 
         /* Run replaced code: */
         mov edx, dword ptr[ms_aInfoForModel]
-        mov edx, [edx + 0xC + eax * 4]    /* edx = ms_aInfoForModel[iLoadingModelIndex].iBlockCount */
+        mov edx, [edx + 0xC + eax * 4]    /* edx = ms_aInfoForModel[iLoadingModelIndex].blocks */
         ret
     }
 }

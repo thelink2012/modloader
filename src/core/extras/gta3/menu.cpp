@@ -198,25 +198,6 @@ void TheMenu::RegisterEvents()
     this->MainPageEvents();
     this->ModsPageEvents();
     this->ModPageEvents();
-
-    typedef function_hooker<0x53ECBD, void(int)> rr_hook;
-    make_static_hook<rr_hook>([this](rr_hook::func_type Idle, int& i)
-    {
-#if 0
-        static bool bPrevState = false, bCurrState = false;
-
-        bPrevState = bCurrState;
-        bCurrState = (GetKeyState(VK_F4) & 0x8000) != 0;
-
-        if(bPrevState && !bCurrState)
-            loader.ScanAndUpdate();
-#endif
-        if(HasJustPressedF(4))
-            loader.ScanAndUpdate();
-
-        return Idle(i);
-    });
-
 }
 
 
@@ -623,4 +604,13 @@ void Loader::ShutdownMenu()
 {
     Log("Shutting down menu...");
     menu_ptr.reset();
+}
+
+void Loader::TestHotkeys()
+{
+    if(menu_ptr)
+    {
+        if(menu_ptr->HasJustPressedF(4))
+            this->ScanAndUpdate();
+    }
 }

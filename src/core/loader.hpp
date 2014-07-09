@@ -411,7 +411,9 @@ class Loader : public modloader_t
     private:
         void StartupMenu();
         void ShutdownMenu();
+        void TestHotkeys();
         void ParseCommandLine();
+        void Tick();
         
     public:
         

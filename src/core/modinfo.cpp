@@ -54,9 +54,11 @@ void Loader::ModInformation::Scan()
         auto filename = NormalizePath(file.filename);
         auto filepath = this->path + NormalizePath(file.filebuf);
 
-        // Sub Mod Loader folder...
-        if(file.is_dir && filename == modloader_subfolder)
+        // Nested Mod Loader folder...
+        if(false && file.is_dir && filename == modloader_subfolder)
         {
+            // This feature has been disabled, it adds an additional level of complexity into the loader that's not worth the effort.
+            // So the feature is marked to be completly removed or readded back soon, I'm not sure about it's future yet
             Log("Found sub modloader at \"%s\"", filepath.c_str());
             this->parent.AddChild(filepath);
             file.recursive = false;

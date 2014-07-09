@@ -106,8 +106,8 @@ template<class T>
 Refresher<T>::Refresher(CAbstractStreaming& s) 
     : streaming(s)
 {
-    // Before we do anything we should have the streaming bus empty!
-    streaming.LoadAllRequestedModels();
+    // Before we do anything we shouldn't have anything on the streaming bus
+    streaming.FlushChannels();
 
     // Remove all unused models on the streaming, so our reloading process will be less painful (faster),
     // we won't end up reloading unused models
@@ -234,6 +234,7 @@ template<class T> void Refresher<T>::DestroyEntities()
 template<class T> void Refresher<T>::RemoveModels()
 {
     for(auto& id : this->mToRefresh) streaming.RemoveModel(id);
+    streaming.RemoveUnusedResources();
 }
 
 /*
@@ -276,10 +277,14 @@ template<class T> void Refresher<T>::RequestModels()
 {
     // Do the requests
     for(auto& id : mToRefresh)
-        streaming.RequestModel(id, streaming.InfoForModel(id)->uiUnknown2_ld);
+    {
+        auto& model = *streaming.InfoForModel(id);
+        if(model.flags) // Has any importance to the streaming?
+            streaming.RequestModel(id, model.flags);
+    }
 
-    // Load all requested models now!!!! We're in hurry!!!
-    streaming.LoadAllRequestedModels();     // Stream those models in now!
+    // Stream those models in now!
+    streaming.LoadAllRequestedModels();
 }
 
 /*

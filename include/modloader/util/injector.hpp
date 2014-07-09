@@ -40,7 +40,7 @@ namespace modloader
     static const uintptr_t gtavc_specific = 0xF4000000;
     static const uintptr_t gtasa_specific = 0xF5000000;
 
-    inline auto_ptr_cast try_address(memory_pointer addr)
+    inline auto_pointer try_address(memory_pointer addr)
     {
         auto Log = modloader::plugin_ptr? modloader::plugin_ptr->Log : nullptr;
 
@@ -48,7 +48,7 @@ namespace modloader
         void* x = addr.get(); 
         //if(!x && Log) Log("Ignore the warning above");
 
-        return auto_ptr_cast(x);
+        return auto_pointer(x);
     }
     
 }

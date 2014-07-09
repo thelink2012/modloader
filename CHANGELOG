@@ -1,10 +1,14 @@
-v0.2.0  -- In Dev
-
-
-v0.1.16 -- Not Released
-    Bug fix: CLEO scripts inside cleo sub folders aren't loaded anymore
-    Bug fix: Custom missions aren't loaded at startup anymore
-    Bug fix: Other minor fixes
+v0.2.0 -- In Dev
+    Featur: Most mods can be refreshed without getting out of the game (press F4 to refresh, auto-refresh soon)
+    Featur: An game menu has been added (see Options > Mod Loader Setup) -- (still incomplete)
+    Improv: Extremely descriptive unhandled exception handler
+    Change: Mod Loader config files (INI) have changed a lot (hell, Mod Loader itself has changed a lot)
+    Removd: Nested 'modloader' folders have been removed
+    Removd: The plugin std.cleo has been removed in favour of std.asi
+    Bugfix: CLEO scripts inside cleo sub folders aren't loaded anymore
+    Bugfix: Custom missions aren't loaded at startup anymore
+    Bugfix: Other MAJOR fixes
+    This is a reboot, forget most stuff you knew about this loader (except for the basic principle)
 
 v0.1.15 -- Mar 05 2014
     Bug fix: CLEO scripts injection works with CLEO 4.1 and below

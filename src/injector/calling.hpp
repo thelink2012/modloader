@@ -50,7 +50,7 @@ namespace injector
         template<uintptr_t addr>    // Uses lazy pointer
         static Ret call(Args... a)
         {
-            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
         }
     };
 
@@ -70,7 +70,7 @@ namespace injector
         template<uintptr_t addr>    // Uses lazy pointer
         static Ret call(Args... a)
         {
-            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
         }
     };
 
@@ -90,7 +90,7 @@ namespace injector
         template<uintptr_t addr>    // Uses lazy pointer
         static Ret call(Args... a)
         {
-            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
         }
     };
 
@@ -119,7 +119,7 @@ namespace injector
         template<uintptr_t addr>    // Uses lazy pointer
         static Ret call(Args... a)
         {
-            return call(lazy_pointer<addr>::xget(), std::forward<Args>(a)...);
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
         }
     };
 } 
