@@ -38,7 +38,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 		map[0x5BA6A4] = 0x552327;   // call    _ZN9CTxdStore7LoadTxdEiPKc ; "models/fonts.txd"
         //map[0x5BA7D4] = nope;   // call    _ZN9CTxdStore7LoadTxdEiPKc ; "models/pcbtns.txd"
 
-		map[0xBA6748] = 0x869630; //??// CMenuManager FrontEndMenuManager
+		map[0xBA6748] = 0x869630 //??// CMenuManager FrontEndMenuManager
 		map[0x572EC0] = 0x4A3A13;   // _ZN12CMenuManager15LoadAllTexturesEv
 		map[0x574630] = 0x4A394D;   // _ZN12CMenuManager14UnloadTexturesEv
 		map[0x572F1E] = 0x4A3AC3;   // call    _ZN9CTxdStore7LoadTxdEiPKc ; "models/fronten1.txd"
