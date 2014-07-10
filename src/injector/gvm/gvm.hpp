@@ -97,6 +97,12 @@ class game_version_manager
 		// Gets the game version as text, the buffer must contain at least 32 bytes of space.
         char* GetVersionText(char* buffer)
         {
+            if(this->IsUnknown())
+            {
+                strcpy(buffer, "UNKNOWN GAME");
+                return buffer;
+            }
+
             const char* g = this->IsIII()? "III" : this->IsVC()? "VC" : this->IsSA()? "SA" : "UNK";
             const char* r = this->IsUS()? "US" : this->IsEU()? "EURO" : "UNK_REGION";
             const char* s = this->IsSteam()? "Steam" : "";

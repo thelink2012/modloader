@@ -1,22 +1,24 @@
 /*
- * San Andreas Mod Loader - Address Translation Between Game Versions
+ * Mod Loader - Address Translation Between Game Versions
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
-#include <injector/injector.hpp>
+#include <modloader/util/injector.hpp>
 #include <map>
 
 // GTA SA 10US table
 static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 {
+    using namespace modloader;
     bool isHoodlum = injector::address_manager::singleton().IsHoodlum();
 
     // Core
     if(true)
     {
         map[0x8246EC] = 0x8246EC;   // call    _WinMain
-        map[0x6A0050] = 0x6A0050;   // _ZN5CText3GetEPKc
+        map[0x53ECBD] = 0x53ECBD;   // call    _Z4IdlePv
+        map[0x53ECCB] = 0x53ECCB;   // call    _Z12FrontendIdlePv
     }
 
     // std.fx
@@ -92,24 +94,21 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         // !!!!! REMEMBER TO CHECK TRAITS
     }
 
-    // AbstractFrontend | TheMenu
-    if(true)
-    {
-        map[0xB72F20] = 0xB72F20;   // _ZN4CPad11OldKeyStateE CKeyState;
-        map[0xB73190] = 0xB73190;   // _ZN4CPad11NewKeyStateE CKeyState;
-        map[0x53ECBD] = 0x53ECBD;   // call    _Z4IdlePv
-        map[0x506EA0] = 0x506EA0;   // _ZN12CAudioEngine24ReportFrontendAudioEventEiff
-        map[0xB6BC90] = 0xB6BC90;   // CAudioEngine AudioEngine
-        map[0x57E240] = 0x57E240;   // _ZN12CMenuManager17DisplayHelperTextEPc
-        map[0x579330] = 0x579330;   // _ZN12CMenuManager13MessageScreenEPKcbb
-    }
+
 
     // ---> All the following addresses are optional and depends only on the existence of 0x8CE008 (aScreens) on the map
+    // AbstractFrontend | TheMenu
     if(true)
     {
         // MenuExtender
         map[0x8CE008] = 0x8CE008;   // CMenuItem aScreens[]
         map[0xBA6748] = 0xBA6748;   // CMenuManager FrontEndMenuManager
+        map[0xB6BC90] = 0xB6BC90;   // CAudioEngine AudioEngine
+        map[0xB72F20] = 0xB72F20;   // _ZN4CPad11OldKeyStateE CKeyState;
+        map[0xB73190] = 0xB73190;   // _ZN4CPad11NewKeyStateE CKeyState;
+        map[0x506EA0] = 0x506EA0;   // _ZN12CAudioEngine24ReportFrontendAudioEventEiff
+        map[0x57E240] = 0x57E240;   // _ZN12CMenuManager17DisplayHelperTextEPc
+        map[0x579330] = 0x579330;   // _ZN12CMenuManager13MessageScreenEPKcbb
         map[0x576FEF] = 0x576FEF;   // call    _ZN12CMenuManager20ProcessPCMenuOptionsEah
         map[0x57B9FD] = 0x57B9FD;   // call    _ZN9CSprite2d4DrawERK5CRectRK5CRGBA
         map[0x58061B] = 0x58061B;   // call    _ZN12CMenuManager16ProcessUserInputEhhhha

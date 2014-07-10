@@ -606,11 +606,3 @@ void Loader::ShutdownMenu()
     menu_ptr.reset();
 }
 
-void Loader::TestHotkeys()
-{
-    if(menu_ptr)
-    {
-        if(menu_ptr->HasJustPressedF(4))
-            this->ScanAndUpdate();
-    }
-}

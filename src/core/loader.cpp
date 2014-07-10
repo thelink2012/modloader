@@ -39,20 +39,16 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
  */
 void Loader::Patch()
 {
-    auto& gvm = injector::address_manager::singleton();
-    gvm.set_name("Mod Loader");     // Mod Loader core
-    
-    // Check game version to make sure we're compatible
-    if(gvm.IsUnknown())
-        Error("Mod Loader could not detect your game version.");
-    else if(!gvm.IsSA() || gvm.GetMajorVersion() != 1 || gvm.GetMinorVersion() != 0 || gvm.IsUS() == false)
-        Error("Mod Loader still do not support game versions other than HOODLUM GTA SA 1.0 US");
-    else
-    {
-        typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
-        typedef function_hooker<0x53ECBD, void(int)> ridle_hook;
-        typedef function_hooker<0x53ECCB, void(int)> rfidle_hook;   // Actually void() but... meh
+    typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
+    typedef function_hooker<0x53ECBD, void(int)> ridle_hook;
+    typedef function_hooker<0x53ECCB, void(int)> rfidle_hook;   // Actually void() but... meh
 
+    auto& gvm = injector::address_manager::singleton();
+    gvm.set_name("Mod Loader");
+    
+    // Check if we have WinMain proc address, otherwise this game isn't supported
+    if(try_address(winmain_hook::addr))
+    {
         // Hook WinMain to run mod loader
         injector::make_static_hook<winmain_hook>([this](winmain_hook::func_type WinMain,
                                                     HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
@@ -61,10 +57,6 @@ void Loader::Patch()
             static bool bRan = false;
             if(bRan) return WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             bRan = true;
-
-            #if USE_TEST
-                MakeCALL(winmain_hook::addr, raw_ptr(test_winmain));
-            #endif
 
             // Install exception filter to log crashes
             InstallExceptionCatcher([](const char* buffer)
@@ -82,8 +74,9 @@ void Loader::Patch()
                 return Idle(i);
             };
 
-            make_static_hook<ridle_hook>(CallTick);
-            make_static_hook<rfidle_hook>(CallTick);
+            // Do tick hook only if possible
+            if(try_address(ridle_hook::addr))  make_static_hook<ridle_hook>(CallTick);
+            if(try_address(rfidle_hook::addr)) make_static_hook<rfidle_hook>(CallTick);
 
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
             // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
@@ -94,6 +87,11 @@ void Loader::Patch()
 
             return result;
         });
+    }
+    else
+    {
+        char buf[128];
+        this->Error("This game is not supported\nGame Info:\n%s", gvm.GetVersionText(buf));
     }
 }
 
@@ -211,6 +209,28 @@ void Loader::Shutdown()
 void Loader::Tick()
 {
     this->TestHotkeys();
+}
+
+/*
+ *  Loader::TestHotkeys
+ *      Test hotkeys for specific actions
+ */
+void Loader::TestHotkeys()
+{
+    static bool prevF4 = false; 
+    static bool currF4 = false; 
+
+    // Get current hotkey states
+    currF4 = (GetKeyState(VK_F4) & 0x8000) != 0;
+
+    // Check hotkey states
+    if(currF4 && !prevF4)
+    {
+        this->ScanAndUpdate();
+    }
+
+    // Save previous states
+    prevF4 = currF4;
 }
 
 
