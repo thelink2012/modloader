@@ -231,24 +231,36 @@ bool FxPlugin::OnStartup()
         for(auto& unused : unused_table) AddDummy(unused);
 
         // Detouring for LOADSCS
-        AddDetour(loadscs_txd, reinstall_since_start, LoadTxdDetour<0x5900D2>());
+		if (gvm.IsSA())
+		{
+			AddDetour(loadscs_txd, reinstall_since_start, LoadTxdDetour<0x5900D2>());
+		}
 
         // Detouring for HUD
         AddDetour(hud_txd, reinstall_since_load, LoadTxdDetour<0x5BA865>(), gdir_refresh(ReloadHud));
 
         // Detouring for fonts
         AddDetour(fonts_txd, reinstall_since_start, LoadTxdDetour<0x5BA6A4>(), gdir_refresh(ReloadFonts));
-        AddDetour(pcbtns_txd, reinstall_since_start, LoadTxdDetour<0x5BA7D4>(), gdir_refresh(ReloadFonts));
+        if(gvm.IsSA())   
+        {
+            AddDetour(pcbtns_txd, reinstall_since_start, LoadTxdDetour<0x5BA7D4>(), gdir_refresh(ReloadFonts));
+        }
 
         // Detouring for frontend textures
         AddDetour(fronten1_txd, reinstall_since_start, LoadTxdDetour<0x572F1E>(), gdir_refresh(ReloadFronten));
         AddDetour(fronten2_txd, reinstall_since_start, LoadTxdDetour<0x573040>(), gdir_refresh(ReloadFronten));
-        AddDetour(fronten_pc_txd, reinstall_since_start, LoadTxdDetour<0x572FB5>(), gdir_refresh(ReloadFronten));
-        AddDummy (fronten3_txd);
+        if(gvm.IsSA())
+        {
+            AddDetour(fronten_pc_txd, reinstall_since_start, LoadTxdDetour<0x572FB5>(), gdir_refresh(ReloadFronten));
+            AddDummy (fronten3_txd);
+        }
 
         // Detouring for common vehicle textures
         // No reloading because too many references to the textures in clump materials, maybe in the future
-        AddDetour(vehicle_txd, no_reinstall, LoadTxdDetour<0x5B8F5E>());
+		if (gvm.IsSA())
+		{
+			AddDetour(vehicle_txd, no_reinstall, LoadTxdDetour<0x5B8F5E>());
+		}
 
         // Detouring for particle textures
         // No reloading because too many references to the particle textures in allocated objects
@@ -256,14 +268,20 @@ bool FxPlugin::OnStartup()
 
         // Detouring for particle effects
         // No reloading because reloading those barely works, it causes the game to be unstable, crashing some times
-        AddDetour(effectspc_txd, no_reinstall, LoadTxdDetour<0x5C248F>());
-        AddDetour(effects_fxp, no_reinstall, OpenFileDetour<0x5C24B1>());
+		if (gvm.IsSA())
+		{
+			AddDetour(effectspc_txd, no_reinstall, LoadTxdDetour<0x5C248F>());
+			AddDetour(effects_fxp, no_reinstall, OpenFileDetour<0x5C24B1>());
+		}
         
         // Detouring for grass
         // No reloading because leaked texture (@0xC09174) after shutdown, maybe in the future
-        AddDetour(plant1_txd, no_reinstall, LoadTxdDetour<0x5DD95F>());
-        AddGrass(0, 1); AddGrass(0, 2); AddGrass(0, 3); AddGrass(0, 4);
-        AddGrass(1, 1); AddGrass(1, 2); AddGrass(1, 3); AddGrass(1, 4);
+		if (gvm.IsSA())
+		{
+			AddDetour(plant1_txd, no_reinstall, LoadTxdDetour<0x5DD95F>());
+			AddGrass(0, 1); AddGrass(0, 2); AddGrass(0, 3); AddGrass(0, 4);
+			AddGrass(1, 1); AddGrass(1, 2); AddGrass(1, 3); AddGrass(1, 4);
+		}
 
         return true;
     }
