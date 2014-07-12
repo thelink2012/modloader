@@ -48,7 +48,8 @@ enum class FileType : uint8_t // max 4 bits (value 15)
 static const uint64_t hash_mask         = 0x00000000FFFFFFFF;   // Mask for the hash on the behaviour
 static const uint64_t is_img_file_mask  = 0x0000000100000000;   // Is .img file
 static const uint64_t is_item_mask      = 0x0000000400000000;   // Is item that goes inside .img file, use the type_mask to see file type
-static const uint64_t is_pedifp_mask    = 0x0000000800000000;   // Is ped.ifp file
+static const uint64_t is_fcloth_mask    = 0x0000000800000000;   // Is a item that SHOULD FOR SURE be a clothing item (placed inside a folder named player.img or smth)
+static const uint64_t is_pedifp_mask    = 0x0000001000000000;   // Is ped.ifp file
 static const uint64_t type_mask         = 0x00000F0000000000;   // Mask for the file type (see FileType enum)
 static const uint32_t type_mask_shr     = 40;                   // How much to shift right to get the FileType
 
@@ -204,6 +205,7 @@ class CAbstractStreaming
         
         typedef std::map<id_t, CdDirectoryItem>     CdDir_t;   // <MODEL_ID, ENTRY>
         CdDir_t cd_dir;
+        std::map<hash_t, const modloader::file*>    special_dir;
 
         std::map<std::string, const modloader::file*> raw_models;  // <name, file> (Sorted by name)
 

@@ -103,6 +103,8 @@ template<class T>
 Refresher<T>::Refresher(CAbstractStreaming& s) 
     : streaming(s)
 {
+    plugin_ptr->Log("Refreshing necessary models...");
+
     // Before we do anything we shouldn't have anything on the streaming bus
     streaming.FlushChannels();
 
@@ -124,6 +126,7 @@ Refresher<T>::Refresher(CAbstractStreaming& s)
     this->RecreateEntities();               // Recreate the pieces of the entities we destroyed previosly
 
     streaming.mToImportList.clear();
+    plugin_ptr->Log("Successfully refreshed models.");
 }
 
 /*

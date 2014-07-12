@@ -191,6 +191,18 @@ namespace modloader
     }
 
     template<class T>
+    inline std::basic_string<T> GetFileExtension(std::basic_string<T> filename)
+    {
+        auto extn = filename.rfind('.');
+        if(extn != filename.npos) 
+        {
+            ++extn;
+            return filename.substr(extn, filename.size() - extn);
+        }
+        return "";
+    }
+
+    template<class T>
     inline std::basic_string<T> GetPathComponentBack(std::basic_string<T> path, size_t count = 1)
     {
         auto pos = GetLastPathComponent(path, count);
@@ -203,13 +215,7 @@ namespace modloader
     inline std::basic_string<T> GetPathExtensionBack(std::basic_string<T> path, size_t count = 1)
     {
         auto comp = GetPathComponentBack(path, count);
-        auto extn = comp.rfind('.');
-        if(extn != comp.npos) 
-        {
-            ++extn;
-            return comp.substr(extn, comp.size() - extn);
-        }
-        return "";
+        return GetFileExtension(std::move(path));
     }
     
     

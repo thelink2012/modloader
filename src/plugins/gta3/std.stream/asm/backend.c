@@ -48,11 +48,9 @@ void __declspec(naked) HOOK_NewFile()
     _asm
     {
         and esi, 0x00FFFFFF     /* Original code */
-        pushad
         push eax
         call CallGetAbstractHandle
         add esp, 4
-        popad
         ret
     }
 }

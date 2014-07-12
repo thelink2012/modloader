@@ -115,7 +115,7 @@ static void PerformDirectoryRead(size_t size,
 
         // The standard game doesn't have this behaviour, but it's useful to have....
         // If we already have a special entry, override it. Originally it would be added again without emotion!
-        if(xentry = CDirectory__FindItem2(dir, entry->filename))
+        if(xentry = CDirectory__FindItem2(dir, entry->filename))    // TODO no need for this!!
         {
             memcpy(xentry, entry, sizeof(*xentry));
             entry = xentry;
@@ -358,6 +358,8 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
  */
 void CAbstractStreaming::LoadCustomCdDirectory(ref_list<const modloader::file*> files)
 {
+    // TODO LOG Loading abstract cd directory... / Abstract cd directory has been loaded
+
     // Setup iterators
     auto it = files.begin();
     auto curr = it;
@@ -405,7 +407,7 @@ void CAbstractStreaming::LoadCustomCdDirectory(ref_list<const modloader::file*> 
         // If the necessary streaming buffer to load that file is bigger than the current buffer size, let's resize the buffer
         if(tempStreamingBufSize > realStreamingBufferSize)
         {
-            plugin_ptr->Log("Realocating streaming buffer from %u bytes to %u bytes.",
+            plugin_ptr->Log("Reallocating streaming buffer from %u bytes to %u bytes.",
                 realStreamingBufferSize * align,
                 tempStreamingBufSize * align);
 
@@ -442,7 +444,7 @@ void CAbstractStreaming::GenericReadEntry(CDirectoryEntry& entry, const modloade
 
 bool CAbstractStreaming::GenericRegisterEntry(CStreamingInfo& model, bool hasModel, const modloader::file* file)
 {
-    // TODO
+    // TODO (RMB LOG ABOUT IT "Importing model file for index %d at \"%s\"")
 
     auto index = InfoForModelIndex(model);
 
@@ -455,8 +457,7 @@ bool CAbstractStreaming::GenericRegisterEntry(CStreamingInfo& model, bool hasMod
     b.original = original != cd_dir.end()? &original->second : nullptr;
     b.isFallingBack = false;
 
-    this->SetInfoForModel(index, 0, GetSizeInBlocks(file->Size()), AbstractImgId);
-    // TODO maybe not AbstractImgId but std (if(!hasModel) model.img_id = AbstractImgId;)
+    this->SetInfoForModel(index, 0, GetSizeInBlocks(file->Size()), hasModel? model.img_id : AbstractImgId);
 
     return true;
 }

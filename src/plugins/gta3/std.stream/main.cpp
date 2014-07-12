@@ -90,6 +90,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
 {
     if(!file.IsDirectory() && file.IsExtension("img"))
     {
+        // This is a image file
         file.behaviour = file.hash | is_img_file_mask;
         return MODLOADER_BEHAVIOUR_YES;
     }
@@ -98,8 +99,13 @@ int ThePlugin::GetBehaviour(modloader::file& file)
         FileType type = GetFileTypeFromExtension(file.FileExt());
         if(type == FileType::None)  // None of the supported types by this plugin
             return MODLOADER_BEHAVIOUR_NO;
+        
+        auto inFolder = GetPathComponentBack<char>(file.FilePath(), 2);
+        bool isPlayer = (inFolder.find("player") != inFolder.npos);
+
         // If inside a folder with img extension, ignore any checking, just accept the file
-        else if(GetPathExtensionBack<char>(file.FilePath(), 2) != "img")
+        // Oh yeah, and don't do this checking on clothing files for player.img
+        if(isPlayer == false && GetFileExtension(inFolder) != "img")
         {
             switch(type)
             {
@@ -145,6 +151,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
         }
 
         SetFileType(file, type);
+        if(isPlayer) file.behaviour |= is_fcloth_mask;  // Forced clothing item
         return MODLOADER_BEHAVIOUR_YES;
     }
     return MODLOADER_BEHAVIOUR_NO;

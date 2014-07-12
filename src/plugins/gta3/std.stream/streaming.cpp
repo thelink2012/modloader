@@ -22,7 +22,7 @@ using namespace modloader;
         (0x20|0x4) -> gives model alpha=255 otherwise alpha=0
 */
 
-// TODO needs to refresh ifp too
+// TODO needs to refresh ifp and others too
 // TODO remove is hoodlum
 // TODO avoid CdStream optimization of nextOnCd / lastposn / etc (?)
 // TODO fix non find (only add) on LoadCdDirectory (GAME FOR COL/IFP/RRR/ETC)
@@ -45,8 +45,10 @@ extern "C"
         LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
         DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
     {
+        LPCSTR lpActualFileName = streaming.GetCdStreamPath(lpFileName);
+        plugin_ptr->Log("Opening image file \"%s\"", lpActualFileName);
         return CreateFileA(
-            streaming.GetCdStreamPath(lpFileName), dwDesiredAccess, dwShareMode,
+            lpActualFileName, dwDesiredAccess, dwShareMode,
             lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
     }
 };
@@ -132,6 +134,7 @@ void CAbstractStreaming::RemoveModel(id_t id)
  */
 void CAbstractStreaming::LoadAllRequestedModels()
 {
+    plugin_ptr->Log("Loading requested resources...");
     injector::cstd<void()>::call<0x5619D0>();       // CTimer::StartUserPause
     injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
     injector::cstd<void(int)>::call<0x40EA10>(0);   // CStreaming::LoadAllRequestedModels
@@ -144,6 +147,7 @@ void CAbstractStreaming::LoadAllRequestedModels()
  */
 void CAbstractStreaming::FlushChannels()
 {
+    plugin_ptr->Log("Flushing streaming channels...");
     injector::cstd<void()>::call<0x5619D0>();       // CTimer::StartUserPause
     injector::cstd<void(int)>::call<0x40E460>(0);   // CStreaming::FlushChannels
     injector::cstd<void()>::call<0x561A00>();       // CTimer::EndUserPause
@@ -155,6 +159,7 @@ void CAbstractStreaming::FlushChannels()
  */
 void CAbstractStreaming::RemoveUnusedResources()
 {
+    plugin_ptr->Log("Removing unused resources...");
     injector::cstd<void()>::call<0x40CF80>();               // CStreaming::RemoveAllUnusedModels
     injector::cstd<char(uint32_t)>::call<0x40CFD0>(0x20);   // CStreaming::RemoveLeastUsedModel
 }
@@ -268,23 +273,33 @@ bool CAbstractStreaming::ReinstallFile(const modloader::file& file)
 }
 
 
+/*
+ *  CAbstractStreaming::Update
+ *      Updates the abstract streaming after a serie of install/uninstall
+ */
 void CAbstractStreaming::Update()
 {
     if(this->IsUpdating())
     {
+        // Refresh necessary files
         this->ProcessRefreshes();
         this->EndUpdate();
     }
 }
 
-
-
-
+/*
+ *  CAbstractStreaming::ImportModels
+ *      Imports the files in the list into the abstract streaming
+ */
 void CAbstractStreaming::ImportModels(ref_list<const modloader::file*> files)
 {
     LoadCustomCdDirectory(files);
 }
 
+/*
+ *  CAbstractStreaming::UnimportModel
+ *      Removes the imported index from the abstract streaming
+ */
 void CAbstractStreaming::UnimportModel(id_t index)
 {
     this->RestoreInfoForModel(index);
@@ -429,6 +444,8 @@ void CAbstractStreaming::Patch()
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
+        plugin_ptr->Log("Initializing the streaming...");
+
         TempCdDir_t cd_dir;
         this->FetchCdDirectories(cd_dir, LoadCdDirectory1);         // Fetch...
         this->LoadCdDirectories(cd_dir);                            // ...and load
