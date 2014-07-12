@@ -132,6 +132,8 @@ namespace modloader
      *      @file File path to check
      *      @bJust  Returns true only if just right inside the folder
      *      @folder Folder path
+     *
+     *      FIXME this func is broken
      */
     inline bool IsFileInsideFolder(std::string file, bool bJust, std::string folder)
     {
@@ -186,6 +188,28 @@ namespace modloader
         }
 
         return (pos == path.npos? 0 : pos + 1);
+    }
+
+    template<class T>
+    inline std::basic_string<T> GetPathComponentBack(std::basic_string<T> path, size_t count = 1)
+    {
+        auto pos = GetLastPathComponent(path, count);
+        auto end = path.find_first_of(GetPathSeparators<T>(), pos);
+        auto len = end == path.npos? path.npos : end - pos;
+        return path.substr(pos, len);
+    }
+
+    template<class T>
+    inline std::basic_string<T> GetPathExtensionBack(std::basic_string<T> path, size_t count = 1)
+    {
+        auto comp = GetPathComponentBack(path, count);
+        auto extn = comp.rfind('.');
+        if(extn != comp.npos) 
+        {
+            ++extn;
+            return comp.substr(extn, comp.size() - extn);
+        }
+        return "";
     }
     
     
@@ -258,17 +282,16 @@ namespace modloader
     }
     
 
+#if 0
     /*
      *  IsFileExtension
      *      @str: File
      *      @ext: Extension
-     * 
-     *      This is just a case-insensitive comparision between str and ext
      */
-    inline bool IsFileExtension(const char* str, const char* ext)
+    inline bool IsFileExtension(const std::string& str, const char* ext)
     {
-        return (!strcmp(str, ext, false));
     }
+#endif
 
     
     /*

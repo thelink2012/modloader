@@ -10,12 +10,8 @@
 
 /* Hooks and sub calls */
 .globl  _HOOK_RegisterNextModelRead
-
 .globl  _HOOK_NewFile
 .globl  _CallGetAbstractHandle
-
-.globl _HOOK_SetStreamName
-.globl _HOOK_SetImgDscName
 
 /* vars */
 .globl  _ms_aInfoForModel
@@ -54,41 +50,5 @@ _HOOK_NewFile:
         call _CallGetAbstractHandle
         add esp, 4
         ret
-
-
-
-///////////////////////////////////////////////////////////////////////
-// ------------------- Stream Name Size Fix ------------------------ //
-///////////////////////////////////////////////////////////////////////
-
-
-/*
-    void _nakedcall HOOK_SetStreamName(eax = szImgTempStr, edx = p2)
-        StreamName copying hook
-*/
-_HOOK_SetStreamName:
-        mov dword ptr [eax+edx], 0x0000003F  # StreamName[x] = "?\0\0\0"
-        ret
-
-/*
-    void _nakedcall HOOK_SetImgDscName(eax = szImgTempStr, edx = p2)
-        imgDescriptor.name copying hook.
-        Added new fields into imgDescriptor, see the explanation at hooks.cpp
-*/
-_HOOK_SetImgDscName:
-        push ebx
-        lea ebx, [eax+edx]  # ebx = img.name
-
-        push eax
-        call _AllocBufferForString
-        add esp, 4
-        # eax = szImgNameBuffer
-
-        mov dword ptr [ebx+0], 0x3F   # strncpy(CImgDescriptor.dummy, "?", 4)
-        mov dword ptr [ebx+4], eax    # CImgDescriptor.customName = eax
-
-        pop ebx
-        ret
-
 
 .att_syntax prefix

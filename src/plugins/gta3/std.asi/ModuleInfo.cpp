@@ -47,7 +47,7 @@ ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file,
         auto pos = path.find_last_of('.');
         if(pos != path.npos)
         {
-            if(IsFileExtension(path.c_str() + pos + 1, "cleo"))
+            if(!strcmp(path.c_str() + pos + 1, "cleo", false))
                 bIsCleo = true;
         }
         
@@ -113,7 +113,7 @@ void ThePlugin::LocateCleo()
             if(const char* p = strrchr(entry.szModule, '.'))
             {
                 // Is it a .cleo plugin?
-                if(IsFileExtension(p+1, "cleo"))
+                if(!strcmp(p+1, "cleo", false))
                 {
                     // Yep, take the relative path and push it to the asi list
                     if(p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->loader->gamepath, -1))

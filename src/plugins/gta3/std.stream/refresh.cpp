@@ -10,9 +10,6 @@
 using namespace modloader;
 
 
-// TODO HUUUUUUUUUM FILE REMOVED FROM FS LOADALL WILL FAILLLLLLLLLLLLL
-// BIG MODEL MEMORY USED (WHAT IF RemoveModel)
-
 /*
  *  Refresher
  *      Refreshes the streaming, essentially refresh models that have been added, modified or deleted on Mod Loader.

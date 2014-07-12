@@ -9,13 +9,10 @@
  */
 #include "streaming.hpp"
 #include <modloader/util/file.hpp>
+#include <modloader/util/path.hpp>
 #include <modloader/util/injector.hpp>
+#include <modloader/gta3/gta3.hpp>
 using namespace modloader;
-
-
-// TODO .img folder
-// TODO .img files
-// TODO ped.ifp
 
 
 /*
@@ -23,6 +20,9 @@ using namespace modloader;
  */
 class ThePlugin : public modloader::basic_plugin
 {
+    private:
+        file_overrider<> ov_ped_ifp;
+
     public:
         const info& GetInfo();
         bool OnStartup();
@@ -60,7 +60,13 @@ bool ThePlugin::OnStartup()
 {
     if(gvm.IsSA())
     {
+        // Setup abstract streaming
         streaming.Patch();
+
+        // Setup ped.ifp overrider
+        ov_ped_ifp.SetParams(file_overrider<>::params(nullptr));
+        ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());
+
         return true;
     }
     return false;
@@ -82,53 +88,64 @@ bool ThePlugin::OnShutdown()
  */
 int ThePlugin::GetBehaviour(modloader::file& file)
 {
-    if(file.IsExtension("img"))
+    if(!file.IsDirectory() && file.IsExtension("img"))
     {
-        file.behaviour = file.hash | (file.IsDirectory()? is_img_dir_mask : is_img_file_mask);
+        file.behaviour = file.hash | is_img_file_mask;
         return MODLOADER_BEHAVIOUR_YES;
     }
     else if(!file.IsDirectory())
     {
         FileType type = GetFileTypeFromExtension(file.FileExt());
-        switch(type)
+        if(type == FileType::None)  // None of the supported types by this plugin
+            return MODLOADER_BEHAVIOUR_NO;
+        // If inside a folder with img extension, ignore any checking, just accept the file
+        else if(GetPathExtensionBack<char>(file.FilePath(), 2) != "img")
         {
-            case FileType::None:
+            switch(type)
             {
-                // None of the supported types by this plugin
-                return MODLOADER_BEHAVIOUR_NO;
-            }
-
-            case FileType::Nodes:
-            {
-                // Disabled, may conflict with nodes from data folder, use .img folder instead
-                return MODLOADER_BEHAVIOUR_NO;
-            }
-
-            case FileType::StreamedScene:
-            {
-                std::string str;
-                // If the IPL file have '_stream' on it's name it's probably a stream IPL
-                if((str = file.FileName()).find("_stream") != str.npos)
+                case FileType::Nodes:
                 {
-                    // Make sure by reading the file magic and comparing with 'bnry'
-                    if(IsFileMagic(file.FullPath().c_str(), "bnry"))
-                        break;
-                }
-                return MODLOADER_BEHAVIOUR_NO;
-            }
-
-            case FileType::VehRecording:
-            {
-                int dummy;
-                if(sscanf(file.FileName(), "carrec%d", &dummy) != 1)
+                    // Disabled, may conflict with nodes from data folder, use .img folder instead
                     return MODLOADER_BEHAVIOUR_NO;
-                break;
+                }
+
+                case FileType::AnimFile:
+                {
+                    // Make sure it isn't the special ifp file ped.ifp
+                    static const auto ped_ifp = modloader::hash("ped.ifp");
+                    if(file.hash == ped_ifp)
+                    {
+                        file.behaviour = file.hash | is_pedifp_mask;
+                        return MODLOADER_BEHAVIOUR_YES;
+                    }
+                }
+
+                case FileType::StreamedScene:
+                {
+                    std::string str;
+                    // If the IPL file have '_stream' on it's name it's probably a stream IPL
+                    if((str = file.FileName()).find("_stream") != str.npos)
+                    {
+                        // Make sure by reading the file magic and comparing with 'bnry'
+                        if(IsFileMagic(file.FullPath().c_str(), "bnry"))
+                            break;
+                    }
+                    return MODLOADER_BEHAVIOUR_NO;
+                }
+
+                case FileType::VehRecording:
+                {
+                    // Make sure it's file name is carrec formated
+                    int dummy;
+                    if(sscanf(file.FileName(), "carrec%d", &dummy) != 1)
+                        return MODLOADER_BEHAVIOUR_NO;
+                    break;
+                }
             }
         }
 
         SetFileType(file, type);
         return MODLOADER_BEHAVIOUR_YES;
-
     }
     return MODLOADER_BEHAVIOUR_NO;
 }
@@ -140,6 +157,8 @@ int ThePlugin::GetBehaviour(modloader::file& file)
 bool ThePlugin::InstallFile(const modloader::file& file)
 {
     if(file.behaviour & is_item_mask) return streaming.InstallFile(file);
+    if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.InstallFile(file);
+    if(file.behaviour & is_img_file_mask) return streaming.AddImgFile(file);
     return false;
 }
 
@@ -150,6 +169,8 @@ bool ThePlugin::InstallFile(const modloader::file& file)
 bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
     if(file.behaviour & is_item_mask) return streaming.ReinstallFile(file);
+    if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.ReinstallFile();
+    if(file.behaviour & is_img_file_mask) return true;
     return false;
 }
 
@@ -160,9 +181,15 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
 bool ThePlugin::UninstallFile(const modloader::file& file)
 {
     if(file.behaviour & is_item_mask) return streaming.UninstallFile(file);
+    if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.UninstallFile();
+    if(file.behaviour & is_img_file_mask) return streaming.RemImgFile(file);
     return false;
 }
 
+/*
+ *  ThePlugin::Update
+ *      Updates the plugin context after a serie of installs/uninstalls
+ */
 void ThePlugin::Update()
 {
     streaming.Update();

@@ -28,7 +28,6 @@ using namespace modloader;
 // TODO fix non find (only add) on LoadCdDirectory (GAME FOR COL/IFP/RRR/ETC)
 // TODO special model
 // TODO clothes
-// TODO something is wrong with installed models (runtime) streaming size catching
 // TODO proper logging
 // TODO proper IsClothes (player_parachute.scm isn't a clothing item)
 
@@ -37,11 +36,19 @@ CAbstractStreaming streaming;
 // Assembly hooks at "asm/" folder
 extern "C"
 {
-    CStreamingInfo* ms_aInfoForModel = memory_pointer(0x8E4CC0).get(); // TODO fastman
+    auto* ms_aInfoForModel = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
     extern void HOOK_RegisterNextModelRead();
     extern void HOOK_NewFile();
-    extern void HOOK_SetStreamName();
-    extern void HOOK_SetImgDscName();
+
+    static HANDLE __stdcall CreateFileForCdStream(
+        LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
+        LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+        DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
+    {
+        return CreateFileA(
+            streaming.GetCdStreamPath(lpFileName), dwDesiredAccess, dwShareMode,
+            lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
 };
 
 
@@ -408,6 +415,7 @@ int __stdcall CdStreamThread()
     return 0;
 }
 
+
 /*
  *  CAbstractStreaming::Patch
  *      Patches the default game streaming pipeline to have our awesome hooks.
@@ -456,56 +464,43 @@ void CAbstractStreaming::Patch()
     }
 
 
-    /*
-     *  We need to hook some game code where imgDescriptor[x].name and SteamNames[x][y] is set because they have a limit in filename size,
-     *  and we do not want that limit.
-     * 
-     *  This is a real dirty solution, but well...
-     *  
-     *  How does it work?
-     *      First of all, we hook the StreamNames string copying to copy our dummy string "?\0"
-     *                    this is simple and not dirty, the game never accesses this string again,
-     *                    only to check if there's a string there (and if there is that means the stream is open)
-     *  
-     *      Then comes the dirty trick:
-     *          We need to hook the img descriptors (CImgDescriptor array) string copying too,
-     *          but we need to do more than that, because this string is still used in CStreaming::LoadCdDirectory
-     *          to open the file and read the header.
-     * 
-     *          So what we did? The first field in CImgDescriptor is a char[40] array to store the name, so, we turned this field into an:
-     *              union {
-     *                  char name[40];
-     *                  
-     *                  struct {
-     *                      char dummy[2];      // Will container the dummy string "?\0" (0x003F)
-     *                      char pad[2];        // Padding to 4 bytes boundary
-     *                      char* customName;   // Pointer to a static buffer containing the new file name
-     *                  };
-     *              };
-     * 
-     *          Then we hook CStreaming::LoadCdDirectory to give the pointer customName instead of &name to CFileMgr::Open
-     *          Very dirty, isn't it?
-     */
+    // CdStream path overiding hook
     if(true)
     {
-        // Warning: do not use function_hooker here in this context, it would break many scoped hooks in this plugin.
+        // Do not use function_hooker here in this context, it would break many scoped hooks in this plugin.
+        
         static void*(*OpenFile)(const char*, const char*);
+        static void*(*RwStreamOpen)(int, int, const char*);
+
         static auto OpenFileHook = [](const char* filename, const char* mode)
         {
-            return OpenFile(GetCdStreamPath(filename), mode);
+            return OpenFile(streaming.GetCdStreamPath(filename), mode);
         };
 
+        static auto RwStreamOpenHook = [](int a, int b, const char* filename)
+        {
+            return RwStreamOpen(a, b, streaming.GetCdStreamPath(filename));
+        };
 
-        size_t nopcount = injector::address_manager::singleton().IsSteam()? 0xC : 0xA;
+        // Resolve the cd stream filenames by ourselves on the following calls
+        {
+            auto pOpenFile     = raw_ptr((decltype(OpenFile))(OpenFileHook));
+            OpenFile = MakeCALL(0x5B6183, pOpenFile).get();
+            MakeCALL(0x532361, pOpenFile);
+            MakeCALL(0x5AFC9D, pOpenFile);
+            auto pRwStreamOpen = raw_ptr((decltype(RwStreamOpen))(RwStreamOpenHook));
+            RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpen).get();
+            MakeCALL(0x5B07E9, pRwStreamOpen);
+        }
 
-        // Resolve the cd stream filenames by ourselves
-        OpenFile = MakeCALL(0x5B6183, raw_ptr((decltype(OpenFile))(OpenFileHook))).get();
+        // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
+        static void* pCreateFileForCdStream = &CreateFileForCdStream;
+        static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);  // Used on the obfuscated executable
 
-        //
-        MakeNOP(!isHoodlum? 0x406886 : 0x01564B90, nopcount);
-        MakeCALL(!isHoodlum? 0x406886 : 0x01564B90, raw_ptr(HOOK_SetStreamName));
-        MakeNOP(!isHoodlum? 0x407642 : 0x01567BC2, nopcount);
-        MakeCALL(!isHoodlum? 0x407642 : 0x01567BC2, raw_ptr(HOOK_SetImgDscName));
+        if(gvm.IsSA() && gvm.IsHoodlum())
+            injector::WriteMemory(raw_ptr(0x1564B56 + 1), &SRXorCreateFileForCdStream, true);
+        else
+            injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
     }
 }
 

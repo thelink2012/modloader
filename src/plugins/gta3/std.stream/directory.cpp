@@ -47,19 +47,6 @@ extern "C"
         iNextModelBeingLoaded = id;
         streaming.MakeSureModelIsOnDisk(id);
     }
-
-    // Finds the hooked cd stream path (first field from CImgDescriptor)
-    const char* GetCdStreamPath(const char* filename)
-    {
-        if(filename)
-        {
-            // If it's our dummy string, take the new string from the customName pointer
-            if(filename[0] == '?' && filename[1] == '\0') return *(char**)(filename + 4);
-            return filename;
-        }
-        // It's custom, ignore name but actually have a valid openable name
-        return modloader::szNullFile;
-    }
 };
 
 
@@ -148,6 +135,47 @@ static void PerformDirectoryRead(size_t size,
 
     // Run the cd directory reader
     Run();
+}
+
+
+
+/*
+ *  CAbstractStreaming::GetCdStreamPath
+ *      Gets the actual file path for the specified filepath
+ *      For example it may find a new gta3.img path for "MODELS/GTA3.IMG"
+ */
+const char* CAbstractStreaming::GetCdStreamPath(const char* filepath_)
+{
+    if(filepath_)   // If null it's our abstract cd
+    {
+        std::string fpath; bool bBreak = false;
+        auto filepath = NormalizePath(filepath_);
+        auto filename = &filepath[GetLastPathComponent(filepath)];
+
+        // Check twice, the first time check for path equality, the second time for filename equality
+        for(int i = 0; i < 2 && !bBreak; ++i)
+        {
+            for(auto& file : this->imgFiles)
+            {
+                auto& cdpath    = (i == 0? filepath : filename);                    // Sent filepath/filename
+                fpath           = (i == 0? file->FilePath() : file->FileName());    // Custom filepath/filename
+
+                // Check if the ending of cdpath is same as fpath
+                if(fpath.length() >= cdpath.length() && std::equal(cdpath.rbegin(), cdpath.rend(), fpath.rbegin()))
+                {
+                    // Yeah, let's override!!!
+                    filepath_ = file->FileBuffer();
+                    bBreak = true;
+                    break;
+                }
+            }
+        }
+
+        return filepath_;
+    }
+
+    // It's abstract, ignore name but actually have a valid openable name
+    return modloader::szNullFile;
 }
 
 

@@ -47,7 +47,6 @@ enum class FileType : uint8_t // max 4 bits (value 15)
 // Behaviour maskes
 static const uint64_t hash_mask         = 0x00000000FFFFFFFF;   // Mask for the hash on the behaviour
 static const uint64_t is_img_file_mask  = 0x0000000100000000;   // Is .img file
-static const uint64_t is_img_dir_mask   = 0x0000000200000000;   // Is .img directory
 static const uint64_t is_item_mask      = 0x0000000400000000;   // Is item that goes inside .img file, use the type_mask to see file type
 static const uint64_t is_pedifp_mask    = 0x0000000800000000;   // Is ped.ifp file
 static const uint64_t type_mask         = 0x00000F0000000000;   // Mask for the file type (see FileType enum)
@@ -113,8 +112,6 @@ static void FillDirectoryEntry(CDirectoryEntry& entry, const modloader::file& mo
 }
 
 
-// TODO RENAME STUFF BASED ON RESOURCE INSTEAD OF MODEL
-
 
 
 
@@ -141,6 +138,8 @@ class CAbstractStreaming
         CRITICAL_SECTION cs;                            // this must be used together with imported files list for thread-safety
 
         std::string fbuffer;                            // To avoid a dynamic allocation everytime we open a model
+
+        std::list<const modloader::file*> imgFiles;
 
     public:
         struct CdDirectoryItem
@@ -267,6 +266,21 @@ class CAbstractStreaming
         void ReloadModel(id_t id);
 
         void MakeSureModelIsOnDisk(id_t id);
+
+
+        const char* GetCdStreamPath(const char* filepath_);
+
+        bool AddImgFile(const modloader::file& f)
+        {
+            if(!bHasInitializedStreaming) imgFiles.emplace_back(&f);
+            return !bHasInitializedStreaming;
+        }
+
+        bool RemImgFile(const modloader::file& f)
+        {
+            if(!bHasInitializedStreaming) imgFiles.remove(&f);
+            return !bHasInitializedStreaming;
+        }
 
     protected:
         void GenericReadEntry(CDirectoryEntry& entry, const modloader::file* file);
