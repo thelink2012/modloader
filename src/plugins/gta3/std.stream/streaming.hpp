@@ -151,6 +151,8 @@ class CAbstractStreaming
             uint8_t  img;       // IMG file id this item is bound to
             FileType type;      // File type
 
+            CdDirectoryItem() = default;
+
             CdDirectoryItem(const char* filename, const CDirectoryEntry& entry, int img_id)
             {
                 auto* ext = strrchr(filename, '.');
@@ -168,7 +170,6 @@ class CAbstractStreaming
         struct ModelInfo
         {
             const modloader::file* file = nullptr;      // The file this model is bound to
-            CdDirectoryItem*  original  = nullptr;      // The original directory entry
             bool isFallingBack          = false;        // If file isn't on disk, we're falling back to the original entry
             bool isSpecialModel         = false;
             bool isClothes              = false;
@@ -228,7 +229,7 @@ class CAbstractStreaming
         void FetchCdDirectory(TempCdDir_t& cd_dir, CImgDescriptor*& descriptor, int id);
         void FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)());
         void LoadCdDirectories(TempCdDir_t& cd_dir);
-        void LoadCustomCdDirectory(ref_list<const modloader::file*> files);
+        void LoadAbstractCdDirectory(ref_list<const modloader::file*> files);
 
         void ProcessRefreshes();
         void FilterRefreshList();
@@ -300,12 +301,11 @@ class CAbstractStreaming
         void ImportModels(ref_list<const modloader::file*> files);
         void UnimportModel(id_t index);
 
-        void SetInfoForModel(id_t index, uint32_t offset, uint32_t blocks, uint8_t img_id)
+        void SetInfoForModel(id_t index, uint32_t offset, uint32_t blocks)
         {
             auto& model = *this->InfoForModel(index);
             model.offset    = offset;
             model.blocks    = blocks;
-            model.img_id    = img_id;
             model.nextOnCd  = -1;                    // TODO find the one pointing to me and do -1 on it
             if(!bHasInitializedStreaming) model.flags = 0;
         }
@@ -316,15 +316,18 @@ class CAbstractStreaming
             if(it != cd_dir.end())
             {
                 auto& cd = it->second;
-                this->SetInfoForModel(index, cd.offset, cd.blocks, cd.img);
+                this->SetInfoForModel(index, cd.offset, cd.blocks);
             }
             else
             {
-                this->SetInfoForModel(index, 0, 0, 0);
+                this->SetInfoForModel(index, 0, 0);
             }
         }
 
 
+
+        void QuickImport(id_t index, const modloader::file* file,  bool isSpecialModel = false);
+        void QuickUnimport(id_t index);
 
 
 
@@ -377,7 +380,6 @@ class CAbstractStreaming
 extern CAbstractStreaming streaming;
 extern "C" int iNextModelBeingLoaded;
 extern "C" int iModelBeingLoaded;
-extern "C" const char* GetCdStreamPath(const char* filename);
 
 
 

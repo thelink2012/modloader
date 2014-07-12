@@ -33,20 +33,21 @@ using namespace modloader;
 
 CAbstractStreaming streaming;
 
-// Assembly hooks at "asm/" folder
+
 extern "C"
 {
+    // Assembly hooks at "asm/" folder
     auto* ms_aInfoForModel = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
     extern void HOOK_RegisterNextModelRead();
     extern void HOOK_NewFile();
-
+ 
     static HANDLE __stdcall CreateFileForCdStream(
         LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
         LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
         DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
     {
         LPCSTR lpActualFileName = streaming.GetCdStreamPath(lpFileName);
-        plugin_ptr->Log("Opening image file \"%s\"", lpActualFileName);
+        plugin_ptr->Log("Opening file for streaming \"%s\"", lpActualFileName);
         return CreateFileA(
             lpActualFileName, dwDesiredAccess, dwShareMode,
             lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
@@ -168,32 +169,6 @@ void CAbstractStreaming::RemoveUnusedResources()
 
 
 
-/*
- *  CAbstractStreaming::RegisterModelIndex
- *      Registers the existence of an index assigned to a specific filename
- */
-void CAbstractStreaming::RegisterModelIndex(const char* filename, id_t index)
-{
-    if(this->indices.emplace(modloader::hash(filename, ::tolower), index).second == false)
-        plugin_ptr->Log("Warning: Model %s appears more than once in abstract streaming", filename);
-}
-
-/*
- *  CAbstractStreaming::RegisterStockEntry
- *      Registers the stock/default/original cd directory data of an index, important to restore it later when necessary.
- */
-void CAbstractStreaming::RegisterStockEntry(const char* filename, CDirectoryEntry& entry, id_t index, int img_id)
-{
-    if(this->cd_dir.emplace(std::piecewise_construct,
-        std::forward_as_tuple(index),
-        std::forward_as_tuple(filename, entry, img_id)).second == false)
-    {
-        // Please note @entry here is incomplete because the game null terminated the string before the extension '.'
-        // So let's use @filename
-        plugin_ptr->Log("Warning: Stock entry %s appears more than once in abstract streaming", filename);
-    }
-}
-
 
 /*
  *  CAbstractStreaming::InstallFile
@@ -287,13 +262,16 @@ void CAbstractStreaming::Update()
     }
 }
 
+
+
+
 /*
  *  CAbstractStreaming::ImportModels
  *      Imports the files in the list into the abstract streaming
  */
 void CAbstractStreaming::ImportModels(ref_list<const modloader::file*> files)
 {
-    LoadCustomCdDirectory(files);
+    LoadAbstractCdDirectory(files);
 }
 
 /*
@@ -302,9 +280,80 @@ void CAbstractStreaming::ImportModels(ref_list<const modloader::file*> files)
  */
 void CAbstractStreaming::UnimportModel(id_t index)
 {
+    // Remove the entry from the special directory
+    auto it_imp = imports.find(index);
+    if(it_imp != imports.end())
+    {
+        for(auto it = special_dir.begin(); it != special_dir.end(); ++it)
+        {
+            // We're removing it from the special directory but it's still in the ModelsDirectory, we can't do much about it...
+            // Let it go.
+            if(it->second == it_imp->second.file)
+            {
+                special_dir.erase(it);
+                break;
+            }
+        }
+    }
+
     this->RestoreInfoForModel(index);
+    this->QuickUnimport(index);
+}
+
+/*
+ *  CAbstractStreaming::QuickImport
+ *      Quickly import into the specified index the specified file with the specified flags
+ *      This is a raw import technique and should be used ONLY when necessary
+ *      It does not perform any kind of checking such as if the streaming buffer size is enought
+ */
+void CAbstractStreaming::QuickImport(id_t index, const modloader::file* file, bool isSpecialModel)
+{
+    plugin_ptr->Log("Importing model file for index %d at \"%s\"", index, file->FileBuffer());
+
+    // Add import into the import table
+    auto& imp = imports[index];
+    imp.file = file;
+    imp.isFallingBack = false;
+    imp.isSpecialModel = isSpecialModel;
+
+    // Register the existence of such a model and setup info for it
+    this->RegisterModelIndex(file->FileName(), index);
+    this->SetInfoForModel(index, 0, GetSizeInBlocks(file->Size()));
+}
+
+/*
+ *  CAbstractStreaming::QuickUnimport
+ *      Quickly unimport the specified index
+ *      Analogue to QuickImport. This version of unimporting do not mess with the info for model structure.
+ */
+void CAbstractStreaming::QuickUnimport(id_t index)
+{
+    plugin_ptr->Log("Removing imported model file at index %d", index, index);
     this->imports.erase(index);
 }
+
+/*
+ *  CAbstractStreaming::RegisterModelIndex
+ *      Registers the existence of an index assigned to a specific filename.
+ */
+void CAbstractStreaming::RegisterModelIndex(const char* filename, id_t index)
+{
+    this->indices[modloader::hash(filename, ::tolower)] = index;
+}
+
+/*
+ *  CAbstractStreaming::RegisterStockEntry
+ *      Registers the stock/default/original cd directory data of an index, important so it can be restored later when necessary.
+ */
+void CAbstractStreaming::RegisterStockEntry(const char* filename, CDirectoryEntry& entry, id_t index, int img_id)
+{
+    // Please note entry here is incomplete because the game null terminated the string before the extension '.', so use filename
+    cd_dir[index] = CdDirectoryItem(filename, entry, img_id);
+}
+
+
+
+
 
 
 /*
@@ -330,8 +379,6 @@ void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
         }
     }
 }
-
-
 
 /*
  *  Streaming thread
@@ -449,14 +496,14 @@ void CAbstractStreaming::Patch()
         TempCdDir_t cd_dir;
         this->FetchCdDirectories(cd_dir, LoadCdDirectory1);         // Fetch...
         this->LoadCdDirectories(cd_dir);                            // ...and load
-        this->LoadCustomCdDirectory(refs_mapped(raw_models));       // Load custom
+        this->LoadAbstractCdDirectory(refs_mapped(raw_models));       // Load custom
 
         // Mark streaming as initialized
         this->bHasInitializedStreaming = true;
         this->raw_models.clear();
     });
 
-
+    // Standard models
     if(true)
     {
         // Making our our code for the stream thread would make things so much better
@@ -480,8 +527,45 @@ void CAbstractStreaming::Patch()
         });
     }
 
+    // Special models
+    if(true)
+    {
+        typedef function_hooker_thiscall<0x409F76, char(void*, const char*, unsigned int&, unsigned int&)> findspecial_hook;
+        typedef function_hooker<0x409FD9, char(int, int)> rqspecial_hook;
+        static CDirectoryEntry* pRQSpecialEntry;    // Stores the special entry we're working with
 
-    // CdStream path overiding hook
+        // Hook call to CDirectory::FindItem (1) to find out which directory entry we're dealing with...
+        make_static_hook<findspecial_hook>([this](findspecial_hook::func_type FindItem, void*& dir, const char*& name, unsigned int& offset, unsigned int& blocks)
+        {
+            pRQSpecialEntry = injector::thiscall<CDirectoryEntry*(void*, const char*)>::call<0x532450>(dir, name);  // CDirectory::FindItem
+            return FindItem(dir, name, offset, blocks); // (above call and this call are different)
+        });
+
+        // Hook call to CStreaming::RequestModel and do special processing if the entry is related to the abstract streaming
+        make_static_hook<rqspecial_hook>([this](rqspecial_hook::func_type RequestModel, int& index, int& flags)
+        {
+            // Before this being called the game built the InfoForModel entry for this index based on the stock entry pRQSpecialEntry
+            // Register stock entry, so it can be restored during gameplay if necessary
+            CDirectoryEntry entry = *pRQSpecialEntry;                   // Make copy to do proper processing
+            auto img_id      = pRQSpecialEntry->fileOffset >> 24;       // Extract img id from file offset
+            entry.fileOffset = pRQSpecialEntry->fileOffset & 0xFFFFFF;  // Extract actual file offset
+            this->RegisterStockEntry(strcat(entry.filename, ".dff"), entry, index, img_id);
+
+            // Try to find abstract special entry related to this request....
+            // If it's possible, quickly import our entry into this special index
+            // otherwise quickly remove our previous entry at this special index if any there
+            auto it = this->special_dir.find(modloader::hash(pRQSpecialEntry->filename, ::tolower));
+            if(it != this->special_dir.end())
+                this->QuickImport(index, it->second, true);
+            else
+                this->QuickUnimport(index);
+
+            // Ahhhhh!! finally do the actual request :)
+            return RequestModel(index, flags);
+        });
+    }
+
+    // CdStream path overiding
     if(true)
     {
         // Do not use function_hooker here in this context, it would break many scoped hooks in this plugin.

@@ -21,27 +21,18 @@ extern "C"
     auto& streamingBufferSize       = *memory_pointer(0x8E4CA8).get<uint32_t>();
     auto LoadCdDirectory2           = ReadRelativeOffset(0x5B8310 + 1).get<void(CImgDescriptor*, int)>();
 
-    auto CDirectory__FindItem2 = (CDirectoryEntry* (__thiscall*)(CDirectory*, const char*)) memory_pointer(0x532450).get<void>();
-
     // Next model read registers. It's important to have those two vars! Don't leave only one!
     int  iNextModelBeingLoaded = -1;            // Set by RegisterNextModelRead, will then be sent to iModelBeingLoaded
     int  iModelBeingLoaded = -1;                // Model currently passing throught CdStreamRead
 
-    // Allocates a buffer that lives for the entire life time of the app
-    // Used by HOOK_SetImgDscName
-    const char* AllocBufferForString(const char* str)
-    {
-        static std::list<std::string> buffers;
-        return buffers.emplace(buffers.end(), str)->c_str();
-    }
-
-    // Returns the file handle to be used for iModelBeingLoaded
+    // Returns the file handle to be used for iModelBeingLoaded (called from Assembly)
     HANDLE CallGetAbstractHandle(HANDLE hFile)
     {
         if(iModelBeingLoaded == -1) return hFile;
         return streaming.TryOpenAbstractHandle(iModelBeingLoaded, hFile);
     }
 
+    // Registers the next model to be loaded (called from Assembly)
     void RegisterNextModelRead(int id)
     {
         iNextModelBeingLoaded = id;
@@ -109,20 +100,14 @@ static void PerformDirectoryRead(size_t size,
     });
 
     // Registers a special entry
-    sf = make_function_hook2<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type CDirectory__AddItem, CDirectory*& dir, CDirectoryEntry*& entry)
+    sf = make_function_hook2<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, CDirectoryEntry*& entry)
     {
-        CDirectoryEntry* xentry = nullptr;
+        // Tell the callback about this registering
+        if(RegisterSpecialEntry) RegisterSpecialEntry(*entry);
 
-        // The standard game doesn't have this behaviour, but it's useful to have....
-        // If we already have a special entry, override it. Originally it would be added again without emotion!
-        if(xentry = CDirectory__FindItem2(dir, entry->filename))    // TODO no need for this!!
-        {
-            memcpy(xentry, entry, sizeof(*xentry));
-            entry = xentry;
-        }
-
-        if(RegisterSpecialEntry) RegisterSpecialEntry(*entry);  // Tell the callback about this registering
-        if(!xentry) CDirectory__AddItem(dir, entry);            // If not overriding an entry, just add it
+        // Add entry to directory ONLY if it doesn't exist yet
+        if(injector::thiscall<CDirectoryEntry*(void*, const char*)>::call<0x532450>(dir, entry->filename) == nullptr)  // CDirectory::FindItem
+            AddItem(dir, entry);
     });
 
     // Registers a normal entry
@@ -353,10 +338,10 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
 
 
 /*
- *  CAbstractStreaming::LoadCustomCdDirectory
+ *  CAbstractStreaming::LoadAbstractCdDirectory
  *      Loads a abstract (fake) custom cd directories related to our disk files @files
  */
-void CAbstractStreaming::LoadCustomCdDirectory(ref_list<const modloader::file*> files)
+void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*> files)
 {
     // TODO LOG Loading abstract cd directory... / Abstract cd directory has been loaded
 
@@ -367,6 +352,11 @@ void CAbstractStreaming::LoadCustomCdDirectory(ref_list<const modloader::file*> 
     // We need those temp vars, don't even dare to remove them
     auto realStreamingBufferSize = bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
     this->tempStreamingBufSize = realStreamingBufferSize;
+
+    // Streaming bus must be empty before this operation
+    if(this->bHasInitializedStreaming)
+        this->FlushChannels();
+
 
     // Fill entry buffer and advance iterator
     auto ReadEntry = [&](CDirectoryEntry& entry)
@@ -381,9 +371,11 @@ void CAbstractStreaming::LoadCustomCdDirectory(ref_list<const modloader::file*> 
     };
 
     // Be aware of existence of special entries here
-    auto RegisterSpecialEntry = [](CDirectoryEntry& entry)
+    auto RegisterSpecialEntry = [&](CDirectoryEntry& entry)
     {
         // TODO (rmber fileoffset!)
+        // TODO REGISTER INSTEAD OF RIGHT EMPLACING
+        special_dir.emplace(modloader::hash(entry.filename, ::tolower), curr->get());
     };
 
     // Be aware of existence of standard entries here
@@ -444,20 +436,6 @@ void CAbstractStreaming::GenericReadEntry(CDirectoryEntry& entry, const modloade
 
 bool CAbstractStreaming::GenericRegisterEntry(CStreamingInfo& model, bool hasModel, const modloader::file* file)
 {
-    // TODO (RMB LOG ABOUT IT "Importing model file for index %d at \"%s\"")
-
-    auto index = InfoForModelIndex(model);
-
-    if(!hasModel) RegisterModelIndex(file->FileName(), index);
-
-    auto original = cd_dir.find(index);
-
-    auto& b = imports[index];
-    b.file = file;
-    b.original = original != cd_dir.end()? &original->second : nullptr;
-    b.isFallingBack = false;
-
-    this->SetInfoForModel(index, 0, GetSizeInBlocks(file->Size()), hasModel? model.img_id : AbstractImgId);
-
+    this->QuickImport(InfoForModelIndex(model), file);
     return true;
 }
