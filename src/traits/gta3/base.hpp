@@ -1,9 +1,7 @@
 /* 
- * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  Most of things game version dependent (not being addresseses since addr translator) should be handled by the game trait
- *
  */
 #pragma once
 #include <modloader/util/injector.hpp>
@@ -11,6 +9,8 @@
 
 struct TraitsGTA
 {
+    using id_t = uint32_t;      // must allow checking for -1
+
     template<class T>
     static T& ReadOffset(void* ptr, size_t offset)
     {

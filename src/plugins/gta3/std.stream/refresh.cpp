@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *      Streaming refresher
@@ -9,7 +9,10 @@
 #include <traits/gta3/sa.hpp>
 using namespace modloader;
 
+class CAnimBlendAssociation;
+class CTask;
 struct tag_player_t {} tag_player;
+struct tag_ped_t {} tag_ped;
 
 
 /*
@@ -36,14 +39,25 @@ class Refresher : private T
             std::function<void(void* entity)> Destroy;  // Destroy the model
         };
 
+        // Some stuff that must be saved on the entity between the destroy and the recreation
+        union EntitySave
+        {
+            struct {
+                CAnimBlendAssociation* mBlendAssoc;
+            } ped;
+        };
+
         // Reference to the streaming object
         CAbstractStreaming& streaming;
         
+        std::map<void*, EntitySave>         mSavedEntityData;   // Saves entity stuff
+
         // Association maps
         std::map<id_t, std::vector<void*>>  mEntityAssoc;   // Map of association between a model id and many game entities
         std::map<id_t,  std::vector<id_t>>  mTxdAssoc;      // Map of association between a txd and many dffs
         std::map<EntityType, EntityEvent>   mEntityEvents;  // Map of association between type of entities and their refreshing events
         std::set<id_t>                      mToRefresh;     // List of resources that needs to be refreshed (dff/txd/col/ifp/ipl/etc)
+
 
         // Initialization
         void BuildRefreshMap();
@@ -80,6 +94,22 @@ class Refresher : private T
                     }
                 }
             }
+        }
+
+        // Adds a saved entity slot and returns it
+        EntitySave* AddSavedEntityData(void* entity)
+        {
+            return &(this->mSavedEntityData.emplace(std::piecewise_construct,
+                std::forward_as_tuple(entity),
+                std::forward_as_tuple()).first->second);
+        }
+
+        // Gets a saved entity slot, returning null if not found
+        EntitySave* GetSavedEntityData(void* entity)
+        {
+            auto it = this->mSavedEntityData.find(entity);
+            if(it != mSavedEntityData.end()) return &it->second;
+            return nullptr;
         }
 };
 
@@ -357,22 +387,37 @@ template<class T> void Refresher<T>::SetupEntityEvents()
         injector::thiscall<void(void*)>::vtbl<8>(entity);   // CEntity::DeleteRwObject
     };
 
-    // Peds refreshing (FIXME take a deeper look at it)
+    // Peds refreshing (based on script command @BUILD_PLAYER_MODEL)
     if(true)
     {
-        // We need to save and restore the anim groups (do we really need? R* did it @CHANGE_PLAYER_MODEL)
-        ped.Recreate = [](void* entity)
+        // We need to restore the animation association after the recreatioon process
+        ped.Recreate = [this](void* entity)
         {
-            auto animGrp = GetPedAnimGroup(entity);
+            // XXX RpAnimBlendClumpGiveAssociations may requiere a custom implementation in Vice City!
+            // Study the RpAnimBlendClump family of functions in Vice City and rebuild this one by hand.
+            auto RpAnimBlendClumpGiveAssociations = injector::cstd<void(void*, CAnimBlendAssociation*)>::call<0x4D6C30>;
+
+            // Recreate model and give anim associations back
             RecreateModel(entity);
-            GetPedAnimGroup(entity) = animGrp;
+            auto save = this->GetSavedEntityData(entity);
+            RpAnimBlendClumpGiveAssociations(GetEntityRwObject(entity), save->ped.mBlendAssoc);
         };
 
-        // Remove ped tasks before destroying the ped, this seems to help with the crash after we refresh them
-        // TODO see 5A82C0, it may help to find out the best way to deal with this tasks problem
-        ped.Destroy = [](void* entity)
+        // Save ped anim blend association and make inverse kinematics task abortable, a crash is imminent if we don't do this
+        ped.Destroy = [this](void* entity)
         {
-            injector::thiscall<void(void*, int)>::call<0x601640>(GetPedIntelligence(entity), true);  // CPedIntelligence::Reset
+            // XXX RpAnimBlendClumpGiveAssociations may requiere a custom implementation in Vice City!
+            // Study the RpAnimBlendClump family of functions in Vice City and rebuild this one by hand.
+            auto RpAnimBlendClumpExtractAssociations = injector::cstd<CAnimBlendAssociation*(void*)>::call<0x4D6BE0>;
+
+            // Save anim association on the clump (R* extension)
+            auto save = this->AddSavedEntityData(entity);
+            save->ped.mBlendAssoc = RpAnimBlendClumpExtractAssociations(GetEntityRwObject(entity));
+
+            // Make IK task abortable
+            if(auto task = injector::thiscall<CTask*(void*, int)>::call<0x681810>(GetPedTaskManager(entity), 5))   // CTaskManager::GetTaskSecondary
+                injector::thiscall<void(CTask*, void*, int, int)>::vtbl<6>(task, entity, 2, 0); // CTask::MakeAbortable
+
             DestroyModel(entity);
         };
     }
