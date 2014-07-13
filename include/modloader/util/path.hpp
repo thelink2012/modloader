@@ -127,40 +127,7 @@ namespace modloader
         return path;
     }
     
-    /*
-     *      Checks if a file is inside an named folder, or just inside it
-     *      @file File path to check
-     *      @bJust  Returns true only if just right inside the folder
-     *      @folder Folder path
-     *
-     *      FIXME this func is broken
-     */
-    inline bool IsFileInsideFolder(std::string file, bool bJust, std::string folder)
-    {
-        file = NormalizePath(file);
-        folder= NormalizePath(folder);
-        
-        if(bJust)   // Only if just right inside the folder?
-        {
-            //
-            size_t last = file.find_last_of(cNormalizedSlash);
-            if(last != file.npos && last >= folder.length())
-            {
-                // Find pos to start the comparation and number chars to compare
-                size_t pos = last - folder.length();
-                size_t n  = last - pos;
-                // Get result
-                return (file.compare(pos, n, folder) == 0);
-            }
-            return false;
-        }
-        else
-        {
-            // Simple enougth, just find folder in file
-            return (file.find(folder) != file.npos);
-        }
-    }
-    
+
     
     /*
      *  GetLastPathComponent
@@ -219,7 +186,31 @@ namespace modloader
     }
     
     
-    
+    /*
+     *      Checks if a file is inside an named folder, or just inside it
+     *      @file File path to check
+     *      @bJust  Returns true only if just right inside the folder
+     *      @folder Folder path
+     *
+     */
+    inline bool IsFileInsideFolder(std::string file, bool bJust, std::string folder)
+    {
+        file = NormalizePath(file);
+        folder= NormalizePath(folder);
+        
+        int numFolds = std::count(file.begin(), file.end(), cNormalizedSlash);
+
+        for(int i = 2; i <= numFolds; ++i)
+        {
+            if(GetPathComponentBack(file, i) == folder)
+                return true;
+            else if(bJust)
+                break;
+        }
+        
+        return false;
+    }
+
     
     /*
      * FilesWalk

@@ -98,18 +98,13 @@ static uint32_t GetSizeInBlocks(uint64_t size)
     return GetSizeInBlocks((uint32_t)size);
 }
 
-static void FillDirectoryEntry(CDirectoryEntry& entry, const char* filename, uint32_t size)
+static void FillDirectoryEntry(CDirectoryEntry& entry, const char* filename, uint32_t offset, uint64_t size_in_bytes)
 {
     strncpy(entry.filename, filename, 23);
     entry.filename[23]  = 0;
-    entry.fileOffset    = 0;
+    entry.fileOffset    = offset;
     entry.sizePriority1 = 0;
-    entry.sizePriority2 = GetSizeInBlocks(size);
-}
-
-static void FillDirectoryEntry(CDirectoryEntry& entry, const modloader::file& model)
-{
-    return FillDirectoryEntry(entry, model.FileName(), (uint32_t) model.Size());
+    entry.sizePriority2 = GetSizeInBlocks(size_in_bytes);
 }
 
 
@@ -213,11 +208,11 @@ class CAbstractStreaming
         // Immutable pair items (once pair is mapped it'll never change)
         // Those are related to the game (to find out more about indices and clothes) not to our custom files
         std::map<hash_t, id_t> indices;           // <hash, indice>
-        //std::map<hash_t, uint32_t> clothes_map;   // <hash, offset>
+        std::map<hash_t, uint32_t> clothes_map;   // <hash, offset |##| index on dir>
 
         // Custom files
         std::map<id_t, ModelInfo>     imports;  // <indice, model>
-        //std::map<uint32_t, ModelInfo> clothes;  // <offset, model>
+        std::map<uint32_t, const modloader::file*>   clothes;  // <offset |##| hash, model>
 
         //std::set<id_t> mToRefresh;
 
@@ -253,8 +248,8 @@ class CAbstractStreaming
 
 
         // TODO
-        void BuildClothesMap() {}
-        bool IsClothes(const modloader::file& file) {return false;}
+        void BuildClothesMap();
+        bool IsClothes(const modloader::file* file);
 
         void LoadAllRequestedModels();
         void FlushChannels();
@@ -296,6 +291,7 @@ class CAbstractStreaming
 
         uint32_t tempStreamingBufSize;
         std::map<hash_t, const modloader::file*> mToImportList; // null file means uninstall
+        bool mToRefreshPlayer = false;
 
         // Call those only if the streaming bus is empty
         void ImportModels(ref_list<const modloader::file*> files);
@@ -326,7 +322,7 @@ class CAbstractStreaming
 
 
 
-        void QuickImport(id_t index, const modloader::file* file,  bool isSpecialModel = false);
+        void QuickImport(id_t index, const modloader::file* file,  bool isSpecialModel = false, bool isCloth = false);
         void QuickUnimport(id_t index);
 
 
@@ -373,13 +369,31 @@ class CAbstractStreaming
         {
             return this->bIsUpdating;
         }
-};
 
+        std::vector<CDirectoryEntry> sparse_dir_entries;
+        uint32_t cloth_dir_sparse_start;
+        uint32_t cloth_dir_sparse_curr;
+        CDirectoryEntry* FindClothEntry(hash_t hash);
+
+        uint32_t GetClothSparseOffset() { return ++cloth_dir_sparse_curr; }
+        bool IsClothSparseOffset(uint32_t offset)  { return offset >= cloth_dir_sparse_start; }
+
+        bool ImportCloth(const modloader::file* file);
+        bool UnimportCloth(const modloader::file* file);
+        // TODO UnimportCloth
+
+        void RegisterClothingItem(const char* filename, int index);
+
+        void FixClothesDirectory();
+
+};
 
 
 extern CAbstractStreaming streaming;
 extern "C" int iNextModelBeingLoaded;
 extern "C" int iModelBeingLoaded;
+extern "C" struct CStreamingInfo* ms_aInfoForModel;
+extern "C" struct CDirectory* clothesDirectory;;
 
 
 

@@ -9,6 +9,8 @@
 #include <traits/gta3/sa.hpp>
 using namespace modloader;
 
+struct tag_player_t {} tag_player;
+
 
 /*
  *  Refresher
@@ -20,6 +22,7 @@ class Refresher : private T
     public:
         // To run the refresher, just construct it passing the streaming as argument
         Refresher(CAbstractStreaming& s);
+        Refresher(tag_player_t, CAbstractStreaming& s);
 
     private:
         using hash_t        = CAbstractStreaming::hash_t;
@@ -92,6 +95,12 @@ void CAbstractStreaming::ProcessRefreshes()
         if(gvm.IsSA()) Refresher<TraitsSA>(*this);
         this->mToImportList.clear();
     }
+    
+    if(this->mToRefreshPlayer)
+    {
+        Refresher<TraitsSA>(tag_player, *this);
+        this->mToRefreshPlayer = false;
+    }
 }
 
 
@@ -125,9 +134,29 @@ Refresher<T>::Refresher(CAbstractStreaming& s)
     this->RequestModels();                  // Request all models previosly removed
     this->RecreateEntities();               // Recreate the pieces of the entities we destroyed previosly
 
-    streaming.mToImportList.clear();
     plugin_ptr->Log("Successfully refreshed models.");
 }
+
+/*
+ *  Refresher
+ *      Refreshes the streaming with some new player clothing information
+ */
+template<class T> 
+Refresher<T>::Refresher(tag_player_t, CAbstractStreaming& s) 
+    : streaming(s)
+{
+    plugin_ptr->Log("Refreshing player...");
+
+    injector::scoped_write<5> always;                   // Always refresh the player clump
+    always.write<void*>(0x5A8346 + 1, nullptr, true);   // even when ""nothing"" changed in it
+
+    auto ped = injector::cstd<void*(int)>::call<0x56E210>(-1);      // FindPlayerPed
+    injector::cstd<void(void*, char)>::call<0x5A82C0>(ped, false);  // CClothes::RebuildPlayer              
+
+    plugin_ptr->Log("Successfully refreshed player.");
+}
+
+
 
 /*
  *  Refresher::GetModelsUsingTxdIndex
@@ -340,6 +369,7 @@ template<class T> void Refresher<T>::SetupEntityEvents()
         };
 
         // Remove ped tasks before destroying the ped, this seems to help with the crash after we refresh them
+        // TODO see 5A82C0, it may help to find out the best way to deal with this tasks problem
         ped.Destroy = [](void* entity)
         {
             injector::thiscall<void(void*, int)>::call<0x601640>(GetPedIntelligence(entity), true);  // CPedIntelligence::Reset

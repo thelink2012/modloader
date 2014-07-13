@@ -4,6 +4,7 @@ streaming.cpp
 streaming.hpp
 directory.cpp
 refresh.cpp
+backend.cpp
 asm/backend.${ASM_EXT}
 )
 

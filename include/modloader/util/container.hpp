@@ -213,6 +213,21 @@ namespace modloader
         return boolean? "true" : "false";
     }
 
+
+
+    template<class MapT>
+    inline void EraseFromMap(MapT& map, const typename MapT::mapped_type& value)
+    {
+        for(auto it = map.begin(); it != map.end(); ++it)
+        {
+            if(it->second == value)
+            {
+                map.erase(it);
+                break;
+            }
+        }
+    }
+
 }
 
 #endif	/* MODLOADER_UTIL_CONTAINER_HPP */

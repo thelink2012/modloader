@@ -16,28 +16,10 @@ using namespace modloader;
 // Hooks and other util stuff
 extern "C"
 {
-    DWORD *pStreamCreateFlags       = memory_pointer(0x8E3FE0).get();
     auto pStreamingBuffer           = memory_pointer(0x008E4CAC).get<void*>();
     auto& streamingBufferSize       = *memory_pointer(0x8E4CA8).get<uint32_t>();
     auto LoadCdDirectory2           = ReadRelativeOffset(0x5B8310 + 1).get<void(CImgDescriptor*, int)>();
-
-    // Next model read registers. It's important to have those two vars! Don't leave only one!
-    int  iNextModelBeingLoaded = -1;            // Set by RegisterNextModelRead, will then be sent to iModelBeingLoaded
-    int  iModelBeingLoaded = -1;                // Model currently passing throught CdStreamRead
-
-    // Returns the file handle to be used for iModelBeingLoaded (called from Assembly)
-    HANDLE CallGetAbstractHandle(HANDLE hFile)
-    {
-        if(iModelBeingLoaded == -1) return hFile;
-        return streaming.TryOpenAbstractHandle(iModelBeingLoaded, hFile);
-    }
-
-    // Registers the next model to be loaded (called from Assembly)
-    void RegisterNextModelRead(int id)
-    {
-        iNextModelBeingLoaded = id;
-        streaming.MakeSureModelIsOnDisk(id);
-    }
+    CDirectory* clothesDirectory    = ReadMemory<CDirectory*>(lazy_ptr<0x5A419A + 1>(), true);
 };
 
 
@@ -120,108 +102,6 @@ static void PerformDirectoryRead(size_t size,
 
     // Run the cd directory reader
     Run();
-}
-
-
-
-/*
- *  CAbstractStreaming::GetCdStreamPath
- *      Gets the actual file path for the specified filepath
- *      For example it may find a new gta3.img path for "MODELS/GTA3.IMG"
- */
-const char* CAbstractStreaming::GetCdStreamPath(const char* filepath_)
-{
-    if(filepath_)   // If null it's our abstract cd
-    {
-        std::string fpath; bool bBreak = false;
-        auto filepath = NormalizePath(filepath_);
-        auto filename = &filepath[GetLastPathComponent(filepath)];
-
-        // Check twice, the first time check for path equality, the second time for filename equality
-        for(int i = 0; i < 2 && !bBreak; ++i)
-        {
-            for(auto& file : this->imgFiles)
-            {
-                auto& cdpath    = (i == 0? filepath : filename);                    // Sent filepath/filename
-                fpath           = (i == 0? file->FilePath() : file->FileName());    // Custom filepath/filename
-
-                // Check if the ending of cdpath is same as fpath
-                if(fpath.length() >= cdpath.length() && std::equal(cdpath.rbegin(), cdpath.rend(), fpath.rbegin()))
-                {
-                    // Yeah, let's override!!!
-                    filepath_ = file->FileBuffer();
-                    bBreak = true;
-                    break;
-                }
-            }
-        }
-
-        return filepath_;
-    }
-
-    // It's abstract, ignore name but actually have a valid openable name
-    return modloader::szNullFile;
-}
-
-
-/*
- *  CAbstractStreaming::TryOpenAbstractHandle
- *      Returns another file from the abstract streaming or returns the received file 
- */
-HANDLE CAbstractStreaming::TryOpenAbstractHandle(int index, HANDLE hFile)
-{
-    CAbstractStreaming::AbctFileHandle* f = nullptr;
-    
-    // Try to find the object index in the import list
-    auto it = streaming.imports.find(index);
-    if(it != streaming.imports.end())
-    {
-         // Don't use our custom model if we're falling back to the original file because of an error
-        if(it->second.isFallingBack == false)
-            f = streaming.OpenModel(it->second, it->first);
-    }
-    
-    // Returns the file from the abstract streaming if available
-    return (f? f->handle : hFile);
-}
-
-/*
- *  CAbstractStreaming::OpenModel
- *      Opens a abstract model file handle 
- */
-auto CAbstractStreaming::OpenModel(ModelInfo& file, int index) -> AbctFileHandle*
-{
-    DWORD flags = FILE_FLAG_SEQUENTIAL_SCAN | (*pStreamCreateFlags & FILE_FLAG_OVERLAPPED);
-    
-    HANDLE hFile = CreateFileA(file.file->FullPath(fbuffer).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
-                               OPEN_EXISTING, flags, NULL);
-    
-    if(hFile == INVALID_HANDLE_VALUE)
-    {
-        plugin_ptr->Log("Failed to open file \"%s\" for abstract streaming; error code: 0x%X",
-                       file.file->FileBuffer(), GetLastError());
-        return nullptr;
-    }
-    else
-    {
-        scoped_lock xlock(this->cs);
-        return &(*this->stm_files.emplace(stm_files.end(), hFile, file, index));
-    }
-}
-
-/*
- *  CAbstractStreaming::CloseModel
- *      Closes a abstract model file handle 
- */
-void CAbstractStreaming::CloseModel(AbctFileHandle* file)
-{
-    scoped_lock xlock(this->cs);
-    
-    // Close the file handle
-    CloseHandle(file->handle);
-    
-    // Remove this file from the open files list
-    this->stm_files.remove(*file);
 }
 
 
@@ -312,12 +192,6 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
             }
         };
 
-        // Register special entries
-        auto RegisterSpecialEntry = [](CDirectoryEntry& entry)
-        {
-            // TODO (rmber fileoffset!)
-        };
-
         // Register standard entries
         auto RegisterEntry = [&](CStreamingInfo& model, bool hadModel)
         {
@@ -332,7 +206,7 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
         };
 
         // Read this cd directory using the above callbacks
-        PerformDirectoryRead(cd.second.size(), std::bind(LoadCdDirectory2, nullptr, id), ReadEntry, RegisterSpecialEntry, RegisterEntry);
+        PerformDirectoryRead(cd.second.size(), std::bind(LoadCdDirectory2, nullptr, id), ReadEntry, nullptr, RegisterEntry);
     }
 }
 
@@ -357,7 +231,6 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
     if(this->bHasInitializedStreaming)
         this->FlushChannels();
 
-
     // Fill entry buffer and advance iterator
     auto ReadEntry = [&](CDirectoryEntry& entry)
     {
@@ -370,11 +243,9 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
         return false;
     };
 
-    // Be aware of existence of special entries here
+    // Be aware of existence of special entries here on the abstract directory
     auto RegisterSpecialEntry = [&](CDirectoryEntry& entry)
     {
-        // TODO (rmber fileoffset!)
-        // TODO REGISTER INSTEAD OF RIGHT EMPLACING
         special_dir.emplace(modloader::hash(entry.filename, ::tolower), curr->get());
     };
 
@@ -421,21 +292,100 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
 }
 
 
+
+
+
+
+
+/*
+ *  CAbstractStreaming::GenericReadEntry
+ *      Basic abstract entry reading callback
+ */
 void CAbstractStreaming::GenericReadEntry(CDirectoryEntry& entry, const modloader::file* file)
 {
-    // TODO
-
-    strncpy(entry.filename, file->FileName(), sizeof(entry.filename));
-    entry.fileOffset = 0;
-    entry.sizePriority2 = GetSizeInBlocks(file->Size());
-    entry.sizePriority1 = 0;
-
-    if(entry.sizePriority2 > this->tempStreamingBufSize)
+    FillDirectoryEntry(entry, file->FileName(), 0, file->Size());
+    if(entry.sizePriority2 > this->tempStreamingBufSize)    // Check out if we're in the bounds of the streaming buffer
         tempStreamingBufSize = entry.sizePriority2;
 }
 
+/*
+ *  CAbstractStreaming::GenericRegisterEntry
+ *      Basic abstract entry registering callback
+ */
 bool CAbstractStreaming::GenericRegisterEntry(CStreamingInfo& model, bool hasModel, const modloader::file* file)
 {
     this->QuickImport(InfoForModelIndex(model), file);
     return true;
+}
+
+
+
+
+
+/*
+ *  CAbstractStreaming::BuildClothesMap
+ *      Builds a reference map of models that are clothing items
+ */
+void CAbstractStreaming::BuildClothesMap()
+{
+    if(gvm.IsSA())  // Only San Andreas has clothing items
+    {
+        // Load clothes cd directory to perform search on it
+        this->cloth_dir_sparse_start = 0;
+        this->clothes_map.clear();
+        injector::cstd<void()>::call<0x5A4190>();       // CClothesBuilder::LoadCdDirectory
+
+        // Build clothes map based on clothes directory
+        for(auto i = 0u; i < clothesDirectory->m_dwCount; ++i)
+        {
+            auto& entry = clothesDirectory->m_pEntries[i];
+            this->RegisterClothingItem(entry.filename, i);
+
+            // Find highest file offset in the clothes directory
+            if(entry.fileOffset > cloth_dir_sparse_start)
+                cloth_dir_sparse_start = entry.fileOffset;
+        }
+
+        // Setup vars for sparse entries
+        ++this->cloth_dir_sparse_start;
+        this->cloth_dir_sparse_curr = this->cloth_dir_sparse_start;
+
+        // Remove items from raw_models into clothes
+        if(!this->bHasInitializedStreaming)
+        {
+            for(auto it = this->raw_models.begin(); it != raw_models.end(); )
+            {
+                if(this->IsClothes(it->second))
+                {
+                    // Take from raw_models and put into clothes
+                    this->ImportCloth(it->second);
+                    it = raw_models.erase(it);
+                }
+                else
+                    ++it;
+            }
+        }
+    }
+}
+
+/*
+ *  CAbstractStreaming::FindClothEntry
+ *      Finds clothing item entry from hash
+ */
+CDirectoryEntry* CAbstractStreaming::FindClothEntry(hash_t hash)
+{
+    auto it = this->clothes_map.find(hash);
+    if(it != clothes_map.end()) return &clothesDirectory->m_pEntries[it->second];
+    return nullptr;
+}
+
+/*
+ *  CAbstractStreaming::FixClothesDirectory
+ *      Fixes the clothing directory to contain proper references to our custom clothings
+ */
+void CAbstractStreaming::FixClothesDirectory()
+{
+    // Add our sparse entries back to the directory
+    for(auto& entry : this->sparse_dir_entries)
+        injector::thiscall<void(CDirectory*, CDirectoryEntry*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
 }
