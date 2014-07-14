@@ -44,7 +44,8 @@ endif(MINGW)
 
 
 #
-include_directories("Game Structs")
+include_directories("structs/gta3")
+include_directories("util")
 
 #
 add_subdirectory(address_translator)

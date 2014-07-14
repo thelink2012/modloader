@@ -1,15 +1,11 @@
 /* 
- * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *      Cd Directory management
  */
 #include <windows.h>
 #include "streaming.hpp"
 #include "CDirectory.h"
-#include "CDirectoryEntry.h"
-#include "CdStreamInfo.h"
-#include "CImgDescriptor.h"
 #include <modloader/util/path.hpp>
 using namespace modloader;
 
@@ -18,7 +14,7 @@ extern "C"
 {
     auto pStreamingBuffer           = memory_pointer(0x008E4CAC).get<void*>();
     auto& streamingBufferSize       = *memory_pointer(0x8E4CA8).get<uint32_t>();
-    auto LoadCdDirectory2           = ReadRelativeOffset(0x5B8310 + 1).get<void(CImgDescriptor*, int)>();
+    auto LoadCdDirectory2           = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
     CDirectory* clothesDirectory    = ReadMemory<CDirectory*>(lazy_ptr<0x5A419A + 1>(), true);
 };
 
@@ -36,15 +32,15 @@ extern "C"
  */
 static void PerformDirectoryRead(size_t size,
     std::function<void()> Run,
-    std::function<bool(CDirectoryEntry&)> ReadEntry,
-    std::function<void(CDirectoryEntry&)> RegisterSpecialEntry  = nullptr,
+    std::function<bool(DirectoryInfo&)> ReadEntry,
+    std::function<void(DirectoryInfo&)> RegisterSpecialEntry  = nullptr,
     std::function<bool(CStreamingInfo&, bool)> RegisterEntry    = nullptr
     )
 {
     using nf_hook = function_hooker<0x5B6183, void*(const char*, const char*)>;
     using cf_hook = function_hooker<0x5B61B8, size_t(void*, void*, size_t)>;
     using rf_hook = function_hooker<0x5B61E1, size_t(void*, void*, size_t)>;
-    using sf_hook = function_hooker_thiscall<0x5B627A, void(CDirectory*, CDirectoryEntry* entry)>;
+    using sf_hook = function_hooker_thiscall<0x5B627A, void(CDirectory*, DirectoryInfo* entry)>;
     using gf_hook = function_hooker_thiscall<0x5B6449, char(CStreamingInfo*, int*, int*)>;
 
     nf_hook nf; // Open Null File
@@ -71,24 +67,24 @@ static void PerformDirectoryRead(size_t size,
     // Fills a directory entry
     rf = make_function_hook2<rf_hook>([&ReadEntry](rf_hook::func_type, void*&, void*& buf_, size_t&)
     {
-        auto& buf = *reinterpret_cast<CDirectoryEntry*>(buf_);
+        auto& buf = *reinterpret_cast<DirectoryInfo*>(buf_);
         if(!ReadEntry(buf))
         {
             // Avoid this getting read by the game
-            buf.filename[0] = 'A'; buf.filename[1] = '.'; buf.filename[2] = '\0';
+            buf.m_szFileName[0] = 'A'; buf.m_szFileName[1] = '.'; buf.m_szFileName[2] = '\0';
             return size_t(0);
         }
         return sizeof(buf);
     });
 
     // Registers a special entry
-    sf = make_function_hook2<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, CDirectoryEntry*& entry)
+    sf = make_function_hook2<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, DirectoryInfo*& entry)
     {
         // Tell the callback about this registering
         if(RegisterSpecialEntry) RegisterSpecialEntry(*entry);
 
         // Add entry to directory ONLY if it doesn't exist yet
-        if(injector::thiscall<CDirectoryEntry*(void*, const char*)>::call<0x532450>(dir, entry->filename) == nullptr)  // CDirectory::FindItem
+        if(injector::thiscall<DirectoryInfo*(void*, const char*)>::call<0x532450>(dir, entry->m_szFileName) == nullptr)  // CDirectory::FindItem
             AddItem(dir, entry);
     });
 
@@ -112,7 +108,7 @@ static void PerformDirectoryRead(size_t size,
 void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)())
 {
     using namespace std::placeholders;
-    typedef function_hooker<0x5B8310, void(CImgDescriptor*, int)> fetchcd_hook;
+    typedef function_hooker<0x5B8310, void(const char*, int)> fetchcd_hook;
     auto fetcher = make_function_hook2<fetchcd_hook>(std::bind(&CAbstractStreaming::FetchCdDirectory, this, std::ref(cd_dir), _2, _3));
     return LoadCdDirectories();
 }
@@ -122,14 +118,14 @@ void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDir
  *  CAbstractStreaming::FetchCdDirectory
  *      Fetches (but do not load) the cd directory file at @descriptor=>name into @cd_dir
  */
-void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, CImgDescriptor*& descriptor, int id)
+void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, const char*& filename_, int id)
 {
-    auto filename = GetCdStreamPath(descriptor->name);
+    auto filename = GetCdStreamPath(filename_);
 
     if(FILE* f = fopen(filename, "rb"))
     {
         uint32_t count = -1;
-        CDirectoryEntry entry;      // Works for III/VC and SA!!!!
+        DirectoryInfo entry;      // Works for III/VC and SA!!!!
 
         auto& deque = cd_dir.emplace(cd_dir.end(), std::piecewise_construct, 
                                         std::forward_as_tuple(id), std::forward_as_tuple())->second;
@@ -144,10 +140,10 @@ void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, CImgDescriptor*& 
         // Read entry by entry and push to @cd_dir deque
         while(count-- && fread(&entry, sizeof(entry), 1, f))
         {
-            if(entry.sizePriority1 != 0)
+            if(entry.m_usLightSize != 0)
             {
-                entry.sizePriority2 = entry.sizePriority1;
-                entry.sizePriority1 = 0;
+                entry.m_usSize = entry.m_usLightSize;
+                entry.m_usLightSize = 0;
             }
 
             deque.emplace_back(entry);
@@ -171,10 +167,10 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
         auto id = cd.first;                 // img id
         auto it = cd.second.begin();        // iterator on the cd
         auto curr = it;
-        CDirectoryEntry* entry = nullptr;
+        DirectoryInfo* entry = nullptr;
         
         // Fills the entry buffer with the current iterating entry (also sets ^entry with the current entry)
-        auto ReadEntry = [&](CDirectoryEntry& buf)
+        auto ReadEntry = [&](DirectoryInfo& buf)
         {
             if(it != cd.second.end())
             {
@@ -195,12 +191,12 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
         // Register standard entries
         auto RegisterEntry = [&](CStreamingInfo& model, bool hadModel)
         {
-            // If it's going to register the model (newly!), let's register on abstract streaming too
+            // If it's going to register the model (newly!), let's register on our abstract streaming too
             if(!hadModel && entry)  
             {
                 auto index = InfoForModelIndex(model);
-                RegisterModelIndex(curr->filename, index);
-                RegisterStockEntry(curr->filename, *entry, index, id);
+                RegisterModelIndex(curr->m_szFileName, index);
+                RegisterStockEntry(curr->m_szFileName, *entry, index, id);
             }
             return hadModel;
         };
@@ -217,7 +213,7 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
  */
 void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*> files)
 {
-    // TODO LOG Loading abstract cd directory... / Abstract cd directory has been loaded
+    plugin_ptr->Log("Loading abstract cd directory...");
 
     // Setup iterators
     auto it = files.begin();
@@ -225,18 +221,25 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
     
     // We need those temp vars, don't even dare to remove them
     auto realStreamingBufferSize = bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
-    this->tempStreamingBufSize = realStreamingBufferSize;
+    auto tempStreamingBufSize    = realStreamingBufferSize;
 
     // Streaming bus must be empty before this operation
     if(this->bHasInitializedStreaming)
         this->FlushChannels();
 
     // Fill entry buffer and advance iterator
-    auto ReadEntry = [&](CDirectoryEntry& entry)
+    auto ReadEntry = [&](DirectoryInfo& entry)
     {
         if(it != files.end())
         {
-            GenericReadEntry(entry, it->get());
+            // Fill the entry with this file information
+            FillDirectoryEntry(entry, it->get()->FileName(), 0, it->get()->Size());
+
+            // Check out if we're in the bounds of the streaming buffer
+            if(entry.m_usSize > tempStreamingBufSize)
+                tempStreamingBufSize = entry.m_usSize;
+
+            // Advance........
             curr = it++;
             return true;
         }
@@ -244,19 +247,20 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
     };
 
     // Be aware of existence of special entries here on the abstract directory
-    auto RegisterSpecialEntry = [&](CDirectoryEntry& entry)
+    auto RegisterSpecialEntry = [&](DirectoryInfo& entry)
     {
-        special_dir.emplace(modloader::hash(entry.filename, ::tolower), curr->get());
+        special.emplace(mhash(entry.m_szFileName), curr->get());
     };
 
     // Be aware of existence of standard entries here
     auto RegisterEntry = [&](CStreamingInfo& model, bool hasModel)
     {
-        return GenericRegisterEntry(model, hasModel, curr->get());
+        this->QuickImport(InfoForModelIndex(model), curr->get());
+        return true;
     };
 
     // Read the custom cd directory
-    PerformDirectoryRead(files.size(), std::bind(LoadCdDirectory2, nullptr, AbstractImgId), ReadEntry, RegisterSpecialEntry, RegisterEntry);
+    PerformDirectoryRead(files.size(), std::bind(LoadCdDirectory2, nullptr, 0), ReadEntry, RegisterSpecialEntry, RegisterEntry);
 
     // Right, so, if the streaming has already initialized we may need to resize the streaming buffer because of the recently
     // inserted entries!
@@ -265,7 +269,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
         static const uint32_t align = 2048;
 
         // Make sure the buffer size is even (we'll divide it by two)
-        if(this->tempStreamingBufSize & 1) ++this->tempStreamingBufSize;
+        if(tempStreamingBufSize & 1) ++tempStreamingBufSize;
 
         // If the necessary streaming buffer to load that file is bigger than the current buffer size, let's resize the buffer
         if(tempStreamingBufSize > realStreamingBufferSize)
@@ -289,34 +293,10 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
             streamingBufferSize = realStreamingBufferSize / 2;
         }
     }
+
+    plugin_ptr->Log("Abstract cd directory has been loaded.");
 }
 
-
-
-
-
-
-
-/*
- *  CAbstractStreaming::GenericReadEntry
- *      Basic abstract entry reading callback
- */
-void CAbstractStreaming::GenericReadEntry(CDirectoryEntry& entry, const modloader::file* file)
-{
-    FillDirectoryEntry(entry, file->FileName(), 0, file->Size());
-    if(entry.sizePriority2 > this->tempStreamingBufSize)    // Check out if we're in the bounds of the streaming buffer
-        tempStreamingBufSize = entry.sizePriority2;
-}
-
-/*
- *  CAbstractStreaming::GenericRegisterEntry
- *      Basic abstract entry registering callback
- */
-bool CAbstractStreaming::GenericRegisterEntry(CStreamingInfo& model, bool hasModel, const modloader::file* file)
-{
-    this->QuickImport(InfoForModelIndex(model), file);
-    return true;
-}
 
 
 
@@ -339,11 +319,11 @@ void CAbstractStreaming::BuildClothesMap()
         for(auto i = 0u; i < clothesDirectory->m_dwCount; ++i)
         {
             auto& entry = clothesDirectory->m_pEntries[i];
-            this->RegisterClothingItem(entry.filename, i);
+            this->RegisterClothingItem(entry.m_szFileName, i);
 
             // Find highest file offset in the clothes directory
-            if(entry.fileOffset > cloth_dir_sparse_start)
-                cloth_dir_sparse_start = entry.fileOffset;
+            if(entry.m_dwFileOffset > cloth_dir_sparse_start)
+                cloth_dir_sparse_start = entry.m_dwFileOffset;
         }
 
         // Setup vars for sparse entries
@@ -372,7 +352,7 @@ void CAbstractStreaming::BuildClothesMap()
  *  CAbstractStreaming::FindClothEntry
  *      Finds clothing item entry from hash
  */
-CDirectoryEntry* CAbstractStreaming::FindClothEntry(hash_t hash)
+DirectoryInfo* CAbstractStreaming::FindClothEntry(hash_t hash)
 {
     auto it = this->clothes_map.find(hash);
     if(it != clothes_map.end()) return &clothesDirectory->m_pEntries[it->second];
@@ -387,5 +367,5 @@ void CAbstractStreaming::FixClothesDirectory()
 {
     // Add our sparse entries back to the directory
     for(auto& entry : this->sparse_dir_entries)
-        injector::thiscall<void(CDirectory*, CDirectoryEntry*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
+        injector::thiscall<void(CDirectory*, DirectoryInfo*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
 }

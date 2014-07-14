@@ -1,32 +1,14 @@
 /* 
- * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
- * 
  *
  */
 #include "streaming.hpp"
-#include "CdStreamInfo.h"
-#include "CDirectory.h"
 #include <modloader/util/injector.hpp>
 #include <modloader/util/container.hpp>
 using namespace modloader;
 
-/*
-    uiUnk2 flag
-        0x02 - cannot delete
-        0x04 - streaming is not owner (?)
-        0x08 - dependency
-        0x10 - first priority request
-        0x20 - don't delete on makespacefor
-
-        notes:
-        (0x20|0x4) -> gives model alpha=255 otherwise alpha=0
-*/
-
 // TODO needs to refresh ifp and others too
-// TODO remove is hoodlum
-// TODO avoid CdStream optimization of nextOnCd / lastposn / etc (?)
-// TODO fix non find (only add) on LoadCdDirectory (GAME FOR COL/IFP/RRR/ETC)
 
 CAbstractStreaming streaming;
 
@@ -128,7 +110,7 @@ void CAbstractStreaming::RemoveUnusedResources()
  */
 void CAbstractStreaming::RegisterModelIndex(const char* filename, id_t index)
 {
-    this->indices[modloader::hash(filename, ::tolower)] = index;
+    this->indices[mhash(filename)] = index;
 }
 
 /*
@@ -137,14 +119,14 @@ void CAbstractStreaming::RegisterModelIndex(const char* filename, id_t index)
  */
 void CAbstractStreaming::RegisterClothingItem(const char* filename, int index)
 {
-    this->clothes_map[modloader::hash(filename, ::tolower)] = index;
+    this->clothes_map[mhash(filename)] = index;
 }
 
 /*
  *  CAbstractStreaming::RegisterStockEntry
  *      Registers the stock/default/original cd directory data of an index, important so it can be restored later when necessary.
  */
-void CAbstractStreaming::RegisterStockEntry(const char* filename, CDirectoryEntry& entry, id_t index, int img_id)
+void CAbstractStreaming::RegisterStockEntry(const char* filename, DirectoryInfo& entry, id_t index, int img_id)
 {
     // Please note entry here is incomplete because the game null terminated the string before the extension '.', so use filename
     this->cd_dir[index] = CdDirectoryItem(filename, entry, img_id);
@@ -179,12 +161,12 @@ bool CAbstractStreaming::InstallFile(const modloader::file& file)
 
         if(!IsClothes(&file))
         {
-            this->mToImportList[file.hash] = &file;
+            this->to_import[file.hash] = &file;
             return true;
         }
         else
         {
-            this->mToRefreshPlayer = true;
+            this->to_rebuild_player = true;
             return this->ImportCloth(&file);
         }
     }
@@ -210,13 +192,16 @@ bool CAbstractStreaming::UninstallFile(const modloader::file& file)
 
         if(!IsClothes(&file))
         {
+            // Remove special model (if it is a special model)
+            EraseFromMap(special, &file);     
+
             // Mark the specified file [hash] to be vanished
-            this->mToImportList[file.hash] = nullptr;
+            this->to_import[file.hash] = nullptr;
             return true;
         }
         else
         {
-            this->mToRefreshPlayer = true;
+            this->to_rebuild_player = true;
             return this->UnimportCloth(&file);
         }
     }
@@ -269,14 +254,15 @@ void CAbstractStreaming::ImportModels(ref_list<const modloader::file*> files)
  */
 void CAbstractStreaming::UnimportModel(id_t index)
 {
-    // Remove the entry from the special directory
-    auto it_imp = imports.find(index);
-    if(it_imp != imports.end()) EraseFromMap(special_dir, it_imp->second.file);
+    // Remove special model related to this index if possible
+    auto it = imports.find(index);
+    if(it != imports.end()) EraseFromMap(special, it->second.file);
 
     // Restore model information to stock and erase it from the import list
     this->RestoreInfoForModel(index);
     this->QuickUnimport(index);
 }
+
 
 /*
  *  CAbstractStreaming::QuickImport
@@ -341,16 +327,16 @@ bool CAbstractStreaming::ImportCloth(const modloader::file* file)
     if(auto entry = FindClothEntry(file->hash))
     {
         // Return true only if we hadn't any clothing like that
-        return this->clothes.emplace(entry->fileOffset, file).second;
+        return this->clothes.emplace(entry->m_dwFileOffset, file).second;
     }
     else if(true)
     {
         // We need to add a new entry into the clothes directory...
-        CDirectoryEntry entry;
+        DirectoryInfo entry;
         plugin_ptr->Log("Adding new item to clothing directory \"%s\"", file->FileName());
         this->RegisterClothingItem(file->FileName(), clothesDirectory->m_dwCount);              // Tell us about it
-        FillDirectoryEntry(entry, file->FileName(), GetClothSparseOffset(), file->Size());
-        injector::thiscall<void(CDirectory*, CDirectoryEntry*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
+        FillDirectoryEntry(entry, file->FileName(), TakeClothSparseOffset(), file->Size());
+        injector::thiscall<void(CDirectory*, DirectoryInfo*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
         sparse_dir_entries.emplace_back(entry);
 
         // Try again, now it'll work

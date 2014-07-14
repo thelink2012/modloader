@@ -5,6 +5,7 @@
  *      Streaming refresher
  */
 #include "streaming.hpp"
+#include <set>
 #include <CPool.h>
 #include <traits/gta3/sa.hpp>
 using namespace modloader;
@@ -120,16 +121,16 @@ class Refresher : private T
  */
 void CAbstractStreaming::ProcessRefreshes()
 {
-    if(this->mToImportList.size())
+    if(this->to_import.size())
     {
         if(gvm.IsSA()) Refresher<TraitsSA>(*this);
-        this->mToImportList.clear();
+        this->to_import.clear();
     }
     
-    if(this->mToRefreshPlayer)
+    if(this->to_rebuild_player)
     {
         Refresher<TraitsSA>(tag_player, *this);
-        this->mToRefreshPlayer = false;
+        this->to_rebuild_player = false;
     }
 }
 
@@ -235,7 +236,7 @@ template<class T> void Refresher<T>::BuildRefreshMap()
     };
 
     // For each model that needs reimporting.....
-    for(auto& imp : streaming.mToImportList)
+    for(auto& imp : streaming.to_import)
     {
         auto id = streaming.FindModelFromHash(imp.first);
         if(AddRefresh(id))
@@ -244,7 +245,7 @@ template<class T> void Refresher<T>::BuildRefreshMap()
             switch(streaming.GetIdType(id))
             {
                 // For txd files we should also reload it's associated dff files so the RwObject material list is corrected
-                case FileType::TexDictionary:
+                case ResType::TexDictionary:
                 {
                     for(auto& id : GetModelsUsingTxdIndex(id - txd_start)) AddRefresh(id);
                     break;
@@ -305,12 +306,12 @@ template<class T> void Refresher<T>::ProcessImportList()
 {
     ref_list<const modloader::file*> import;    // To import
     std::vector<hash_t> unimport;               // To unimport
-    auto size = streaming.mToImportList.size();
+    auto size = streaming.to_import.size();
 
     // Setup the lists
     import.reserve(size);
     unimport.reserve(size);
-    for(auto& pair : streaming.mToImportList)
+    for(auto& pair : streaming.to_import)
     {
         // If has file associated, we need to import otherwise export
         if(pair.second) import.emplace_back(std::ref(pair.second));

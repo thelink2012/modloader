@@ -5,15 +5,15 @@
 #pragma pack(push, 1)
 struct CStreamingInfo	// sizeof = 0x14
 {
-	unsigned short next;
-	unsigned short prev;
-	unsigned short nextOnCd;
-	unsigned char  flags;
-	unsigned char  img_id;
-	unsigned int   offset;
+    unsigned short next;
+    unsigned short prev;
+    unsigned short nextOnCd;
+    unsigned char  flags;
+    unsigned char  img_id;
+    unsigned int   offset;
     unsigned int   blocks;
     unsigned char  load_status;
-	unsigned char  _pad[3];
+    unsigned char  _pad[3];
 };
 #pragma pack(pop)
 

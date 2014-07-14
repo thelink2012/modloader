@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  *  std.stream
@@ -96,8 +96,8 @@ int ThePlugin::GetBehaviour(modloader::file& file)
     }
     else if(!file.IsDirectory())
     {
-        FileType type = GetFileTypeFromExtension(file.FileExt());
-        if(type == FileType::None)  // None of the supported types by this plugin
+        ResType type = GetResTypeFromExtension(file.FileExt());
+        if(type == ResType::None)  // None of the supported types by this plugin
             return MODLOADER_BEHAVIOUR_NO;
         
         auto inFolder = GetPathComponentBack<char>(file.FilePath(), 2);             // the folder the file is inside
@@ -109,13 +109,13 @@ int ThePlugin::GetBehaviour(modloader::file& file)
         {
             switch(type)
             {
-                case FileType::Nodes:
+                case ResType::Nodes:
                 {
                     // Disabled, may conflict with nodes from data folder, use .img folder instead
                     return MODLOADER_BEHAVIOUR_NO;
                 }
 
-                case FileType::AnimFile:
+                case ResType::AnimFile:
                 {
                     // Make sure it isn't the special ifp file ped.ifp
                     static const auto ped_ifp = modloader::hash("ped.ifp");
@@ -126,7 +126,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                     }
                 }
 
-                case FileType::StreamedScene:
+                case ResType::StreamedScene:
                 {
                     std::string str;
                     // If the IPL file have '_stream' on it's name it's probably a stream IPL
@@ -139,7 +139,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                     return MODLOADER_BEHAVIOUR_NO;
                 }
 
-                case FileType::VehRecording:
+                case ResType::VehRecording:
                 {
                     // Make sure it's file name is carrec formated
                     int dummy;
@@ -150,7 +150,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
             }
         }
 
-        SetFileType(file, type);
+        SetResType(file, type);
         if(isPlayer) file.behaviour |= is_fcloth_mask;  // Forced clothing item
         return MODLOADER_BEHAVIOUR_YES;
     }

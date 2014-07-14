@@ -2,8 +2,25 @@
 #pragma once
 #include <windows.h>
 #include "Queue.h"
-#include "CdStream.h"
 
+#pragma pack(push, 1)
+struct CdStream	// sizeof = 0x30
+{
+	DWORD nSectorOffset;
+	DWORD nSectorsToRead;
+	LPVOID lpBuffer;
+	BYTE field_C;
+	BYTE bLocked;
+	BYTE bInUse;
+	BYTE field_F;
+	DWORD status;
+	HANDLE semaphore;
+	HANDLE hFile;
+	OVERLAPPED overlapped;
+};
+#pragma pack(pop)
+
+static_assert(sizeof(CdStream) == 0x30, "Incorrect struct size: CdStream");
 
 #pragma pack(push, 1)
 struct CdStreamInfo	// sizeof = 0x8C0

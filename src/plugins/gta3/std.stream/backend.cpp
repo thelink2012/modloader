@@ -1,0 +1,489 @@
+/* 
+ * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
+ * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * 
+ */
+#include "streaming.hpp"
+#include "CdStreamInfo.h"
+#include "CDirectory.h"
+#include <modloader/util/injector.hpp>
+#include <modloader/util/path.hpp>
+using namespace modloader;
+
+extern "C"
+{
+    // Assembly hooks at "asm/" folder
+    extern void HOOK_RegisterNextModelRead();
+    extern void HOOK_NewFile();
+
+    // Next model read registers. It's important to have those two vars! Don't leave only one!
+    int  iNextModelBeingLoaded = -1;            // Set by RegisterNextModelRead, will then be sent to iModelBeingLoaded
+    int  iModelBeingLoaded = -1;                // Model currently passing throught CdStreamRead
+
+    //
+    CStreamingInfo* ms_aInfoForModel = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+    DWORD *pStreamCreateFlags        = memory_pointer(0x8E3FE0).get();
+
+    // Returns the file handle to be used for iModelBeingLoaded (called from Assembly)
+    HANDLE CallGetAbstractHandle(HANDLE hFile)
+    {
+        if(iModelBeingLoaded == -1) return hFile;
+        return streaming.TryOpenAbstractHandle(iModelBeingLoaded, hFile);
+    }
+
+    // Registers the next model to be loaded (called from Assembly)
+    void RegisterNextModelRead(int id)
+    {
+        iNextModelBeingLoaded = id;
+        streaming.MakeSureModelIsOnDisk(id);
+    }
+
+    static HANDLE __stdcall CreateFileForCdStream(
+        LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
+        LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+        DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
+    {
+        LPCSTR lpActualFileName = streaming.GetCdStreamPath(lpFileName);
+        plugin_ptr->Log("Opening file for streaming \"%s\"", lpActualFileName);
+        return CreateFileA(
+            lpActualFileName, dwDesiredAccess, dwShareMode,
+            lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
+};
+
+
+
+/*
+ *  Streaming thread
+ *      This thread reads pieces from cd images and in mod loader on disk files
+ */
+int __stdcall CdStreamThread()
+{
+    DWORD nBytesReaden;
+    
+    // Get reference to the addresses we'll use
+    CdStreamInfo& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfo>();
+    
+    // Loop in search of things to load in the queue
+    while(true)
+    {
+        int i = -1;
+        CdStream* cd;
+        bool bIsAbstract = false;
+        CAbstractStreaming::AbctFileHandle* sfile = nullptr;
+        
+        // Wait until there's something to be loaded...
+        WaitForSingleObject(cdinfo.semaphore, -1);
+        
+        // Take the stream index from the queue
+        i = GetFirstInQueue(&cdinfo.queue);
+        if(i == -1) continue;
+        
+        cd = &cdinfo.pStreams[i];
+        cd->bInUse = true;          // Mark the stream as under work
+        if(cd->status == 0)
+        {
+            // Setup vars
+            size_t bsize  = cd->nSectorsToRead;
+            size_t offset = cd->nSectorOffset  << 11;       // translate 2KiB based offset to actual offset
+            size_t size   = bsize << 11;                    // translate 2KiB based size to actual size
+            HANDLE hFile  = (HANDLE) cd->hFile;
+            bool bResult  = false;
+            const char* filename = nullptr; int index = -1; // When abstract those fields are valid
+            
+            // Try to find abstract file from hFile
+            if(true)
+            {
+                scoped_lock xlock(streaming.cs);
+                auto it = std::find(streaming.stm_files.begin(), streaming.stm_files.end(), hFile);
+                if(it != streaming.stm_files.end())
+                {
+                    bIsAbstract = true;
+                    
+                    // Setup vars based on abstract file
+                    sfile  = &(*it);
+                    offset = 0;
+                    size   = (size_t) sfile->info.file->Size();
+                    bsize  = GetSizeInBlocks(size);
+                    index  = sfile->index;
+                    filename = sfile->info.file->FileBuffer();
+                }
+            }
+            
+            
+            // Setup overlapped structure
+            cd->overlapped.Offset     = offset;
+            cd->overlapped.OffsetHigh = 0;
+            
+            // Read the stream
+            if(ReadFile(hFile, cd->lpBuffer, size, &nBytesReaden, &cd->overlapped))
+            {
+                bResult = true;
+            }
+            else
+            {
+                if(GetLastError() == ERROR_IO_PENDING)
+                {
+                    // This happens when the stream was open for async operations, let's wait until everything has been read
+                    bResult = GetOverlappedResult(hFile, &cd->overlapped, &nBytesReaden, true) != 0;
+                }
+            }
+            
+            // There's some real problem if we can't load a abstract model
+            if(bIsAbstract && !bResult)
+                plugin_ptr->Log("Warning: Failed to load abstract model file %s; error code: 0x%X", filename, GetLastError());
+            
+
+            // Set the cdstream status, 0 for "okay" and 254 for "failed to read"
+            cd->status = bResult? 0 : 254;
+        }
+        
+        // Remove from the queue what we just readed
+        RemoveFirstInQueue(&cdinfo.queue);
+        
+        // Cleanup
+        if(bIsAbstract) streaming.CloseModel(sfile);
+        cd->nSectorsToRead = 0;
+        if(cd->bLocked) ReleaseSemaphore(cd->semaphore, 1, 0);
+        cd->bInUse = false;
+    }
+    return 0;
+}
+
+
+/*
+ *  CAbstractStreaming::GetCdStreamPath
+ *      Gets the actual file path for the specified filepath
+ *      For example it may find a new gta3.img path for "MODELS/GTA3.IMG"
+ */
+const char* CAbstractStreaming::GetCdStreamPath(const char* filepath_)
+{
+    if(filepath_)   // If null it's our abstract cd
+    {
+        std::string fpath; bool bBreak = false;
+        auto filepath = NormalizePath(filepath_);
+        auto filename = &filepath[GetLastPathComponent(filepath)];
+
+        // Check twice, the first time check for path equality, the second time for filename equality
+        for(int i = 0; i < 2 && !bBreak; ++i)
+        {
+            for(auto& file : this->imgFiles)
+            {
+                auto& cdpath    = (i == 0? filepath : filename);                    // Sent filepath/filename
+                fpath           = (i == 0? file->FilePath() : file->FileName());    // Custom filepath/filename
+
+                // Check if the ending of cdpath is same as fpath
+                if(fpath.length() >= cdpath.length() && std::equal(cdpath.rbegin(), cdpath.rend(), fpath.rbegin()))
+                {
+                    // Yeah, let's override!!!
+                    filepath_ = file->FileBuffer();
+                    bBreak = true;
+                    break;
+                }
+            }
+        }
+
+        return filepath_;
+    }
+
+    // It's abstract, ignore name but actually have a valid openable name
+    return modloader::szNullFile;
+}
+
+
+/*
+ *  CAbstractStreaming::TryOpenAbstractHandle
+ *      Returns another file from the abstract streaming or returns the received file 
+ */
+HANDLE CAbstractStreaming::TryOpenAbstractHandle(int index, HANDLE hFile)
+{
+    CAbstractStreaming::AbctFileHandle* f = nullptr;
+    
+    // Try to find the object index in the import list
+    auto it = streaming.imports.find(index);
+    if(it != streaming.imports.end())
+    {
+         // Don't use our custom model if we're falling back to the original file because of an error
+        if(it->second.isFallingBack == false)
+            f = streaming.OpenModel(it->second, it->first);
+    }
+    
+    // Returns the file from the abstract streaming if available
+    return (f? f->handle : hFile);
+}
+
+/*
+ *  CAbstractStreaming::OpenModel
+ *      Opens a abstract model file handle 
+ */
+auto CAbstractStreaming::OpenModel(ModelInfo& file, int index) -> AbctFileHandle*
+{
+    DWORD flags = FILE_FLAG_SEQUENTIAL_SCAN | (*pStreamCreateFlags & FILE_FLAG_OVERLAPPED);
+    
+    HANDLE hFile = CreateFileA(file.file->FullPath(fbuffer).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+                               OPEN_EXISTING, flags, NULL);
+    
+    if(hFile == INVALID_HANDLE_VALUE)
+    {
+        plugin_ptr->Log("Failed to open file \"%s\" for abstract streaming; error code: 0x%X",
+                       file.file->FileBuffer(), GetLastError());
+        return nullptr;
+    }
+    else
+    {
+        scoped_lock xlock(this->cs);
+        return &(*this->stm_files.emplace(stm_files.end(), hFile, file, index));
+    }
+}
+
+/*
+ *  CAbstractStreaming::CloseModel
+ *      Closes a abstract model file handle 
+ */
+void CAbstractStreaming::CloseModel(AbctFileHandle* file)
+{
+    scoped_lock xlock(this->cs);
+    
+    // Close the file handle
+    CloseHandle(file->handle);
+    
+    // Remove this file from the open files list
+    this->stm_files.remove(*file);
+}
+
+/*
+ *  CAbstractStreaming::MakeSureModelIsOnDisk
+ *      If the specified model id is under our control, make entirely sure it's present on disk.
+ *      If it isn't, we'll fallback to the original mode on img files.
+ */
+void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
+{
+    auto it = imports.find(index);
+    if(it != imports.end())
+    {
+        auto& m = it->second;
+        if(m.isFallingBack == false)    // If already falling back, don't check again
+        {
+            // If file isn't on disk we should fall back to the stock model
+            if(!IsPath(m.file->FullPath(fbuffer).c_str()))
+            {
+                plugin_ptr->Log("Model file \"%s\" has been deleted, falling back to stock model.", m.file->FileBuffer());
+                this->RestoreInfoForModel(index);
+                m.isFallingBack = true;
+            }
+        }
+    }
+}
+
+
+
+
+/*
+ *  CAbstractStreaming::Patch
+ *      Patches the default game streaming pipeline to have our awesome hooks.
+ */
+void CAbstractStreaming::Patch()
+{
+    using sinit_hook  = function_hooker<0x5B8E1B, void()>;
+    bool isHoodlum = injector::address_manager::singleton().IsHoodlum(); // TODO REMOVE, PUT ON ADDR TRANSLATOR
+
+    // Initialise the streaming
+    make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
+    {
+        plugin_ptr->Log("Initializing the streaming...");
+
+        // Load standard cd directories.....
+        TempCdDir_t tmp_cd_dir;
+        this->FetchCdDirectories(tmp_cd_dir, LoadCdDirectory1);
+        this->LoadCdDirectories(tmp_cd_dir);
+        tmp_cd_dir.clear();
+
+        // Do custom setup
+        this->BuildClothesMap();                                // Find out clothing hashes and remove clothes from raw_models
+        this->LoadAbstractCdDirectory(refs_mapped(raw_models)); // Load abstract directory, our custom files
+
+        // Mark streaming as initialized
+        this->bHasInitializedStreaming = true;
+        this->raw_models.clear();
+    });
+
+    // Standard models
+    if(true)
+    {
+        using cdread_hook = function_hooker<0x40CF34, int(int, void*, int, int)>;
+
+        // Making our our code for the stream thread would make things so much better
+        MakeJMP(0x406560, raw_ptr(CdStreamThread));
+
+        // We need to know the next model to be read before the CdStreamRead call happens
+        MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
+        MakeNOP(0x40CCA6 + 5, 2);
+
+        // We need to return a new hFile if the file is on disk
+        MakeCALL(!isHoodlum? 0x406A5B : 0x0156C2FB, raw_ptr(HOOK_NewFile));
+        MakeNOP((!isHoodlum? 0x406A5B : 0x0156C2FB)+5, 1);
+
+        // We need to know the model index that will pass throught CallGetAbstractHandle
+        make_static_hook<cdread_hook>([](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
+        {
+            iModelBeingLoaded = iNextModelBeingLoaded;
+            auto result = CdStreamRead(streamNum, buf, sectorOffset, sectorCount);
+            iModelBeingLoaded = iNextModelBeingLoaded = -1;
+            return result;
+        });
+    }
+
+    // Special models
+    if(true)
+    {
+        static DirectoryInfo* pRQSpecialEntry;    // Stores the special entry we're working with
+        using findspecial_hook  = function_hooker_thiscall<0x409F76, char(void*, const char*, unsigned int&, unsigned int&)>;
+        using rqspecial_hook    = function_hooker<0x409FD9, char(int, int)>;
+        
+        // Hook call to CDirectory::FindItem (1) to find out which directory entry we're dealing with...
+        make_static_hook<findspecial_hook>([this](findspecial_hook::func_type FindItem, void*& dir, const char*& name, unsigned int& offset, unsigned int& blocks)
+        {
+            pRQSpecialEntry = injector::thiscall<DirectoryInfo*(void*, const char*)>::call<0x532450>(dir, name);  // CDirectory::FindItem
+            return FindItem(dir, name, offset, blocks); // (above call and this call are different)
+        });
+
+        // Hook call to CStreaming::RequestModel and do special processing if the entry is related to the abstract streaming
+        make_static_hook<rqspecial_hook>([this](rqspecial_hook::func_type RequestModel, int& index, int& flags)
+        {
+            // Before this being called the game built the InfoForModel entry for this index based on the stock entry pRQSpecialEntry
+            // Register stock entry, so it can be restored during gameplay if necessary
+            DirectoryInfo entry  = *pRQSpecialEntry;                   // Make copy to do proper processing
+            auto img_id          = pRQSpecialEntry->m_dwFileOffset >> 24;       // Extract img id from file offset
+            entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset & 0xFFFFFF;  // Extract actual file offset
+            this->RegisterStockEntry(strcat(entry.m_szFileName, ".dff"), entry, index, img_id);
+
+            // Try to find abstract special entry related to this request....
+            // If it's possible, quickly import our entry into this special index
+            // otherwise quickly remove our previous entry at this special index if any there
+            auto it = this->special.find(mhash(pRQSpecialEntry->m_szFileName));
+            if(it != this->special.end())
+                this->QuickImport(index, it->second, true);
+            else
+                this->QuickUnimport(index);
+
+            // Ahhhhh!! finally do the actual request :)
+            return RequestModel(index, flags);
+        });
+    }
+
+    // Clothes
+    if(gvm.IsSA())
+    {
+        using log_hook = function_hooker<0x532341, int(const char*)>;
+        using ldclothd_hook = function_hooker_thiscall<0x5A6A01, void(CDirectory*, const char*)>;
+        // !isHoodlum using rqcloth_hook  = function_hooker<0x40A106, char(int, int)>;
+        using rqcloth_hook  = function_hooker<0x0156644F, char(int, int)>;
+
+        // When reading clothes directory again (it happens everytime player clump is rebuilt, i.e. when muscle stats change or clothes change)
+        // make sure the entries are fine with our entries
+        make_static_hook<ldclothd_hook>([this](ldclothd_hook::func_type ReadDir, CDirectory*& dir, const char*& filepath)
+        {
+            ReadDir(dir, filepath);
+            this->FixClothesDirectory();
+        });
+
+        // Right, this hook produces the actual overriding of the clothing files with ours
+        make_static_hook<rqcloth_hook>([this](rqcloth_hook::func_type RequestModel, int& index, int& flags)
+        {
+            // Check if we have a overrider for this clothing item (based on directory offset)
+            DirectoryInfo* entry;
+            auto it = this->clothes.find(InfoForModel(index)->offset);
+            if(it != clothes.end() && (entry = this->FindClothEntry(it->second->hash)))
+            {
+                // Yep, we have a overrider, save stock entry and quickly import our abstract model
+                this->RegisterStockEntry(it->second->FileName(), *entry, index, InfoForModel(index)->img_id);
+                this->QuickImport(index, it->second, false, true);
+            }
+            else
+            {
+                // Hmmm.. nope, quickly unimport anything we had imported on this index before
+                this->QuickUnimport(index);
+            }
+
+            return RequestModel(index, flags);
+        });
+
+        // Make sure to log about "Too many objects without model info structure" into our logging stream
+        make_static_hook<log_hook>([](log_hook::func_type printf, const char* msg)
+        {
+            plugin_ptr->Log("Warning: %s", msg);
+            return printf(msg);
+        });
+    }
+
+    // Fixes for stores that do not return the previous registered entry, always registers a new one
+    if(true)
+    {
+        using addr3_hook  = function_hooker<0x5B63E8, id_t(const char*)>;
+        using addcol_hook = function_hooker<0x5B630B, id_t(const char*)>;
+        using addscm_hook = function_hooker_thiscall<0x5B6419, id_t(void*, const char*)>;
+
+        // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
+        make_static_hook<addcol_hook>([this](addcol_hook::func_type AddColSlot, const char*& name)
+        {
+            return this->FindOrRegisterResource(name, "col", AddColSlot, name);
+        });
+
+        // The following files are in SA only
+        if(gvm.IsSA())
+        {
+            // CVehicleRecording do not care about duplicates, but we should
+            make_static_hook<addr3_hook>([this](addr3_hook::func_type RegisterRecordingFile, const char*& name)
+            {
+                return this->FindOrRegisterResource(name, "rrr", RegisterRecordingFile, name);
+            });
+            
+            // CStreamedScripts do not care about duplicates but we should
+            make_static_hook<addscm_hook>([this](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
+            {
+                return this->FindOrRegisterResource(name, "scm", RegisterScript, self, name);
+            });
+        }
+    }
+
+
+    // CdStream path overiding
+    if(true)
+    {
+        // Do not use function_hooker here in this context, it would break many scoped hooks in this plugin.
+        
+        static void*(*OpenFile)(const char*, const char*);
+        static void*(*RwStreamOpen)(int, int, const char*);
+
+        static auto OpenFileHook = [](const char* filename, const char* mode)
+        {
+            return OpenFile(streaming.GetCdStreamPath(filename), mode);
+        };
+
+        static auto RwStreamOpenHook = [](int a, int b, const char* filename)
+        {
+            return RwStreamOpen(a, b, streaming.GetCdStreamPath(filename));
+        };
+
+        // Resolve the cd stream filenames by ourselves on the following calls
+        {
+            auto pOpenFile     = raw_ptr((decltype(OpenFile))(OpenFileHook));
+            OpenFile = MakeCALL(0x5B6183, pOpenFile).get();
+            MakeCALL(0x532361, pOpenFile);
+            MakeCALL(0x5AFC9D, pOpenFile);
+            auto pRwStreamOpen = raw_ptr((decltype(RwStreamOpen))(RwStreamOpenHook));
+            RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpen).get();
+            MakeCALL(0x5B07E9, pRwStreamOpen);
+        }
+
+        // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
+        static void* pCreateFileForCdStream = &CreateFileForCdStream;
+        static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);  // Used on the obfuscated executable
+
+        if(gvm.IsSA() && gvm.IsHoodlum())
+            injector::WriteMemory(raw_ptr(0x1564B56 + 1), &SRXorCreateFileForCdStream, true);
+        else
+            injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
+    }
+}
+
