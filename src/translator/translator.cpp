@@ -13,6 +13,7 @@ using namespace injector;
 #include "gta3/sa/10us.hpp"
 #include "gta3/sa/10eu.hpp"
 #include "gta3/vc/10.hpp"
+#include "gta3/3/10.hpp"
 
 // Constants
 static const size_t max_ptr_dist = 8;       // Max distance to take as a "equivalent" address for modloader
@@ -87,6 +88,11 @@ static void init(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 	    {
 		    if(gvm.GetMajorVersion() == 1 && gvm.GetMinorVersion() == 0)
 			    vc_10(map);
+	    }
+        else if(gvm.IsIII())
+	    {
+		    if (gvm.GetMajorVersion() == 1 && gvm.GetMinorVersion() == 0)
+		        III_10(map);
 	    }
     }
 }
