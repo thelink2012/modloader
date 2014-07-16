@@ -15,25 +15,22 @@ using namespace injector;
 // Tables
 #include "gta3/sa/10us.hpp"
 
-// TODO optimize with lazy pointers (check all the calls to the translator and put a lazy pointer on 'em)
-
 // Constants
 static const size_t max_ptr_dist = 8;       // Max distance to take as a "equivalent" address for modloader
-static void init();
-
-// Addresses table
-static std::map<memory_pointer_raw, memory_pointer_raw> map;
+static void init(std::map<memory_pointer_raw, memory_pointer_raw>& map);
 
 
 // Translate pointer from GTA SA 10US offset to this executable offset
 void* injector::address_manager::translator(void* p_)
 {
-    return p_; //TODO
+    static std::map<memory_pointer_raw, memory_pointer_raw> map;
+
+    //return p_; //TODO
     memory_pointer_raw p = p_;
     memory_pointer_raw result = nullptr;
                 
     // Initialize if hasn't initialized yet
-    init();
+    init(map);
 
     // Find first element in the map that is greater than or equal to p
     auto it = map.lower_bound(p);
@@ -53,9 +50,9 @@ void* injector::address_manager::translator(void* p_)
         char buf[128];
         sprintf(buf, "Warning: Could not translate address 0x%p", p.get<void>());
 
-        if(modloader::plugin_ptr)   // A plugin might request a address just to see if it's there for this game
+        if(modloader::plugin_ptr)
             modloader::plugin_ptr->Log(buf);
-        else
+        else if(false)
             MessageBoxA(0, buf, injector::game_version_manager::PluginName, 0);
     }
     
@@ -63,7 +60,7 @@ void* injector::address_manager::translator(void* p_)
 }
 
 // Initializes the address translator and it's table
-static void init()
+static void init(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 {
     static bool bInitialized = false;
     if(bInitialized == false)
@@ -71,6 +68,11 @@ static void init()
         auto& gvm = injector::address_manager::singleton();
         bInitialized = true;
         
+        // The map must have null pointers at it's bounds
+        // So they work properly with lower_bound and stuff
+        map.emplace(0x00000000u, 0x00000000u);
+        map.emplace(0xffffffffu, 0xffffffffu);
+
         // We're only working with SA addresses on here
         if(gvm.IsSA())
         {
@@ -78,10 +80,6 @@ static void init()
             if(gvm.GetMajorVersion() == 1 && gvm.GetMinorVersion() == 0 && gvm.IsUS())
                 sa_10us(map);
 
-            // The map must have null pointers at it's bounds
-            // So they work properly with lower_bound and stuff
-            map.emplace(0x00000000u, 0x00000000u);
-            map.emplace(0xffffffffu, 0xffffffffu);
         }
     }
 }

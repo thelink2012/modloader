@@ -12,10 +12,10 @@ using namespace modloader;
 // Hooks and other util stuff
 extern "C"
 {
-    auto pStreamingBuffer           = memory_pointer(0x008E4CAC).get<void*>();
+    auto pStreamingBuffer           = memory_pointer(0x8E4CAC).get<void*>();
     auto& streamingBufferSize       = *memory_pointer(0x8E4CA8).get<uint32_t>();
     auto LoadCdDirectory2           = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
-    CDirectory* clothesDirectory    = ReadMemory<CDirectory*>(lazy_ptr<0x5A419A + 1>(), true);
+    CDirectory* clothesDirectory    = ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true);
 };
 
 

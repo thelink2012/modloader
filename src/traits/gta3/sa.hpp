@@ -19,7 +19,7 @@ struct TraitsSA : TraitsGTA
 
     // Indices range
     const id_t  dff_start   = 0;
-    const id_t& txd_start   = injector::lazy_object<0x5B62CE + 1, uint32_t>::get();
+    const id_t& txd_start   = injector::lazy_object<0x5B62CF, uint32_t>::get();
     const id_t& max_models  = txd_start;
     const id_t& dff_end     = txd_start;
 
@@ -73,7 +73,7 @@ struct TraitsSA : TraitsGTA
     // Gets the model information structure from it's id
     static void* GetModelInfo(id_t id)
     {
-        auto& p = injector::lazy_object<0x408894 + 3, void**>::get();
+        auto& p = injector::lazy_object<0x408897, void**>::get();
         return p[id];
     }
 

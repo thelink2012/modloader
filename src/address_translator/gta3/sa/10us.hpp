@@ -13,6 +13,10 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     using namespace modloader;
     bool isHoodlum = injector::address_manager::singleton().IsHoodlum();
 
+    //
+    // (Notice '->' means "exactly pointing to"!!!!!)
+    //
+
     // Core
     if(true)
     {
@@ -91,9 +95,87 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // std.stream
     if(true)
     {
-        // !!!!! REMEMBER TO CHECK TRAITS
+        map[0x5B8AE8] = 0x5B8AE8;   // -> offset ms_aInfoForModel
+        map[0x5A419B] = 0x5A419B;   // -> offset clothesDirectory
+
+        map[0x8E3FE0] = 0x8E3FE0;   // DWORD StreamCreateFlags
+        map[0x8E3FEC] = 0x8E3FEC;   // CdStreamInfo cdinfo
+        map[0x8E4CAC] = 0x8E4CAC;   // void* CStreaming::ms_pStreamingBuffer[2]
+        map[0x8E4CA8] = 0x8E4CA8;   // unsigned int CStreaming::ms_streamingBufferSize
+
+        map[0x72F4C0] = 0x72F4C0;   // _ZN10CMemoryMgr11MallocAlignEjj
+        map[0x72F4F0] = 0x72F4F0;   // _ZN10CMemoryMgr9FreeAlignEPv
+        map[0x532310] = 0x532310;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
+        map[0x532450] = 0x532450;   // _ZN10CDirectory8FindItemEPKc
+
+        map[0x406560] = 0x406560;   // _Z14CdStreamThreadPv
+        map[0x5B8E1B] = 0x5B8E1B;   // call    _ZN10CStreaming15LoadCdDirectoryEv       ; @CStreaming::Init
+        map[0x40CF34] = 0x40CF34;   // call    _Z12CdStreamReadiPvjj                    ; @CStreaming::RequestModelStream
+        map[0x40CCA6] = 0x40CCA6;   // mov     edx, ms_aInfoForModel.iBlockCount[eax*4] ; @CStreaming::RequestModelStream
+        map[0x406A5B] = isHoodlum? 0x0156C2FB : 0x406A5B;   // and     esi, 0FFFFFFh    ; @CdStreamRead
+        map[0x409F76] = 0x409F76;   // call    _ZN10CDirectory8FindItemEPKcRjS2_        ; @CStreaming::RequestSpecialModel
+        map[0x409FD9] = 0x409FD9;   // call    _ZN10CStreaming12RequestModelEii         ; @CStreaming::RequestSpecialModel
+        map[0x5B6183] = 0x5B6183;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStreaming::LoadCdDirectory
+        map[0x532361] = 0x532361;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDirectory::ReadDirFile
+        map[0x5AFC9D] = 0x5AFC9D;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CCutsceneMgr::LoadCutsceneData_postload
+        map[0x5AFBEF] = 0x5AFBEF;   // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_postload
+        map[0x5B07E9] = 0x5B07E9;   // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_preload
+        map[0x40685E] = 0x40685E;   // call    ds:__imp_CreateFileA                     ; @CdStreamOpen
+        map[0x5B8310] = 0x5B8310;   // call    _ZN10CStreaming15LoadCdDirectoryEPKci    ; @CStreaming::LoadCdDirectory
+        map[0x5B61B8] = 0x5B61B8;   // call    _ZN8CFileMgr4ReadEiPci                   ; @CStreaming::LoadCdDirectory  ; read entry count
+        map[0x5B61E1] = 0x5B61E1;   // call    _ZN8CFileMgr4ReadEiPci                   ; @CStreaming::LoadCdDirectory  ; read entry
+        map[0x5B627A] = 0x5B627A;   // call    _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE ; @CStreaming::LoadCdDirectory
+        map[0x5B6449] = 0x5B6449;   // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_  ; @CStreaming::LoadCdDirectory
+        map[0x5B630B] = 0x5B630B;   // call    _ZN9CColStore10AddColSlotEPKc
+        map[0x5B63E8] = 0x5B63E8;   // call    _ZN17CVehicleRecording21RegisterRecordingFileEPKc
+        map[0x5B6419] = 0x5B6419;   // call    _ZN16CStreamedScripts14RegisterScriptEPKc
+        map[0x4D565A] = 0x4D565A;   // call    _RwStreamOpen    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
+
+        map[0xB74490] = 0xB74490;   // CPool<> *CPools::ms_pPedPool
+        map[0xB74494] = 0xB74494;   // CPool<> *CPools::ms_pVehiclePool
+        map[0xB74498] = 0xB74498;   // CPool<> *CPools::ms_pBuildingPool
+        map[0xB7449C] = 0xB7449C;   // CPool<> *CPools::ms_pObjectPool
+        map[0x4D6C30] = 0x4D6C30;   // _Z32RpAnimBlendClumpGiveAssociationsP7RpClumpP21CAnimBlendAssociation
+        map[0x4D6BE0] = 0x4D6BE0;   // _Z35RpAnimBlendClumpExtractAssociationsP7RpClump
+        map[0x681810] = 0x681810;   // _ZNK12CTaskManager16GetTaskSecondaryEi
+        map[0x561A00] = 0x561A00;   // _ZN6CTimer6ResumeEv
+        map[0x5619D0] = 0x5619D0;   // _ZN6CTimer7SuspendEv
+        map[0x4087E0] = 0x4087E0;   // _ZN10CStreaming12RequestModelEii
+        map[0x4089A0] = 0x4089A0;   // _ZN10CStreaming11RemoveModelEi
+        map[0x40EA10] = 0x40EA10;   // _ZN10CStreaming22LoadAllRequestedModelsEb
+        map[0x40E460] = 0x40E460;   // _ZN10CStreaming13FlushChannelsEv
+        map[0x40CF80] = 0x40CF80;   // _ZN10CStreaming21RemoveAllUnusedModelsEv
+        map[0x40CFD0] = 0x40CFD0;   // _ZN10CStreaming20RemoveLeastUsedModelEj
+
+        // Those are related to player clothing
+        map[0x40A106] = isHoodlum? 0x0156644F : 0x40A106;   // call    _ZN10CStreaming12RequestModelEii ; @CStreaming::RequestFile
+        map[0x532341] = 0x532341;   // call    _printf                                  ; @CDirectory::AddItem
+        map[0x5A6A01] = 0x5A6A01;   // call    _ZN10CDirectory11ReadDirFileEPKc         ; @CClothesBuilder::CreateSkinnedClump
+        map[0x5A4190] = 0x5A4190;   // _ZN15CClothesBuilder15LoadCdDirectoryEv
+        map[0x56E210] = 0x56E210;   // _Z13FindPlayerPedi 
+        map[0x5A82C0] = 0x5A82C0;   // _ZN8CClothes13RebuildPlayerEP10CPlayerPedb
+        map[0x5A8346] = 0x5A8346;   // push    offset _PlayerClothes                    ; @CClothes::RebuildPlayer
     }
 
+    // traits
+    if(true)
+    {
+        map[0x5B62CF] = 0x5B62CF;   // -> 4E20h ; TXD Start Index
+        map[0x408897] = 0x408897;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
+
+        /*
+        TODO VTBL
+
+        Find all "::vtbl", Subfolders, Find Results 1, "Entire Solution ( Including External Items )", ""
+          C:\Projects\modloader\src\traits\gta3\sa.hpp(84):        return ModelType(injector::thiscall<uint8_t(void*)>::vtbl<4>(m));
+          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(382):        injector::thiscall<void(void*, int)>::vtbl<5>(entity, GetEntityModel(entity));  // CEntity::SetModelIndex
+          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(388):        injector::thiscall<void(void*)>::vtbl<8>(entity);   // CEntity::DeleteRwObject
+          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(420):                injector::thiscall<void(CTask*, void*, int, int)>::vtbl<6>(task, entity, 2, 0); // CTask::MakeAbortable
+          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(433):            injector::thiscall<void(void*)>::vtbl<48>(entity);  // CVehicle::SetupSuspensionLines
+          Matching lines: 5    Matching files: 2    Total files searched: 342
+
+        */
+    }
 
 
     // ---> All the following addresses are optional and depends only on the existence of 0x8CE008 (aScreens) on the map
@@ -115,6 +197,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x57BA58] = 0x57BA58;   // call    _ZN12CMenuManager17DrawStandardMenusEh
         map[0x579D9D] = 0x579D9D;   // ja      loc_57A168      ; jumptable 00579DAA default case
         map[0x579DEE] = 0x579DEE;   // loc_579DEE:             ; jumptable 00579DAA case 12
+        map[0x6A0050] = 0x6A0050;   // _ZN5CText3GetEPKc
         map[0x57A161] = 0x57A161;   // call    _ZN5CText3GetEPKc
         map[0x5794CB] = 0x5794CB;   // call    _ZN5CFont12SetAlignmentE14eFontAlignment ; before the loop
         map[0x579AC9] = 0x579AC9;   // call    _ZN5CFont12SetAlignmentE14eFontAlignment ; in loop

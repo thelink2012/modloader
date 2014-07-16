@@ -285,7 +285,6 @@ void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
 void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
-    bool isHoodlum = injector::address_manager::singleton().IsHoodlum(); // TODO REMOVE, PUT ON ADDR TRANSLATOR
 
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
@@ -320,8 +319,8 @@ void CAbstractStreaming::Patch()
         MakeNOP(0x40CCA6 + 5, 2);
 
         // We need to return a new hFile if the file is on disk
-        MakeCALL(!isHoodlum? 0x406A5B : 0x0156C2FB, raw_ptr(HOOK_NewFile));
-        MakeNOP((!isHoodlum? 0x406A5B : 0x0156C2FB)+5, 1);
+        MakeCALL(0x406A5B, raw_ptr(HOOK_NewFile));
+        MakeNOP(0x406A5B + 5, 1);
 
         // We need to know the model index that will pass throught CallGetAbstractHandle
         make_static_hook<cdread_hook>([](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
@@ -376,8 +375,7 @@ void CAbstractStreaming::Patch()
     {
         using log_hook = function_hooker<0x532341, int(const char*)>;
         using ldclothd_hook = function_hooker_thiscall<0x5A6A01, void(CDirectory*, const char*)>;
-        // !isHoodlum using rqcloth_hook  = function_hooker<0x40A106, char(int, int)>;
-        using rqcloth_hook  = function_hooker<0x0156644F, char(int, int)>;
+        using rqcloth_hook  = function_hooker<0x40A106, char(int, int)>;
 
         // When reading clothes directory again (it happens everytime player clump is rebuilt, i.e. when muscle stats change or clothes change)
         // make sure the entries are fine with our entries
@@ -419,8 +417,8 @@ void CAbstractStreaming::Patch()
     // Fixes for stores that do not return the previous registered entry, always registers a new one
     if(true)
     {
-        using addr3_hook  = function_hooker<0x5B63E8, id_t(const char*)>;
         using addcol_hook = function_hooker<0x5B630B, id_t(const char*)>;
+        using addr3_hook  = function_hooker<0x5B63E8, id_t(const char*)>;
         using addscm_hook = function_hooker_thiscall<0x5B6419, id_t(void*, const char*)>;
 
         // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
@@ -481,7 +479,7 @@ void CAbstractStreaming::Patch()
         static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);  // Used on the obfuscated executable
 
         if(gvm.IsSA() && gvm.IsHoodlum())
-            injector::WriteMemory(raw_ptr(0x1564B56 + 1), &SRXorCreateFileForCdStream, true);
+            injector::WriteMemory(raw_ptr(0x01564B56 + 1), &SRXorCreateFileForCdStream, true);
         else
             injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
     }
