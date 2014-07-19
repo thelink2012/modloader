@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo "Building release builds..."
+echo Building release builds...
 cd ..
 
 rm -rf build
@@ -14,7 +14,7 @@ make #VERBOSE=1
 make install "DESTDIR=../release/gamedir"
 cd ../release/gamedir
 
-echo "Stripping binaries..."
+echo Stripping binaries...
 strip "modloader.asi"
 cd modloader/.data/plugins
 for f in *.dll
@@ -27,7 +27,7 @@ cd ../../..
 cp ./modloader/.data/Readme.txt     ./Readme.txt
 cp ./modloader/.data/Leia-me.txt    ./Leia-me.txt
 
-echo "Zipping"
+echo Zipping
 cd gamedir
 zip modloader.zip -r -9 .
 

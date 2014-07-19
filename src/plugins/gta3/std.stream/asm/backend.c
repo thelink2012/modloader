@@ -54,3 +54,4 @@ void __declspec(naked) HOOK_NewFile()
         ret
     }
 }
+

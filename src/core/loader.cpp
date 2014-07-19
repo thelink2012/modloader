@@ -11,6 +11,7 @@
 using namespace modloader;
 
 // TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
+// TODO take care of configs and command line on rescan
 
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 

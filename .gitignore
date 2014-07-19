@@ -1,6 +1,7 @@
 bin
 build
 build2
+msvc
 nbproject
 Makefile
 release/gamedir
