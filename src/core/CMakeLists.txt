@@ -9,13 +9,14 @@ set(SOURCE_FILES
 
      "${CMAKE_SOURCE_DIR}/include/modloader/modloader.h"
      "${CMAKE_SOURCE_DIR}/include/modloader/modloader.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/gta3/gta3.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/container.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/file.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/fxt.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/hash.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/ini.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/injector.hpp"
-     "${CMAKE_SOURCE_DIR}/include/modloader/util/modloader.hpp"
+     "${CMAKE_SOURCE_DIR}/include/modloader/util/detour.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/parser.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/path.hpp"
 )

@@ -98,7 +98,7 @@ namespace injector
     struct thiscall;
 
     template<class Ret, class ...Args>
-    struct thiscall<Ret(Args...)>   // TODO MAKE FIRST BE POINTER_TR
+    struct thiscall<Ret(Args...)>
     {
         // Call function at @p returning @Ret with args @Args
         static Ret call(memory_pointer_tr p, Args... a)

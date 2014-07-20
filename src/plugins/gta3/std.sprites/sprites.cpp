@@ -2,7 +2,7 @@
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-sprites -- Standard Sprites Loader Plugin for San Andreas Mod Loader
+ *  std.sprites -- Standard Sprites Loader Plugin for Mod Loader
  *      This plugin provides sprites for scripts and other parts of the game.
  *      Sprites are placed at "models/txd" folder
  *
@@ -69,7 +69,7 @@ bool ScriptSpritesPlugin::OnStartup()
 
             // Find replacement for sprite dictionary at filepath
             auto it = dictionaries.find(filename);
-            if(it != dictionaries.end()) filepath = it->second->FileBuffer();
+            if(it != dictionaries.end()) filepath = it->second->filepath();
 
             // Jump to the original call to LoadTxd
             Log("Loading script sprite \"%s\"", filepath);
@@ -97,7 +97,7 @@ bool ScriptSpritesPlugin::OnShutdown()
  */
 int ScriptSpritesPlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.IsDirectory() && file.IsExtension("txd") && IsFileInsideFolder(file.FilePath(), true, "txd"))
+    if(!file.is_dir() && file.is_ext("txd") && IsFileInsideFolder(file.filedir(), true, "txd"))
     {
         file.behaviour = file.hash;
         return MODLOADER_BEHAVIOUR_YES;
@@ -111,7 +111,7 @@ int ScriptSpritesPlugin::GetBehaviour(modloader::file& file)
  */
 bool ScriptSpritesPlugin::InstallFile(const modloader::file& file)
 {
-    dictionaries.emplace(file.FileName(), &file);
+    dictionaries.emplace(file.filename(), &file);
     return true;
 }
 
@@ -131,6 +131,6 @@ bool ScriptSpritesPlugin::ReinstallFile(const modloader::file& file)
  */
 bool ScriptSpritesPlugin::UninstallFile(const modloader::file& file)
 {
-    dictionaries.erase(file.FileName());
+    dictionaries.erase(file.filename());
     return true;
 }

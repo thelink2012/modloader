@@ -2,7 +2,7 @@
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-movies -- Standard Movies Plugin for Mod Loader
+ *  std.movies -- Standard Movies Plugin for Mod Loader
  *
  */
 #include <modloader/modloader.hpp>
@@ -87,7 +87,7 @@ bool MediaPlugin::OnShutdown()
  */
 int MediaPlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.IsDirectory())
+    if(!file.is_dir())
     {
         if(file.hash == logo)
         {

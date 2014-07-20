@@ -45,8 +45,6 @@ namespace injector
                         break;
                     }
 
-                    // TODO CLEO4.3 ADDS "//" AS COMMENTS ???
-
                     // If no key found yet...
                     if(key == 0)
                     {

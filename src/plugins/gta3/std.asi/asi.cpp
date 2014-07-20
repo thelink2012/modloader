@@ -2,13 +2,13 @@
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-asi -- Standard ASI Loader Plugin for San Andreas Mod Loader
+ *  std.asi -- Standard ASI Loader Plugin for Mod Loader
  *      Loads ASI files as libraries and CLEO scripts
  * 
  */
 #include <map>
 #include "asi.h"
-#include <modloader/util/modloader.hpp>
+#include <modloader/util/detour.hpp>
 #include <modloader/util/path.hpp>
 using namespace modloader;
 
@@ -90,34 +90,34 @@ bool ThePlugin::OnShutdown()
  */
 int ThePlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.IsDirectory())
+    if(!file.is_dir())
     {
         char dummy;
-        if(file.IsExtension("asi") || file.IsExtension("cleo") || file.IsExtension("dll"))
+        if(file.is_ext("asi") || file.is_ext("cleo") || file.is_ext("dll"))
         {
-            if(file.IsExtension("asi"))
+            if(file.is_ext("asi"))
             {
                 // Don't load CLEO neither modloader!
-                if(!strcmp(file.FileName(), "cleo.asi", false) || !strcmp(file.FileName(), "modloader.asi", false))
+                if(!strcmp(file.filename(), "cleo.asi", false) || !strcmp(file.filename(), "modloader.asi", false))
                 {
-                    Log("Warning: Forbidden ASI file found \"%s\"", file.FileBuffer());
+                    Log("Warning: Forbidden ASI file found \"%s\"", file.filepath());
                     return MODLOADER_BEHAVIOUR_NO;
                 }
             }
-            else if(file.IsExtension("cleo"))                       // Allow
+            else if(file.is_ext("cleo"))                       // Allow
             { }
-            else if(strcmp(file.FileName(), "d3d9.dll", false))   // Not D3D9 either?
+            else if(strcmp(file.filename(), "d3d9.dll", false))   // Not D3D9 either?
                 return MODLOADER_BEHAVIOUR_NO;
 
             // Check out if the file is incompatible
-            std::string filename = file.FileName();
+            std::string filename = file.filename();
             auto it = incompatible.find(filename);
             if(it != incompatible.end())
             {
                 if(file.size == it->second)
                 {
                     Error("Incompatible ASI file found: %s\nPlease install it at the game root directory.\nSkipping it!",
-                          file.FileName());
+                          file.filename());
                     return MODLOADER_BEHAVIOUR_NO;
                 }
             }
@@ -125,7 +125,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
             file.behaviour = file.hash | is_asi_mask;
             return MODLOADER_BEHAVIOUR_YES;
         }
-        else if(file.IsExtension("cm") || CsInfo::GetVersionFromExtension(file.FileExt(), dummy))
+        else if(file.is_ext("cm") || CsInfo::GetVersionFromExtension(file.filext(), dummy))
         {
             // Cleo script, true
             file.behaviour = file.hash | is_cs_mask;
@@ -143,14 +143,14 @@ bool ThePlugin::InstallFile(const modloader::file& file)
 {
     if(file.behaviour & is_asi_mask)
     {
-        auto& asi = *asiList.emplace(asiList.end(), file.FileBuffer(), &file, nullptr);
+        auto& asi = *asiList.emplace(asiList.end(), file.filepath(), &file, nullptr);
         
         if(!asi.Load())
         {
             Log(false ? "[%s] %s \"%s\"" : "[%s] %s \"%s\"; errcode: 0x%X",                     // Formated string
                 (asi.bIsASI ? "ASI" : asi.bIsD3D9 ? "D3D9" : asi.bIsCleo ? "CLEO" : "???"),     // What
                 (false ? "Module has been loaded:" : "Failed to load module"),                  // Loaded properly?
-                file.FilePath(),                                                                // Path
+                file.filedir(),                                                                // Path
                 GetLastError());                                                                // [extra] Error code
 
             asiList.pop_back();

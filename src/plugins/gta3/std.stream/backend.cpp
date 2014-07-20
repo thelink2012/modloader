@@ -1,4 +1,5 @@
 /* 
+ * Standard Streamer Plugin for Mod Loader
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
@@ -103,10 +104,10 @@ int __stdcall CdStreamThread()
                     // Setup vars based on abstract file
                     sfile  = &(*it);
                     offset = 0;
-                    size   = (size_t) sfile->info.file->Size();
+                    size   = (size_t) sfile->info.file->size;
                     bsize  = GetSizeInBlocks(size);
                     index  = sfile->index;
-                    filename = sfile->info.file->FileBuffer();
+                    filename = sfile->info.file->filepath();
                 }
             }
             
@@ -173,13 +174,13 @@ const char* CAbstractStreaming::GetCdStreamPath(const char* filepath_)
             for(auto& file : this->imgFiles)
             {
                 auto& cdpath    = (i == 0? filepath : filename);                    // Sent filepath/filename
-                fpath           = (i == 0? file->FilePath() : file->FileName());    // Custom filepath/filename
+                fpath           = (i == 0? file->filedir() : file->filename());    // Custom filepath/filename
 
                 // Check if the ending of cdpath is same as fpath
                 if(fpath.length() >= cdpath.length() && std::equal(cdpath.rbegin(), cdpath.rend(), fpath.rbegin()))
                 {
                     // Yeah, let's override!!!
-                    filepath_ = file->FileBuffer();
+                    filepath_ = file->filepath();
                     bBreak = true;
                     break;
                 }
@@ -223,13 +224,13 @@ auto CAbstractStreaming::OpenModel(ModelInfo& file, int index) -> AbctFileHandle
 {
     DWORD flags = FILE_FLAG_SEQUENTIAL_SCAN | (*pStreamCreateFlags & FILE_FLAG_OVERLAPPED);
     
-    HANDLE hFile = CreateFileA(file.file->FullPath(fbuffer).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+    HANDLE hFile = CreateFileA(file.file->fullpath(fbuffer).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
                                OPEN_EXISTING, flags, NULL);
     
     if(hFile == INVALID_HANDLE_VALUE)
     {
         plugin_ptr->Log("Failed to open file \"%s\" for abstract streaming; error code: 0x%X",
-                       file.file->FileBuffer(), GetLastError());
+                       file.file->filepath(), GetLastError());
         return nullptr;
     }
     else
@@ -268,9 +269,9 @@ void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
         if(m.isFallingBack == false)    // If already falling back, don't check again
         {
             // If file isn't on disk we should fall back to the stock model
-            if(!IsPath(m.file->FullPath(fbuffer).c_str()))
+            if(!IsPath(m.file->fullpath(fbuffer).c_str()))
             {
-                plugin_ptr->Log("Model file \"%s\" has been deleted, falling back to stock model.", m.file->FileBuffer());
+                plugin_ptr->Log("Model file \"%s\" has been deleted, falling back to stock model.", m.file->filepath());
                 this->RestoreInfoForModel(index);
                 m.isFallingBack = true;
             }
@@ -397,7 +398,7 @@ void CAbstractStreaming::Patch()
             if(it != clothes.end() && (entry = this->FindClothEntry(it->second->hash)))
             {
                 // Yep, we have a overrider, save stock entry and quickly import our abstract model
-                this->RegisterStockEntry(it->second->FileName(), *entry, index, InfoForModel(index)->img_id);
+                this->RegisterStockEntry(it->second->filename(), *entry, index, InfoForModel(index)->img_id);
                 this->QuickImport(index, it->second, false, true);
             }
             else

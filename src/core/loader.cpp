@@ -395,7 +395,7 @@ auto Loader::FindHandlerForFile(modloader::file& m, ref_list<PluginInformation>&
     PluginInformation* handler = nullptr;
     
     // Iterate on the plugins to find a handler for it
-    for(PluginInformation& plugin : this->GetPluginsBy(m.FileExt()))
+    for(PluginInformation& plugin : this->GetPluginsBy(m.filext()))
     {
         auto state = plugin.FindBehaviour(m);
         

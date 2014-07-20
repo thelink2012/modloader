@@ -1,4 +1,5 @@
-/* 
+/*
+ * Standard Streamer Plugin for Mod Loader
  * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
@@ -148,7 +149,7 @@ bool CAbstractStreaming::InstallFile(const modloader::file& file)
         // Just push it to this list and it will get loaded when the streaming initializes
         // At this point we don't know if this is a clothing item or an model, for that reason "raw"
         // The initializer will take care of filtering clothes and models from the list
-        this->raw_models[file.FileName()] = &file;
+        this->raw_models[file.filename()] = &file;
         return true;
     }
     else
@@ -181,7 +182,7 @@ bool CAbstractStreaming::UninstallFile(const modloader::file& file)
     if(!this->bHasInitializedStreaming)
     {
         // Streaming hasn't initialized, just remove it from our raw list
-        raw_models.erase(file.FileName());
+        raw_models.erase(file.filename());
         return true;
     }
     else
@@ -270,7 +271,7 @@ void CAbstractStreaming::UnimportModel(id_t index)
  */
 void CAbstractStreaming::QuickImport(id_t index, const modloader::file* file, bool isSpecialModel, bool isCloth)
 {
-    plugin_ptr->Log("Importing model file for index %d at \"%s\"", index, file->FileBuffer());
+    plugin_ptr->Log("Importing model file for index %d at \"%s\"", index, file->filepath());
 
     // Add import into the import table
     auto& imp = imports[index];
@@ -280,8 +281,8 @@ void CAbstractStreaming::QuickImport(id_t index, const modloader::file* file, bo
     imp.isClothes = isCloth;
 
     // Register the existence of such a model and setup info for it
-    if(!isCloth) this->RegisterModelIndex(file->FileName(), index);
-    this->SetInfoForModel(index, 0, GetSizeInBlocks(file->Size()));
+    if(!isCloth) this->RegisterModelIndex(file->filename(), index);
+    this->SetInfoForModel(index, 0, GetSizeInBlocks(file->size));
 }
 
 /*
@@ -331,9 +332,9 @@ bool CAbstractStreaming::ImportCloth(const modloader::file* file)
     {
         // We need to add a new entry into the clothes directory...
         DirectoryInfo entry;
-        plugin_ptr->Log("Adding new item to clothing directory \"%s\"", file->FileName());
-        this->RegisterClothingItem(file->FileName(), clothesDirectory->m_dwCount);              // Tell us about it
-        FillDirectoryEntry(entry, file->FileName(), TakeClothSparseOffset(), file->Size());
+        plugin_ptr->Log("Adding new item to clothing directory \"%s\"", file->filename());
+        this->RegisterClothingItem(file->filename(), clothesDirectory->m_dwCount);              // Tell us about it
+        FillDirectoryEntry(entry, file->filename(), TakeClothSparseOffset(), file->size);
         injector::thiscall<void(CDirectory*, DirectoryInfo*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
         sparse_dir_entries.emplace_back(entry);
 

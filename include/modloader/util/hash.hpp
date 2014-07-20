@@ -1,5 +1,5 @@
 /* 
- * San Andreas Mod Loader Utilities Headers
+ * Mod Loader Utilities Headers
  * Created by LINK/2012 <dma_2012@hotmail.com>
  * 
  *  This file provides helpful functions for plugins creators.

@@ -1,5 +1,5 @@
 /* 
- * San Andreas Mod Loader Utilities Headers
+ * Mod Loader Utilities Headers
  * Created by LINK/2012 <dma_2012@hotmail.com>
  * 
  *  This file provides helpful functions for plugins creators.
@@ -13,16 +13,14 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * 
  */
-#ifndef MODLOADER_UTIL_HPP
-#define	MODLOADER_UTIL_HPP
+#ifndef MODLOADER_UTIL_DETOUR_HPP
+#define	MODLOADER_UTIL_DETOUR_HPP
 #pragma once
 #include <string>
 #include <modloader/modloader.hpp>
 #include <modloader/util/injector.hpp>
 #include <modloader/util/path.hpp>
 #include <tuple>
-
-// TODO maybe move those to util/injector
 
 namespace modloader
 {
@@ -292,7 +290,7 @@ namespace modloader
             typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
             {
                 T& detourer = GetInjection(i-1).template cast<T>();      // Get this type
-                detourer.setfile(f? f->FileBuffer() : "");      // Set file
+                detourer.setfile(f? f->filepath() : "");      // Set file
                 return Hlp_SetFile<i-1, Args...>(f);            // Continue to the next type
             }
 

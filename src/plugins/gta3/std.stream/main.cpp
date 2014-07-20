@@ -1,11 +1,8 @@
 /*
+ * Standard Streamer Plugin for Mod Loader
  * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
- * 
- *  std.stream
- *      Loads all compatible files with imgs (on game request),
- *      it loads directly from disk not by creating a cache or virtual img.
- * 
+ *
  */
 #include "streaming.hpp"
 #include <modloader/util/file.hpp>
@@ -88,19 +85,19 @@ bool ThePlugin::OnShutdown()
  */
 int ThePlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.IsDirectory() && file.IsExtension("img"))
+    if(!file.is_dir() && file.is_ext("img"))
     {
         // This is a image file
         file.behaviour = file.hash | is_img_file_mask;
         return MODLOADER_BEHAVIOUR_YES;
     }
-    else if(!file.IsDirectory())
+    else if(!file.is_dir())
     {
-        ResType type = GetResTypeFromExtension(file.FileExt());
+        ResType type = GetResTypeFromExtension(file.filext());
         if(type == ResType::None)  // None of the supported types by this plugin
             return MODLOADER_BEHAVIOUR_NO;
         
-        auto inFolder = GetPathComponentBack<char>(file.FilePath(), 2);             // the folder the file is inside
+        auto inFolder = GetPathComponentBack<char>(file.filedir(), 2);             // the folder the file is inside
         bool isPlayer = gvm.IsSA() && (inFolder.find("player") != inFolder.npos);   // force clothing item (for player.img)?
 
         // If inside a folder with img extension, ignore any checking, just accept the file
@@ -129,7 +126,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                 case ResType::StreamedScene:
                 {
                     // Make sure this is a binary IPL by reading the file magic
-                    if(IsFileMagic(file.FullPath().c_str(), "bnry"))
+                    if(IsFileMagic(file.fullpath().c_str(), "bnry"))
                         break;
                     return MODLOADER_BEHAVIOUR_NO;
                 }
@@ -138,7 +135,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                 {
                     // Make sure it's file name is carrec formated
                     int dummy;
-                    if(sscanf(file.FileName(), "carrec%d", &dummy) != 1)
+                    if(sscanf(file.filename(), "carrec%d", &dummy) != 1)
                         return MODLOADER_BEHAVIOUR_NO;
                     break;
                 }

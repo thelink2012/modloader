@@ -2,11 +2,8 @@
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-scm -- Standard SCM Loader Plugin for San Andreas Mod Loader
- *      This plugin is extremelly simple, made to load a new main.scm file.
- *      It just overrides one or two strings on the game executable.
- *      NOTE: script.img is taken care by the img plugin!
- * 
+ *  std.scm -- Standard SCM Loader Plugin for Mod Loader
+ *
  */
 #include <modloader/modloader.hpp>
 #include <modloader/util/hash.hpp>
@@ -82,7 +79,7 @@ bool ScmPlugin::OnShutdown()
  */
 int ScmPlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.IsDirectory() && file.hash == main_scm)
+    if(!file.is_dir() && file.hash == main_scm)
     {
         file.behaviour = file.hash;
         return MODLOADER_BEHAVIOUR_YES;

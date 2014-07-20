@@ -1,4 +1,5 @@
 /* 
+ * Standard Streamer Plugin for Mod Loader
  * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
@@ -233,7 +234,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
         if(it != files.end())
         {
             // Fill the entry with this file information
-            FillDirectoryEntry(entry, it->get()->FileName(), 0, it->get()->Size());
+            FillDirectoryEntry(entry, it->get()->filename(), 0, it->get()->size);
 
             // Check out if we're in the bounds of the streaming buffer
             if(entry.m_usSize > tempStreamingBufSize)

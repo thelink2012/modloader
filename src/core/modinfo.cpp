@@ -21,13 +21,13 @@ struct FileInstallLog
     FileInstallLog(const Loader::FileInformation& file, const char* action, bool revaction = false) :
                 file(file), action(action), revaction(revaction)
     {
-        loader.Log("%sing file \"%s\"", action, file.FileBuffer());
+        loader.Log("%sing file \"%s\"", action, file.filepath());
     }
     
     ~FileInstallLog()
     {
         if(file.IsInstalled() == revaction)
-            loader.Log("Failed to %s file \"%s\"", action, file.FileBuffer());
+            loader.Log("Failed to %s file \"%s\"", action, file.filepath());
     }
 };
 
@@ -158,7 +158,7 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
             if (bRemoveAll || file.status == Status::Removed)
             {
                 // File was removed from the filesystem, uninstall and erase from our internal list
-                Log("Extinguishing file \"%s\"", file.FileBuffer());
+                Log("Extinguishing file \"%s\"", file.filepath());
                 if(file.Uninstall()) it = this->files.erase(it);
                 else                 ++it;
             }
@@ -209,7 +209,7 @@ void Loader::ModInformation::InstallNecessaryFiles()
  */
 bool Loader::FileInformation::Update(const modloader::file& m)
 {
-    if (this->HasFileChanged(m))
+    if (this->has_changed(m))
     {
         this->time = m.time;
         this->size = m.size;
@@ -217,7 +217,7 @@ bool Loader::FileInformation::Update(const modloader::file& m)
         // Behaviour cannot change between updates!!!!
         if (this->behaviour != m.behaviour)
         {
-            Error("Behaviour of file \"%s\" changed during update.", this->FileBuffer());
+            Error("Behaviour of file \"%s\" changed during update.", this->filepath());
             return false;
         }
         return true;

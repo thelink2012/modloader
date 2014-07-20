@@ -2,7 +2,7 @@
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-asi -- Standard ASI Loader Plugin for San Andreas Mod Loader
+ *  std.asi -- Standard ASI Loader Plugin for Mod Loader
  *      Loads ASI files as libraries
  * 
  */
@@ -145,7 +145,7 @@ bool ThePlugin::ModuleInfo::Load()
 
         // Load the library module into our module field
         SetLastError(0);
-        this->module = bIsMainExecutable? GetModuleHandleA(0) : LoadLibraryA(file->FullPath().c_str());
+        this->module = bIsMainExecutable? GetModuleHandleA(0) : LoadLibraryA(file->fullpath().c_str());
 
         // Patch the module imports to pass throught args translation.
         if(this->module) this->PatchImports();

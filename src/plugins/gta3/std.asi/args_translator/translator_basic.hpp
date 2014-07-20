@@ -259,7 +259,7 @@ struct path_translator_base
         template<class T> void TranslatePath(T&&, char)
         {
             // ...He, no, what is this type?
-            plugin_ptr->Error("std-asi: TranslatePath called with unknown type\n"
+            plugin_ptr->Error("std.asi: TranslatePath called with unknown type\n"
                          "Symbol: %s\nLibrary: %s",
                          base->GetSymbol(), base->GetLibName());
         }
@@ -348,7 +348,7 @@ struct path_translator_base
                     }
                     else
                     {
-                        plugin_ptr->Error("std-asi error at TranslatePath<T,F>");
+                        plugin_ptr->Error("std.asi error at TranslatePath<T,F>");
                     }
                 }
             }
@@ -478,7 +478,7 @@ struct path_translator_basic : public path_translator_base
                 if(SetupASI(plugin_ptr->cast<ThePlugin>().FindModuleFromAddress(pCaller), Symbol, LibName))
                     return true;
                 else
-                    plugin_ptr->Error("std-asi: translator.SetupASI failed to identify caller ASI!");
+                    plugin_ptr->Error("std.asi: translator.SetupASI failed to identify caller ASI!");
             }
             else
             {
@@ -490,7 +490,7 @@ struct path_translator_basic : public path_translator_base
                 if(!bAntiFlood)
                 {
                     // Let's log about this situation we have here...
-                    plugin_ptr->Log("Warning: std-asi failed to CaptureStackBackTrace for %s:%s! Trying singleton!",
+                    plugin_ptr->Log("Warning: std.asi failed to CaptureStackBackTrace for %s:%s! Trying singleton!",
                                    LibName, Symbol);
                     bAntiFlood = true;
                 }

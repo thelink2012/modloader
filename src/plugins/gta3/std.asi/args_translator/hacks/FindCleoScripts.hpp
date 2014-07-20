@@ -182,7 +182,7 @@ namespace hacks
             // Get relative path in iterator
             const char* GetPath()
             {
-                return iterator->file->FileBuffer();
+                return iterator->file->filepath();
             }
         };
         

@@ -1,8 +1,8 @@
 /* 
+ * Standard Streamer Plugin for Mod Loader
  * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *      Streaming refresher
  */
 #include "streaming.hpp"
 #include <set>

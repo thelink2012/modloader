@@ -19,6 +19,7 @@ class ThePlugin : public modloader::basic_plugin
         bool InstallFile(const modloader::file&);
         bool ReinstallFile(const modloader::file&);
         bool UninstallFile(const modloader::file&);
+        void Update();
         
 } plugin;
 
@@ -92,4 +93,12 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
 bool ThePlugin::UninstallFile(const modloader::file& file)
 {
     return false;
+}
+
+/*
+ *  ThePlugin::Update
+ *      Updates the state of this plugin after a serie of install/uninstalls
+ */
+void ThePlugin::Update()
+{
 }

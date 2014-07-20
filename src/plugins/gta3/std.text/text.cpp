@@ -1,8 +1,9 @@
 /*
+ * Standard Text Loader Plugin for Mod Loader
  * Copyright (C) 2013-2014  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
- *  std-text -- Standard GTA Text Loader Plugin for Mod Loader
+ *  std.text -- Standard GTA Text Loader Plugin for Mod Loader
  *
  */
 #include <modloader/modloader.hpp>
@@ -64,7 +65,7 @@ bool TextPlugin::OnStartup()
         auto transformer = [this](std::string filename)
         {
             auto it = gxt.find(modloader::hash(filename, ::tolower));
-            return std::string(it != gxt.end()? it->second->FileBuffer() : "");
+            return std::string(it != gxt.end()? it->second->filepath() : "");
         };
         
         // Patch the game with detours
@@ -93,14 +94,14 @@ bool TextPlugin::OnShutdown()
  */
 int TextPlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.IsDirectory())
+    if(!file.is_dir())
     {
-        if(file.IsExtension("fxt"))
+        if(file.is_ext("fxt"))
         {
             file.behaviour = file.hash | is_fxt_mask;
             return MODLOADER_BEHAVIOUR_YES;
         }
-        else if(file.IsExtension("gxt"))
+        else if(file.is_ext("gxt"))
         {
             file.behaviour = file.hash;
             return MODLOADER_BEHAVIOUR_YES;
@@ -121,10 +122,10 @@ bool TextPlugin::InstallFile(const modloader::file& file)
 
         // Remove the previous table related to this FXT then load it again
         this->fxt.remove_table(table);
-        if(ParseFXT(this->fxt, file.FullPath().c_str(), table))
+        if(ParseFXT(this->fxt, file.fullpath().c_str(), table))
             return true;
 
-        Log("Failed to inject FXT file \"%s\"", file.FileBuffer());
+        Log("Failed to inject FXT file \"%s\"", file.filepath());
     }
     else // Is GXT
     {

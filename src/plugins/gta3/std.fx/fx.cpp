@@ -2,6 +2,9 @@
 * Copyright (C) 2013-2014 LINK/2012 <dma_2012@hotmail.com>
 * Licensed under GNU GPL v3, see LICENSE at top level directory.
 *
+*   std.fx  - Standard FX Loader Plugin for Mod Loader
+*       This handles FX files that are placed in models/ folder
+*
 */
 #include <map>
 #include <modloader/modloader.hpp>
@@ -114,7 +117,7 @@ class FxPlugin : public modloader::basic_plugin
             char buf[64]; sprintf(buf, "grass%d_%d.dff", i, j);
             AddManualDetour(modloader::hash(buf), file_overrider<>::params(nullptr)).OnChange([this, i, j](const modloader::file* f)
             {
-                grass_detour.setfile(f? f->FileBuffer() : "", i, j);
+                grass_detour.setfile(f? f->filepath() : "", i, j);
             });
         }
 
@@ -286,7 +289,7 @@ bool FxPlugin::OnShutdown()
  */
 int FxPlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.IsDirectory())
+    if(!file.is_dir())
     {
         if(this->FindOverrider(file.hash))
         {
