@@ -128,14 +128,9 @@ int ThePlugin::GetBehaviour(modloader::file& file)
 
                 case ResType::StreamedScene:
                 {
-                    std::string str;
-                    // If the IPL file have '_stream' on it's name it's probably a stream IPL
-                    if((str = file.FileName()).find("_stream") != str.npos)
-                    {
-                        // Make sure by reading the file magic and comparing with 'bnry'
-                        if(IsFileMagic(file.FullPath().c_str(), "bnry"))
-                            break;
-                    }
+                    // Make sure this is a binary IPL by reading the file magic
+                    if(IsFileMagic(file.FullPath().c_str(), "bnry"))
+                        break;
                     return MODLOADER_BEHAVIOUR_NO;
                 }
 

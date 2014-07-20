@@ -8,8 +8,6 @@
 #include <modloader/util/container.hpp>
 using namespace modloader;
 
-// TODO needs to refresh ifp and others too
-
 CAbstractStreaming streaming;
 
 

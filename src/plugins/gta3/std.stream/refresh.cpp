@@ -48,6 +48,13 @@ class Refresher : private T
             } ped;
         };
 
+        // Refreshing information for a specific model
+        struct RefreshInfo
+        {
+            bool bShallLoadBack = false;
+        };
+
+
         // Reference to the streaming object
         CAbstractStreaming& streaming;
         
@@ -57,7 +64,7 @@ class Refresher : private T
         std::map<id_t, std::vector<void*>>  mEntityAssoc;   // Map of association between a model id and many game entities
         std::map<id_t,  std::vector<id_t>>  mTxdAssoc;      // Map of association between a txd and many dffs
         std::map<EntityType, EntityEvent>   mEntityEvents;  // Map of association between type of entities and their refreshing events
-        std::set<id_t>                      mToRefresh;     // List of resources that needs to be refreshed (dff/txd/col/ifp/ipl/etc)
+        std::map<id_t, RefreshInfo>         mToRefresh;     // List of resources that needs to be refreshed (dff/txd/col/ifp/ipl/etc)
 
 
         // Initialization
@@ -87,14 +94,27 @@ class Refresher : private T
             {
                 if(auto* pEntity = pEntityPool->GetAt(i))
                 {
-                    if(GetEntityRwObject(pEntity))  //Has a RwObject attached to it?
+                    if(GetEntityRwObject(pEntity))  // Has a RwObject attached to it?
                     {
                         // If this entity id is on the refresh list, place it on the entity association map
                         auto id = GetEntityModel(pEntity);
-                        if(mToRefresh.count(id)) this->mEntityAssoc[id].emplace_back((void*)(pEntity));
+                        auto it = mToRefresh.find(id);
+                        if(it != mToRefresh.end())
+                        {
+                            if(!it->second.bShallLoadBack) it->second.bShallLoadBack = ShallLoadBackEntity(pEntity);
+                            this->mEntityAssoc[id].emplace_back((void*)(pEntity));
+                        }
                     }
                 }
             }
+        }
+
+        // Checks if a specific entity should have it's RwObject loaded back after it gets unloaded
+        // In other words, returns true for anything other than Buildings and Objects.
+        bool ShallLoadBackEntity(void* entity)
+        {
+            auto type = GetEntityType(entity);
+            return !(type == EntityType::Building || type == EntityType::Object || type == EntityType::Dummy);
         }
 
         // Adds a saved entity slot and returns it
@@ -229,7 +249,9 @@ template<class T> void Refresher<T>::BuildRefreshMap()
         // Go ahead only if this model is valid and is present on the streaming (loaded)
         if(id != -1 && streaming.IsModelOnStreaming(id))
         {
-            this->mToRefresh.emplace(id);
+            this->mToRefresh.emplace(std::piecewise_construct,
+                std::forward_as_tuple(id),
+                std::forward_as_tuple());
             return true;
         }
         return false;
@@ -239,16 +261,23 @@ template<class T> void Refresher<T>::BuildRefreshMap()
     for(auto& imp : streaming.to_import)
     {
         auto id = streaming.FindModelFromHash(imp.first);
-        if(AddRefresh(id))
+        auto type = streaming.GetIdType(id);
+
+        // Cannot refresh some kinds of resources just in time (In fact I'm not giving any effort to refresh those)
+        if(type != ResType::VehRecording && type != ResType::StreamedScript
+        && type != ResType::Nodes && type != ResType::AnimFile)
         {
-            // Handle some peculiarities
-            switch(streaming.GetIdType(id))
+            if(AddRefresh(id))
             {
-                // For txd files we should also reload it's associated dff files so the RwObject material list is corrected
-                case ResType::TexDictionary:
+                // Handle some peculiarities
+                switch(type)
                 {
-                    for(auto& id : GetModelsUsingTxdIndex(id - txd_start)) AddRefresh(id);
-                    break;
+                    // For txd files we should also reload it's associated dff files so the RwObject material list is corrected
+                    case ResType::TexDictionary:
+                    {
+                        for(auto& id : GetModelsUsingTxdIndex(id - txd_start)) AddRefresh(id);
+                        break;
+                    }
                 }
             }
         }
@@ -293,7 +322,7 @@ template<class T> void Refresher<T>::DestroyEntities()
  */
 template<class T> void Refresher<T>::RemoveModels()
 {
-    for(auto& id : this->mToRefresh) streaming.RemoveModel(id);
+    for(auto& pair : this->mToRefresh) streaming.RemoveModel(pair.first);
     streaming.RemoveUnusedResources();
 }
 
@@ -336,11 +365,11 @@ template<class T> void Refresher<T>::ProcessImportList()
 template<class T> void Refresher<T>::RequestModels()
 {
     // Do the requests
-    for(auto& id : mToRefresh)
+    for(auto& pair : mToRefresh)
     {
-        auto& model = *streaming.InfoForModel(id);
-        if(model.flags) // Has any importance to the streaming?
-            streaming.RequestModel(id, model.flags);
+        auto& model = *streaming.InfoForModel(pair.first);
+        if(model.flags || pair.second.bShallLoadBack) // Has any importance to the streaming?
+            streaming.RequestModel(pair.first, model.flags);
     }
 
     // Stream those models in now!

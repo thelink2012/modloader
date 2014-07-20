@@ -353,6 +353,7 @@ void Loader::FolderInformation::Update(ModInformation& mod)
 void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
 {
     modloader::ini cfg;
+    CopyFileA(loader.folderConfigDefault.c_str(), inifile.c_str(), TRUE);
 
     // Reads the top [Config] section
     auto ReadConfig = [this](const modloader::ini::key_container& kv)
