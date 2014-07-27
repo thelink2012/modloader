@@ -97,8 +97,11 @@ int ThePlugin::GetBehaviour(modloader::file& file)
         if(type == ResType::None)  // None of the supported types by this plugin
             return MODLOADER_BEHAVIOUR_NO;
         
+        // Check for forced player clothing items
         auto inFolder = GetPathComponentBack<char>(file.filedir(), 2);             // the folder the file is inside
-        bool isPlayer = gvm.IsSA() && (inFolder.find("player") != inFolder.npos);   // force clothing item (for player.img)?
+        bool isPlayer = false;
+        if(gvm.IsSA() && inFolder.find("player") != inFolder.npos)
+            isPlayer = (inFolder == "player.img" || inFolder == "player_img");
 
         // If inside a folder with img extension, ignore any checking, just accept the file
         // Oh yeah, and don't do this checking on clothing files for player.img

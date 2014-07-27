@@ -25,8 +25,6 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-// TODO UPDATE DOCUMENTATION (here and at doc/)
-
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -86,7 +84,7 @@ typedef struct
     uint32_t            flags;          /* File flags */
     const char*         buffer;         /* Pointer to the file buffer... that's the file path relative to game dir  */
     uint8_t             pos_eos;        /* The null terminator position (length of the string)  */
-    uint8_t             pos_filepath;   /* The position of the filepath relative to the mod folder (e.g. "modloader/my mod/stuff/a.dat" -> "stuff/a.dat") */
+    uint8_t             pos_filedir;    /* The position of the filepath relative to the mod folder (e.g. "modloader/my mod/stuff/a.dat" -> "stuff/a.dat") */
     uint8_t             pos_filename;   /* The position of the file name  */
     uint8_t             pos_filext;     /* The position of the file extension  */
     uint32_t            hash;           /* The filename hash (as in "modloader/util/hash.hpp" */
@@ -96,8 +94,6 @@ typedef struct
     uint64_t            time;           /* File modification time  */
                                         /*  (as FILETIME, 100-nanosecond intervals since January 1, 1601 UTC) */
     uint64_t            behaviour;      /* The file behaviour */
-    
-    
 
 } modloader_file_t;
 
@@ -187,7 +183,7 @@ typedef const char* (*modloader_fGetAuthor)(modloader_plugin_t* data);
 
 
 /*
- *  OnStartUp
+ *  OnStartup
  *      Plugin started up, this happens before the the game engine starts.
  *      @data: The plugin shall fill 'data' parameter with it's information.
  *      @return 0 on success and 1 on failure;
@@ -261,7 +257,8 @@ typedef struct modloader_plugin_t
         void *pThis, *pModule;                      /* this pointer and HMODULE */
         const char *name, *author, *version;        /* Plugin info */
         modloader_t* modloader;                     /* Modloader pointer  */
-        uint8_t _pad1[4];                           /* Backward compatibility */
+        uint8_t has_started;                        /* Determines whether the plugin has started up successfully */
+        uint8_t _pad1[3];                           /* Reserved */
     };
     
     /* Userdata, set it to whatever you want */
@@ -287,7 +284,7 @@ typedef struct modloader_plugin_t
     modloader_fReinstallFile    ReinstallFile;
     modloader_fUninstallFile    UninstallFile;
     modloader_fUpdate           Update;
-    
+
 } modloader_plugin_t;
 
 

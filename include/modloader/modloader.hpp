@@ -63,7 +63,7 @@ namespace modloader
         // Gets the filepath relative to the game dir
         const char* filepath() const  { return filebuffer(0);             }
         // Gets the filepath relative to the mod folder
-        const char* filedir() const   { return filebuffer(pos_filepath);  }
+        const char* filedir() const   { return filebuffer(pos_filedir);  }
         // Gets the filename
         const char* filename() const  { return filebuffer(pos_filename);  }
         // Gets the file extension
@@ -105,11 +105,11 @@ namespace modloader
             };
         
         public:
-            modloader_t*                loader;     // Pointer to the Mod Loader basic information
-            plugin*                     data;       // Pointer to this plugin data
-            modloader_fLog              Log;        // Log(fmt, ...)
-            modloader_fvLog             vLog;       // vLog(fmt, va_list)
-            modloader_fError            Error;      // Error(fmt, ...)
+            const modloader_t*  loader;     // Pointer to the Mod Loader basic information
+            const plugin*       data;       // Pointer to this plugin data
+            modloader_fLog      Log ;       // Log(fmt, ...)
+            modloader_fvLog     vLog;       // vLog(fmt, va_list)
+            modloader_fError    Error;      // Error(fmt, ...)
 
             // Casts this base to a derived object
             template<class To>
@@ -225,11 +225,11 @@ namespace modloader
             }
         
             // Mod Loader stuff
-            interfc.data      = reinterpret_cast<plugin*>(data);
-            interfc.loader    = data->modloader;
-            interfc.Error     = interfc.loader->Error;
-            interfc.Log       = interfc.loader->Log;
-            interfc.vLog      = interfc.loader->vLog;
+            interfc.data    = reinterpret_cast<plugin*>(data);
+            interfc.loader  = data->modloader;
+            interfc.Error   = interfc.loader->Error;
+            interfc.Log     = interfc.loader->Log;
+            interfc.vLog    = interfc.loader->vLog;
         }
     };
 

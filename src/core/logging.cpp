@@ -116,8 +116,7 @@ void Loader::Error(const char* msg, ...)
     va_end(va);
     
     // Show message box with the message
-    MessageBoxA(NULL, buffer, "Mod Loader", MB_ICONERROR); 
-    //Log("Loader::Error -> %s", buffer);
+    MessageBoxA(NULL, buffer, "Mod Loader", MB_ICONERROR);
 }
 
 /*
@@ -133,8 +132,11 @@ void Loader::FatalError(const char* msg, ...)
     va_list va; va_start(va, msg);
     vsprintf(buffer, msg, va);
     va_end(va);
+    strcat(buffer, "\n\n"
+                    "You can either continue the program execution or terminate it. Continuation of the execution WILL cause problems in-game or with Mod Loader itself!!!\n"
+                    "Do you want to continue program execution? It is NOT recommended to do so.");
     
-    Error("Fatal Error: %s", buffer);
-    std::terminate();
+    // Fatal error, continuing the execution may be a problem
+    if(MessageBoxA(NULL, buffer, "Mod Loader", MB_ICONERROR | MB_YESNO) == IDNO)
+        std::terminate();
 }
-

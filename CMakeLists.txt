@@ -36,7 +36,7 @@ install(DIRECTORY ${plugins_doc} DESTINATION "./modloader/.data/plugins")
 
 # Install readme files, README.md, LICENSE and CHANGELOG into modloader/.data
 install(DIRECTORY ${readme_doc}  DESTINATION "./modloader/.data")
-install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
+install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG.md" "${DOC_DIRECTORY}/Command Line Arguments.md" DESTINATION "./modloader/.data")
 
 # Install config files
 install(FILES "${CONFIGS_DIR}/config.ini.0" DESTINATION "./modloader/.data")

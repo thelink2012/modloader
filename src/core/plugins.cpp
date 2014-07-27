@@ -8,6 +8,8 @@
 #include <modloader/util/ini.hpp>
 using namespace modloader;
 
+// TODO don't call OnShutdown if OnStartup wasn't successful
+
 /*
  * Loader::LoadPlugins
  *      Loads all plugins at plugins directory
@@ -227,12 +229,18 @@ void Loader::RebuildExtensionMap()
 
 bool Loader::PluginInformation::Startup()
 {
-    return !(OnStartup && OnStartup(this));
+    if(!(OnStartup && OnStartup(this)))
+    {
+        this->has_started = true;
+        return true;
+    }
+    return false;
 }
 
 bool Loader::PluginInformation::Shutdown()
 {
-    return !(OnShutdown && OnShutdown(this));
+    if(this->has_started) return !(OnShutdown && OnShutdown(this));
+    return true;
 }
 
 Loader::BehaviourType Loader::PluginInformation::FindBehaviour(modloader::file& m)
@@ -286,13 +294,19 @@ bool Loader::PluginInformation::Install(FileInformation& file)
             if(!old->Uninstall())
                 return false;
         }
-            
-        // Assign this file to it's behaviour
-        if(!behv.emplace(file.behaviour, &file).second)
-            FatalError("Behaviour emplace didn't took place at Install");
+
+        if(this->InstallFile(file))
+        {
+            // Assign this file to it's behaviour
+            if(!behv.emplace(file.behaviour, &file).second)
+                FatalError("Behaviour emplace didn't took place at Install");
+            return true;
+        }
     }
-    
-    return this->InstallFile(file);
+    else
+        return this->InstallFile(file);
+
+    return false;
 }
 
 /*

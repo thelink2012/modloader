@@ -190,7 +190,7 @@ class Loader : public modloader_t
                 
             public:
                 // Initializer
-                FileInformation(ModInformation& parent, std::string&& xpathbuf, const modloader::file& m,
+                FileInformation(ModInformation& parent, std::string xpathbuf, const modloader::file& m,
                                 PluginInformation* xhandler, ref_list<PluginInformation>&& xcallme)
                 
                     : parent(parent), handler(xhandler), pathbuf(std::move(xpathbuf)), callme(std::move(xcallme)),

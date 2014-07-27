@@ -73,9 +73,9 @@ void Loader::ModInformation::Scan()
             // This buffer setup is tricky but should work fine
             m.buffer       = filepath.data();
             m.pos_eos      = filepath.length();
-            m.pos_filepath = this->path.length();
-            m.pos_filename = m.pos_filepath + (file.filename - file.filebuf);
-            m.pos_filext   = m.pos_filepath + (file.filext - file.filebuf);
+            m.pos_filedir  = this->path.length();
+            m.pos_filename = m.pos_filedir + (file.filename - file.filebuf);
+            m.pos_filext   = m.pos_filedir + (file.filext - file.filebuf);
             m.hash         = modloader::hash(filepath.data() + m.pos_filename);
             
             // Setup other information
@@ -87,14 +87,14 @@ void Loader::ModInformation::Scan()
             m.time    = file.time;
 
             // Find a handler for this file
-            handler = loader.FindHandlerForFile(m, callme);
+            handler = loader.FindHandlerForFile(m, callme); // TODO REMOVE THIS ON SECOND SCAN?
             if(handler || !callme.empty())
             {
                 file.recursive = false;     // Avoid FilesWalk recursion
                 
                 // Push the new file into our list
                 auto ipair = files.emplace( std::piecewise_construct,
-                                            std::forward_as_tuple(std::move(filename)), 
+                                            std::forward_as_tuple(std::string(m.filedir())), 
                                             std::forward_as_tuple(*this, std::move(filepath), m, handler, std::move(callme)));
                 
                 auto& n = ipair.first->second;
