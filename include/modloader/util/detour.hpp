@@ -160,7 +160,8 @@ namespace modloader
                 // Can reinstall if the game hasn't started or if we can reinstall this kind
                 if(!plugin_ptr->loader->has_game_started || bCanReinstall)
                     return PerformInstall(this->file);
-                return false;
+                return true;    // Mark as reinstalled anyway, so we won't happen to have a catastrophical failure
+                                // When both Reinstall and Uninstall fails, we have a problem.
             }
 
             // Uninstall the currently installed file

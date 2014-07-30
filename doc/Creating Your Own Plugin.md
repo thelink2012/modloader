@@ -97,6 +97,7 @@ Now it's time to implement the events, they are virtual methods from the `modloa
 
  The method should return **true** if the reinstall was successful and **false** otherwise.
  If the install wasn't successful, the file will get uninstalled, essentially by calling `UninstallFile`.
+ Please note if both `ReinstallFile` and `UninstallFile` fails, an fatal error will happen!
  The return value is ignored for *CALLME* handlers.
 
 #### UninstallFile -- `bool   UninstallFile(const modloader::file& file)`

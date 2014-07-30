@@ -3,11 +3,12 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#ifndef CWAVELOADER_HPP
-#define	CWAVELOADER_HPP
+#ifndef CWAVEPCM_HPP
+#define	CWAVEPCM_HPP
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 /*
  *  CWavePCM 
@@ -66,6 +67,18 @@ class CWavePCM
             this->Peek(filename);
         }
         
+        CWavePCM(CWavePCM&& rhs)
+        {
+            this->f = rhs.f;
+            this->fmt = rhs.fmt;
+            this->data = rhs.data;
+            this->fmt_offset = rhs.fmt_offset;
+            this->data_offset = rhs.data_offset;
+
+            rhs.f = nullptr;
+            rhs.fmt_offset = rhs.data_offset = 0;
+        }
+
         // Destruct, closing the file handle
         ~CWavePCM()
         {
@@ -101,7 +114,8 @@ class CWavePCM
             
             if(this->f = fopen(filename, "rb"))
             {
-                return (this->ReadHeader() && this->CheckPCM());
+                if(this->ReadHeader() && this->CheckPCM())
+                    return true;
             }
             
             this->Close();  // Failed, close
