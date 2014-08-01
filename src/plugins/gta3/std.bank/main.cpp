@@ -6,16 +6,23 @@
 #include <modloader/modloader.hpp>
 #include <modloader/util/hash.hpp>
 #include <modloader/util/path.hpp>
+#include <modloader/gta3/gta3.hpp>
 #include "CAECustomBankLoader.hpp"
 #include "CWavePCM.hpp"
 
-void DoPatch();
+// TODO cue points for sound loop offset
 
 /*
  *  The plugin object
  */
 class ThePlugin : public modloader::basic_plugin
 {
+    private:
+        modloader::file_overrider<> ov_banklkup;    // BankLkup.dat overrider
+        modloader::file_overrider<> ov_bankslot;    // BankSlot.dat overrider
+        modloader::file_overrider<> ov_pakfiles;    // PakFiles.dat overrider
+        modloader::file_overrider<> ov_eventvol;    // EventVol.dat overrider
+
     public:
         const info& GetInfo();
 
@@ -43,18 +50,35 @@ const ThePlugin::info& ThePlugin::GetInfo()
 }
 
 
-
-
-
 /*
  *  ThePlugin::OnStartup
  *      Startups the plugin
  */
 bool ThePlugin::OnStartup()
 {
-    //if(gvm.IsSA());
-    DoPatch();
-    return true;
+    using namespace modloader;
+    if(gvm.IsSA())
+    {
+        // Setup overrider parameters...
+        // It's not possible to reinstall those config files, too much trouble
+        auto no_reinstall = file_overrider<>::params(nullptr);
+        ov_banklkup.SetParams(no_reinstall);
+        ov_bankslot.SetParams(no_reinstall);
+        ov_pakfiles.SetParams(no_reinstall);
+        ov_eventvol.SetParams(no_reinstall);
+
+        // Setup detourers for overriders...
+        ov_banklkup.SetFileDetour(OpenFileDetour<0x4DFBDE>());
+        ov_bankslot.SetFileDetour(OpenFileDetour<0x4E059E>());
+        ov_pakfiles.SetFileDetour(OpenFileDetour<0x4DFC84>());
+        ov_eventvol.SetFileDetour(OpenFileDetour<0x5B9D72>());
+
+        // Patch the bank loader
+        CAbstractBankLoader::Patch();
+
+        return true;
+    }
+    return false;
 }
 
 /*
@@ -159,19 +183,15 @@ int ThePlugin::GetBehaviour(modloader::file& file)
  */
 bool ThePlugin::InstallFile(const modloader::file& file)
 {
-    auto type = GetType(file.behaviour);
-
-    if(type == Type::Wave)
+    switch(GetType(file.behaviour))
     {
-        bool r = banker.AddWave(file);
-        return r;
+        case Type::Wave:        return banker.InstallWave(file);
+        case Type::SFXPak:      return banker.AddSfxPak(file);
+        case Type::BankLookUp:  return ov_banklkup.InstallFile(file);
+        case Type::BankSlot:    return ov_bankslot.InstallFile(file);
+        case Type::PakFiles:    return ov_pakfiles.InstallFile(file);
+        case Type::EventVol:    return ov_eventvol.InstallFile(file);
     }
-    else
-    {
-
-    }
-
-
     return false;
 }
 
@@ -181,7 +201,16 @@ bool ThePlugin::InstallFile(const modloader::file& file)
  */
 bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
-    return true;//false;
+    switch(GetType(file.behaviour))
+    {
+        case Type::Wave:        return banker.ReinstallWave(file);
+        case Type::SFXPak:      return true;    // Avoid catastrophical failure
+        case Type::BankLookUp:  return ov_banklkup.ReinstallFile();
+        case Type::BankSlot:    return ov_bankslot.ReinstallFile();
+        case Type::PakFiles:    return ov_pakfiles.ReinstallFile();
+        case Type::EventVol:    return ov_eventvol.ReinstallFile();
+    }
+    return false;
 }
 
 /*
@@ -190,6 +219,15 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
  */
 bool ThePlugin::UninstallFile(const modloader::file& file)
 {
+    switch(GetType(file.behaviour))
+    {
+        case Type::Wave:        return banker.UninstallWave(file);
+        case Type::SFXPak:      return banker.RemSfxPak(file);
+        case Type::BankLookUp:  return ov_banklkup.UninstallFile();
+        case Type::BankSlot:    return ov_bankslot.UninstallFile();
+        case Type::PakFiles:    return ov_pakfiles.UninstallFile();
+        case Type::EventVol:    return ov_eventvol.UninstallFile();
+    }
     return false;
 }
 
@@ -199,4 +237,6 @@ bool ThePlugin::UninstallFile(const modloader::file& file)
  */
 void ThePlugin::Update()
 {
+    // Refresh the sounds
+    banker.Update();
 }

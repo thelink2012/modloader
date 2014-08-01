@@ -283,6 +283,7 @@ void CAbstractStreaming::QuickImport(id_t index, const modloader::file* file, bo
     // Register the existence of such a model and setup info for it
     if(!isCloth) this->RegisterModelIndex(file->filename(), index);
     this->SetInfoForModel(index, 0, GetSizeInBlocks(file->size));
+    // TODO remove nextOnCd that references this index
 }
 
 /*
@@ -292,7 +293,7 @@ void CAbstractStreaming::QuickImport(id_t index, const modloader::file* file, bo
  */
 void CAbstractStreaming::QuickUnimport(id_t index)
 {
-    plugin_ptr->Log("Removing imported model file at index %d", index, index);
+    plugin_ptr->Log("Removing imported model file at index %d", index);
     this->imports.erase(index);
 }
 

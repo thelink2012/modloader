@@ -26,10 +26,10 @@ struct CAEBankSlot
 {
   unsigned int m_dwOffsetOnBuffer;
   unsigned int m_dwSlotBufferSize;
-  int _unused1;
-  int _unused2;
+  int _unused1;                     // Actually used
+  int _unused2;                     // Actually used
   unsigned short m_usBankNum;
-  unsigned short m_nSoundsOnBank;
+  unsigned short m_nSoundsOnBank;   // 0xFFFF for single sound rqs
   CAEBankSlotItem m_aBankItems[400];
 };
 #pragma pack(pop)

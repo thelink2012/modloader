@@ -1,0 +1,62 @@
+#
+#   Mod Loader Menu Localization File
+#
+
+# Common
+ML_FEO Mod Loader Setup
+ML_ONN ON
+ML_OFF OFF
+ML_FTN Next
+ML_FTP Prev
+ML_FTB Back
+
+# Main Page
+ML_F0HH Mod Loader
+ML_F0E0 Enable Menu
+ML_F0EP Enable Plugins
+ML_F0EL Enable Logging
+ML_F0LF Log Immediate Flush
+ML_F0LS Log Maximum Size
+ML_F0MM Modifications
+ML_F0RR Rescan Modifications
+
+# Modifications Page (Dynamic)
+ML_FMHH Modifications
+ML_FMY1 DYNAMIC
+ML_FMY2 DYNAMIC
+ML_FMY3 DYNAMIC
+ML_FMY4 DYNAMIC
+ML_FMY5 DYNAMIC
+ML_FMY6 DYNAMIC
+ML_FMY7 DYNAMIC
+ML_FMY8 DYNAMIC
+ML_FMY9 DYNAMIC
+ML_FMYA DYNAMIC
+ML_FMYB DYNAMIC
+ML_FMYC DYNAMIC
+
+# Selected Modification (Dynamic)
+ML_FYHH DYNAMIC
+ML_FYE0 Enabled
+ML_FYIC Include
+ML_FYPR Priority
+ML_FYIX DYNAMIC INSTALL UNINSTALL
+ML_FYI0 Install
+ML_FYI1 Uninstall
+ML_FYSS Rescan Files
+
+# Helper texts
+ML_H0NM No mods installed
+ML_H0E0 ON/OFF this in-game menu.~n~Needs restart.
+ML_H0EP ON/OFF the loader plugins.~n~Needs restart.
+ML_H0EL ON/OFF the log file.~n~OFF Increases performance.
+ML_H0LF ON/OFF flushing log to disk.~n~OFF Increases performance.
+ML_H0LS Maximum size of the log file on disk.
+ML_H0RR Rescan and reinstall mods
+ML_HMHH Type some keywords to find a mod.~n~Use ~<~~>~ to switch pages.
+
+
+# Internals (DO NOT CHANGE)
+ML__SM   > Mods Page Search Text
+ML__FR   > Used by freeze
+

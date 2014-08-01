@@ -157,6 +157,28 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5A8346] = 0x5A8346;   // push    offset _PlayerClothes                    ; @CClothes::RebuildPlayer
     }
 
+    // std.bank
+    if(true)
+    {
+        //0x4EFC60
+        map[0x4D99B3] = 0x4D99B3;   // call    _ZN13CAEBankLoader10InitialiseEv
+        map[0x4D9800] = 0x4D9800;   // call    _ZN13CAEBankLoaderD2Ev
+        map[0x4DFE30] = 0x4DFE30;   // call    _ZN13CAEBankLoaderD2Ev
+        map[0x4E065B] = 0x4E065B;   // _ZN13CAEBankLoader7ServiceEv
+        map[0x4DFD9D] = 0x4DFD9D;   // call    _Z12CdStreamOpenPKcb ; SFXPak
+        map[0x4DFDC3] = 0x4DFDC3;   // call    ??3@YAXPAX@Z         ; operator delete
+        map[0x4DFDCE] = 0x4DFDCE;   // mov     dword ptr [ebp+8], 0
+        map[0xB62CB0] = 0xB62CB0;   // CAESoundManager AESoundManager
+        map[0x4EFC60] = 0x4EFC60;   // _ZN15CAESoundManager22CancelSoundsInBankSlotEsh]
+        map[0x4E07A0] = 0x4E07A0;   // _ZN13CAEBankLoader9LoadSoundEtts
+        map[0x4E0670] = 0x4E0670;   // _ZN13CAEBankLoader13LoadSoundBankEts
+        map[0x4DFBDE] = 0x4DFBDE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_ ; BankLkUp.dat
+        map[0x4E059E] = 0x4E059E;   // call    _ZN8CFileMgr8OpenFileEPKcS1_ ; BankSlot.dat
+        map[0x4DFC84] = 0x4DFC84;   // call    _ZN8CFileMgr8OpenFileEPKcS1_ ; PakFiles.dat
+        map[0x5B9D72] = 0x5B9D72;   // call    _ZN8CFileMgr8OpenFileEPKcS1_ ; EventVol.dat
+    }
+
+
     // traits
     if(true)
     {

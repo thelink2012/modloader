@@ -75,6 +75,20 @@ namespace modloader
         {
             return !is_dir() && !(time == c.time && size == c.size);
         }
+
+        // Helpers for working with behaviour bits
+
+        template<class T>
+        static uint64_t set_mask(uint64_t mask, T value, uint32_t shift)
+        {
+            return (mask | (uint64_t(value) << shift));
+        }
+
+        template<class T>
+        static T get_mask(uint64_t mask, uint64_t smask, uint32_t shift)
+        {
+            return T((mask & smask) >> shift);
+        }
     };
     
     // Assert the size of the above wrappers

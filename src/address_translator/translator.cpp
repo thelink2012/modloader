@@ -25,7 +25,7 @@ void* injector::address_manager::translator(void* p_)
 {
     static std::map<memory_pointer_raw, memory_pointer_raw> map;
 
-    return p_; //TODO
+    //return p_; //TODO
     memory_pointer_raw p = p_;
     memory_pointer_raw result = nullptr;
                 

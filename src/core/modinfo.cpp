@@ -81,7 +81,7 @@ void Loader::ModInformation::Scan()
             // Setup other information
             m._rsv1   = 0;
             m.flags   = (std::underlying_type<FileFlags>::type)(file.is_dir? FileFlags::IsDirectory : FileFlags::None);
-            m.behaviour = uid = loader.PickUniqueFileId();
+            m.behaviour = uid = -1;
             m.parent  = this;
             m.size    = file.size;
             m.time    = file.time;
@@ -101,10 +101,6 @@ void Loader::ModInformation::Scan()
 
                 if(!ipair.second)
                 {
-                    // File already exists on the list
-                    // If behaviour isn't handled at all, don't let m and n be different!
-                    if(m.behaviour == uid) m.behaviour = n.behaviour;
-                    
                     // Update status checking if file changed
                     n.status = n.Update(m)? Status::Updated : Status::Unchanged;
                 }

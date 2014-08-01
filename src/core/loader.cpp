@@ -14,6 +14,7 @@ using namespace modloader;
 // TODO take care of configs and command line on rescan
 // TODO command line is broken
 // TODO ReinstallFile shouldn't Uninstall on failure?
+// TODO ^ think about uninstalling in-game to the next run, what if couldn't uninstall a specific file
 
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
