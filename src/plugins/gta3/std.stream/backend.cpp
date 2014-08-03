@@ -280,6 +280,18 @@ void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
 }
 
 
+/*
+ *  CAbstractStreaming::BuildPrevOnCdMap
+ *      Builds map to find out nextOnCd defaults field for InfoForMOdel
+ */
+void CAbstractStreaming::BuildPrevOnCdMap()
+{
+    CStreamingInfo* res;
+    prev_on_cd.clear();
+    for(int i = 0; res = InfoForModel(i); ++i)
+        if(res->nextOnCd != -1) prev_on_cd.emplace(res->nextOnCd, i);
+}
+
 
 
 /*
@@ -299,6 +311,7 @@ void CAbstractStreaming::Patch()
         TempCdDir_t tmp_cd_dir;
         this->FetchCdDirectories(tmp_cd_dir, LoadCdDirectory1);
         this->LoadCdDirectories(tmp_cd_dir);
+        this->BuildPrevOnCdMap();
         tmp_cd_dir.clear();
 
         // Do custom setup

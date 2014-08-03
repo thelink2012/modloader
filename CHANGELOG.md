@@ -1,14 +1,14 @@
-v0.2.0 (In Dev)
+v0.2.0 (Aug 02 2014)
 ------------------------
  * Most mods can be refreshed without getting out of the game _(press F4 to refresh, auto-refresh soon)_
- * An game menu has been added (see Options > Mod Loader Setup) _(still incomplete)_
  * The `-nomods` command line has been added
  * Extremely descriptive unhandled exception filter
  * Nested *modloader* folders has been removed
  * Mod Loader config files changed a lot **(please delete your current modloader.ini and let Mod Loader create another)**
- * CLEO scripts inside cleo sub folders aren't loaded anymore
- * Custom missions aren't loaded at startup anymore
- * Other **major** fixes
+ * The std.data plugin has been removed, that means .dat/.cfg files aren't handled anymore _(it'll be back soon)_
+ * CLEO scripts inside cleo sub folders aren't loaded anymore (this is a fix)
+ * Custom missions aren't loaded at startup anymore (this is a fix)
+ * So many fixes that I don't even remember about them
 
 v0.1.15 (Mar 05 2014)
 ------------------------

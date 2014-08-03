@@ -264,6 +264,7 @@ template<class T> void Refresher<T>::BuildRefreshMap()
         auto type = streaming.GetIdType(id);
 
         // Cannot refresh some kinds of resources just in time (In fact I'm not giving any effort to refresh those)
+        // TODO COL and IPL needs recalculation on the bounding box
         if(type != ResType::VehRecording && type != ResType::StreamedScript
         && type != ResType::Nodes && type != ResType::AnimFile)
         {

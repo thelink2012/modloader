@@ -9,4 +9,4 @@ add_subdirectory(std.text)
 add_subdirectory(std.bank)
 add_subdirectory(std.stream)
 add_subdirectory(std.asi)
-#add_subdirectory(std.data)    - REDO
+#add_subdirectory(std.data)    - TODO

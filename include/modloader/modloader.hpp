@@ -79,15 +79,15 @@ namespace modloader
         // Helpers for working with behaviour bits
 
         template<class T>
-        static uint64_t set_mask(uint64_t mask, T value, uint32_t shift)
+        static uint64_t set_mask(uint64_t mask, uint64_t umask, uint32_t shift, T value)
         {
-            return (mask | (uint64_t(value) << shift));
+            return ((mask & ~umask) | (uint64_t(value) << shift));
         }
 
         template<class T>
-        static T get_mask(uint64_t mask, uint64_t smask, uint32_t shift)
+        static T get_mask(uint64_t mask, uint64_t umask, uint32_t shift)
         {
-            return T((mask & smask) >> shift);
+            return T((mask >> shift) & umask);
         }
     };
     

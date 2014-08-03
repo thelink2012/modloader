@@ -97,6 +97,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     {
         map[0x5B8AE8] = 0x5B8AE8;   // -> offset ms_aInfoForModel
         map[0x5A419B] = 0x5A419B;   // -> offset clothesDirectory
+        map[0x5B8AFC] = 0x5B8AFC;   // -> &ms_aInfoForModel[MAX_INFO_FOR_MODEL]
 
         map[0x8E3FE0] = 0x8E3FE0;   // DWORD StreamCreateFlags
         map[0x8E3FEC] = 0x8E3FEC;   // CdStreamInfo cdinfo

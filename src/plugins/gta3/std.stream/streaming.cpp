@@ -32,7 +32,9 @@ CAbstractStreaming::~CAbstractStreaming()
  */
 CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
 {
-    return &ms_aInfoForModel[id];
+    lazy_object<0x5B8AFC, CStreamingInfo*> max_InfoForModel;
+    CStreamingInfo* info = &ms_aInfoForModel[id];
+    return (info < max_InfoForModel.get()? info : nullptr);
 }
 
 /*

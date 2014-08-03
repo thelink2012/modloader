@@ -33,6 +33,7 @@ enum class Type
 
 
 // Basical maskes
+static const uint64_t hash_mask_base  = 0xFFFFFFFF;
 static const uint64_t type_mask_base  = 0x0007;                 // Mask for type without any shifting
 static const uint64_t bank_mask_base  = 0xFFFF;                 // Mask for bank without any shifting
 static const uint64_t sound_mask_base = 0x03FF;                 // Mask for sound without any shifting
@@ -40,52 +41,54 @@ static const uint32_t type_mask_shf  = 32;                      // Takes 3 bits,
 static const uint32_t bank_mask_shf  = type_mask_shf + 3;       // Takes 16 bits
 static const uint32_t sound_mask_shf = bank_mask_shf + 16;      // Takes 10 bits
 
+#if 0
 // Actual maskes with shifting
 static const uint64_t hash_mask     = 0x00000000FFFFFFFF;                   // Hash mask
 static const uint64_t type_mask     = (type_mask_base  << type_mask_shf);   // Type of this behaviour
 static const uint64_t bank_mask     = (bank_mask_base  << bank_mask_shf);   // Sound bank related to this behaviour
 static const uint64_t sound_mask    = (sound_mask_base << sound_mask_shf);   // Sound number related to this behaviour
+#endif
 
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)
 {
-    return modloader::file::set_mask(uint64_t(hash), type, type_mask_shf);
+    return modloader::file::set_mask(uint64_t(hash), type_mask_base, type_mask_shf, type);
 }
 
 // Sets the behaviour sound id bitfield 
 inline uint64_t SetSound(uint64_t mask, uint16_t sound)
 {
-    return modloader::file::set_mask(mask, sound, sound_mask_shf);
+    return modloader::file::set_mask(mask, sound_mask_base, sound_mask_shf, sound);
 }
 
 // Sets the behaviour bank id bitfield
 inline uint64_t SetBank(uint64_t mask, uint16_t bank)
 {
-    return modloader::file::set_mask(mask, bank, bank_mask_shf);
+    return modloader::file::set_mask(mask, bank_mask_base, bank_mask_shf, bank);
 }
 
 // Gets the behaviour sfx pak filename hash
 inline uint32_t GetPakHash(uint64_t mask)
 {
-    return modloader::file::get_mask<uint32_t>(mask, hash_mask, 0);
+    return modloader::file::get_mask<uint32_t>(mask, hash_mask_base, 0);
 }
 
 // Gets the behaviour file type
 inline Type GetType(uint64_t mask)
 {
-    return modloader::file::get_mask<Type>(mask, type_mask, type_mask_shf);
+    return modloader::file::get_mask<Type>(mask, type_mask_base, type_mask_shf);
 }
 
 // Gets the behaviour sound id
 inline uint16_t GetSound(uint64_t mask)
 {
-    return modloader::file::get_mask<uint16_t>(mask, sound_mask, sound_mask_shf);
+    return modloader::file::get_mask<uint16_t>(mask, sound_mask_base, sound_mask_shf);
 }
 
 // Gets the behaviour bank id
 inline uint16_t GetBank(uint64_t mask)
 {
-    return modloader::file::get_mask<uint16_t>(mask, bank_mask, bank_mask_shf);
+    return modloader::file::get_mask<uint16_t>(mask, bank_mask_base, bank_mask_shf);
 }
 
 

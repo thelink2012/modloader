@@ -198,6 +198,7 @@ class CAbstractStreaming
         std::map<hash_t, id_t>      indices;            // Association between all game resources name hashes and indices
         std::map<hash_t, uint32_t>  clothes_map;        // Association between all clothes name hashes and it's item offset
         std::map<id_t, struct CdDirectoryItem> cd_dir;  // Important information about all resource files in the game
+        std::map<id_t, id_t> prev_on_cd;                // Original InfoForModel next on cd information, <next, prev>
 
         // Custom files
         std::map<std::string, const modloader::file*>   raw_models; // Models installed before the streaming initialization ---- (sorted by name!!)
@@ -266,6 +267,7 @@ class CAbstractStreaming
         void FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)());
         void LoadCdDirectories(TempCdDir_t& cd_dir);
         void LoadAbstractCdDirectory(ref_list<const modloader::file*> files);
+        void BuildPrevOnCdMap();
 
         // Refreshing
         void ProcessRefreshes();
@@ -298,6 +300,7 @@ class CAbstractStreaming
             model.offset    = offset;
             model.blocks    = blocks;
             model.nextOnCd  = -1;
+            ClearNextOnCdPointingTo(id);
             if(!bHasInitializedStreaming) model.flags = 0;
         }
 
@@ -306,9 +309,26 @@ class CAbstractStreaming
         {
             auto it = this->cd_dir.find(id);
             if(it != cd_dir.end())  // Has a stock directory entry?
+            {
                 this->SetInfoForModel(id, it->second.offset, it->second.blocks);
+                RestoreNextOnCdPointingTo(id);
+            }
             else
                 this->SetInfoForModel(id, 0, 0);
+        }
+
+        // Remove the next on cd pointing to the specified model....
+        void ClearNextOnCdPointingTo(id_t id)
+        {
+            auto prev_pair = prev_on_cd.find(id);
+            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->nextOnCd = -1;
+        }
+
+        // Restore the next on cd pointing to the specified model....
+        void RestoreNextOnCdPointingTo(id_t id)
+        {
+            auto prev_pair = prev_on_cd.find(id);
+            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->nextOnCd = id;
         }
 
 
