@@ -15,6 +15,7 @@
  */
 #pragma once
 #include "../hooking.hpp"
+#include <map>
 
 namespace injector
 {
@@ -39,10 +40,12 @@ namespace injector
     template<class TextMap, class UpperHashFunctor, uintptr_t CText_Get = 0x6A0050>
     class basic_fxt_manager
     {
-        private:
+        public:
             typedef const char* (__fastcall *GetType)(void*, int, const char*);
             typedef typename TextMap::key_type hash_type;  
-            
+            typedef std::map<hash_type, TextMap> TableMap;
+
+        private:
             // Marks if this fxt manager is enabled or disabled
             // We need this because we can't just unhook the game anymore or we'd cause problems
             static bool& IsEnabled()
@@ -53,8 +56,8 @@ namespace injector
             { static memory_pointer_raw x; return x; }
             
             // Store the text map
-            static TextMap& GetTextMap()
-            { static TextMap map; return map; }
+            static TableMap& GetTableMap()
+            { static TableMap map; return map; }
             
             // Store the jmp hooker
             static scoped_jmp& JmpHook()
@@ -66,11 +69,22 @@ namespace injector
             /*
              *  Adds a GXT @key - @value pair to the text map for use in our GxtHook 
              */
-            static void add(const char* key, const char* value)
+            static void add(const char* key, const char* value, hash_type table = 0)
             {
                 patch();
-                GetTextMap()[GetHash(key)] = value;
+                GetTableMap()[table][GetHash(key)] = value;
             }
+
+            static void set(const char* key, const char* value, hash_type table = 0)
+            {
+                return add(key, value, table);
+            }
+
+            static void remove_table(hash_type table)
+            {
+                GetTableMap().erase(table);
+            }
+
             
             /*
              *  Returns the value from @key in the CText object @ctext
@@ -164,11 +178,15 @@ namespace injector
             // Finds value from key
             static const char* FindFromKey(const char* key)
             {
-                auto& text = GetTextMap();
+                auto& tables = GetTableMap();
+                auto key_hash = GetHash(key);
                 
                 // Do the search and return the result
-                auto it = text.find(GetHash(key));
-                if(it != text.end()) return it->second.c_str();
+                for(auto t = tables.begin(); t != tables.end(); ++t)
+                {
+                    auto it = t->second.find(key_hash);
+                    if(it != t->second.end()) return it->second.c_str();
+                }
                 return nullptr;
             }
             

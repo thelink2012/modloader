@@ -28,27 +28,21 @@ add_subdirectory(src)
 
 # ----------------------------> Install
 set(CMAKE_INSTALL_PREFIX "")
-
-# Find all plugins readme files
-file(GLOB plugins_doc "${DOC_DIRECTORY}/plugins/*.txt")
-
-# Find all readme files
-file(GLOB readme_doc  "${DOC_DIRECTORY}/readme/*.txt")
+set(plugins_doc "${DOC_DIRECTORY}/plugins/")
+set(readme_doc "${DOC_DIRECTORY}/readme/")
+set(locale_doc "${DOC_DIRECTORY}/text/")
 
 # Install plugins documentation into modloader plugins folder
-install(FILES ${plugins_doc} DESTINATION "./modloader/.data/plugins")
+install(DIRECTORY ${plugins_doc} DESTINATION "./modloader/.data/plugins")
 
 # Install readme files, README.md, LICENSE and CHANGELOG into modloader/.data
-install(FILES "${CMAKE_SOURCE_DIR}/README.md" "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG" DESTINATION "./modloader/.data")
-install(FILES ${readme_doc}  DESTINATION "./modloader/.data")
+install(DIRECTORY ${readme_doc}  DESTINATION "./modloader/.data")
+install(FILES "${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_SOURCE_DIR}/CHANGELOG.md" "${DOC_DIRECTORY}/Command Line Arguments.md" DESTINATION "./modloader/.data")
+
+# Install locale data
+install(DIRECTORY ${locale_doc}  DESTINATION "./modloader/.data/text")
 
 # Install config files
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    # Don't copy configs in Debug
-else()
-    install(FILES "${CONFIGS_DIR}/modloader.ini" DESTINATION "./modloader")
-    install(FILES "${CONFIGS_DIR}/plugins.ini" DESTINATION "./modloader/.data/plugins")
-endif()
-
-
-
+install(FILES "${CONFIGS_DIR}/config.ini.0" DESTINATION "./modloader/.data")
+install(FILES "${CONFIGS_DIR}/modloader.ini.0" DESTINATION "./modloader/.data")
+install(FILES "${CONFIGS_DIR}/plugins.ini.0" DESTINATION "./modloader/.data/plugins")

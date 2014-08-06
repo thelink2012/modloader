@@ -4,7 +4,7 @@
 # Config files must have CRLF line endings 
 *.ini   text eol=crlf
 
-# Modloader is oriented to Windows users, make txt files be CRLF
+# Mod Loader is oriented to Windows users, make txt files be CRLF
 *.txt   text eol=crlf
 
 # CMakeLists isn't a normal text file

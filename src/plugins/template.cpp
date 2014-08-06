@@ -1,104 +1,104 @@
 /*
- *  Modloader Plugin Base File
+ *  Mod Loader Plugin Base File
  *  Use this (copy-pasting) to help you in starting a plugin project
  * 
  */
-#include <modloader.hpp>
+#include <modloader/modloader.hpp>
 
 /*
  *  The plugin object
  */
-class CThePlugin : public modloader::CPlugin
+class ThePlugin : public modloader::basic_plugin
 {
     public:
-        const char* GetName();
-        const char* GetAuthor();
-        const char* GetVersion();
-        
+        const info& GetInfo();
+
         bool OnStartup();
         bool OnShutdown();
+        int GetBehaviour(modloader::file&);
+        bool InstallFile(const modloader::file&);
+        bool ReinstallFile(const modloader::file&);
+        bool UninstallFile(const modloader::file&);
+        void Update();
         
-        bool CheckFile(modloader::ModLoaderFile& file);
-        bool ProcessFile(const modloader::ModLoaderFile& file);
-        bool PosProcess();
-        
-        bool OnSplash();
-        bool OnLoad();
-        bool OnReload();
-        
-        const char** GetExtensionTable();
-
 } plugin;
 
-/*
- *  Export plugin object data
- */
-extern "C" __declspec(dllexport)
-void GetPluginData(modloader_plugin_t* data)
-{
-    modloader::RegisterPluginData(plugin, data);
-}
-
-
+REGISTER_ML_PLUGIN(::plugin);
 
 /*
- *  Basic plugin informations
+ *  ThePlugin::GetInfo
+ *      Returns information about this plugin 
  */
-const char* CThePlugin::GetName()
+const ThePlugin::info& ThePlugin::GetInfo()
 {
-    /* Return a unique name that identifies the plugin */
+    static const char* extable[] = { "dff", "txd", "fxp", 0 };
+    static const info xinfo      = { "Plugin Name", "Version", "Author", -1, extable };
+    return xinfo;
 }
 
-const char* CThePlugin::GetAuthor()
-{
-    /* Return your name (e.g. "LINK/2012")*/
-}
 
-const char* CThePlugin::GetVersion()
-{
-    /* Return the plugin version (e.g. "1.0") */
-}
 
-const char** CThePlugin::GetExtensionTable()
+
+
+/*
+ *  ThePlugin::OnStartup
+ *      Startups the plugin
+ */
+bool ThePlugin::OnStartup()
 {
-    /* Put the extensions  this plugin handles on @table */
-    static const char* table[] = { 0 };
-    return table;
+    return true;
 }
 
 /*
- *  Startup / Shutdown (do nothing)
+ *  ThePlugin::OnShutdown
+ *      Shutdowns the plugin
  */
-bool CThePlugin::OnStartup()
+bool ThePlugin::OnShutdown()
 {
-    /* return true for sucess */
+    return true;
 }
 
-bool CThePlugin::OnShutdown()
+
+/*
+ *  ThePlugin::GetBehaviour
+ *      Gets the relationship between this plugin and the file
+ */
+int ThePlugin::GetBehaviour(modloader::file& file)
 {
-    /* return true for success */
+    return MODLOADER_BEHAVIOUR_NO;
 }
 
 /*
- *  Check if the file is the one we're looking for
+ *  ThePlugin::InstallFile
+ *      Installs a file using this plugin
  */
-bool CThePlugin::CheckFile(modloader::ModLoaderFile& file)
+bool ThePlugin::InstallFile(const modloader::file& file)
 {
-    /* return true for yes and false for no */
+    return false;
 }
 
 /*
- * Process the replacement
+ *  ThePlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
  */
-bool CThePlugin::ProcessFile(const modloader::ModLoaderFile& file)
+bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
-    /* return true for success and false for failure */
+    return false;
 }
 
 /*
- * Called after all files have been processed
+ *  ThePlugin::UninstallFile
+ *      Uninstall a previosly installed file
  */
-bool CThePlugin::PosProcess()
+bool ThePlugin::UninstallFile(const modloader::file& file)
 {
-    /* return true for success and false for failure */
+    return false;
+}
+
+/*
+ *  ThePlugin::Update
+ *      Updates the state of this plugin after a serie of install/uninstalls
+ */
+void ThePlugin::Update()
+{
 }

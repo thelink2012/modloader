@@ -27,40 +27,100 @@
 #include "injector.hpp"
 #include <utility>
 
-#if __cplusplus < 201103L
+#if __cplusplus >= 201103L || _MSC_VER >= 1800   // MSVC 2013
+#else
 #error "This feature is not supported on this compiler"
 #endif
 
 namespace injector
 {
-    // Call function at @p returning @Ret with args @Args
-    template<class Ret, class ...Args>
-    inline Ret Call(memory_pointer_tr p, Args&&... a)
-    {
-        Ret(*fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
-    
-    template<class Ret, class ...Args>
-    inline Ret StdCall(memory_pointer_tr p, Args&&... a)
-    {
-        Ret(__stdcall *fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
-    
-    template<class Ret, class ...Args>
-    inline Ret ThisCall(memory_pointer_tr p, Args&&... a)
-    {
-        Ret(__thiscall *fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
+    template<class Prototype>
+    struct cstd;
 
     template<class Ret, class ...Args>
-    inline Ret FastCall(memory_pointer_tr p, Args&&... a)
+    struct cstd<Ret(Args...)>
     {
-        Ret(__fastcall *fn)(Args...) = p.get();
-        return fn(std::forward<Args>(a)...);
-    }
-    
+        // Call function at @p returning @Ret with args @Args
+        static Ret call(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(*)(Args...)) p.get<void>();
+            return fn(std::forward<Args>(a)...);
+        }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
+        }
+    };
+
+    template<class Prototype>
+    struct stdcall;
+
+    template<class Ret, class ...Args>
+    struct stdcall<Ret(Args...)>
+    {
+        // Call function at @p returning @Ret with args @Args
+        static Ret call(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(__stdcall *)(Args...)) p.get<void>();
+            return fn(std::forward<Args>(a)...);
+        }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
+        }
+    };
+
+    template<class Prototype>
+    struct fastcall;
+
+    template<class Ret, class ...Args>
+    struct fastcall<Ret(Args...)>
+    {
+        // Call function at @p returning @Ret with args @Args
+        static Ret call(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(__fastcall *)(Args...)) p.get<void>();;
+            return fn(std::forward<Args>(a)...);
+        }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
+        }
+    };
+
+    template<class Prototype>
+    struct thiscall;
+
+    template<class Ret, class ...Args>
+    struct thiscall<Ret(Args...)>
+    {
+        // Call function at @p returning @Ret with args @Args
+        static Ret call(memory_pointer_tr p, Args... a)
+        {
+            auto fn = (Ret(__thiscall *)(Args...)) p.get<void>();
+            return fn(std::forward<Args>(a)...);
+        }
+
+        // Call function at the index @i from the vtable of the object @a[0]
+        template<size_t i>
+        static Ret vtbl(Args... a)
+        {
+            auto obj = raw_ptr(std::get<0>(std::forward_as_tuple(a...)));
+            auto p   = raw_ptr( (*obj.get<void**>()) [i] );
+            return call(p, std::forward<Args>(a)...);
+        }
+
+        template<uintptr_t addr>    // Uses lazy pointer
+        static Ret call(Args... a)
+        {
+            return call(lazy_pointer<addr>::get(), std::forward<Args>(a)...);
+        }
+    };
 } 
 
