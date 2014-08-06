@@ -183,7 +183,13 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // traits
     if(true)
     {
-        map[0x5B62CF] = 0x5B62CF;   // -> 4E20h ; TXD Start Index
+        map[0x5B62CF] = 0x5B62CF;   // -> DWORD 4E20h   ; TXD Start Index
+        map[0x5B6314] = 0x5B6314;   // -> DWORD 61A8h   ; COL Start Index
+        map[0x5B6359] = 0x5B6359;   // -> DWORD 62A7h   ; IPL Start Index
+        map[0x5B6396] = 0x5B6396;   // -> DWORD 63A7h   ; Nodes Start Index
+        map[0x5B63C5] = 0x5B63C5;   // -> DWORD 63E7h   ; IFP Start Index
+        map[0x5B63F1] = 0x5B63F1;   // -> DWORD 649Bh   ; RRR Start Index
+        map[0x5B641F] = 0x5B641F;   // -> DWORD 6676h   ; SCM Start Index
         map[0x408897] = 0x408897;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
 
         /*

@@ -804,12 +804,6 @@ static void __fastcall ServiceCaller(CAEBankLoader* loader)
     return static_cast<CAECustomBankLoader*>(loader)->Service();
 }
 
-// Return a null pointer
-static void* ReturnNull()
-{
-    return nullptr;
-}
-
 // Patcher
 void CAECustomBankLoader::Patch()
 {
@@ -817,13 +811,12 @@ void CAECustomBankLoader::Patch()
     typedef function_hooker_thiscall<0x4D9800, void(CAEBankLoader*)> dhook;
 
     //
-    MakeJMP (0x4DFE30, raw_ptr(ServiceCaller));
-    MakeCALL(0x4E065B, raw_ptr(ReturnNull));    // Return null bankslot pre-allocated memory
-    MakeCALL(0x4DFD9D, raw_ptr(ReturnNull));    // Return null streaming handle for SFXPak
-    MakeNOP (0x4DFDC3, 5);                      // Don't free PakFiles.dat buffer
-    MakeNOP (0x4DFDCE, 7);                      // ^
-    
-    
+    MakeJMP (0x4DFE30, (void*) ServiceCaller);
+    MakeCALL(0x4E065B, return_value<void*, nullptr>);   // Return null bankslot pre-allocated memory
+    MakeCALL(0x4DFD9D, return_value<void*, nullptr>);   // Return null streaming handle for SFXPak
+    MakeNOP (0x4DFDC3, 5);                              // Don't free PakFiles.dat buffer
+    MakeNOP (0x4DFDCE, 7);                              // ^
+
     // After the standard bank loader initialization, initialise our custom bank loader
     make_static_hook<ihook>([](ihook::func_type Initialise, CAEBankLoader*& loader)
     {

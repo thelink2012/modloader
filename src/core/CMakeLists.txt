@@ -17,7 +17,7 @@ set(SOURCE_FILES
      "${CMAKE_SOURCE_DIR}/include/modloader/util/ini.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/injector.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/detour.hpp"
-     "${CMAKE_SOURCE_DIR}/include/modloader/util/parser.hpp"
+     #"${CMAKE_SOURCE_DIR}/include/modloader/util/parser.hpp"
      "${CMAKE_SOURCE_DIR}/include/modloader/util/path.hpp"
 )
 

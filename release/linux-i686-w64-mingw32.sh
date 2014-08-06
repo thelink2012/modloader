@@ -12,7 +12,7 @@ rm -rf release/gamedir
 
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i686-w64-mingw32-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ../
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-linux-i686-w64-mingw32-toolchain.cmake -DCMAKE_BUILD_TYPE=RelMinSize ../
 make
 make install "DESTDIR=../release/gamedir"
 cd ../release/gamedir

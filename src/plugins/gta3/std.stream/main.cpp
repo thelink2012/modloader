@@ -124,6 +124,7 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                         file.behaviour = file.hash | is_pedifp_mask;
                         return MODLOADER_BEHAVIOUR_YES;
                     }
+                    break;
                 }
 
                 case ResType::StreamedScene:

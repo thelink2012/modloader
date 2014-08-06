@@ -145,7 +145,7 @@ namespace injector
         public:
             // Constructors, move constructors, assigment operators........ (MAKE SURE TO INIT bufsize)
             scoped_basic() : scoped_base(bufsize_)
-            { assert(offsetof(scoped_basic, buf_continue) == 1 + offsetof(scoped_base, buf)); }
+            { assert(&this->buf_continue[0] == &this->buf[1]); }
             scoped_basic(const scoped_basic&) = delete;
             scoped_basic(scoped_basic&& rhs) : scoped_base(bufsize_, std::move(rhs)) {}
             scoped_basic& operator=(const scoped_basic& rhs) = delete;
@@ -247,7 +247,7 @@ namespace injector
     {
         public:
             // Makes NOP at @addr with value @value and size @size and virtual protect @vp
-            memory_pointer_raw make_jmp(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
+            memory_pointer_raw make_jmp(memory_pointer_tr at, memory_pointer_raw dest, bool vp = true)
             {
                 this->save(at, 5, vp);
                 return MakeJMP(at, dest, vp);
@@ -269,7 +269,7 @@ namespace injector
     {
         public:
             // Makes NOP at @addr with value @value and size @size and virtual protect @vp
-            memory_pointer_raw make_call(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
+            memory_pointer_raw make_call(memory_pointer_tr at, memory_pointer_raw dest, bool vp = true)
             {
                 this->save(at, 5, vp);
                 return MakeCALL(at, dest, vp);
@@ -433,7 +433,7 @@ namespace injector
             void make_call(typename base::functor_type functor)
             {
                 base::store().functor = std::move(functor);
-                base::store().original = (Ret(__thiscall*)(Args...)) scoped_call::make_call(addr1, raw_ptr(call)).get<void>();
+                base::store().original = (Ret(__thiscall*)(Args...)) (void*) scoped_call::make_call(addr1, raw_ptr(call)).get();
             }
 
 
@@ -463,9 +463,8 @@ namespace injector
         return a;
     }
 
-    // TODO rename to 1 after has fixed entire Mod Loader
     template<class T, class F> inline
-    T make_function_hook2(F functor)
+    T make_function_hook(F functor)
     {
         T a;
         a.make_call(std::move(functor));

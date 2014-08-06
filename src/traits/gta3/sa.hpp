@@ -19,9 +19,13 @@ struct TraitsSA : TraitsGTA
 
     // Indices range
     const id_t  dff_start   = 0;
-    const id_t& txd_start   = injector::lazy_object<0x5B62CF, uint32_t>::get();
-    const id_t& max_models  = txd_start;
-    const id_t& dff_end     = txd_start;
+    const id_t txd_start   = injector::lazy_object<0x5B62CF, unsigned int>::get();  // uint32_t not working properly on GCC here
+    const id_t col_start   = injector::lazy_object<0x5B6314, unsigned int>::get();  // Why?
+    const id_t rrr_start   = injector::lazy_object<0x5B63F1, unsigned int>::get();
+    const id_t scm_start   = injector::lazy_object<0x5B641F, unsigned int>::get();
+
+    const id_t max_models  = txd_start;
+    const id_t dff_end     = txd_start;
 
     // Type of entities
     enum class EntityType : uint8_t

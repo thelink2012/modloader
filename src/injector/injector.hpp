@@ -114,14 +114,17 @@ union basic_memory_pointer
         }
 
     public:
-        basic_memory_pointer()            : p(0)                           {}
-        basic_memory_pointer(void* x)     : p(x)                           {}
-        basic_memory_pointer(uintptr_t x) : a(x)                           {}
-        basic_memory_pointer(const auto_pointer& x) : p(x.p)              {}
+        basic_memory_pointer()                      : p(nullptr)    {}
+        basic_memory_pointer(std::nullptr_t)        : p(nullptr)    {}
+        basic_memory_pointer(uintptr_t x)           : a(x)          {}
+        basic_memory_pointer(const auto_pointer& x) : p(x.p)        {}
         basic_memory_pointer(const basic_memory_pointer& rhs) : p(rhs.p)  {}
 
         template<class T>
-        explicit basic_memory_pointer(T* x) : p((void*)x) {}
+        basic_memory_pointer(T* x) : p((void*)x) {}
+
+        
+
         
         // Gets the translated pointer (plus automatic casting to lhs)
         auto_pointer get() const               { return memory_translate(p); }
@@ -461,7 +464,7 @@ inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at, bool vp = t
  *      Creates a JMP instruction at address @at that jumps into address @dest
  *      If there was already a branch instruction there, returns the previosly destination of the branch
  */
-inline memory_pointer_raw MakeJMP(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
+inline memory_pointer_raw MakeJMP(memory_pointer_tr at, memory_pointer_raw dest, bool vp = true)
 {
 	auto p = GetBranchDestination(at, vp);
 	WriteMemory<uint8_t>(at, 0xE9, vp);
@@ -474,7 +477,7 @@ inline memory_pointer_raw MakeJMP(memory_pointer_tr at, memory_pointer_tr dest, 
  *      Creates a CALL instruction at address @at that jumps into address @dest
  *      If there was already a branch instruction there, returns the previosly destination of the branch
  */
-inline memory_pointer_raw MakeCALL(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
+inline memory_pointer_raw MakeCALL(memory_pointer_tr at, memory_pointer_raw dest, bool vp = true)
 {
 	auto p = GetBranchDestination(at, vp);
 	WriteMemory<uint8_t>(at, 0xE8, vp);
@@ -487,7 +490,7 @@ inline memory_pointer_raw MakeCALL(memory_pointer_tr at, memory_pointer_tr dest,
  *      Creates a JA instruction at address @at that jumps if above into address @dest
  *      If there was already a branch instruction there, returns the previosly destination of the branch
  */
-inline void MakeJA(memory_pointer_tr at, memory_pointer_tr dest, bool vp = true)
+inline void MakeJA(memory_pointer_tr at, memory_pointer_raw dest, bool vp = true)
 {
 	WriteMemory<uint16_t>(at, 0x87F0, vp);
 	MakeRelativeOffset(at+2, dest, 4, vp);

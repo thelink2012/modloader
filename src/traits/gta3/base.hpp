@@ -6,6 +6,7 @@
 #pragma once
 #include <modloader/util/injector.hpp>
 #include <CPool.h>
+#include <cstdint>
 
 struct TraitsGTA
 {
@@ -14,6 +15,6 @@ struct TraitsGTA
     template<class T>
     static T& ReadOffset(void* ptr, size_t offset)
     {
-        return *(raw_ptr(ptr) + offset).get<T>();
+        return *(injector::raw_ptr(ptr) + offset).get<T>();
     }
 };

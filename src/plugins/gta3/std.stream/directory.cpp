@@ -51,14 +51,14 @@ static void PerformDirectoryRead(size_t size,
     gf_hook gf; // Register Entry
 
     // Open a null but valid file handle, so it can be closed (fclose) without any problem
-    nf = make_function_hook2<nf_hook>([](nf_hook::func_type OpenFile, const char*&, const char*& mode)
+    nf = make_function_hook<nf_hook>([](nf_hook::func_type OpenFile, const char*&, const char*& mode)
     {
         return OpenFile(modloader::szNullFile, mode);
     });
 
     if(gvm.IsSA())  // Only SA needs such thing as a counter, III/VC uses EOF as end of entries indicator
     {
-        cf = make_function_hook2<cf_hook>([&size](cf_hook::func_type, void*&, void*& buf, size_t&)
+        cf = make_function_hook<cf_hook>([&size](cf_hook::func_type, void*&, void*& buf, size_t&)
         {
             *reinterpret_cast<size_t*>(buf) = size;
             return sizeof(size_t);
@@ -66,7 +66,7 @@ static void PerformDirectoryRead(size_t size,
     }
 
     // Fills a directory entry
-    rf = make_function_hook2<rf_hook>([&ReadEntry](rf_hook::func_type, void*&, void*& buf_, size_t&)
+    rf = make_function_hook<rf_hook>([&ReadEntry](rf_hook::func_type, void*&, void*& buf_, size_t&)
     {
         auto& buf = *reinterpret_cast<DirectoryInfo*>(buf_);
         if(!ReadEntry(buf))
@@ -79,7 +79,7 @@ static void PerformDirectoryRead(size_t size,
     });
 
     // Registers a special entry
-    sf = make_function_hook2<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, DirectoryInfo*& entry)
+    sf = make_function_hook<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, DirectoryInfo*& entry)
     {
         // Tell the callback about this registering
         if(RegisterSpecialEntry) RegisterSpecialEntry(*entry);
@@ -90,7 +90,7 @@ static void PerformDirectoryRead(size_t size,
     });
 
     // Registers a normal entry
-    gf = make_function_hook2<gf_hook>([&RegisterEntry](gf_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+    gf = make_function_hook<gf_hook>([&RegisterEntry](gf_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
     {
         char r = GetCdPosnAndSize(model, pOffset, pSize);
         if(RegisterEntry) r = (char) RegisterEntry(*model, !!r);    // Override function result
@@ -110,7 +110,7 @@ void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDir
 {
     using namespace std::placeholders;
     typedef function_hooker<0x5B8310, void(const char*, int)> fetchcd_hook;
-    auto fetcher = make_function_hook2<fetchcd_hook>(std::bind(&CAbstractStreaming::FetchCdDirectory, this, std::ref(cd_dir), _2, _3));
+    auto fetcher = make_function_hook<fetchcd_hook>(std::bind(&CAbstractStreaming::FetchCdDirectory, this, std::ref(cd_dir), _2, _3));
     return LoadCdDirectories();
 }
 

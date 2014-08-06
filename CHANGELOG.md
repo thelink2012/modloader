@@ -1,5 +1,6 @@
 v0.2.0 (Aug 02 2014)
 ------------------------
+ * Rewritten from scratch to be more flexible and powerful
  * Most mods can be refreshed without getting out of the game _(press F4 to refresh, auto-refresh soon)_
  * The `-nomods` command line has been added
  * Extremely descriptive unhandled exception filter
@@ -8,7 +9,11 @@ v0.2.0 (Aug 02 2014)
  * The std.data plugin has been removed, that means .dat/.cfg files aren't handled anymore _(it'll be back soon)_
  * CLEO scripts inside cleo sub folders aren't loaded anymore (this is a fix)
  * Custom missions aren't loaded at startup anymore (this is a fix)
- * So many fixes that I don't even remember about them
+ * So many fixes and changes that I don't even remember about them
+ 
+ * __Hotfix 1 (Aug 03 2014)__:
+    + Fixed streamed ifp files not being handled
+    + Fixed streamed col/rrr/scm files not being re-registered properly
 
 v0.1.15 (Mar 05 2014)
 ------------------------

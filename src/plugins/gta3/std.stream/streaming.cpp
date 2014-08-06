@@ -285,7 +285,6 @@ void CAbstractStreaming::QuickImport(id_t index, const modloader::file* file, bo
     // Register the existence of such a model and setup info for it
     if(!isCloth) this->RegisterModelIndex(file->filename(), index);
     this->SetInfoForModel(index, 0, GetSizeInBlocks(file->size));
-    // TODO remove nextOnCd that references this index
 }
 
 /*

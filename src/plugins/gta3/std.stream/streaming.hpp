@@ -15,6 +15,9 @@
 #include <modloader/util/container.hpp>
 #include "CDirectory.h"
 #include "CStreamingInfo.h"
+
+#include <traits/gta3/sa.hpp>
+
 using namespace modloader;
 
 // Streaming file type
@@ -118,6 +121,8 @@ class CAbstractStreaming
         CRITICAL_SECTION cs;                        // This must be used together with imported files list for thread-safety
         std::string fbuffer;                        // File buffer to avoid a dynamic allocation everytime we open a model
         std::list<const modloader::file*> imgFiles; // List of img files imported with Mod Loader
+
+        TraitsSA traits;                            // Game specific info
 
     public:
         // Basic types
@@ -406,11 +411,11 @@ class CAbstractStreaming
 
         // Helper to avoid duplicate of resources
         template<class FuncT, class ...Args>
-        id_t FindOrRegisterResource(const char* name, const char* extension, FuncT RegisterResource, Args&&... args)
+        id_t FindOrRegisterResource(const char* name, const char* extension, uint32_t base_index, FuncT RegisterResource, Args&&... args)
         {
             char buf[64]; sprintf(buf, "%s.%s", name, extension);
             auto index = this->FindModelFromHash(mhash(buf));
-            if(index != -1) return index;
+            if(index != -1) return index - base_index;
             return RegisterResource(std::forward<Args>(args)...);
         }
 };

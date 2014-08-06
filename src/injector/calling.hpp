@@ -112,7 +112,7 @@ namespace injector
         static Ret vtbl(Args... a)
         {
             auto obj = raw_ptr(std::get<0>(std::forward_as_tuple(a...)));
-            auto p   = raw_ptr( (*obj.get<void**>()) [i] );
+            auto p   = raw_ptr( (*obj.template get<void**>()) [i] );
             return call(p, std::forward<Args>(a)...);
         }
 

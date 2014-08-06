@@ -30,7 +30,7 @@
 _HOOK_RegisterNextModelRead:
         pushad
         push esi
-        call RegisterNextModelRead
+        call _RegisterNextModelRead
         add esp, 4
         popad
 
