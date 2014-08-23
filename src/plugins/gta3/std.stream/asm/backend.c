@@ -12,10 +12,34 @@ extern void* CallGetAbstractHandle(void*);
 
 /* vars */
 extern void* ms_aInfoForModel;
+extern void* (*ColModelPool_new)(int);
 
 /* funcs */
 extern char* AllocBufferForString(const char*);
 extern void RegisterNextModelRead(int id);
+
+/*
+    void* _nakedcall _cdecl HOOK_LoadColFileFix(arg0 = size)
+        Fixes the CFileLoader::LoadCollisionFile method to work properly
+*/
+void __declspec(naked) HOOK_LoadColFileFix(int size)
+{
+    _asm
+    {
+        /* Perform the original operation (new ColModel) */
+        push [esp+4]
+        mov eax, ColModelPool_new
+        call eax
+        add esp, 4
+
+        /* Now, the fix is here, edi should contain the ColModel pointer, but it doesn't! 
+           Let's fix it     */
+        mov edi, eax
+        ret
+    }
+}
+
+
 
 /*
     void _nakedcall HOOK_RegisterNextModelRead(esi = objectIndex, eax = someOffsetAt_aInfoForModel)

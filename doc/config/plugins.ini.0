@@ -6,8 +6,10 @@
 ;
 ; Define plugins priority here
 ; The priority must be from 1 to 100, where 100 has the highest and 1 has the lowest priority
-; The priority 0 means "DO NOT LOAD"
-; Standard plugins normally have priorities in the range 45-55
-; Just put the plugin module name here, example: std-text.dll=50
+; The priority 0 means "DO NOT LOAD". Standard plugins normally have priorities in the range 45-55
+; Just put the path to the plugin module here, without extension and replacing slashes with a dot.
+; Example:
+;    gta3.std.text=0
+;    to disable gta3/std.text.dll
 ;
 

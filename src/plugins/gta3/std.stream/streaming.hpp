@@ -222,6 +222,7 @@ class CAbstractStreaming
         CAbstractStreaming();
         ~CAbstractStreaming();
         void Patch();
+        void DataPatch();
 
         // Some analogues to the game CStreaming (may perform some additional work)
         void RequestModel(id_t id, uint32_t flags);

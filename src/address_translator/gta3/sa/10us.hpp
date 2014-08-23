@@ -156,6 +156,16 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x56E210] = 0x56E210;   // _Z13FindPlayerPedi 
         map[0x5A82C0] = 0x5A82C0;   // _ZN8CClothes13RebuildPlayerEP10CPlayerPedb
         map[0x5A8346] = 0x5A8346;   // push    offset _PlayerClothes                    ; @CClothes::RebuildPlayer
+
+        // COLFILE fix, SA-only
+        map[0x5B4F2E] = 0x5B4F2E;   // call    _ZN9CColModelnwEj
+        map[0x5B4EF4] = 0x5B4EF4;   // call    _ZN8CFileMgr4ReadEiPci ; with the buffer, reading the header
+        map[0x5B4E92] = 0x5B4E92;   // call    _ZN8CFileMgr4ReadEiPci ; after OpenFile
+        map[0x5B4FCC] = 0x5B4FCC;   // call    _ZN8CFileMgr4ReadEiPci ; at the end of the 'do...while'
+        map[0x5B4FA0] = 0x5B4FA0;   // call    _ZN11CFileLoader22LoadCollisionModelVer2EPhjR9CColModelPKc
+        map[0x5B4FB5] = 0x5B4FB5;   // call    _ZN11CFileLoader18LoadCollisionModelEPhR9CColModelPKc
+        map[0x5B4F83] = 0x5B4F83;   // call    _ZN11CFileLoader22LoadCollisionModelVer3EPhjR9CColModelPKc
+        map[0x5B92F9] = 0x5B92F9;   // call    _ZN8CFileMgr9CloseFileEi
     }
 
     // std.bank

@@ -1,5 +1,6 @@
 set(SOURCE_FILES
 main.cpp
+data.cpp
 streaming.cpp
 streaming.hpp
 directory.cpp

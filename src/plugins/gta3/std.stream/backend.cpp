@@ -301,6 +301,9 @@ void CAbstractStreaming::BuildPrevOnCdMap()
 void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
+    
+    // See data.cpp
+    this->DataPatch();
 
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
