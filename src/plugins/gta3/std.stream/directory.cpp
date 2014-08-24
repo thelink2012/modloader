@@ -121,8 +121,23 @@ void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDir
  */
 void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, const char*& filename_, int id)
 {
+    static bool isSAMP = gvm.IsSA() && GetModuleHandleA("samp");
     auto filename = GetCdStreamPath(filename_);
+    auto fopen  = std::fopen;
+    auto fread  = std::fread;
+    auto fclose = std::fclose;
 
+    // SAMP does something in the backs of fopen/fread/fclose, for example it opens some dummy script.img when requested
+    // to open it, so it reads dummy scripts. Well, let's follow SAMP, use original game funcs.
+    if(isSAMP)
+    {
+        // SAMP works in 1.0US only, so we don't care about address translations here
+        fopen  = raw_ptr(0x8232D8).get();   // _fopen
+        fread  = raw_ptr(0x823521).get();   // _fread
+        fclose = raw_ptr(0x82318B).get();   // _fclose
+    }
+
+    // Do actual work
     if(FILE* f = fopen(filename, "rb"))
     {
         uint32_t count = -1;
