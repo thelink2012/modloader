@@ -43,7 +43,7 @@ REGISTER_ML_PLUGIN(::scr_spr_plugin);
 const ScriptSpritesPlugin::info& ScriptSpritesPlugin::GetInfo()
 {
     static const char* extable[] = { "txd", 0 };
-    static const info xinfo      = { "std.sprites", "R0.1", "LINK/2012", 49, extable };
+    static const info xinfo      = { "std.sprites", get_version_by_date(), "LINK/2012", 49, extable };
     return xinfo;
 }
 

@@ -25,11 +25,6 @@
  */
 #pragma once
 
-#if __cplusplus >= 201103L || _MSC_VER >= 1800   // MSVC 2013
-#else
-#error "This feature is not supported on this compiler"
-#endif
-
 namespace injector
 {
     template<class T, T value>
@@ -37,4 +32,17 @@ namespace injector
     {
         return value;
     }
+    
+    // Helper structure to help calling back what was there before a hook
+    // e.g. hb.fun = MakeCALL(0x0, raw_ptr(my_hook));
+    template<class FuncType>
+    struct hook_back
+    {
+        typedef FuncType func_type;
+        
+        func_type fun;
+        
+        hook_back() : fun(nullptr)
+        {}
+    };
 };

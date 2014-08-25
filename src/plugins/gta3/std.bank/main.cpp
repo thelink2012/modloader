@@ -44,8 +44,9 @@ REGISTER_ML_PLUGIN(::plugin);
  */
 const ThePlugin::info& ThePlugin::GetInfo()
 {
+    using namespace modloader;
     static const char* extable[] = { "", "dat", "wav", 0 };
-    static const info xinfo      = { "std.bank", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.bank", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 

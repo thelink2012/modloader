@@ -28,11 +28,11 @@
     void* _nakedcall _cdecl HOOK_LoadColFileFix(arg0 = size)
         Fixes the CFileLoader::LoadCollisionFile method to work properly
 */
-_HOOK_LoadColFileFix(int size)
+_HOOK_LoadColFileFix:
 
         /* Perform the original operation (new ColModel) */
         push [esp+4]
-        mov eax, ColModelPool_new
+        mov eax, _ColModelPool_new
         call eax
         add esp, 4
 

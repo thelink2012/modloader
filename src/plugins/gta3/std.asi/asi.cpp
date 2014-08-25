@@ -35,7 +35,7 @@ REGISTER_ML_PLUGIN(::plugin);
 const ThePlugin::info& ThePlugin::GetInfo()
 {
     static const char* extable[] = { "asi", "dll", "cleo", "cm", "cs", "cs3", "cs4", "cs5", 0 };
-    static const info xinfo      = { "std.asi", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.asi", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 

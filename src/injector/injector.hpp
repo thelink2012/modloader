@@ -88,8 +88,8 @@ union auto_pointer
     #endif
 
         auto_pointer get() const               { return *this; }
-        template<class T> T* get() const        { return *this; }
-        template<class T> T* get_raw() const    { return *this; }
+        template<class T> T* get() const       { return (T*) this->p; }
+        template<class T> T* get_raw() const   { return (T*) this->p; }
 
 	    template<class T>
 	    operator T*() { return reinterpret_cast<T*>(p); }
@@ -172,7 +172,8 @@ union basic_memory_pointer
         bool operator>=(const basic_memory_pointer& rhs) const
         { return this->a >=rhs.a; }
         
-        bool is_null() { return this->p != nullptr; }
+        bool is_null()      { return this->p != nullptr; }
+        uintptr_t as_int()  { return this->a; }
 
 #if __cplusplus >= 201103L || _MSC_VER >= 1800  // MSVC 2013
         /* Conversion to other types */
@@ -574,6 +575,12 @@ inline void MakeRET(memory_pointer_tr at, uint16_t pop = 0, bool vp = true)
  /*
     Helpers
  */
+
+ template<class T>
+inline memory_pointer  mem_ptr(T p)
+{
+    return memory_pointer(p);
+}
 
 template<class T>
 inline memory_pointer_raw  raw_ptr(T p)

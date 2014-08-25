@@ -19,6 +19,7 @@
 #define	MODLOADER_HPP
 #pragma once
 #include <modloader/modloader.h>
+#include <modloader/util/version_by_date.hpp>
 #include <cstring>
 #include <string>
 
@@ -96,9 +97,6 @@ namespace modloader
     static_assert(sizeof(file) == sizeof(modloader_file_t), "Invalid file inheritance size");
     static_assert(sizeof(plugin) == sizeof(modloader_plugin_t), "Invalid plugin inheritance size");
     
-    
-
-
     /*
         modloader::basic_plugin
             The base for any custom plugin
@@ -139,7 +137,6 @@ namespace modloader
             virtual bool UninstallFile(const file&)=0;      // Uninstalls a file previosly installed
             virtual void Update() {}                        // Updates the state of the plugin after a serie of install/uninstall/reinstall
     };
-    
     
 
     // Binding the C interface to the C++ interface

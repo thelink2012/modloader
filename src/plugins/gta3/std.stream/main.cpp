@@ -41,7 +41,7 @@ REGISTER_ML_PLUGIN(::plugin);
 const ThePlugin::info& ThePlugin::GetInfo()
 {
     static const char* extable[] = { "img", "dff", "txd", "col", "ipl", "dat", "ifp", "rrr", "scm", 0 };
-    static const info xinfo      = { "std.stream", "R0.1", "LINK/2012", 48, extable };
+    static const info xinfo      = { "std.stream", get_version_by_date(), "LINK/2012", 48, extable };
     return xinfo;
 }
 

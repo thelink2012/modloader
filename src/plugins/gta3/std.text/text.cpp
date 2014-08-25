@@ -49,7 +49,7 @@ REGISTER_ML_PLUGIN(::text_plugin);
 const TextPlugin::info& TextPlugin::GetInfo()
 {
     static const char* extable[] = { "gxt", "fxt", 0 };
-    static const info xinfo      = { "std.text", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.text", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 
