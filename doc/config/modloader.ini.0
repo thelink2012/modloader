@@ -15,7 +15,7 @@ ExcludeAllMods = false            ; Excludes all mods from being loaded except t
 ; By default each mod has the priority of 50, and mods received by command line will have a priority of 80
 ; Just put the mod folder name followed by '=' and it's priority (e.g. MyMod=50)
 ;
-; PS¹: Files following a simple overriding rule, so for example, if a mod A has priority 100 and mod B has priority 1 and both has a LOADSCS.txd
+; PS¹: Files follows a simple overriding rule, so for example, if a mod A has priority 100 and mod B has priority 1 and both has a LOADSCS.txd
 ;      the LOADSCS.txd from mod B will be used, because LOADSCS.txd from A was loaded then B was loaded, overriding the LOADSCS from A
 ;
 
