@@ -1,7 +1,7 @@
 /*
  *  Injectors - Utility / Helpers
  *
- *  Copyright (C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
+ *  Copyright (C) 2014 LINK/2012 <dma_2012@hotmail.com>
  *
  *  This software is provided 'as-is', without any express or implied
  *  warranty. In no event will the authors be held liable for any damages
@@ -33,6 +33,14 @@ namespace injector
         return value;
     }
     
+    template<class T>
+    void* force_ptr(const T& fun)
+    {
+        auto ptr = fun;
+        return *(void**)&ptr;
+    }
+
+
     // Helper structure to help calling back what was there before a hook
     // e.g. hb.fun = MakeCALL(0x0, raw_ptr(my_hook));
     template<class FuncType>

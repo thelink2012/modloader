@@ -1,7 +1,7 @@
 /*
  *  Injectors - Function Calls Using Variadic Templates
  *
- *  Copyright (C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
+ *  Copyright (C) 2014 LINK/2012 <dma_2012@hotmail.com>
  *
  *  This software is provided 'as-is', without any express or implied
  *  warranty. In no event will the authors be held liable for any damages

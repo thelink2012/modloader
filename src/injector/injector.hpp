@@ -25,6 +25,7 @@
  *
  */
 #pragma once
+#define INJECTOR_HAS_INJECTOR_HPP
 #include <windows.h>
 #include <cstdint>
 #include <cstdio>
@@ -172,7 +173,7 @@ union basic_memory_pointer
         bool operator>=(const basic_memory_pointer& rhs) const
         { return this->a >=rhs.a; }
         
-        bool is_null()      { return this->p != nullptr; }
+        bool is_null()      { return this->p == nullptr; }
         uintptr_t as_int()  { return this->a; }
 
 #if __cplusplus >= 201103L || _MSC_VER >= 1800  // MSVC 2013
@@ -243,6 +244,9 @@ union memory_pointer_tr
         
         memory_pointer_tr operator/(const uintptr_t& rhs) const
         { return memory_pointer_raw(this->a / rhs); }
+
+        bool is_null()      { return this->p != nullptr; }
+        uintptr_t as_int()  { return this->a; }
         
 #if __cplusplus >= 201103L
        explicit operator uintptr_t()
@@ -505,6 +509,16 @@ inline void MakeNOP(memory_pointer_tr at, size_t count = 1, bool vp = true)
 {
     MemoryFill(at, 0x90, count, vp);
 }
+
+/*
+ *  MakeRangedNOP
+ *      Creates a bunch of NOP instructions at address @at until address @until
+ */
+inline void MakeRangedNOP(memory_pointer_tr at, memory_pointer_tr until, bool vp = true)
+{
+    return MakeNOP(at, size_t(until.get_raw<char>() - at.get_raw<char>()), vp);
+}
+
 
 /*
  *  MakeRET
