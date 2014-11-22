@@ -45,7 +45,8 @@ newaction {
             dest = makeabsolute(dest)
             print("Installing into \"" .. dest .. "\" directory")
             for i, cmd in ipairs(installcommands(dest)) do
-                print(os.outputof(cmd))
+                --print(os.outputof(cmd))
+                os.execute(cmd)
             end
         end
     end
@@ -58,7 +59,7 @@ newaction {
     Install Functionality
 --]]
 install_files = {}
-cmd_copyfile = os.is("windows") and { "xcopy", "/f /y" }       or { "cp", "-v" }
+cmd_copyfile = os.is("windows") and { "xcopy", "/f /y /i" }    or { "cp", "-v" }
 cmd_copydir  = os.is("windows") and { "xcopy", "/e /f /y /i" } or { "cp", "-vr" }
 
 -- Gets the install command for the specified file
@@ -68,10 +69,10 @@ function installcommand(file, destdir)
         file.isdir = not os.isfile(file.source)
     end
 
-    local cmd = string.format(path.translate([[%s "%s/%s" "%s/%s" %s]]),
+    local cmd = string.format(path.translate([[%s "%s/%s" "%s/%s%s" %s]]),
                     file.isdir and cmd_copydir[1] or cmd_copyfile[1],
                     path.translate(_MAIN_SCRIPT_DIR), path.translate(file.source),
-                    path.translate(destdir), path.translate(file.destination),
+                    path.translate(destdir), path.translate(file.destination), path.translate(file.isdir and "" or "/*"),
                     file.isdir and cmd_copydir[2] or cmd_copyfile[2])
 
     return cmd
@@ -212,12 +213,10 @@ solution "modloader"
         addinstall { source = "doc/CHANGELOG.md",               destination = "modloader/.data"         }
         addinstall { source = "doc/Command Line Arguments.md",  destination = "modloader/.data"         }
 
-        -- Dummy cpp file for Premake's generated gmake project,
-        -- not adding a file will cause compilation/linking error since it'll try to do something
-        configuration "gmake"
-            language "C++"
-            kind "StaticLib"
-            files { "deps/dummy.cpp" }
+        -- Dummy cpp file for Premake's generated none  project (bug workaround)
+        language "C++"
+        kind "StaticLib"
+        files { "deps/dummy.cpp" }
 
     project "modloader"
         language "C++"

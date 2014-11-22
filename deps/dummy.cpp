@@ -1,1 +1,1 @@
-// dummy cpp file to have 'doc/' as a project in premake while building with gnu make (see premake5.lua for details)
+// dummy cpp file to have 'doc/' as a project in premake (see premake5.lua for details)
