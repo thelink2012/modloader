@@ -1,7 +1,7 @@
 /*
  *  Injectors - Useful Assembly Stuff
  *
- *  Copyright (C) 2014 LINK/2012 <dma_2012@hotmail.com>
+ *  Copyright (C) 2012-2014 LINK/2012 <dma_2012@hotmail.com>
  *
  *  This software is provided 'as-is', without any express or implied
  *  warranty. In no event will the authors be held liable for any damages
@@ -47,7 +47,36 @@ namespace injector
         uint32_t ef;
 
         // PUSHAD/POPAD -- must be the lastest fields (because of esp)
-        uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+        union
+        {
+            uint32_t arr[8];
+            struct { uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax; };
+        };
+        
+        enum reg_name {
+            reg_edi, reg_esi, reg_ebp, reg_esp, reg_ebx, reg_edx, reg_ecx, reg_eax 
+        };
+        
+        enum ef_flag {
+            carry_flag = 0, parity_flag = 2, adjust_flag = 4, zero_flag = 6, sign_flag = 7,
+            direction_flag = 10, overflow_flag = 11
+        };
+
+        uint32_t& operator[](size_t i)
+        { return this->arr[i]; }
+        const uint32_t& operator[](size_t i) const
+        { return this->arr[i]; }
+
+        template<uint32_t bit>   // bit starts from 0, use ef_flag enum
+        bool flag()
+        {
+            return (this->ef & (1 << bit)) != 0;
+        }
+
+        bool jnb()
+        {
+            return flag<carry_flag>() == false;
+        }
     };
 
     // Lowest level stuff (actual assembly) goes on the following namespace

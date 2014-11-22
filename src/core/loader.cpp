@@ -7,7 +7,7 @@
 #include "loader.hpp"
 #include <modloader/util/injector.hpp>
 #include <modloader/util/path.hpp>
-#include <modloader/util/ini.hpp>
+#include <ini_parser/ini_parser.hpp>
 using namespace modloader;
 
 // TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
@@ -244,7 +244,7 @@ void Loader::TestHotkeys()
  */
 void Loader::ReadBasicConfig()
 {
-    modloader::ini data;
+    linb::ini data;
 
     Log("Loading basic config file %s", basicConfig.c_str());
     if(data.load_file(gamePath + basicConfig))
@@ -274,7 +274,7 @@ void Loader::ReadBasicConfig()
  */
  void Loader::SaveBasicConfig()
  {
-     modloader::ini ini;
+     linb::ini ini;
      
      auto& config = ini["Config"];
      config["EnableMenu"]           = modloader::to_string(bEnableMenu);

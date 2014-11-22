@@ -1,33 +1,40 @@
 /* 
- * Mod Loader Utilities Headers
- * Created by LINK/2012 <dma_2012@hotmail.com>
+ *  Copyright (c) 2013-2014 Denilson das Mercês Amorkm <dma_2012@hotmail.com>
+ *  
+ *  This software is provided 'as-is', without any express or implied
+ *  warranty. In no event will the authors be held liable for any damages
+ *  arising from the use of this software.
  * 
- *  This file provides helpful functions for plugins creators.
+ *  Permission is granted to anyone to use this software for any purpose,
+ *  including commercial applications, and to alter it and redistribute it
+ *  freely, subject to the following restrictions:
  * 
- *  This source code is offered for use in the public domain. You may
- *  use, modify or distribute it freely.
- *
- *  This code is distributed in the hope that it will be useful but
- *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
- *  DISCLAIMED. This includes but is not limited to warranties of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *     1. The origin of this software must not be misrepresented; you must not
+ *     claim that you wrote the original software. If you use this software
+ *     in a product, an acknowledgment in the product documentation would be
+ *     appreciated but is not required.
+ * 
+ *     2. Altered source versions must be plainly marked as such, and must not be
+ *     misrepresented as being the original software.
+ * 
+ *     3. This notice may not be removed or altered from any source
+ *     distribution.
  * 
  */
-#ifndef MODLOADER_UTIL_INI_HPP
-#define	MODLOADER_UTIL_INI_HPP
+#ifndef LINB_INI_PARSER_HPP
+#define LINB_INI_PARSER_HPP
 
 /*
  *  STL-like INI Container
  */
 
-#include <string>
-#include <map>
-#include <cstdio>
+#include <string>       // for std::string
+#include <map>          // for std::map
+#include <cstdio>       // for std::FILE
+#include <algorithm>    // for std::find_if
+#include <functional>   // for std::function
 
-#include <modloader/util/container.hpp>
-
-
-namespace modloader
+namespace linb
 {
     template<
         class CharT             = char,     /* Not compatible with other type here, since we're using C streams */
@@ -72,9 +79,6 @@ namespace modloader
             { }
 
             basic_ini(const char_type* filename)
-            { this->read_file(filename); }
-
-            basic_ini(const StringType& filename)
             { this->read_file(filename); }
             
             /* Iterator methods */
@@ -130,13 +134,9 @@ namespace modloader
             /* Too lazy to continue this container... If you need more methods, just add it */
             
 #if 1
-            /*
-             *  Reads the content of a ini file into this container
-             */
-            bool load_file(const char_type* filename)
+            bool read_file(const char_type* filename)
             {
                 /* Using C stream in a STL-like container, funny?
-                 * Not for me, C++ streams are bad designed, non friendly interface, I don't like it
                  */
                 if(FILE* f = fopen(filename, "r"))
                 {
@@ -147,7 +147,25 @@ namespace modloader
                     string_type value;
                     string_type null_string;
                     size_type pos;
- 
+                    
+                    // Trims an string
+                    auto trim = [](string_type& s, bool trimLeft, bool trimRight) -> string_type&
+                    {
+                        if(s.size())
+                        {
+                            // Ignore UTF-8 BOM
+                            while(s.size() >= 3 && s[0] == (char)(0xEF) && s[1] == (char)(0xBB) && s[2] == (char)(0xBF))
+                                s.erase(s.begin(), s.begin() + 3);
+
+                            if(trimLeft)
+                                s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::function<int(int)>(::isspace))));
+                            if(trimRight)
+                                s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::function<int(int)>(::isspace))).base(), s.end());
+                        }
+                        return s;
+                    };
+                    
+                    // Start parsing
                     while(fgets(buf, sizeof(buf), f))
                     {
                         // What a thing, reading into a char buffer and then putting in the string...
@@ -158,7 +176,7 @@ namespace modloader
                             line.erase(pos);
                         
                         // Trim the string, and if it gets empty, skip this line
-                        if(trim(line).empty())
+                        if(trim(line, true, true).empty())
                             continue;
                         
                         // Find section name
@@ -167,7 +185,7 @@ namespace modloader
                             pos = line.find_first_of(']');
                             if(pos != line.npos)
                             {
-                                trim(key.assign(line, 1, pos-1));
+                                trim(key.assign(line, 1, pos-1), true, true);
                                 keys = &data[std::move(key)];  // Create section
                             }
                             else
@@ -191,7 +209,12 @@ namespace modloader
                             }
 
                             // Put the key/value into the current keys object, or into the section "" if no section has been found
-                            (keys? *keys : data[null_string]).emplace(std::move(key), std::move(value));
+                            #if __cplusplus >= 201103L || _MSC_VER >= 1800
+                            (keys ? *keys : data[null_string]).emplace(std::move(key), std::move(value));
+                            #else
+                            (keys ? *keys : data[null_string])[key] = value;
+                            key.clear(); value.clear();
+                            #endif
                         }
                     }
                     
@@ -223,6 +246,11 @@ namespace modloader
 
             /*
             */
+            bool load_file(const char_type* filename)
+            {
+                return read_file(filename);
+            }
+
             bool load_file(const StringType& filename)
             {
                 return load_file(filename.c_str());
@@ -249,5 +277,5 @@ namespace modloader
     typedef basic_ini<>     ini;
 }
     
-#endif	/* MODLOADER_UTIL_INI_HPP */
+#endif
 

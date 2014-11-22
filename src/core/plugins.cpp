@@ -5,7 +5,7 @@
  */
 #include "loader.hpp"
 #include <modloader/util/path.hpp>
-#include <modloader/util/ini.hpp>
+#include <ini_parser/ini_parser.hpp>
 using namespace modloader;
 
 // TODO don't call OnShutdown if OnStartup wasn't successful
@@ -24,7 +24,7 @@ void Loader::LoadPlugins()
         
         // Read plugins priority
         {
-            modloader::ini ini;
+            linb::ini ini;
 
             // Make sure we have plugins.ini ....
             CopyFileA(pluginConfigDefault.c_str(), pluginConfigFilename.c_str(), TRUE);

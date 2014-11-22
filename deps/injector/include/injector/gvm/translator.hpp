@@ -64,8 +64,8 @@ namespace injector
             address_translator() : enabled(true)
             {
                 // Must have bounds filled with min ptr and max ptr to have search working properly
-                map.emplace(0x00000000u, 0x00000000u);
-                map.emplace(0xffffffffu, 0xffffffffu);
+				map.insert(std::make_pair(raw_ptr(0x00000000u), raw_ptr(0x00000000u)));
+                map.insert(std::make_pair(raw_ptr(0xffffffffu), raw_ptr(0xffffffffu)));
                 add();
             }
 
@@ -147,7 +147,7 @@ namespace injector
         static const size_t max_ptr_dist = 7;
 
         // Tries to find an address in a translator map
-        static auto try_map = [](const std::map<memory_pointer_raw, memory_pointer_raw>& map, memory_pointer_raw p)
+        auto try_map = [](const std::map<memory_pointer_raw, memory_pointer_raw>& map, memory_pointer_raw p) -> memory_pointer_raw
         {
             memory_pointer_raw result = nullptr;
 
@@ -158,7 +158,7 @@ namespace injector
                 // If it's not exactly the address, get back one position on the table
                 if(it->first != p) --it;
 
-                auto diff = uintptr_t(p - it->first);       // What's the difference between p and that address?
+                auto diff = (p - it->first).as_int();       // What's the difference between p and that address?
                 if(diff <= max_ptr_dist)                    // Could we live with this difference in hands?
                     result = it->second + raw_ptr(diff);    // Yes, we can!
             }
@@ -179,7 +179,7 @@ namespace injector
         }
 
         // If we couldn't translate the address, notify and try to fallback
-        if(!result)
+        if(result.is_null())
         {
             for(auto it = mgr.begin(); result == nullptr && it != mgr.end(); ++it)
             {

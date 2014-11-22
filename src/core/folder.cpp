@@ -5,7 +5,7 @@
  */
 #include "loader.hpp"
 #include <shlwapi.h>
-#include <modloader/util/ini.hpp>
+#include <ini_parser/ini_parser.hpp>
 using namespace modloader;
 
 // TODO priority set at runtime
@@ -352,11 +352,11 @@ void Loader::FolderInformation::Update(ModInformation& mod)
  */
 void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
 {
-    modloader::ini cfg;
+    linb::ini cfg;
     CopyFileA(loader.folderConfigDefault.c_str(), inifile.c_str(), TRUE);
 
     // Reads the top [Config] section
-    auto ReadConfig = [this](const modloader::ini::key_container& kv)
+    auto ReadConfig = [this](const linb::ini::key_container& kv)
     {
         for(auto& pair : kv)
         {
@@ -368,25 +368,25 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
     };
 
     // Reads the [Priority] section
-    auto ReadPriorities = [this](const modloader::ini::key_container& kv)
+    auto ReadPriorities = [this](const linb::ini::key_container& kv)
     {
         for(auto& pair : kv) this->SetPriority(NormalizePath(pair.first), std::strtol(pair.second.c_str(), 0, 0));
     };
 
     // Reads the [IgnoreMods] section
-    auto ReadIgnoreMods = [this](const modloader::ini::key_container& kv)
+    auto ReadIgnoreMods = [this](const linb::ini::key_container& kv)
     {
         for(auto& pair : kv) this->IgnoreMod(NormalizePath(pair.first));
     };
 
     // Reads the [IgnoreFiles] section
-    auto ReadIgnoreFiles = [this](const modloader::ini::key_container& kv)
+    auto ReadIgnoreFiles = [this](const linb::ini::key_container& kv)
     {
         for(auto& pair : kv) this->IgnoreFileGlob(NormalizePath(pair.first));
     };
 
     // Reads the [IncludeFiles] section
-    auto ReadIncludeMods = [this](const modloader::ini::key_container& kv)
+    auto ReadIncludeMods = [this](const linb::ini::key_container& kv)
     {
         for(auto& pair : kv) this->Include(NormalizePath(pair.first));
     };
