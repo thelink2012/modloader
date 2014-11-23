@@ -200,9 +200,9 @@ namespace modloader
         
         int numFolds = std::count(file.begin(), file.end(), cNormalizedSlash);
 
-        for(int i = 2; i <= numFolds; ++i)
+        for(int i = 1; i <= numFolds; ++i)
         {
-            if(GetPathComponentBack(file, i) == folder)
+            if(GetPathComponentBack(file, i+1) == folder)
                 return true;
             else if(bJust)
                 break;

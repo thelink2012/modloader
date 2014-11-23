@@ -4,6 +4,7 @@ v0.2.1 (In Dev)
  * Fixed problems with SAMP introduced by v0.2.0
  * Fixed script sprites not loading properly
  * Fixed ini entries beggining with square brackets not being readen properly
+ * Fixed an issues with the std.asi path translator
  
 v0.2.0 (Aug 02 2014)
 ------------------------
