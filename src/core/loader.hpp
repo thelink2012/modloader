@@ -355,6 +355,7 @@ class Loader : public modloader_t
         // Configs
         uint64_t        maxBytesInLog;          // Maximum number of bytes in the logging stream 
         uint64_t        numBytesInLog;          // Number of bytes currently written to the logging stream
+        int             vkRefresh;              // VKey to refresh mods
         bool            bRunning;               // True when the loader was started up, false otherwise
         bool            bEnableLog;             // Enable logging to the log file
         bool            bImmediateFlush;        // Enable immediately flushing the log file

@@ -114,6 +114,7 @@ void Loader::Startup()
         memset(this, 0, sizeof(modloader_t));
 
         // Initialise configs and counters
+        this->vkRefresh      = VK_F4;
         this->bRunning       = false;
         this->bEnableMenu    = true;
         this->bEnableLog     = true;
@@ -225,7 +226,7 @@ void Loader::TestHotkeys()
     static bool currF4 = false; 
 
     // Get current hotkey states
-    currF4 = (GetKeyState(VK_F4) & 0x8000) != 0;
+    currF4 = (GetKeyState(vkRefresh) & 0x8000) != 0;
 
     // Check hotkey states
     if(currF4 && !prevF4)
@@ -262,6 +263,8 @@ void Loader::ReadBasicConfig()
                 this->bImmediateFlush = to_bool(pair.second);
             else if(!compare(pair.first, "MaxLogSize", false))
                 this->maxBytesInLog = std::strtoul(pair.second.data(), 0, 0);
+            else if(!compare(pair.first, "RefreshKey", false))
+                this->vkRefresh = std::stoi(pair.second.data(), 0, 0);
         }
     }
     else
@@ -282,6 +285,7 @@ void Loader::ReadBasicConfig()
      config["EnableLog"]            = modloader::to_string(bEnableLog);
      config["ImmediateFlushLog"]    = modloader::to_string(bImmediateFlush);
      config["MaxLogSize"]           = std::to_string(maxBytesInLog);
+     config["RefreshKey"]           = std::to_string(vkRefresh);
 
      // Log only about failure since we'll be saving every time a entry on the menu changes
      if(!ini.write_file(gamePath + basicConfig))
