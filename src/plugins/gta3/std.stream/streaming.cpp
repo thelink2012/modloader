@@ -339,6 +339,8 @@ bool CAbstractStreaming::IsClothes(const modloader::file* file)
                     else break;
                 }
 
+                fclose(f);
+
                 // If more than one clump in the RwStream, it's a clothing item
                 if(nclumps > 1)
                     return true;

@@ -131,6 +131,12 @@ namespace linb
             void clear()
             { return data.clear(); }
             
+            /* Lookup */
+            size_type count(const key_type& key)
+            { return data.count(key); }
+            iterator find(const key_type& key)
+            { return data.find(key); }
+
             /* Too lazy to continue this container... If you need more methods, just add it */
             
 #if 1
@@ -231,11 +237,18 @@ namespace linb
             {
                 if(FILE* f = fopen(filename, "w"))
                 {
+                    bool first = true;
                     for(auto& sec : this->data)
                     {
-                        fprintf(f, "\n[%s]\n", sec.first.c_str());
+                        fprintf(f, first? "[%s]\n" : "\n[%s]\n", sec.first.c_str());
+                        first = false;
                         for(auto& kv : sec.second)
-                            fprintf(f, "%s = %s\n", kv.first.c_str(), kv.second.c_str());
+                        {
+                            if(kv.second.empty())
+                                fprintf(f, "%s\n", kv.first.c_str());
+                            else
+                                fprintf(f, "%s = %s\n", kv.first.c_str(), kv.second.c_str());
+                        }
                     }
                     fclose(f);
                     return true;

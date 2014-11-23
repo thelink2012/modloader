@@ -1,9 +1,11 @@
 v0.2.1 (In Dev)
 ------------------------
- * The COLFILE command for gta.dat works completly fine now (R* bug fixed)
+ * The COLFILE command for gta.dat works completly fine now *(SA bug fix)*
  * The size of the streaming buffer gets affected by clothing items now
  * Possible to change the refresh key from *modloader/.data/config.ini*, not from the menu though
- * Effective way to distinguish between coach.dff (vehicle) and coach.dff (clothing item) implemented
+ * Effective way to distinguish between *coach.dff* (vehicle) and *coach.dff* (clothing item) implemented
+ * The priority system has been reversed, now *100 overrides 1* instead of *1 overrides 100*
+ * Mod Loader automatically updates an old ini *(from 0.1.15)* to the new ini format *(as from 0.2.0/0.2.1)*
  * Fixed problems with SAMP introduced by v0.2.0
  * Fixed script sprites not loading properly
  * Fixed ini entries beggining with square brackets not being readen properly

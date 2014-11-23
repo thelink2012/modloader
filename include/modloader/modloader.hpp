@@ -237,7 +237,7 @@ namespace modloader
         
             // Mod Loader stuff
             interfc.data    = reinterpret_cast<plugin*>(data);
-            interfc.loader  = data->modloader;
+            interfc.loader  = data->loader;
             interfc.Error   = interfc.loader->Error;
             interfc.Log     = interfc.loader->Log;
             interfc.vLog    = interfc.loader->vLog;

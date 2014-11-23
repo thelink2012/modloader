@@ -96,5 +96,5 @@ Finally, let's go to the credits.
 
 #### Special Thanks To
   * ArtututuVidor$, Andryo, Junior_Djjr, JNRois12 for alpha-testing
-  * methodunderg and TheJamesGM for emotional support.
+  * Gramps and TJGM for emotional support.
   * SilentPL for additional support
