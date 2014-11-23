@@ -214,6 +214,7 @@ class CAbstractStreaming
         // Information for refreshing
         std::map<hash_t, const modloader::file*>        to_import;  // Files to be imported by the refresher --- (null pointer on mapped piece means uninstall)
         bool to_rebuild_player = false;                             // Should rebuild the player?
+        uint32_t newcloth_blocks = 0;                               // On the player rebuilding process, realloc the streaming buffer if necessary because of this clothing item size (in blocks)
 
         // Abstract streaming
         std::list<AbctFileHandle> stm_files;                    // List of abstract files currently open for reading
@@ -408,7 +409,7 @@ class CAbstractStreaming
             return this->bIsUpdating;
         }
 
-    private: // Helpers
+    protected: // Helpers
 
         // Helper to avoid duplicate of resources
         template<class FuncT, class ...Args>
@@ -419,6 +420,27 @@ class CAbstractStreaming
             if(index != -1) return index - base_index;
             return RegisterResource(std::forward<Args>(args)...);
         }
+
+        // Updates/Reallocates the streaming buffer on destruction according to the new streaming items added during the object lifetime
+        // Just construct, call AddItem with the sizes in blocks and on destruction it will do the hard work.
+        struct StreamingBufferUpdater
+        {
+            private:
+                uint32_t realStreamingBufferSize;   // Current actual streaming buffer size
+                uint32_t tempStreamingBufSize;      // Temporary (we'll be updating this var) streaming buffer size
+
+            public:
+                StreamingBufferUpdater();
+                ~StreamingBufferUpdater();
+
+                // Tell the streaming buffer updater about a new streaming item size
+                void AddItem(uint32_t sizeInBlocks)
+                {
+                    if(sizeInBlocks > tempStreamingBufSize)
+                        tempStreamingBufSize = sizeInBlocks;
+                }
+        };
+
 };
 
 

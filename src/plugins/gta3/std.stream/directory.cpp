@@ -235,9 +235,8 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
     auto it = files.begin();
     auto curr = it;
     
-    // We need those temp vars, don't even dare to remove them
-    auto realStreamingBufferSize = bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
-    auto tempStreamingBufSize    = realStreamingBufferSize;
+    // Updates the streaming buffer size after the addition of new streaming items
+    StreamingBufferUpdater bufup;
 
     // Streaming bus must be empty before this operation
     if(this->bHasInitializedStreaming)
@@ -252,8 +251,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
             FillDirectoryEntry(entry, it->get()->filename(), 0, it->get()->size);
 
             // Check out if we're in the bounds of the streaming buffer
-            if(entry.m_usSize > tempStreamingBufSize)
-                tempStreamingBufSize = entry.m_usSize;
+            bufup.AddItem(entry.m_usSize);
 
             // Advance........
             curr = it++;
@@ -277,40 +275,9 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
 
     // Read the custom cd directory
     PerformDirectoryRead(files.size(), std::bind(LoadCdDirectory2, nullptr, 0), ReadEntry, RegisterSpecialEntry, RegisterEntry);
-
-    // Right, so, if the streaming has already initialized we may need to resize the streaming buffer because of the recently
-    // inserted entries!
-    if(this->bHasInitializedStreaming)
-    {
-        static const uint32_t align = 2048;
-
-        // Make sure the buffer size is even (we'll divide it by two)
-        if(tempStreamingBufSize & 1) ++tempStreamingBufSize;
-
-        // If the necessary streaming buffer to load that file is bigger than the current buffer size, let's resize the buffer
-        if(tempStreamingBufSize > realStreamingBufferSize)
-        {
-            plugin_ptr->Log("Reallocating streaming buffer from %u bytes to %u bytes.",
-                realStreamingBufferSize * align,
-                tempStreamingBufSize * align);
-
-            // Reallocate the buffer
-            injector::cstd<void(void*)>::call<0x72F4F0>(pStreamingBuffer[0]);                                       // CMemoryMgr::FreeAlign
-            auto* mem = injector::cstd<void*(size_t, size_t)>::call<0x72F4C0>(tempStreamingBufSize * align, align); // CMemoryMgr::MallocAlign
-
-            // Reassign buffer variables
-            streamingBufferSize = tempStreamingBufSize / 2;
-            pStreamingBuffer[0] = mem;
-            pStreamingBuffer[1] = (raw_ptr(mem) + (align * streamingBufferSize)).get();
-        }
-        else
-        {
-            // Fix the streaming buffer size variable, it was previosly broken by the LoadCdDirectory we just used
-            streamingBufferSize = realStreamingBufferSize / 2;
-        }
-    }
-
     plugin_ptr->Log("Abstract cd directory has been loaded.");
+
+    // StreamingBufferUpdater will reallocating the streaming on destruction
 }
 
 
@@ -321,6 +288,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
 /*
  *  CAbstractStreaming::BuildClothesMap
  *      Builds a reference map of models that are clothing items
+ *      This should be called while the streaming hasn't initialized 
  */
 void CAbstractStreaming::BuildClothesMap()
 {
@@ -347,19 +315,25 @@ void CAbstractStreaming::BuildClothesMap()
         this->cloth_dir_sparse_curr = this->cloth_dir_sparse_start;
 
         // Remove items from raw_models into clothes
-        if(!this->bHasInitializedStreaming)
+        if(!this->bHasInitializedStreaming) // Should always evaluate to TRUE!!!!
         {
+            StreamingBufferUpdater bufup;
             for(auto it = this->raw_models.begin(); it != raw_models.end(); )
             {
                 if(this->IsClothes(it->second))
                 {
                     // Take from raw_models and put into clothes
-                    this->ImportCloth(it->second);
+                    if(this->ImportCloth(it->second))
+                        bufup.AddItem(GetSizeInBlocks(it->second->size));
                     it = raw_models.erase(it);
                 }
                 else
                     ++it;
             }
+        }
+        else
+        {
+            plugin_ptr->Log("Warning: CAbstractStreaming::BuildClothesMap called after streaming initialization");
         }
     }
 }
@@ -384,4 +358,65 @@ void CAbstractStreaming::FixClothesDirectory()
     // Add our sparse entries back to the directory
     for(auto& entry : this->sparse_dir_entries)
         injector::thiscall<void(CDirectory*, DirectoryInfo*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
+}
+
+
+
+
+/*
+ *  CAbstractStreaming::StreamingBufferUpdater::StreamingBufferUpdater
+ *      Setups the streaming buffer updater
+ */
+CAbstractStreaming::StreamingBufferUpdater::StreamingBufferUpdater()
+{
+    // We need those temp vars, don't even dare to remove them
+    this->realStreamingBufferSize = streaming.bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
+    this->tempStreamingBufSize    = realStreamingBufferSize;
+}
+
+/*
+ *  CAbstractStreaming::StreamingBufferUpdater::~StreamingBufferUpdater
+ *      Updates the streaming buffer
+ */
+CAbstractStreaming::StreamingBufferUpdater::~StreamingBufferUpdater()
+{
+    // Right, so, if the streaming has already initialized we may need to resize the streaming buffer because of the recently inserted entries!
+    if(streaming.bHasInitializedStreaming)
+    {
+        static const uint32_t align = 2048;
+
+        // Make sure the buffer size is even ('cuz we'll divide it by two)
+        if(tempStreamingBufSize & 1) ++tempStreamingBufSize;
+
+        // If the necessary streaming buffer to load that file is bigger than the current buffer size, let's resize the buffer
+        if(tempStreamingBufSize > realStreamingBufferSize)
+        {
+            // Streaming bus must be empty before reallocating
+            streaming.FlushChannels();
+
+            plugin_ptr->Log("Reallocating streaming buffer from %u bytes to %u bytes.",
+                realStreamingBufferSize * align,
+                tempStreamingBufSize * align);
+
+            // Reallocate the buffer
+            injector::cstd<void(void*)>::call<0x72F4F0>(pStreamingBuffer[0]);                                       // CMemoryMgr::FreeAlign
+            auto* mem = injector::cstd<void*(size_t, size_t)>::call<0x72F4C0>(tempStreamingBufSize * align, align); // CMemoryMgr::MallocAlign
+
+            // Reassign buffer variables
+            streamingBufferSize = tempStreamingBufSize / 2;
+            pStreamingBuffer[0] = mem;
+            pStreamingBuffer[1] = (raw_ptr(mem) + (align * streamingBufferSize)).get();
+        }
+        else
+        {
+            // Fix the streaming buffer size variable, it was previosly broken by the LoadCdDirectory we just used
+            streamingBufferSize = realStreamingBufferSize / 2;
+        }
+    }
+    else
+    {
+        // Streaming not initialized, we can just set the streamingBufferSize variable and let the game take care of the rest
+        if(tempStreamingBufSize > streamingBufferSize)
+            streamingBufferSize = tempStreamingBufSize;
+    }
 }

@@ -167,6 +167,8 @@ bool CAbstractStreaming::InstallFile(const modloader::file& file)
         }
         else
         {
+            auto size_blocks = GetSizeInBlocks(file.size);
+            this->newcloth_blocks   = size_blocks > newcloth_blocks? size_blocks : newcloth_blocks;
             this->to_rebuild_player = true;
             return this->ImportCloth(&file);
         }
@@ -322,12 +324,17 @@ bool CAbstractStreaming::IsClothes(const modloader::file* file)
 /*
  *  CAbstractStreaming::ImportCloth
  *      Imports the specified clothing item
+ *      !!!!! Notice that importing a clothing item doesn't contribute to the streaming buffer, please use
+ *      'StreamingBufferUpdater' manually to do so !!!!
  */
 bool CAbstractStreaming::ImportCloth(const modloader::file* file)
 {
     if(auto entry = FindClothEntry(file->hash))
     {
-        // Return true only if we hadn't any clothing like that
+        // Every cloth import should go through this code path....
+        // The else condition calls this function again so it goes by this path
+
+        // Allow import only if we don't have any clothing like that installed
         return this->clothes.emplace(entry->m_dwFileOffset, file).second;
     }
     else if(true)

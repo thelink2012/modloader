@@ -213,6 +213,9 @@ Refresher<T>::Refresher(tag_player_t, CAbstractStreaming& s)
     injector::scoped_write<5> always;                   // Always refresh the player clump
     always.write<void*>(0x5A8346 + 1, nullptr, true);   // even when ""nothing"" changed in it
 
+    // Update the streaming buffer with the new highest clothing item
+    CAbstractStreaming::StreamingBufferUpdater().AddItem(streaming.newcloth_blocks);
+
     auto ped = injector::cstd<void*(int)>::call<0x56E210>(-1);      // FindPlayerPed
     injector::cstd<void(void*, char)>::call<0x5A82C0>(ped, false);  // CClothes::RebuildPlayer              
 
