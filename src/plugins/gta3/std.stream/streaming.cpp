@@ -317,6 +317,33 @@ bool CAbstractStreaming::IsClothes(const modloader::file* file)
             return true;    // Forced clothes
         else if(!this->indices.count(file->hash) && this->clothes_map.count(file->hash))
             return true;    // Not present in standard indices but in clothes map
+        else if(!strcmp(file->filename(), "coach.dff"))
+        {
+            // Coach is both a clothing item and a vehicle, what is up with this file?
+            // If the number of Clump sections on the RwStream is greater than 1, it's a clothing item.
+            if(auto f = fopen(file->fullpath().c_str(), "rb"))
+            {
+                struct {
+                    uint32_t id, size, version;
+                } section;
+                int nclumps = 0;
+
+                while(fread(&section, sizeof(section), 1, f) == 1)
+                {
+                    if(section.id == 0x0010)    // Clump
+                    {
+                        ++nclumps;
+                        if(!!fseek(f, section.size, SEEK_CUR))
+                            break;
+                    }
+                    else break;
+                }
+
+                // If more than one clump in the RwStream, it's a clothing item
+                if(nclumps > 1)
+                    return true;
+            }
+        }
     }
     return false;
 }

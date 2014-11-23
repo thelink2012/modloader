@@ -3,6 +3,7 @@ v0.2.1 (In Dev)
  * The COLFILE command for gta.dat works completly fine now (R* bug fixed)
  * The size of the streaming buffer gets affected by clothing items now
  * Possible to change the refresh key from *modloader/.data/config.ini*, not from the menu though
+ * Effective way to distinguish between coach.dff (vehicle) and coach.dff (clothing item) implemented
  * Fixed problems with SAMP introduced by v0.2.0
  * Fixed script sprites not loading properly
  * Fixed ini entries beggining with square brackets not being readen properly
