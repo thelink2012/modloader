@@ -1,7 +1,9 @@
 v0.2.1 (In Dev)
 ------------------------
- * The COLFILE command for gta.dat works completly fine now (R* bug)
- * Fixed problems with SAMP introduced in v0.2.0
+ * The COLFILE command for gta.dat works completly fine now (R* bug fixed)
+ * Fixed problems with SAMP introduced by v0.2.0
+ * Fixed script sprites not loading properly
+ * Fixed ini entries beggining with square brackets not being readen properly
  
 v0.2.0 (Aug 02 2014)
 ------------------------

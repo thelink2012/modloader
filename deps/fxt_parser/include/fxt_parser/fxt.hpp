@@ -14,7 +14,7 @@
  *
  */
 #pragma once
-#include "../hooking.hpp"
+#include <injector/hooking.hpp>
 #include <map>
 
 namespace injector
@@ -35,6 +35,10 @@ namespace injector
      *          manager.patch();                // (OPTIONAL) Inject it into the game code
      *          manager.add("KEY", "VALUE");    // Add a new key-value pair into the game
      *                                          // The '.add' call already calls '.patch', so .patch is optional
+     *
+     *      Used Addresses:
+     *          @CText_Get  - CText::Get routine
+     *          0x748CFB    - When 'make_samp_compatible()' is called
      * 
      */
     template<class TextMap, class UpperHashFunctor, uintptr_t CText_Get = 0x6A0050>
@@ -46,127 +50,130 @@ namespace injector
             typedef std::map<hash_type, TextMap> TableMap;
 
         private:
-            // Marks if this fxt manager is enabled or disabled
-            // We need this because we can't just unhook the game anymore or we'd cause problems
-            static bool& IsEnabled()
-            { static bool b = false; return b; }
-            
-            // Store the raw pointer that CText::Get is located at
-            static memory_pointer_raw& GetPtr()
-            { static memory_pointer_raw x; return x; }
-            
-            // Store the text map
-            static TableMap& GetTableMap()
-            { static TableMap map; return map; }
-            
-            // Store the jmp hooker
-            static scoped_jmp& JmpHook()
-            { static scoped_jmp x; return x; }
-            
-            
+            struct static_data {
+                bool is_enabled = false;            // Marks if this fxt manager is enabled or disabled (cannot unhook the game, so we need this)
+                bool can_patch  = true;             // Can it patch the game automatically when add() or such is called?
+                bool patched    = false;            // Has the patch happened?
+                TableMap tmap;                      // Table of a map of strings
+                memory_pointer_raw GetText;         // Store the raw pointer that CText::Get is located at
+                memory_pointer_raw BefGet;          // The previous offset for CText::Get (before patching)
+                memory_pointer_raw BefSamp;         // The previous offset for the SAMP compatibility hooked func (before patching)
+            };
+
+            static static_data& data()
+            {
+                static static_data data;
+                return data;
+            }
+
         public:
-            
+
             /*
              *  Adds a GXT @key - @value pair to the text map for use in our GxtHook 
              */
             static void add(const char* key, const char* value, hash_type table = 0)
             {
-                patch();
-                GetTableMap()[table][GetHash(key)] = value;
+                if(data().can_patch) patch();
+                data().tmap[table][GetHash(key)] = value;
             }
 
+            /*
+             *  Overrides the specified GXT @key
+             */
             static void set(const char* key, const char* value, hash_type table = 0)
             {
                 return add(key, value, table);
             }
 
-            static void remove_table(hash_type table)
+            /*
+             *  Removes a previosly used table (i.e. keys added)
+             */
+            static void remove_table(hash_type table = 0)
             {
-                GetTableMap().erase(table);
+                data().tmap.erase(table);
             }
 
-            
             /*
              *  Returns the value from @key in the CText object @ctext
              */
             static const char* get(void* ctext, const char* key)
             {
-                auto f = (GetType) GetPtr().get();
-                return f(ctext, 0, key);
+                return ((GetType) data().GetText.get())(ctext, 0, key);
+            }
+
+
+            
+
+            /*
+             *  Enable the FXT hook
+             */
+            static void enable(bool enable = true)
+            {
+                if(enable && data().can_patch) patch();
+                data().is_enabled = enable;
             }
 
             /*
-             *  Patches the game to work with our fxt stuff
+             *  Avoids automatic patching when add() or such gets called 
+             */
+            static void disable_patching(bool disable = true)
+            {
+                data().can_patch = !disable;
+            }
+
+            /*
+             *  Makes this SAMP compatible
+             */
+            static void make_samp_compatible()
+            {
+                if(GetModuleHandleA("samp"))
+                {
+                    disable_patching();
+                    data().BefSamp = MakeCALL(0x748CFB, raw_ptr(SampFixHook));
+                }
+            }
+
+
+
+
+
+            /*
+             *  Patches the game to work with our fxt table
              */
             static void patch()
             {
-                static bool bPatched = false;
-                if(bPatched == true) return;
-                bPatched = true;
-                
-                //
-                DWORD old;
-                GetPtr() = memory_pointer(CText_Get).get<void>();   // Save the CText::Get pointer in raw form for fast access
-                UnprotectMemory(GetPtr(), 5, old);                  // Unprotect the memory forever
-                MakeHook();                                         // Make our hook
-                enable();                                           // Enable this
-            }
-            
-            /*
-             *  Enable this
-             */
-            static void enable()
-            {
-                patch();
-                IsEnabled() = true;
-            }
-            
-            /*
-             *  Disables this 
-             */
-            static void disable()
-            {
-                IsEnabled() = false;
+                if(data().patched == false)
+                {
+                    data().patched = true;
+                    enable();
+
+                    data().GetText = memory_pointer(CText_Get).get<void>();         // Save the CText::Get pointer in raw form for fast access
+                    data().BefGet = MakeJMP(data().GetText, raw_ptr(GxtHook), true);
+                    if(!data().BefGet) data().BefGet = data().GetText;
+                }
             }
 
             
         private:    // Internal stuff
             
-            // Make the hook
-            static void MakeHook()
-            {
-                JmpHook().make_jmp(GetPtr(), raw_ptr(GxtHook), false);
-            }
-            
-            // Restore the hook
-            static void RestoreHook()
-            {
-                JmpHook().restore();
-            }
-            
             // Hooked CText::Get
             static const char* __fastcall GxtHook(void* self, int, const char* key)
             {
-                if(IsEnabled())
+                if(data().is_enabled)
                 {
-                    // Try to find @key in our text map
                     if(const char* value = FindFromKey(key))
                         return value;
                 }
+                return ((GetType) data().BefGet.get())(self, 0, key);
+            }
 
-                // Nothing found, try with original call
-                return ForwardGet(self, key);
-            }
-            
-            // Forwards the CText::Get call to the next level
-            static const char* ForwardGet(void* ctext, const char* key)
+            // SAMP compatibility hook
+            static void SampFixHook()
             {
-                RestoreHook();                      // Remove what we did for a while
-                auto f = (GetType) GetPtr().get();  // Call the func that was there before our hooking
-                auto result = f(ctext, 0, key);     // ^
-                MakeHook();                         // Put our hook back there
-                return result;                      //
+                patch();
+                return ((void (*)()) data().BefSamp.get())();
             }
+
 
             // Get hash from key
             static hash_type GetHash(const char* key)
@@ -178,10 +185,9 @@ namespace injector
             // Finds value from key
             static const char* FindFromKey(const char* key)
             {
-                auto& tables = GetTableMap();
+                auto& tables = data().tmap;
                 auto key_hash = GetHash(key);
                 
-                // Do the search and return the result
                 for(auto t = tables.begin(); t != tables.end(); ++t)
                 {
                     auto it = t->second.find(key_hash);

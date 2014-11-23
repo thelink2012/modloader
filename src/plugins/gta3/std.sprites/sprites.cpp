@@ -68,7 +68,7 @@ bool ScriptSpritesPlugin::OnStartup()
             filename = &filepath[GetLastPathComponent(filename)];
 
             // Find replacement for sprite dictionary at filepath
-            auto it = dictionaries.find(filename);
+            auto it = dictionaries.find(tolower(filename));
             if(it != dictionaries.end()) filepath = it->second->filepath();
 
             // Jump to the original call to LoadTxd

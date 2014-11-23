@@ -180,9 +180,9 @@ namespace linb
                             continue;
                         
                         // Find section name
-                        if(line[0] == '[')
+                        if(line.front() == '[' && line.back() == ']')
                         {
-                            pos = line.find_first_of(']');
+                            pos = line.length() - 1; //line.find_first_of(']');
                             if(pos != line.npos)
                             {
                                 trim(key.assign(line, 1, pos-1), true, true);

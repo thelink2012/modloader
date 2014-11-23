@@ -18,7 +18,7 @@
 
 #include <modloader/util/injector.hpp>  // Include this first, otherwise bad things will happen
 #include <modloader/util/hash.hpp>
-#include <injector/game/fxt_parser.hpp>
+#include <fxt_parser/fxt_parser.hpp>
 
 #include <map>
 #include <cctype>

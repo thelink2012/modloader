@@ -196,6 +196,40 @@ namespace modloader
         return vector;
     }
 
+    /*
+     *  Copies the elements in the range, defined by [first, last], to another range beginning at d_first while the unary predicate is true.
+     */
+    template<class InputIterator, class OutputIterator, class UnaryPredicate >
+    inline OutputIterator copy_while(InputIterator first, InputIterator last, OutputIterator d_first, UnaryPredicate pred)
+    {
+        while(first != last && pred(*first))
+            *d_first++ = *first++;
+        return d_first;
+    }
+
+    /*
+     *  Copies all the Args cstrings into the dest cstring (where destmax determines the range of dest)
+     *  Always inserts a null terminator (except when dest==destmax)
+     */
+    template<class InputIterator, class OutputIterator, class... Args>
+    inline OutputIterator copy_cstr(OutputIterator dest, OutputIterator destmax, InputIterator arg, Args&&... args)
+    {
+        auto diff = destmax - dest;
+        if(diff <= 1) return copy_cstr(dest, destmax);  // needs 1 space for null terminator
+
+        OutputIterator newdest = copy_while(arg, arg + diff - 1, dest,
+                    [](char c) { return c != 0; }); // needs auto on this lambda
+
+        return copy_cstr(newdest, destmax, std::forward<Args>(args)...);
+    }
+
+    template<class OutputIterator, class... Args>
+    inline OutputIterator copy_cstr(OutputIterator dest, OutputIterator destmax)
+    {
+        if(dest != destmax) *dest = 0;
+        return dest;
+    }
+
 
 
 

@@ -58,7 +58,8 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // std.text
     if(true)
     {
-        map[0x57A161] = 0x57A161;   // call    _ZN5CText3GetEPKc
+        map[0x57A161] = 0x57A161;   // call    _ZN5CText3GetEPKc                        ; fxtp
+        map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev                      ; fxtp
         map[0x6A0228] = 0x6A0228;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; @CText::Load
         map[0x69FD5A] = 0x69FD5A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; @CText::LoadMissionText
         map[0x57326E] = 0x57326E;   // jz      loc_573313                    ; Check for some menu stuff to avoid reloading text

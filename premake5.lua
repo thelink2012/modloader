@@ -98,7 +98,7 @@ function addinstall(file)
 end
 
 function makeabsolute(pathx)
-    return path.isabsolute(pathx) and p or (_MAIN_SCRIPT_DIR .. '/' .. pathx)
+    return path.isabsolute(pathx) and pathx or (_MAIN_SCRIPT_DIR .. '/' .. pathx)
 end
 
 
@@ -140,14 +140,26 @@ function addplugin(name)
         }
 
         links { "addr" }
+        dependson { "modloader" }
         setupfiles("src/plugins/gta3/" .. name)
-        
+    
+end
+
+function dummyproject()
+    -- Dummy cpp file for Premake's generated none  project (bug workaround)
+    configuration "gmake"
+        language "C++"
+        kind "StaticLib"
+        files { "deps/dummy.cpp" }
+    configuration {}
 end
 
 --[[
     The Solution
 --]]
 solution "modloader"
+
+    startproject "build_gta3"
 
     configurations { "Release", "Debug" }
 
@@ -180,6 +192,7 @@ solution "modloader"
         "include",
         "deps/injector/include",
         "deps/ini_parser/include",
+        "deps/fxt_parser/include",
         "src/util",
         "src/traits"
     }
@@ -192,7 +205,7 @@ solution "modloader"
         optimize "Speed"
 
     configuration "gmake"
-        buildoptions { "-std=c++11" }
+        buildoptions { "-std=gnu++11" }
 
 
     project "addr"
@@ -201,8 +214,10 @@ solution "modloader"
         setupfiles "src/address_translator"
 
     project "docs"
-        kind "None"
+        kind "Makefile"
+        dummyproject()
         files { "doc/**" }
+        dependson { "modloader" }
         addinstall { source = "LICENSE",                        destination = "modloader/.data"         }
         addinstall { source = "doc/text",                       destination = "modloader/.data/text"    }
         addinstall { source = "doc/readme",                     destination = "modloader/.data"         }
@@ -212,11 +227,7 @@ solution "modloader"
         addinstall { source = "doc/config/plugins.ini.0",       destination = "modloader/.data"         }
         addinstall { source = "doc/CHANGELOG.md",               destination = "modloader/.data"         }
         addinstall { source = "doc/Command Line Arguments.md",  destination = "modloader/.data"         }
-
-        -- Dummy cpp file for Premake's generated none  project (bug workaround)
-        language "C++"
-        kind "StaticLib"
-        files { "deps/dummy.cpp" }
+        
 
     project "modloader"
         language "C++"
@@ -226,16 +237,28 @@ solution "modloader"
         binarydir ""
         addinstall( { isdir = false, source = "bin/modloader.asi", destination = "./" } )
         links { "addr", "shlwapi", "dbghelp" }
+        setupfiles "include"
         setupfiles "src/core"
-        
-        
-    -- ordered by time taken to compile
-    addplugin "std.movies"
-    addplugin "std.scm"
-    addplugin "std.sprites"
-    addplugin "std.fx"
-    addplugin "std.text"
-    addplugin "std.bank"
-    addplugin "std.stream"
-    addplugin "std.asi"
+
+
+    local gta3_plugins = {  -- ordered by time taken to compile
+        "std.movies",
+        "std.scm",
+        "std.sprites",
+        "std.fx",
+        "std.text",
+        "std.bank",
+        "std.stream",
+        "std.asi"
+    }
+
+    project "build_gta3"
+        kind "Makefile"
+        dummyproject()
+        dependson(gta3_plugins)
+
+        for i, name in ipairs(gta3_plugins) do
+            addplugin(name)
+        end
+
 

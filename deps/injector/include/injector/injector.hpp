@@ -462,6 +462,14 @@ inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at, bool vp = t
 		case 0xE8:	// call rel
 		case 0xE9:	// jmp rel
 			return ReadRelativeOffset(at + 1, 4, vp);
+
+        case 0xFF: 
+            switch(ReadMemory<uint8_t>(at + 1, vp))
+            {
+                case 0x25:  // jmp dword ptr [addr]
+                    return *(ReadMemory<uintptr_t*>(at + 2, vp));
+            }
+            break;
 	}
 	return nullptr;
 }
