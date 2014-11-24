@@ -279,8 +279,13 @@ class Loader : public modloader_t
                 
                 // Sets flags
                 void SetIgnoreAll(bool bSet);
+                void SetForceIgnore(bool bSet);
                 void SetExcludeAll(bool bSet);
                 void SetForceExclude(bool bSet);
+
+                // Get flags
+                bool IsIgnoring()  { return bIgnoreAll || bForceIgnore; }
+                bool IsExcluding() { return bExcludeAll || bForceExclude; }
 
                 // Gets me, my childs, my child-childs....
                 ref_list<FolderInformation> GetAll();
@@ -327,6 +332,7 @@ class Loader : public modloader_t
                 
                 // Folder flags
                 bool bIgnoreAll    = false;     // When true, no mod will be readen
+                bool bForceIgnore  = false;     // When true, have the same effect as ignore all (set by command line)
                 bool bExcludeAll   = false;     // When true, no mod gets loaded but the ones at include_mods list (set by INI)
                 bool bForceExclude = false;     // When true, have the same effect as exclude all (set by command line)
                 

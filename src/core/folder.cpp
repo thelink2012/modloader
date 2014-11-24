@@ -48,7 +48,7 @@ void Loader::FolderInformation::Clear()
 bool Loader::FolderInformation::IsIgnored(const std::string& name)
 {
     // If excluse all is under effect, check if we are included, otherwise check if we are excluded.
-    if(this->bExcludeAll || this->bForceExclude)
+    if(this->IsExcluding())
         return (MatchGlob(name, include_mods_glob) == false);
     else
     {
@@ -167,6 +167,7 @@ void Loader::FolderInformation::RebuildIncludeModsGlob()
 
 /*
  *  FolderInformation::SetIgnoreAll     - Ignores all mods 
+ *  FolderInformation::SetForceIgnore   - Internal IgnoreAll for -nomods command line
  *  FolderInformation::SetExcludeAll    - Excludes all mods except the ones being included ([IncludeMods])
  *  FolderInformation::SetForceExclude  - Internal ExcludeAll for -mod command line
  * 
@@ -175,6 +176,11 @@ void Loader::FolderInformation::RebuildIncludeModsGlob()
 void Loader::FolderInformation::SetIgnoreAll(bool bSet)
 {
     this->bIgnoreAll = bSet;
+}
+
+void Loader::FolderInformation::SetForceIgnore(bool bSet)
+{
+    this->bForceIgnore = bSet;
 }
 
 void Loader::FolderInformation::SetExcludeAll(bool bSet)
@@ -186,6 +192,7 @@ void Loader::FolderInformation::SetForceExclude(bool bSet)
 {
     this->bForceExclude = bSet;
 }
+
 
 
 
@@ -263,7 +270,7 @@ void Loader::FolderInformation::Scan()
     MarkStatus(this->mods, Status::Removed);
 
     // Walk on this folder to find mods
-    if (this->bIgnoreAll == false)
+    if (this->IsIgnoring() == false)
     {
         fine = FilesWalk("", "*.*", false, [this](FileWalkInfo & file)
         {

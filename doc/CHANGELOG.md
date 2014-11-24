@@ -1,4 +1,4 @@
-v0.2.1 (In Dev)
+v0.2.1 (Nov 23 2014)
 ------------------------
  * The COLFILE command for gta.dat works completly fine now *(SA bug fix)*
  * The size of the streaming buffer gets affected by clothing items now
@@ -10,6 +10,7 @@ v0.2.1 (In Dev)
  * Fixed script sprites not loading properly
  * Fixed ini entries beggining with square brackets not being readen properly
  * Fixed an issues with the std.asi path translator
+ * Fixed command line argument -nomods not working properly
  
 v0.2.0 (Aug 02 2014)
 ------------------------

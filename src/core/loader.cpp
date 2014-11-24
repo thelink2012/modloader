@@ -11,8 +11,7 @@
 using namespace modloader;
 
 // TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
-// TODO take care of configs and command line on rescan
-// TODO command line is broken
+// TODO take care of configs on rescan
 // TODO ReinstallFile shouldn't Uninstall on failure?
 // TODO ^ think about uninstalling in-game to the next run, what if couldn't uninstall a specific file
 
@@ -331,7 +330,8 @@ void Loader::ParseCommandLine()
 
             if(!_wcsicmp(argname, L"nomods"))
             {
-                mods.SetIgnoreAll(true);
+                mods.SetForceIgnore(true);
+                Log("Command line ignore received (-nomods)");
             }
             else if(!_wcsicmp(argname, L"mod"))
             {
@@ -356,9 +356,7 @@ void Loader::ParseCommandLine()
         }
     }
     
-    //
     LocalFree(argv);
-    //Log("Done reading command line");
 }
 
 /*
