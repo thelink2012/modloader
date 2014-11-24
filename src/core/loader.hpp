@@ -30,13 +30,6 @@ using modloader::compare;
 static const char* modurl  = "https://github.com/thelink2012/modloader";
 static const char* downurl = "https://github.com/thelink2012/modloader/releases";
 
-/*
-static const char basic_config[]            = "modloader/.data/config.ini";
-static const char basic_config_default[]    = "modloader/.data/config.ini.0";
-static const char folder_config_name[]      = "modloader.ini";
-static const char folder_config_default[]   = "modloader/.data/modloader.ini.0";
-*/
-
 
 // Functor for sorting based on priority
 template<class T>
@@ -44,7 +37,7 @@ struct SimplePriorityPred
 {
     bool operator()(const T& a, const T& b) const
     {
-        return (a.priority > b.priority);    // That's right, higher priority means lower
+        return (a.priority < b.priority);
     }
 };
 
@@ -66,7 +59,7 @@ class Loader : public modloader_t
 {
     public:
         static const int default_priority = 50;         // Default priority for mods
-        static const int default_cmd_priority = 80;     // Default priority for mods sent by command line
+        static const int default_cmd_priority = 20;     // Default priority for mods sent by command line
 
         // Forwarding declarations
         class ModInformation;
@@ -124,7 +117,7 @@ class Loader : public modloader_t
                     // Fill basic information
                     std::memset(this, 0, sizeof(modloader::plugin));
                     this->pModule   = module;
-                    this->modloader = &loader;
+                    this->loader    = &::loader;
                     this->priority  = default_priority;
                     
                     // Fill the plugin structure with the rest of the informations
@@ -137,8 +130,8 @@ class Loader : public modloader_t
                     this->name = identifier.c_str();                    // Identifier and name are the same
 
                     // Override priority
-                    auto it = loader.plugins_priority.find(identifier);
-                    if(it != loader.plugins_priority.end())
+                    auto it = ::loader.plugins_priority.find(identifier);
+                    if(it != ::loader.plugins_priority.end())
                     {
                          Log("\tOverriding priority, from %d to %d", priority, it->second);
                          this->priority = it->second;
@@ -286,8 +279,13 @@ class Loader : public modloader_t
                 
                 // Sets flags
                 void SetIgnoreAll(bool bSet);
+                void SetForceIgnore(bool bSet);
                 void SetExcludeAll(bool bSet);
                 void SetForceExclude(bool bSet);
+
+                // Get flags
+                bool IsIgnoring()  { return bIgnoreAll || bForceIgnore; }
+                bool IsExcluding() { return bExcludeAll || bForceExclude; }
 
                 // Gets me, my childs, my child-childs....
                 ref_list<FolderInformation> GetAll();
@@ -334,6 +332,7 @@ class Loader : public modloader_t
                 
                 // Folder flags
                 bool bIgnoreAll    = false;     // When true, no mod will be readen
+                bool bForceIgnore  = false;     // When true, have the same effect as ignore all (set by command line)
                 bool bExcludeAll   = false;     // When true, no mod gets loaded but the ones at include_mods list (set by INI)
                 bool bForceExclude = false;     // When true, have the same effect as exclude all (set by command line)
                 
@@ -355,6 +354,7 @@ class Loader : public modloader_t
         // Configs
         uint64_t        maxBytesInLog;          // Maximum number of bytes in the logging stream 
         uint64_t        numBytesInLog;          // Number of bytes currently written to the logging stream
+        int             vkRefresh;              // VKey to refresh mods
         bool            bRunning;               // True when the loader was started up, false otherwise
         bool            bEnableLog;             // Enable logging to the log file
         bool            bImmediateFlush;        // Enable immediately flushing the log file
@@ -448,6 +448,7 @@ class Loader : public modloader_t
         
         void ReadBasicConfig();
         void SaveBasicConfig();
+        void UpdateOldConfig();
         
         // Marks all status at the specified @map to @status
         template<class M>

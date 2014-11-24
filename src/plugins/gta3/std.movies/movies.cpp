@@ -43,7 +43,7 @@ REGISTER_ML_PLUGIN(::mpg_plugin);
 const MediaPlugin::info& MediaPlugin::GetInfo()
 {
     static const char* extable[] = { "mpg", 0 };
-    static const info xinfo      = { "std.movies", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.movies", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 

@@ -96,5 +96,5 @@ Finalmente, creditos.
 
 #### Muito Obrigado Para
   * ArtututuVidor$, Andryo, Junior_Djjr, JNRois12 por alpha-testarem
-  * methodunderg and TheJamesGM pelo seu suporte emocional.
-  * SilentPL pelo seu suporte adicional
+  * Gramps e TJGM pelo suporte emocional.
+  * SilentPL pelo suporte adicional

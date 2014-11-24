@@ -11,16 +11,35 @@
 /* Hooks and sub calls */
 .globl  _HOOK_RegisterNextModelRead
 .globl  _HOOK_NewFile
+.globl  _HOOK_LoadColFileFix
 .globl  _CallGetAbstractHandle
 
 /* vars */
 .globl  _ms_aInfoForModel
+.globl  _ColModelPool_new
 
 /* funcs */
 .globl _AllocBufferForString
 .globl _RegisterNextModelRead
 
 .text
+
+/*
+    void* _nakedcall _cdecl HOOK_LoadColFileFix(arg0 = size)
+        Fixes the CFileLoader::LoadCollisionFile method to work properly
+*/
+_HOOK_LoadColFileFix:
+
+        /* Perform the original operation (new ColModel) */
+        push [esp+4]
+        mov eax, _ColModelPool_new
+        call eax
+        add esp, 4
+
+        /* Now, the fix is here, edi should contain the ColModel pointer, but it doesn't! 
+           Let's fix it     */
+        mov edi, eax
+        ret
 
 
 /*
@@ -30,7 +49,7 @@
 _HOOK_RegisterNextModelRead:
         pushad
         push esi
-        call RegisterNextModelRead
+        call _RegisterNextModelRead
         add esp, 4
         popad
 

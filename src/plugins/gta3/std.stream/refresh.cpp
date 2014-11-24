@@ -29,6 +29,18 @@ class Refresher : private T
         Refresher(tag_player_t, CAbstractStreaming& s);
 
     private:
+        // Stuf from T we're going to use.... be explict... C++ compilant code needs this
+        using T::txd_start;
+        using T::GetEntityType;
+        using T::GetEntityModel;
+        using T::GetEntityRwObject;
+        using T::GetPedTaskManager;
+        using typename T::PedPool_t;
+        using typename T::VehiclePool_t;
+        using typename T::BuildingPool_t;
+        using typename T::ObjectPool_t;
+
+
         using hash_t        = CAbstractStreaming::hash_t;
         using id_t          = CAbstractStreaming::id_t;
         using EntityType    = typename T::EntityType;
@@ -201,6 +213,9 @@ Refresher<T>::Refresher(tag_player_t, CAbstractStreaming& s)
     injector::scoped_write<5> always;                   // Always refresh the player clump
     always.write<void*>(0x5A8346 + 1, nullptr, true);   // even when ""nothing"" changed in it
 
+    // Update the streaming buffer with the new highest clothing item
+    CAbstractStreaming::StreamingBufferUpdater().AddItem(streaming.newcloth_blocks);
+
     auto ped = injector::cstd<void*(int)>::call<0x56E210>(-1);      // FindPlayerPed
     injector::cstd<void(void*, char)>::call<0x5A82C0>(ped, false);  // CClothes::RebuildPlayer              
 
@@ -276,7 +291,7 @@ template<class T> void Refresher<T>::BuildRefreshMap()
                     // For txd files we should also reload it's associated dff files so the RwObject material list is corrected
                     case ResType::TexDictionary:
                     {
-                        for(auto& id : GetModelsUsingTxdIndex(id - txd_start)) AddRefresh(id);
+                        for(auto& mid : GetModelsUsingTxdIndex(id - txd_start)) AddRefresh(mid);
                         break;
                     }
                 }

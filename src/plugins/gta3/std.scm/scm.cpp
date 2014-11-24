@@ -39,7 +39,7 @@ REGISTER_ML_PLUGIN(::scm_plugin);
 const ScmPlugin::info& ScmPlugin::GetInfo()
 {
     static const char* extable[] = { "scm", 0 };
-    static const info xinfo      = { "std.scm", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.scm", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 

@@ -153,7 +153,7 @@ REGISTER_ML_PLUGIN(::fx_plugin)
 const FxPlugin::info& FxPlugin::GetInfo()
 {
     static const char* extable[] = { "dff", "txd", "fxp", 0 };
-    static const info xinfo      = { "FX Loader", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "FX Loader", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 

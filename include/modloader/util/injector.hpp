@@ -13,8 +13,8 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * 
  */
-#ifndef MODLOADER_UTIL_INJECTOR_ADDRT_HPP
-#define	MODLOADER_UTIL_INJECTOR_ADDRT_HPP
+#ifndef MODLOADER_UTIL_INJECTOR_HPP
+#define	MODLOADER_UTIL_INJECTOR_HPP
 
 #if _MSC_VER
 #   pragma warning(disable : 4180)  // qualifier applied to function type has no meaning; ignored
@@ -28,6 +28,7 @@
 #include <injector/injector.hpp>
 #include <injector/hooking.hpp>
 #include <injector/calling.hpp>
+#include <injector/utility.hpp>
 
 namespace modloader
 {

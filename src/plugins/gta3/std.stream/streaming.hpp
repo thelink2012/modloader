@@ -15,6 +15,9 @@
 #include <modloader/util/container.hpp>
 #include "CDirectory.h"
 #include "CStreamingInfo.h"
+
+#include <traits/gta3/sa.hpp>
+
 using namespace modloader;
 
 // Streaming file type
@@ -119,6 +122,8 @@ class CAbstractStreaming
         std::string fbuffer;                        // File buffer to avoid a dynamic allocation everytime we open a model
         std::list<const modloader::file*> imgFiles; // List of img files imported with Mod Loader
 
+        TraitsSA traits;                            // Game specific info
+
     public:
         // Basic types
         using id_t      = uint32_t;     // should have sizeof(int) to allow -1 comparision
@@ -209,6 +214,7 @@ class CAbstractStreaming
         // Information for refreshing
         std::map<hash_t, const modloader::file*>        to_import;  // Files to be imported by the refresher --- (null pointer on mapped piece means uninstall)
         bool to_rebuild_player = false;                             // Should rebuild the player?
+        uint32_t newcloth_blocks = 0;                               // On the player rebuilding process, realloc the streaming buffer if necessary because of this clothing item size (in blocks)
 
         // Abstract streaming
         std::list<AbctFileHandle> stm_files;                    // List of abstract files currently open for reading
@@ -217,6 +223,7 @@ class CAbstractStreaming
         CAbstractStreaming();
         ~CAbstractStreaming();
         void Patch();
+        void DataPatch();
 
         // Some analogues to the game CStreaming (may perform some additional work)
         void RequestModel(id_t id, uint32_t flags);
@@ -402,17 +409,38 @@ class CAbstractStreaming
             return this->bIsUpdating;
         }
 
-    private: // Helpers
+    protected: // Helpers
 
         // Helper to avoid duplicate of resources
         template<class FuncT, class ...Args>
-        id_t FindOrRegisterResource(const char* name, const char* extension, FuncT RegisterResource, Args&&... args)
+        id_t FindOrRegisterResource(const char* name, const char* extension, uint32_t base_index, FuncT RegisterResource, Args&&... args)
         {
             char buf[64]; sprintf(buf, "%s.%s", name, extension);
             auto index = this->FindModelFromHash(mhash(buf));
-            if(index != -1) return index;
+            if(index != -1) return index - base_index;
             return RegisterResource(std::forward<Args>(args)...);
         }
+
+        // Updates/Reallocates the streaming buffer on destruction according to the new streaming items added during the object lifetime
+        // Just construct, call AddItem with the sizes in blocks and on destruction it will do the hard work.
+        struct StreamingBufferUpdater
+        {
+            private:
+                uint32_t realStreamingBufferSize;   // Current actual streaming buffer size
+                uint32_t tempStreamingBufSize;      // Temporary (we'll be updating this var) streaming buffer size
+
+            public:
+                StreamingBufferUpdater();
+                ~StreamingBufferUpdater();
+
+                // Tell the streaming buffer updater about a new streaming item size
+                void AddItem(uint32_t sizeInBlocks)
+                {
+                    if(sizeInBlocks > tempStreamingBufSize)
+                        tempStreamingBufSize = sizeInBlocks;
+                }
+        };
+
 };
 
 

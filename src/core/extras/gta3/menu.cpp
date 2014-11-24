@@ -140,6 +140,7 @@ class TheMenu : public AbstractFrontend
 TheMenu::TheMenu()
 {
     mCurrentModsPage = 0;
+    this->fxt.make_samp_compatible();
     this->LoadText();
     this->RegisterMenu();
     this->RegisterEvents();

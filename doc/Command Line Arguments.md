@@ -10,10 +10,11 @@ Mod Loader allows certain command line arguments to get passed to the game execu
             
    __Usage__: `gta_sa.exe -mod grandcarma`
    
-   This will make Mod Loader load *modloader/grandcarma* with priority 80 and other mods at *[IncludeMods]* section of *modloader.ini*, but no other mod gets loaded.
+   This will make Mod Loader load *modloader/grandcarma* with priority 20 and other mods at *[IncludeMods]* section of *modloader.ini*, but no other mod gets loaded.
 
 * -nomods
 
    No modification from *modloader* directory gets loaded when this argument is used.
    
    __Usage__: `gta_sa.exe -nomods`
+   

@@ -19,6 +19,7 @@
 #define	MODLOADER_HPP
 #pragma once
 #include <modloader/modloader.h>
+#include <modloader/util/version_by_date.hpp>
 #include <cstring>
 #include <string>
 
@@ -96,9 +97,6 @@ namespace modloader
     static_assert(sizeof(file) == sizeof(modloader_file_t), "Invalid file inheritance size");
     static_assert(sizeof(plugin) == sizeof(modloader_plugin_t), "Invalid plugin inheritance size");
     
-    
-
-
     /*
         modloader::basic_plugin
             The base for any custom plugin
@@ -139,7 +137,6 @@ namespace modloader
             virtual bool UninstallFile(const file&)=0;      // Uninstalls a file previosly installed
             virtual void Update() {}                        // Updates the state of the plugin after a serie of install/uninstall/reinstall
     };
-    
     
 
     // Binding the C interface to the C++ interface
@@ -240,7 +237,7 @@ namespace modloader
         
             // Mod Loader stuff
             interfc.data    = reinterpret_cast<plugin*>(data);
-            interfc.loader  = data->modloader;
+            interfc.loader  = data->loader;
             interfc.Error   = interfc.loader->Error;
             interfc.Log     = interfc.loader->Log;
             interfc.vLog    = interfc.loader->vLog;
@@ -248,23 +245,9 @@ namespace modloader
     };
 
     /*
-     *  Export plugin object data
+     *  Plugin object data
      */
     extern basic_plugin* plugin_ptr;
-    extern "C" __declspec(dllexport) inline void GetPluginData(modloader_plugin_t* data)
-    {
-        if(plugin_ptr) basic_plugin_wrapper::RegisterPluginData(*plugin_ptr, data);
-    }
-
-    extern "C" __declspec(dllexport) inline void GetLoaderVersion(uint8_t* major, uint8_t* minor, uint8_t* revision)
-    {
-        *major = MODLOADER_VERSION_MAJOR;
-        *minor = MODLOADER_VERSION_MINOR;
-        *revision = MODLOADER_VERSION_REVISION;
-    }
-
-
-
 
     /*
         Implementation of some modloader::file methods
@@ -285,9 +268,25 @@ namespace modloader
     
 
     // You need to use those to register the existence of your plugin
-    #define REGISTER_ML_PLUGIN_PTR(ptr) namespace modloader { modloader::basic_plugin* plugin_ptr = ptr; }
     #define REGISTER_ML_PLUGIN(plugin)  REGISTER_ML_PLUGIN_PTR(&plugin);
     #define REGISTER_ML_NULL()          REGISTER_ML_PLUGIN_PTR(nullptr)
+
+    // Backend for REGISTER_ML_PLUGIN
+    #define REGISTER_ML_PLUGIN_PTR(ptr) namespace modloader {\
+            modloader::basic_plugin* plugin_ptr = ptr;\
+            extern "C" __declspec(dllexport) void GetPluginData(modloader_plugin_t* data)\
+            {\
+                if(plugin_ptr) basic_plugin_wrapper::RegisterPluginData(*plugin_ptr, data);\
+            }\
+            extern "C" __declspec(dllexport) void GetLoaderVersion(uint8_t* major, uint8_t* minor, uint8_t* revision)\
+            {\
+                *major = MODLOADER_VERSION_MAJOR;\
+                *minor = MODLOADER_VERSION_MINOR;\
+                *revision = MODLOADER_VERSION_REVISION;\
+            }\
+        }
+
+
 };
 
 

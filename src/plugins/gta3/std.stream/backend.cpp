@@ -166,7 +166,7 @@ const char* CAbstractStreaming::GetCdStreamPath(const char* filepath_)
     {
         std::string fpath; bool bBreak = false;
         auto filepath = NormalizePath(filepath_);
-        auto filename = &filepath[GetLastPathComponent(filepath)];
+        auto filename = filepath.substr(GetLastPathComponent(filepath));
 
         // Check twice, the first time check for path equality, the second time for filename equality
         for(int i = 0; i < 2 && !bBreak; ++i)
@@ -301,6 +301,9 @@ void CAbstractStreaming::BuildPrevOnCdMap()
 void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
+    
+    // See data.cpp
+    this->DataPatch();
 
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
@@ -441,7 +444,7 @@ void CAbstractStreaming::Patch()
         // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
         make_static_hook<addcol_hook>([this](addcol_hook::func_type AddColSlot, const char*& name)
         {
-            return this->FindOrRegisterResource(name, "col", AddColSlot, name);
+            return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
         });
 
         // The following files are in SA only
@@ -450,13 +453,13 @@ void CAbstractStreaming::Patch()
             // CVehicleRecording do not care about duplicates, but we should
             make_static_hook<addr3_hook>([this](addr3_hook::func_type RegisterRecordingFile, const char*& name)
             {
-                return this->FindOrRegisterResource(name, "rrr", RegisterRecordingFile, name);
+                return this->FindOrRegisterResource(name, "rrr", traits.rrr_start, RegisterRecordingFile, name);
             });
             
             // CStreamedScripts do not care about duplicates but we should
             make_static_hook<addscm_hook>([this](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
             {
-                return this->FindOrRegisterResource(name, "scm", RegisterScript, self, name);
+                return this->FindOrRegisterResource(name, "scm", traits.scm_start, RegisterScript, self, name);
             });
         }
     }
@@ -492,7 +495,7 @@ void CAbstractStreaming::Patch()
         }
 
         // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
-        static void* pCreateFileForCdStream = &CreateFileForCdStream;
+        static void* pCreateFileForCdStream = (void*) &CreateFileForCdStream;
         static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);  // Used on the obfuscated executable
 
         if(gvm.IsSA() && gvm.IsHoodlum())

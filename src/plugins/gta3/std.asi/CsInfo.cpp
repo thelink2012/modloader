@@ -59,22 +59,19 @@ ThePlugin::CsInfo::CsInfo(const modloader::file* file) : file(file)
  *  Returns true if it is an cleo script and sets version for the proper version
  *  Returns false if it is not an cleo script and sets version to CLEO_VER_NONE
  */
-bool ThePlugin::CsInfo::GetVersionFromExtension(const char* p, char& version)
+bool ThePlugin::CsInfo::GetVersionFromExtension(const char* ext, char& version)
 {
-    // Checks if extension starts with 'cs' or 'clo' (dose leaks)
-    if(!_strnicmp(p, "cs", 2) || !_strnicmp(p, "clo", 3))
+    if(!_strnicmp(ext, "cs", 2))
     {
         // Checks if there's no compatibility version on the extension
-        if(p[2] == 0)
+        if(ext[2] == 0)
         {
-            // Nope, no compatibility
             version = CLEO_VER_NONE;
             return true;
         }
-        else if(p[2] > 0 && p[3] == 0)  // Check if there's a compatibility version
+        else if(ext[2] > 0 && ext[3] == 0)  // Check if there's a compatibility version
         {
-            // Yep, get it
-            version = tolower(p[2]);
+            version = tolower(ext[2]);
             return true;
         }
     }

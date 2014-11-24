@@ -43,7 +43,7 @@ REGISTER_ML_PLUGIN(::scr_spr_plugin);
 const ScriptSpritesPlugin::info& ScriptSpritesPlugin::GetInfo()
 {
     static const char* extable[] = { "txd", 0 };
-    static const info xinfo      = { "std.sprites", "R0.1", "LINK/2012", 49, extable };
+    static const info xinfo      = { "std.sprites", get_version_by_date(), "LINK/2012", 51, extable };
     return xinfo;
 }
 
@@ -68,7 +68,7 @@ bool ScriptSpritesPlugin::OnStartup()
             filename = &filepath[GetLastPathComponent(filename)];
 
             // Find replacement for sprite dictionary at filepath
-            auto it = dictionaries.find(filename);
+            auto it = dictionaries.find(tolower(filename));
             if(it != dictionaries.end()) filepath = it->second->filepath();
 
             // Jump to the original call to LoadTxd

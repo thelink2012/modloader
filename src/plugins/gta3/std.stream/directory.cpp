@@ -51,14 +51,14 @@ static void PerformDirectoryRead(size_t size,
     gf_hook gf; // Register Entry
 
     // Open a null but valid file handle, so it can be closed (fclose) without any problem
-    nf = make_function_hook2<nf_hook>([](nf_hook::func_type OpenFile, const char*&, const char*& mode)
+    nf = make_function_hook<nf_hook>([](nf_hook::func_type OpenFile, const char*&, const char*& mode)
     {
         return OpenFile(modloader::szNullFile, mode);
     });
 
     if(gvm.IsSA())  // Only SA needs such thing as a counter, III/VC uses EOF as end of entries indicator
     {
-        cf = make_function_hook2<cf_hook>([&size](cf_hook::func_type, void*&, void*& buf, size_t&)
+        cf = make_function_hook<cf_hook>([&size](cf_hook::func_type, void*&, void*& buf, size_t&)
         {
             *reinterpret_cast<size_t*>(buf) = size;
             return sizeof(size_t);
@@ -66,7 +66,7 @@ static void PerformDirectoryRead(size_t size,
     }
 
     // Fills a directory entry
-    rf = make_function_hook2<rf_hook>([&ReadEntry](rf_hook::func_type, void*&, void*& buf_, size_t&)
+    rf = make_function_hook<rf_hook>([&ReadEntry](rf_hook::func_type, void*&, void*& buf_, size_t&)
     {
         auto& buf = *reinterpret_cast<DirectoryInfo*>(buf_);
         if(!ReadEntry(buf))
@@ -79,7 +79,7 @@ static void PerformDirectoryRead(size_t size,
     });
 
     // Registers a special entry
-    sf = make_function_hook2<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, DirectoryInfo*& entry)
+    sf = make_function_hook<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, DirectoryInfo*& entry)
     {
         // Tell the callback about this registering
         if(RegisterSpecialEntry) RegisterSpecialEntry(*entry);
@@ -90,7 +90,7 @@ static void PerformDirectoryRead(size_t size,
     });
 
     // Registers a normal entry
-    gf = make_function_hook2<gf_hook>([&RegisterEntry](gf_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+    gf = make_function_hook<gf_hook>([&RegisterEntry](gf_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
     {
         char r = GetCdPosnAndSize(model, pOffset, pSize);
         if(RegisterEntry) r = (char) RegisterEntry(*model, !!r);    // Override function result
@@ -110,7 +110,7 @@ void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDir
 {
     using namespace std::placeholders;
     typedef function_hooker<0x5B8310, void(const char*, int)> fetchcd_hook;
-    auto fetcher = make_function_hook2<fetchcd_hook>(std::bind(&CAbstractStreaming::FetchCdDirectory, this, std::ref(cd_dir), _2, _3));
+    auto fetcher = make_function_hook<fetchcd_hook>(std::bind(&CAbstractStreaming::FetchCdDirectory, this, std::ref(cd_dir), _2, _3));
     return LoadCdDirectories();
 }
 
@@ -121,8 +121,23 @@ void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDir
  */
 void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, const char*& filename_, int id)
 {
+    static bool isSAMP = gvm.IsSA() && GetModuleHandleA("samp");
     auto filename = GetCdStreamPath(filename_);
+    auto fopen  = std::fopen;
+    auto fread  = std::fread;
+    auto fclose = std::fclose;
 
+    // SAMP does something in the backs of fopen/fread/fclose, for example it opens some dummy script.img when requested
+    // to open it, so it reads dummy scripts. Well, let's follow SAMP, use original game funcs.
+    if(isSAMP)
+    {
+        // SAMP works in 1.0US only, so we don't care about address translations here
+        fopen  = raw_ptr(0x8232D8).get();   // _fopen
+        fread  = raw_ptr(0x823521).get();   // _fread
+        fclose = raw_ptr(0x82318B).get();   // _fclose
+    }
+
+    // Do actual work
     if(FILE* f = fopen(filename, "rb"))
     {
         uint32_t count = -1;
@@ -220,9 +235,8 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
     auto it = files.begin();
     auto curr = it;
     
-    // We need those temp vars, don't even dare to remove them
-    auto realStreamingBufferSize = bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
-    auto tempStreamingBufSize    = realStreamingBufferSize;
+    // Updates the streaming buffer size after the addition of new streaming items
+    StreamingBufferUpdater bufup;
 
     // Streaming bus must be empty before this operation
     if(this->bHasInitializedStreaming)
@@ -237,8 +251,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
             FillDirectoryEntry(entry, it->get()->filename(), 0, it->get()->size);
 
             // Check out if we're in the bounds of the streaming buffer
-            if(entry.m_usSize > tempStreamingBufSize)
-                tempStreamingBufSize = entry.m_usSize;
+            bufup.AddItem(entry.m_usSize);
 
             // Advance........
             curr = it++;
@@ -262,40 +275,9 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
 
     // Read the custom cd directory
     PerformDirectoryRead(files.size(), std::bind(LoadCdDirectory2, nullptr, 0), ReadEntry, RegisterSpecialEntry, RegisterEntry);
-
-    // Right, so, if the streaming has already initialized we may need to resize the streaming buffer because of the recently
-    // inserted entries!
-    if(this->bHasInitializedStreaming)
-    {
-        static const uint32_t align = 2048;
-
-        // Make sure the buffer size is even (we'll divide it by two)
-        if(tempStreamingBufSize & 1) ++tempStreamingBufSize;
-
-        // If the necessary streaming buffer to load that file is bigger than the current buffer size, let's resize the buffer
-        if(tempStreamingBufSize > realStreamingBufferSize)
-        {
-            plugin_ptr->Log("Reallocating streaming buffer from %u bytes to %u bytes.",
-                realStreamingBufferSize * align,
-                tempStreamingBufSize * align);
-
-            // Reallocate the buffer
-            injector::cstd<void(void*)>::call<0x72F4F0>(pStreamingBuffer[0]);                                       // CMemoryMgr::FreeAlign
-            auto* mem = injector::cstd<void*(size_t, size_t)>::call<0x72F4C0>(tempStreamingBufSize * align, align); // CMemoryMgr::MallocAlign
-
-            // Reassign buffer variables
-            streamingBufferSize = tempStreamingBufSize / 2;
-            pStreamingBuffer[0] = mem;
-            pStreamingBuffer[1] = (raw_ptr(mem) + (align * streamingBufferSize)).get();
-        }
-        else
-        {
-            // Fix the streaming buffer size variable, it was previosly broken by the LoadCdDirectory we just used
-            streamingBufferSize = realStreamingBufferSize / 2;
-        }
-    }
-
     plugin_ptr->Log("Abstract cd directory has been loaded.");
+
+    // StreamingBufferUpdater will reallocating the streaming on destruction
 }
 
 
@@ -306,6 +288,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
 /*
  *  CAbstractStreaming::BuildClothesMap
  *      Builds a reference map of models that are clothing items
+ *      This should be called while the streaming hasn't initialized 
  */
 void CAbstractStreaming::BuildClothesMap()
 {
@@ -332,19 +315,25 @@ void CAbstractStreaming::BuildClothesMap()
         this->cloth_dir_sparse_curr = this->cloth_dir_sparse_start;
 
         // Remove items from raw_models into clothes
-        if(!this->bHasInitializedStreaming)
+        if(!this->bHasInitializedStreaming) // Should always evaluate to TRUE!!!!
         {
+            StreamingBufferUpdater bufup;
             for(auto it = this->raw_models.begin(); it != raw_models.end(); )
             {
                 if(this->IsClothes(it->second))
                 {
                     // Take from raw_models and put into clothes
-                    this->ImportCloth(it->second);
+                    if(this->ImportCloth(it->second))
+                        bufup.AddItem(GetSizeInBlocks(it->second->size));
                     it = raw_models.erase(it);
                 }
                 else
                     ++it;
             }
+        }
+        else
+        {
+            plugin_ptr->Log("Warning: CAbstractStreaming::BuildClothesMap called after streaming initialization");
         }
     }
 }
@@ -369,4 +358,65 @@ void CAbstractStreaming::FixClothesDirectory()
     // Add our sparse entries back to the directory
     for(auto& entry : this->sparse_dir_entries)
         injector::thiscall<void(CDirectory*, DirectoryInfo*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
+}
+
+
+
+
+/*
+ *  CAbstractStreaming::StreamingBufferUpdater::StreamingBufferUpdater
+ *      Setups the streaming buffer updater
+ */
+CAbstractStreaming::StreamingBufferUpdater::StreamingBufferUpdater()
+{
+    // We need those temp vars, don't even dare to remove them
+    this->realStreamingBufferSize = streaming.bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
+    this->tempStreamingBufSize    = realStreamingBufferSize;
+}
+
+/*
+ *  CAbstractStreaming::StreamingBufferUpdater::~StreamingBufferUpdater
+ *      Updates the streaming buffer
+ */
+CAbstractStreaming::StreamingBufferUpdater::~StreamingBufferUpdater()
+{
+    // Right, so, if the streaming has already initialized we may need to resize the streaming buffer because of the recently inserted entries!
+    if(streaming.bHasInitializedStreaming)
+    {
+        static const uint32_t align = 2048;
+
+        // Make sure the buffer size is even ('cuz we'll divide it by two)
+        if(tempStreamingBufSize & 1) ++tempStreamingBufSize;
+
+        // If the necessary streaming buffer to load that file is bigger than the current buffer size, let's resize the buffer
+        if(tempStreamingBufSize > realStreamingBufferSize)
+        {
+            // Streaming bus must be empty before reallocating
+            streaming.FlushChannels();
+
+            plugin_ptr->Log("Reallocating streaming buffer from %u bytes to %u bytes.",
+                realStreamingBufferSize * align,
+                tempStreamingBufSize * align);
+
+            // Reallocate the buffer
+            injector::cstd<void(void*)>::call<0x72F4F0>(pStreamingBuffer[0]);                                       // CMemoryMgr::FreeAlign
+            auto* mem = injector::cstd<void*(size_t, size_t)>::call<0x72F4C0>(tempStreamingBufSize * align, align); // CMemoryMgr::MallocAlign
+
+            // Reassign buffer variables
+            streamingBufferSize = tempStreamingBufSize / 2;
+            pStreamingBuffer[0] = mem;
+            pStreamingBuffer[1] = (raw_ptr(mem) + (align * streamingBufferSize)).get();
+        }
+        else
+        {
+            // Fix the streaming buffer size variable, it was previosly broken by the LoadCdDirectory we just used
+            streamingBufferSize = realStreamingBufferSize / 2;
+        }
+    }
+    else
+    {
+        // Streaming not initialized, we can just set the streamingBufferSize variable and let the game take care of the rest
+        if(tempStreamingBufSize > streamingBufferSize)
+            streamingBufferSize = tempStreamingBufSize;
+    }
 }

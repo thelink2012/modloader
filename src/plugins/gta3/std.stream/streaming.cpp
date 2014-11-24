@@ -32,9 +32,9 @@ CAbstractStreaming::~CAbstractStreaming()
  */
 CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
 {
-    lazy_object<0x5B8AFC, CStreamingInfo*> max_InfoForModel;
+    using max_InfoForModel = lazy_object<0x5B8AFC, CStreamingInfo*>;
     CStreamingInfo* info = &ms_aInfoForModel[id];
-    return (info < max_InfoForModel.get()? info : nullptr);
+    return (info < max_InfoForModel::get()? info : nullptr);
 }
 
 /*
@@ -167,6 +167,8 @@ bool CAbstractStreaming::InstallFile(const modloader::file& file)
         }
         else
         {
+            auto size_blocks = GetSizeInBlocks(file.size);
+            this->newcloth_blocks   = size_blocks > newcloth_blocks? size_blocks : newcloth_blocks;
             this->to_rebuild_player = true;
             return this->ImportCloth(&file);
         }
@@ -285,7 +287,6 @@ void CAbstractStreaming::QuickImport(id_t index, const modloader::file* file, bo
     // Register the existence of such a model and setup info for it
     if(!isCloth) this->RegisterModelIndex(file->filename(), index);
     this->SetInfoForModel(index, 0, GetSizeInBlocks(file->size));
-    // TODO remove nextOnCd that references this index
 }
 
 /*
@@ -316,6 +317,35 @@ bool CAbstractStreaming::IsClothes(const modloader::file* file)
             return true;    // Forced clothes
         else if(!this->indices.count(file->hash) && this->clothes_map.count(file->hash))
             return true;    // Not present in standard indices but in clothes map
+        else if(!strcmp(file->filename(), "coach.dff"))
+        {
+            // Coach is both a clothing item and a vehicle, what is up with this file?
+            // If the number of Clump sections on the RwStream is greater than 1, it's a clothing item.
+            if(auto f = fopen(file->fullpath().c_str(), "rb"))
+            {
+                struct {
+                    uint32_t id, size, version;
+                } section;
+                int nclumps = 0;
+
+                while(fread(&section, sizeof(section), 1, f) == 1)
+                {
+                    if(section.id == 0x0010)    // Clump
+                    {
+                        ++nclumps;
+                        if(!!fseek(f, section.size, SEEK_CUR))
+                            break;
+                    }
+                    else break;
+                }
+
+                fclose(f);
+
+                // If more than one clump in the RwStream, it's a clothing item
+                if(nclumps > 1)
+                    return true;
+            }
+        }
     }
     return false;
 }
@@ -323,12 +353,17 @@ bool CAbstractStreaming::IsClothes(const modloader::file* file)
 /*
  *  CAbstractStreaming::ImportCloth
  *      Imports the specified clothing item
+ *      !!!!! Notice that importing a clothing item doesn't contribute to the streaming buffer, please use
+ *      'StreamingBufferUpdater' manually to do so !!!!
  */
 bool CAbstractStreaming::ImportCloth(const modloader::file* file)
 {
     if(auto entry = FindClothEntry(file->hash))
     {
-        // Return true only if we hadn't any clothing like that
+        // Every cloth import should go through this code path....
+        // The else condition calls this function again so it goes by this path
+
+        // Allow import only if we don't have any clothing like that installed
         return this->clothes.emplace(entry->m_dwFileOffset, file).second;
     }
     else if(true)

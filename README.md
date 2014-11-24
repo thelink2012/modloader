@@ -18,35 +18,44 @@ It certainlly is very helpful for developers, they don't have to be messing with
 This is a open source project, so, feel free to learn and contribute!
 
 
-### Compiling
+### Compiling and Installing
 
 If you are building from the source code, it is very simple to compile. You'll need the following:
 
-+ [CMake](http://www.cmake.org/) 2.8 or greater
-+ An C++11 compiler, tested with:
++ [Premake](http://industriousone.com/premake/download) 5 *(pre-built executable available in this repository root)*
++ An C++11 compiler, tested under:
     - [Visual Studio](http://www.visualstudio.com/downloads) 2013 or greater
-    - [MinGW](http://mingw-w64.sourceforge.net/download.php) 4.8.2 or greater *(32 bits, SJLJ exception handling is prefered)*
+    - [MinGW](http://mingw-w64.sourceforge.net/download.php) 4.8.2 or greater
 
 
-Then, in a terminal _(cmd.exe on Windows)_ go into the base source directory and run the commands:
+Then, in a command-line shell go into the repository root directory and run the commands:
 
-    mkdir build
-    cd build
-    cmake ../
-    
-This will generate a project or make file for your target at the *build* folder.
-    
-To build and install you should do the following
+ + __For Visual Studio__:
+ 
+        premake5 vs2013
 
- + __For Visual Studio__: Open the generated solution file (*.sln*), setup it and build
+    then you can compile the generated project in the build directory
+
  + __For MinGW__:
  
+        premake5 gmake
         cd build
-        mingw32-make
-        mingw32-make install "DESTDIR=C:/Program Files (x86)/Rockstar Games/GTA San Andreas"
+        mingw32-make CC=gcc
+        cd ..
 
-    ...replacing the path after `DESTDIR=` with your game directory.
 
+After such, you can install the generated binaries into your game directory by running
+
+    premake5 install "C:/Program Files (x86)/Rockstar Games/GTA San Andreas"
+
+  ...replacing the path with your game directory.
+
+If you are up to work with the project files you might want the files to be automatically installed everytime you build the solution, to accomplish that you should specify the *--idir=DESTDIR* option to premake5.
+For example:
+ 
+    premake5 vs2013 "--idir=C:/Program Files (x86)/Rockstar Games/GTA San Andreas"
+
+Use *premake5 --help* for more command line options.
 
 ### License
 

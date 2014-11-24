@@ -58,7 +58,8 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // std.text
     if(true)
     {
-        map[0x57A161] = 0x57A161;   // call    _ZN5CText3GetEPKc
+        map[0x57A161] = 0x57A161;   // call    _ZN5CText3GetEPKc                        ; fxtp
+        map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev                      ; fxtp
         map[0x6A0228] = 0x6A0228;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; @CText::Load
         map[0x69FD5A] = 0x69FD5A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; @CText::LoadMissionText
         map[0x57326E] = 0x57326E;   // jz      loc_573313                    ; Check for some menu stuff to avoid reloading text
@@ -156,6 +157,16 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x56E210] = 0x56E210;   // _Z13FindPlayerPedi 
         map[0x5A82C0] = 0x5A82C0;   // _ZN8CClothes13RebuildPlayerEP10CPlayerPedb
         map[0x5A8346] = 0x5A8346;   // push    offset _PlayerClothes                    ; @CClothes::RebuildPlayer
+
+        // COLFILE fix, SA-only
+        map[0x5B4F2E] = 0x5B4F2E;   // call    _ZN9CColModelnwEj
+        map[0x5B4EF4] = 0x5B4EF4;   // call    _ZN8CFileMgr4ReadEiPci ; with the buffer, reading the header
+        map[0x5B4E92] = 0x5B4E92;   // call    _ZN8CFileMgr4ReadEiPci ; after OpenFile
+        map[0x5B4FCC] = 0x5B4FCC;   // call    _ZN8CFileMgr4ReadEiPci ; at the end of the 'do...while'
+        map[0x5B4FA0] = 0x5B4FA0;   // call    _ZN11CFileLoader22LoadCollisionModelVer2EPhjR9CColModelPKc
+        map[0x5B4FB5] = 0x5B4FB5;   // call    _ZN11CFileLoader18LoadCollisionModelEPhR9CColModelPKc
+        map[0x5B4F83] = 0x5B4F83;   // call    _ZN11CFileLoader22LoadCollisionModelVer3EPhjR9CColModelPKc
+        map[0x5B92F9] = 0x5B92F9;   // call    _ZN8CFileMgr9CloseFileEi
     }
 
     // std.bank
@@ -183,7 +194,13 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // traits
     if(true)
     {
-        map[0x5B62CF] = 0x5B62CF;   // -> 4E20h ; TXD Start Index
+        map[0x5B62CF] = 0x5B62CF;   // -> DWORD 4E20h   ; TXD Start Index
+        map[0x5B6314] = 0x5B6314;   // -> DWORD 61A8h   ; COL Start Index
+        map[0x5B6359] = 0x5B6359;   // -> DWORD 62A7h   ; IPL Start Index
+        map[0x5B6396] = 0x5B6396;   // -> DWORD 63A7h   ; Nodes Start Index
+        map[0x5B63C5] = 0x5B63C5;   // -> DWORD 63E7h   ; IFP Start Index
+        map[0x5B63F1] = 0x5B63F1;   // -> DWORD 649Bh   ; RRR Start Index
+        map[0x5B641F] = 0x5B641F;   // -> DWORD 6676h   ; SCM Start Index
         map[0x408897] = 0x408897;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
 
         /*

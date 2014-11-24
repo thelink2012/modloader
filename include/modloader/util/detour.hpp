@@ -58,7 +58,7 @@ namespace modloader
                 static const char* what = Traits::what();
 
                 auto& arg = std::get<pos>(std::forward_as_tuple(args...));
-                std::string fullpath;
+                char fullpath[MAX_PATH];
 
                 // If has transform functor, use it to get new path
                 if(store().transform)
@@ -66,11 +66,11 @@ namespace modloader
 
                 if(!store().path.empty())   // Has any path to override the original with?
                 {
-                    fullpath = std::string(plugin_ptr? plugin_ptr->loader->gamepath : "") + store().path;
-                    
+                    copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, store().path.c_str());
+
                     // Make sure the file exists, if it does, change the parameter
-                    if(GetFileAttributesA(fullpath.data()) != INVALID_FILE_ATTRIBUTES)
-                        arg = fullpath.c_str();
+                    if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)
+                        arg = fullpath;
                 }
 
                 // If the file type is known, log what we're loading

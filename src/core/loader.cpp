@@ -7,12 +7,11 @@
 #include "loader.hpp"
 #include <modloader/util/injector.hpp>
 #include <modloader/util/path.hpp>
-#include <modloader/util/ini.hpp>
+#include <ini_parser/ini_parser.hpp>
 using namespace modloader;
 
 // TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
-// TODO take care of configs and command line on rescan
-// TODO command line is broken
+// TODO take care of configs on rescan
 // TODO ReinstallFile shouldn't Uninstall on failure?
 // TODO ^ think about uninstalling in-game to the next run, what if couldn't uninstall a specific file
 
@@ -114,6 +113,7 @@ void Loader::Startup()
         memset(this, 0, sizeof(modloader_t));
 
         // Initialise configs and counters
+        this->vkRefresh      = VK_F4;
         this->bRunning       = false;
         this->bEnableMenu    = true;
         this->bEnableLog     = true;
@@ -146,9 +146,12 @@ void Loader::Startup()
         MakeSureDirectoryExistA(pluginPath.c_str());
         MakeSureDirectoryExistA(cachePath.c_str());
         
+        // Before loading inis, we should update from the old ini format to the new ini format (ofc only if the ini format is old)
+        this->UpdateOldConfig();
+
         // Load the basic configuration file
         CopyFileA(basicConfigDefault.c_str(), basicConfig.c_str(), TRUE);
-        ReadBasicConfig();
+        this->ReadBasicConfig();
         
         // Check if logging is disabled by the basic config file
         if(!this->bEnableLog)
@@ -225,7 +228,7 @@ void Loader::TestHotkeys()
     static bool currF4 = false; 
 
     // Get current hotkey states
-    currF4 = (GetKeyState(VK_F4) & 0x8000) != 0;
+    currF4 = (GetKeyState(vkRefresh) & 0x8000) != 0;
 
     // Check hotkey states
     if(currF4 && !prevF4)
@@ -244,7 +247,7 @@ void Loader::TestHotkeys()
  */
 void Loader::ReadBasicConfig()
 {
-    modloader::ini data;
+    linb::ini data;
 
     Log("Loading basic config file %s", basicConfig.c_str());
     if(data.load_file(gamePath + basicConfig))
@@ -262,6 +265,8 @@ void Loader::ReadBasicConfig()
                 this->bImmediateFlush = to_bool(pair.second);
             else if(!compare(pair.first, "MaxLogSize", false))
                 this->maxBytesInLog = std::strtoul(pair.second.data(), 0, 0);
+            else if(!compare(pair.first, "RefreshKey", false))
+                this->vkRefresh = std::stoi(pair.second.data(), 0, 0);
         }
     }
     else
@@ -274,7 +279,7 @@ void Loader::ReadBasicConfig()
  */
  void Loader::SaveBasicConfig()
  {
-     modloader::ini ini;
+     linb::ini ini;
      
      auto& config = ini["Config"];
      config["EnableMenu"]           = modloader::to_string(bEnableMenu);
@@ -282,6 +287,7 @@ void Loader::ReadBasicConfig()
      config["EnableLog"]            = modloader::to_string(bEnableLog);
      config["ImmediateFlushLog"]    = modloader::to_string(bImmediateFlush);
      config["MaxLogSize"]           = std::to_string(maxBytesInLog);
+     config["RefreshKey"]           = std::to_string(vkRefresh);
 
      // Log only about failure since we'll be saving every time a entry on the menu changes
      if(!ini.write_file(gamePath + basicConfig))
@@ -324,7 +330,8 @@ void Loader::ParseCommandLine()
 
             if(!_wcsicmp(argname, L"nomods"))
             {
-                mods.SetIgnoreAll(true);
+                mods.SetForceIgnore(true);
+                Log("Command line ignore received (-nomods)");
             }
             else if(!_wcsicmp(argname, L"mod"))
             {
@@ -349,9 +356,7 @@ void Loader::ParseCommandLine()
         }
     }
     
-    //
     LocalFree(argv);
-    //Log("Done reading command line");
 }
 
 /*
@@ -441,7 +446,7 @@ auto Loader::GetPluginsBy(const std::string& extension) -> ref_list<PluginInform
         if(a.priority == b.priority)    // If priorities are equal, check for extension!
         {
             auto it = this->extMap.find(extension);
-            if(it != extMap.end())
+            if(it != extMap.end())  // handleabe extension should have priority over other extensions
             {
                 bool ca = contains(it->second, a);
                 bool cb = contains(it->second, b);
@@ -455,4 +460,71 @@ auto Loader::GetPluginsBy(const std::string& extension) -> ref_list<PluginInform
     // Sort and return
     std::sort(list.begin(), list.end(), pred);
     return list;
+}
+
+
+/*
+ *  Loader::UpdateOldConfig
+ *       Updates the old ini config (from 0.1.15) into the new ini config format (as from 0.2.1)
+ */
+void Loader::UpdateOldConfig()
+{
+    linb::ini old, newer;
+
+    struct keydata { const char *section, *key; };
+
+    // Loader independent config, as loaded by this->LoadBasicConfig(), as of 0.2.0 those configs are part of a different ini
+    // So just translate them to the new ini file
+    auto UpdateBasicConfig = [&]()
+    {
+        for(auto& pair : old["CONFIG"])
+        {
+            if(!compare(pair.first, "ENABLE_PLUGINS", false))
+                this->bEnablePlugins = to_bool(pair.second);
+            else if(!compare(pair.first, "LOG_ENABLE", false))
+                this->bEnableLog = to_bool(pair.second);
+            else if(!compare(pair.first, "LOG_IMMEDIATE_FLUSH", false))
+                this->bImmediateFlush = to_bool(pair.second);
+        }
+        this->SaveBasicConfig();
+    };
+
+    // Takes the key from the old ini and puts in the new ini with new formating
+    auto UpdateKey = [&](const keydata& oldkey, keydata& newkey)
+    {
+        if(old[oldkey.section].count(oldkey.key))
+            newer[newkey.section].emplace(newkey.key, old[oldkey.section][oldkey.key]);
+    };
+
+    // Takes a section from the old ini and puts in the new ini with new formating
+    auto UpdateSection = [&](const keydata& oldsec, keydata& newsec)
+    {
+        if(old.count(oldsec.section))
+            newer[newsec.section] = old[oldsec.section];
+    };
+
+    if(old.load_file(gamePath + "/modloader/modloader.ini"))
+    {
+        if(old.count("CONFIG") && old.count("PRIORITY"))
+        {
+            this->Log("Found old modloader.ini, updating to newer version");
+
+            // Updates key-values to newer version
+            UpdateBasicConfig();
+            UpdateSection(keydata { "PRIORITY" }, keydata { "Priority" });
+            UpdateSection(keydata { "EXCLUDE_FILES" }, keydata { "IgnoreFiles" });
+            UpdateSection(keydata { "INCLUDE_MODS" }, keydata { "IncludeMods" });
+            UpdateKey(keydata { "CONFIG", "IGNORE_ALL" },  keydata { "Config", "IgnoreAllFiles" });
+            UpdateKey(keydata { "CONFIG", "EXCLUDE_ALL" }, keydata { "Config", "ExcludeAllMods" });
+
+            // Reverse the priority since as from 0.2.1 it's '100 is greater, 1 is lower'
+            for(auto& kv : newer["Priority"])
+            {
+                auto pr = std::stoi(kv.second);
+                kv.second = std::to_string(pr > 0 && pr <= 100? 101 - pr : pr);
+            }
+
+            newer.write_file(gamePath + "modloader/" +  folderConfigFilename);
+        }
+    }
 }

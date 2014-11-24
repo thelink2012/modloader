@@ -14,6 +14,7 @@ using namespace modloader;
 static const uint64_t hash_mask   = 0x00000000FFFFFFFF;     // Mask for the hash on the behaviour
 static const uint64_t is_fxt_mask = 0x0000000100000000;     // Mask for is_fxt on the behaviour
 
+
 /*
  *  The plugin object
  */
@@ -49,7 +50,7 @@ REGISTER_ML_PLUGIN(::text_plugin);
 const TextPlugin::info& TextPlugin::GetInfo()
 {
     static const char* extable[] = { "gxt", "fxt", 0 };
-    static const info xinfo      = { "std.text", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.text", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 
@@ -61,6 +62,8 @@ bool TextPlugin::OnStartup()
 {
     if(gvm.IsSA())
     {
+        this->fxt.make_samp_compatible();
+
         // Returns the overriden gxt file path (relative to gamedir)
         auto transformer = [this](std::string filename)
         {
@@ -109,6 +112,7 @@ int TextPlugin::GetBehaviour(modloader::file& file)
     }
     return MODLOADER_BEHAVIOUR_NO;
 }
+
 
 /*
  *  TextPlugin::InstallFile

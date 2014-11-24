@@ -1,4 +1,4 @@
-﻿;
+;
 ;           Mod Loader Per-Folder Config File -- Inherits from parent
 ;
 [Config]
@@ -8,16 +8,11 @@ ExcludeAllMods = false            ; Excludes all mods from being loaded except t
 ; --------------------------> Exclusion/Inclusion <------------------------------
 
 [Priority]
-;
-; Define mods priority here
-; The priority must be from 1 to 100, where 100 has the highest and 1 has the lowest priority
-; The priority 0 will make the mod not to load but it's prefered to use the [IgnoreMods] section
-; By default each mod has the priority of 50, and mods received by command line will have a priority of 80
-; Just put the mod folder name followed by '=' and it's priority (e.g. MyMod=50)
-;
-; PS¹: Files follows a simple overriding rule, so for example, if a mod A has priority 100 and mod B has priority 1 and both has a LOADSCS.txd
-;      the LOADSCS.txd from mod B will be used, because LOADSCS.txd from A was loaded then B was loaded, overriding the LOADSCS from A
-;
+; Defines mods priority (which mods should go into effect if both replaces the same file)
+; The priority should be between 1 and 100, where 100 overrides 1, additionally priority 0 makes be ignored (just like IgnoreMods)
+; The default priority is 50!
+;MyMod=50
+
 
 [IgnoreMods]
 ; Put mods to be ignored here (this is not a glob)

@@ -13,8 +13,6 @@
 using namespace modloader;
 
 // TODO THIS PLUGIN NEEDS REVISION -- AFTER THE CORE CHANGE MOST OF THE CODE HERE IS LEGACY
-// TODO LOOK AT THIS LOOKS LIKE IT'S NOT WORKING CORRETLY WITH ASIS WITH EXTERNAL FILES (AGAIN), TRIED WITH "Project 2DFX 1.6"
-
 
 
 // <normalized_asi_name, file_size>
@@ -35,7 +33,7 @@ REGISTER_ML_PLUGIN(::plugin);
 const ThePlugin::info& ThePlugin::GetInfo()
 {
     static const char* extable[] = { "asi", "dll", "cleo", "cm", "cs", "cs3", "cs4", "cs5", 0 };
-    static const info xinfo      = { "std.asi", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.asi", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 

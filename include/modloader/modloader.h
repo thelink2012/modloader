@@ -32,7 +32,7 @@ extern "C" {
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         2
-#define MODLOADER_VERSION_REVISION      0
+#define MODLOADER_VERSION_REVISION      1
 #ifdef NDEBUG
 #define MODLOADER_VERSION_ISDEV         0
 #else
@@ -256,7 +256,7 @@ typedef struct modloader_plugin_t
         uint8_t major, minor, revision, _pad0;
         void *pThis, *pModule;                      /* this pointer and HMODULE */
         const char *name, *author, *version;        /* Plugin info */
-        modloader_t* modloader;                     /* Modloader pointer  */
+        modloader_t* loader;                        /* Modloader pointer  */
         uint8_t has_started;                        /* Determines whether the plugin has started up successfully */
         uint8_t _pad1[3];                           /* Reserved */
     };
