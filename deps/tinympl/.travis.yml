@@ -1,0 +1,47 @@
+language: cpp
+compiler:
+  - gcc
+  - clang
+before_install:
+  - lsb_release -c;
+  - lsb_release -r;
+  - sudo apt-add-repository 'deb http://archive.ubuntu.com/ubuntu quantal main universe multiverse restricted';
+  - sudo apt-add-repository 'deb http://archive.ubuntu.com/ubuntu raring main universe multiverse restricted';
+  - sudo apt-add-repository 'deb http://archive.ubuntu.com/ubuntu saucy main universe multiverse restricted';
+  - sudo apt-add-repository 'deb http://archive.ubuntu.com/ubuntu trusty main universe multiverse restricted';
+  - sudo apt-get -y update;
+
+install:
+  - sudo apt-get --no-install-recommends -y install g++;
+  - sudo apt-get --no-install-recommends -y install clang;
+  - if (clang --version | grep 'clang version 3\.3'); then
+      sudo apt-get --no-install-recommends -y install libclang-common-3.3-dev;
+    fi
+  - sudo apt-get --no-install-recommends -y install cmake;
+  - sudo apt-get --no-install-recommends -y install libboost-test-dev
+  - sudo apt-get -y autoremove --purge;
+# Uncomment the followint to enable coveralls support.
+#  - sudo pip install cpp-coveralls;
+
+before_script:
+  - $CXX --version;
+  - $CXX -dumpversion;
+
+script:
+  - cmake . && make && make test;
+    
+# Uncomment the following block to enable code coverage support.
+#after_success:
+#    GCOV=gcov-`$CXX -dumpversion | sed -e 's/^\([0-9]\+\.[0-9]\+\).*$/\1/'`;
+#    which $GCOV || GCOV="";
+#    echo "gcov: $GCOV";
+#    if [ ! -z "$GCOV" ]; then
+#      coveralls --gcov $GCOV --gcov-options '\-p \-l' -b . -r . -e .git
+#                 -e CMakeFiles -e docs -e /usr;
+#    fi
+
+# Use after_failure to reveal *.log files that were generated during config
+# phase and so on. We should print to console as much information as we can,
+# to quickly find the cause of a failure.
+#after_failure:
+#  - ...
