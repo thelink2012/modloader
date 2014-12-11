@@ -9,6 +9,7 @@
 #include "CDirectory.h"
 #include <modloader/util/injector.hpp>
 #include <modloader/util/path.hpp>
+#include <set>
 using namespace modloader;
 
 extern "C"
@@ -36,7 +37,11 @@ extern "C"
     void RegisterNextModelRead(int id)
     {
         iNextModelBeingLoaded = id;
-        streaming.MakeSureModelIsOnDisk(id);
+        if(streaming.DoesModelNeedsFallback(id))    // <- make sure the resource hasn't been deleted from disk
+        {
+            plugin_ptr->Log("Resource id %d has been deleted from disk, falling back to stock model.", id);
+            streaming.FallbackResource(id, true);   // forceful but safe since we are before info setup in RequestModelStream
+        }
     }
 
     static HANDLE __stdcall CreateFileForCdStream(
@@ -256,27 +261,24 @@ void CAbstractStreaming::CloseModel(AbctFileHandle* file)
 }
 
 /*
- *  CAbstractStreaming::MakeSureModelIsOnDisk
+ *  CAbstractStreaming::DoesModelNeedsFallback
  *      If the specified model id is under our control, make entirely sure it's present on disk.
- *      If it isn't, we'll fallback to the original mode on img files.
+ *      If it isn't, return false for fallback.
  */
-void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
+bool CAbstractStreaming::DoesModelNeedsFallback(id_t index)
 {
     auto it = imports.find(index);
     if(it != imports.end())
     {
         auto& m = it->second;
-        if(m.isFallingBack == false)    // If already falling back, don't check again
+        if(m.isFallingBack == false)    // If already falling back, don't check for file existence again
         {
             // If file isn't on disk we should fall back to the stock model
             if(!IsPath(m.file->fullpath(fbuffer).c_str()))
-            {
-                plugin_ptr->Log("Model file \"%s\" has been deleted, falling back to stock model.", m.file->filepath());
-                this->RestoreInfoForModel(index);
-                m.isFallingBack = true;
-            }
+                return true;
         }
     }
+    return false;
 }
 
 

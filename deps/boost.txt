@@ -1,0 +1,7 @@
+Boost.Variant is required by datalib
+Notice boost/ doesn't contain the entire boost library but boost::variant and its dependencies.
+
+The boost version on here is 1.57.0
+
+
+

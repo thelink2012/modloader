@@ -50,10 +50,12 @@ void* injector::address_manager::translator(void* p_)
         char buf[128];
         sprintf(buf, "Warning: Could not translate address 0x%p", p.get<void>());
 
-        if(modloader::plugin_ptr)
-            modloader::plugin_ptr->Log(buf);
-        else if(false)
-            MessageBoxA(0, buf, injector::game_version_manager::PluginName, 0);
+#if NDEBUG  // non intrusive, for users
+        if(modloader::plugin_ptr) modloader::plugin_ptr->Log(buf);
+#else       // intrusive, coder must see
+        if(modloader::plugin_ptr) modloader::plugin_ptr->Error(buf);
+        else if(true) MessageBoxA(0, buf, injector::game_version_manager::PluginName, 0);
+#endif
     }
     
     return result.get();

@@ -1,3 +1,7 @@
+v0.2.2 (In Dev)
+------------------------
+
+
 v0.2.1 (Nov 23 2014)
 ------------------------
  * The COLFILE command for gta.dat works completly fine now *(SA bug fix)*

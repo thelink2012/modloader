@@ -193,6 +193,10 @@ solution "modloader"
         "deps/injector/include",
         "deps/ini_parser/include",
         "deps/fxt_parser/include",
+        "deps/datalib/include",
+        "deps/type_wrapper/include",
+        "deps/boost",
+        "deps/tinympl",
         "src/util",
         "src/traits"
     }

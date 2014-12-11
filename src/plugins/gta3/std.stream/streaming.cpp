@@ -47,6 +47,15 @@ bool CAbstractStreaming::IsModelOnStreaming(id_t id)
 }
 
 /*
+ *  CAbstractStreaming::IsModelAvailable
+ *      Checks if the specified model is available to use (i.e. already loaded).
+ */
+bool CAbstractStreaming::IsModelAvailable(id_t id)
+{
+    return InfoForModel(id)->load_status == 1;
+}
+
+/*
  *  CAbstractStreaming::RequestModel
  *      Requests a resource into the streaming, essentially loading it
  *      Notice the model will not be available right after the call, it's necessary to wait for it.

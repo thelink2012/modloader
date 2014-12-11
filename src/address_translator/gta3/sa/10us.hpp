@@ -132,6 +132,8 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B63E8] = 0x5B63E8;   // call    _ZN17CVehicleRecording21RegisterRecordingFileEPKc
         map[0x5B6419] = 0x5B6419;   // call    _ZN16CStreamedScripts14RegisterScriptEPKc
         map[0x4D565A] = 0x4D565A;   // call    _RwStreamOpen    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
+        map[0x40E2C5] = 0x40E2C5;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii
+        map[0x40E1BE] = 0x40E1BE;   // call    _ZN10CStreaming22FinishLoadingLargeFileEPci
 
         map[0xB74490] = 0xB74490;   // CPool<> *CPools::ms_pPedPool
         map[0xB74494] = 0xB74494;   // CPool<> *CPools::ms_pVehiclePool
