@@ -6,17 +6,8 @@
 #ifndef CAECUSTOMBANKLOADER_HPP
 #define CAECUSTOMBANKLOADER_HPP
 #pragma once
-
-#include <cstdint>
-#include <map>
-#include <modloader/modloader.hpp>
-
-
-#include <CWavePCM.hpp>
-#include <modloader/util/hash.hpp>
-#include <modloader/util/container.hpp>
-#include <set>
-
+#include <stdinc.hpp>
+#include "CWavePCM.hpp"
 
 class CAECustomBankLoader;
 

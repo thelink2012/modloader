@@ -103,7 +103,7 @@ namespace modloader
             if(case_sensitive)
                 equal = (*str++ == *prefix++);
             else
-                equal = (tolower(*str++) == tolower(*prefix++));
+                equal = (::tolower(*str++) == ::tolower(*prefix++));
             
             if(!equal) return false;
         }
@@ -250,7 +250,7 @@ namespace modloader
 
 
     template<class MapT>
-    inline void EraseFromMap(MapT& map, const typename MapT::mapped_type& value)
+    inline void erase_from_map(MapT& map, const typename MapT::mapped_type& value)
     {
         for(auto it = map.begin(); it != map.end(); ++it)
         {

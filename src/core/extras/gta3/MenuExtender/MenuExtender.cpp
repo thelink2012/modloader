@@ -4,7 +4,7 @@
  * Licensed under zlib license, see LICENSE at top level directory.
  *
  */
-
+#include <stdinc.hpp>   // Mod Loader pch
 #include <cassert>
 #include <algorithm>
 #include "MenuExtender.h"

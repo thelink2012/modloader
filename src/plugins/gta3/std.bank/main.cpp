@@ -3,12 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include <modloader/modloader.hpp>
-#include <modloader/util/hash.hpp>
-#include <modloader/util/path.hpp>
-#include <modloader/gta3/gta3.hpp>
-#include "CAECustomBankLoader.hpp"
-#include "CWavePCM.hpp"
+#include <stdinc.hpp>
 
 // TODO cue points for sound loop offset
 

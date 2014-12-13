@@ -4,9 +4,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
-#include "streaming.hpp"
-#include <modloader/util/injector.hpp>
-#include <modloader/util/container.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 CAbstractStreaming streaming;
@@ -205,7 +203,7 @@ bool CAbstractStreaming::UninstallFile(const modloader::file& file)
         if(!IsClothes(&file))
         {
             // Remove special model (if it is a special model)
-            EraseFromMap(special, &file);     
+            erase_from_map(special, &file);     
 
             // Mark the specified file [hash] to be vanished
             this->to_import[file.hash] = nullptr;
@@ -268,7 +266,7 @@ void CAbstractStreaming::UnimportModel(id_t index)
 {
     // Remove special model related to this index if possible
     auto it = imports.find(index);
-    if(it != imports.end()) EraseFromMap(special, it->second.file);
+    if(it != imports.end()) erase_from_map(special, it->second.file);
 
     // Restore model information to stock and erase it from the import list
     this->RestoreInfoForModel(index);

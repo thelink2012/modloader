@@ -7,11 +7,7 @@
  *      Sprites are placed at "models/txd" folder
  *
  */
-#include <map>
-#include <modloader/modloader.hpp>
-#include <modloader/gta3/gta3.hpp>
-#include <modloader/util/hash.hpp>
-#include <modloader/util/path.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 

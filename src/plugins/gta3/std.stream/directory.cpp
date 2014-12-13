@@ -4,10 +4,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include <windows.h>
-#include "streaming.hpp"
-#include "CDirectory.h"
-#include <modloader/util/path.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 // Hooks and other util stuff

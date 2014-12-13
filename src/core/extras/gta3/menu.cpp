@@ -5,11 +5,9 @@
  *      Mod Loader In-Game Menu
  *
  */
-#include <memory>
-#include "../../loader.hpp"
+#include <stdinc.hpp>
 #include "menu.hpp"
-#include <modloader/util/injector.hpp>
-#include <modloader/util/fxt.hpp>
+#include <modloader/gta3/fxt.hpp>
 using namespace modloader;
 
 // TODO what do to about sub mod loader folders on the menu?

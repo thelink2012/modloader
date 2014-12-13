@@ -6,12 +6,15 @@
  *      Low-level stuff for Microsoft Visual Studio
  *
  */
+#include <stdinc.hpp>
+
+extern "C" {
 
 /* Hooks and sub calls */
 extern void* CallGetAbstractHandle(void*);
 
 /* vars */
-extern void* ms_aInfoForModel;
+//extern void* ms_aInfoForModel;
 extern void* (*ColModelPool_new)(int);
 
 /* funcs */
@@ -78,4 +81,8 @@ void __declspec(naked) HOOK_NewFile()
         ret
     }
 }
+
+
+
+}   // extern "C"
 

@@ -3,8 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include "loader.hpp"
-#include <modloader/util/hash.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 /*

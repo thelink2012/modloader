@@ -4,7 +4,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
-#include "streaming.hpp"
+#include <stdinc.hpp>
 
 extern "C"
 {

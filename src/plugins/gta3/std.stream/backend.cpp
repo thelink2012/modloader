@@ -4,12 +4,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include "streaming.hpp"
-#include "CdStreamInfo.h"
-#include "CDirectory.h"
-#include <modloader/util/injector.hpp>
-#include <modloader/util/path.hpp>
-#include <set>
+#include <stdinc.hpp>
 using namespace modloader;
 
 extern "C"

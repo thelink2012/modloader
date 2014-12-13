@@ -3,9 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include "loader.hpp"
-#include <shlwapi.h>
-#include <ini_parser/ini_parser.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 // TODO priority set at runtime

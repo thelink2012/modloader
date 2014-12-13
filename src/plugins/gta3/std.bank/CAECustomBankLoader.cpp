@@ -13,15 +13,8 @@
  *  No, it isn't, because the game ends up allocating a temporary buffer of memory when reading the bank from the SFXPak anyway.
  * 
  */
-#include "CAECustomBankLoader.hpp"
-#include "CWavePCM.hpp"
-#include "CAEBankLoader.h"
-#include "Queue.h"
-#include "modloader/util/path.hpp"
-#include <modloader/util/injector.hpp>
-#include <string>
-#include <list>
-#include <map>
+#include <stdinc.hpp>
+
 using namespace modloader;
 
 CAbstractBankLoader banker;

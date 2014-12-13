@@ -4,11 +4,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
-#include "streaming.hpp"
-#include <modloader/util/file.hpp>
-#include <modloader/util/path.hpp>
-#include <modloader/util/injector.hpp>
-#include <modloader/gta3/gta3.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 
@@ -130,8 +126,16 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                 case ResType::StreamedScene:
                 {
                     // Make sure this is a binary IPL by reading the file magic
-                    if(IsFileMagic(file.fullpath().c_str(), "bnry"))
-                        break;
+                    char buf[4];
+                    if(FILE* f = fopen(file.fullpath().c_str(), "rb"))
+                    {
+                        if(fread(buf, 4, 1, f) && !memcmp(buf, "bnry", 4))
+                        {
+                            fclose(f);
+                            break;
+                        }
+                        fclose(f);
+                    }
                     return MODLOADER_BEHAVIOUR_NO;
                 }
 

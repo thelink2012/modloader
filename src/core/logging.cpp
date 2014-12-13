@@ -3,7 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include "loader.hpp"
+#include <stdinc.hpp>
 
 // Not thread-safe
 static FILE* logfile = 0;

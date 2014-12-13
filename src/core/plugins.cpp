@@ -3,9 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include "loader.hpp"
-#include <modloader/util/path.hpp>
-#include <ini_parser/ini_parser.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 // TODO don't call OnShutdown if OnStartup wasn't successful

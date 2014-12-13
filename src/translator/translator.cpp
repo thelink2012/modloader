@@ -4,9 +4,6 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#ifndef ADDRESS_TRANSLATOR_H
-#define	ADDRESS_TRANSLATOR_H
-
 #include <modloader/modloader.hpp>
 #include <modloader/util/injector.hpp>
 #include <map>
@@ -85,15 +82,3 @@ static void init(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         }
     }
 }
-
-
-
-/*
- *  ---------------> Address Tables
- */
-
-
-
-
-#endif
-

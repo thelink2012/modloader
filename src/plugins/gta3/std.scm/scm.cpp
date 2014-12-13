@@ -5,9 +5,7 @@
  *  std.scm -- Standard SCM Loader Plugin for Mod Loader
  *
  */
-#include <modloader/modloader.hpp>
-#include <modloader/util/hash.hpp>
-#include <modloader/gta3/gta3.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 /*

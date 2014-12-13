@@ -3,11 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-
-#include "loader.hpp"
-#include <modloader/util/injector.hpp>
-#include <modloader/util/path.hpp>
-#include <ini_parser/ini_parser.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 // TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
