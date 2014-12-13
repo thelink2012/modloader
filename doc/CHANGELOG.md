@@ -1,6 +1,6 @@
 v0.2.2 (In Dev)
 ------------------------
-
+ * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.
 
 v0.2.1 (Nov 23 2014)
 ------------------------
