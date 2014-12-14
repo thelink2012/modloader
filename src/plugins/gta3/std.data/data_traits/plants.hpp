@@ -1,7 +1,7 @@
 #pragma once
 #include <stdinc.hpp>
 
-struct plants_store_traits : gta3::data_traits
+struct plants_traits : gta3::data_traits
 {
     static const bool is_reversed_kv = false;
     static const bool has_sections = false;
@@ -25,7 +25,7 @@ struct plants_store_traits : gta3::data_traits
     using detour_type = modloader::OpenFileDetour<0x5DD3D1, dtraits>;
 };
 
-using plants_store = gta3::data_store<plants_store_traits, std::map<
+using plants_store = gta3::data_store<plants_traits, std::map<
                         std::pair<std::size_t, int>,
                         data_slice<std::string,
                                   int, int, int, int, int, int, int, int, int, int,

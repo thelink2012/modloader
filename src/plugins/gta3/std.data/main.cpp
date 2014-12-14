@@ -7,18 +7,27 @@
 #include <tuple>
 using namespace modloader;
 
-static const size_t timecyc_dat  = modloader::hash("timecyc.dat");
-static const size_t popcycle_dat = modloader::hash("popcycle.dat");
-static const size_t fonts_dat    = modloader::hash("fonts.dat");
-static const size_t plants_dat   = modloader::hash("plants.dat");
-
-static std::tuple<bool, size_t, uint32_t> files_behv[] = { // CanGetMixed, Hash, Counter
-        std::make_tuple(false,      timecyc_dat,    0u),
-        std::make_tuple(true,       plants_dat,     0u),
+struct files_behv_t
+{
+    bool        canmix;
+    size_t      hash;
+    uint32_t    count;
 };
-static const int canmix_elem    = 0;
-static const int hash_elem      = 1;
-static const int count_elem     = 2;
+
+static files_behv_t files_behv[] = {
+        { false, modloader::hash("timecyc.dat"),    0 },
+        { true,  modloader::hash("plants.dat"),     0 }
+};
+
+static files_behv_t* find_behv(const modloader::file& f)
+{
+    for(auto& item : files_behv)
+    {
+        if(item.hash == f.hash)
+            return &item;
+    }
+    return nullptr;
+}
 
 
 
@@ -39,6 +48,13 @@ const DataPlugin::info& DataPlugin::GetInfo()
 
 
 
+struct timecyc_traits
+{
+    struct dtraits : modloader::dtraits::OpenFile    // detour traits
+    {
+        static const char* what() { return "time cycle properties"; }
+    };
+};
 
 
 /*
@@ -47,7 +63,11 @@ const DataPlugin::info& DataPlugin::GetInfo()
  */
 bool DataPlugin::OnStartup()
 {
+    if(gvm.IsSA())
     {
+        if(!cache.Startup("gta3.std.data"))
+            return false;
+
         // File overrider params
         const auto reinstall_since_start = file_overrider<>::params(true, true, true, true);
         const auto reinstall_since_load  = file_overrider<>::params(true, true, false, true);
@@ -59,12 +79,20 @@ bool DataPlugin::OnStartup()
                 plugin_ptr->Log("Failed to refresh plant manager");
         };
 
-        AddMerger<plants_store>("plants.dat", reinstall_since_load, gdir_refresh(ReloadPlantsDat));
+        auto ReloadTimeCycle = []
+        {
+            injector::cstd<void()>::call<0x05BBAC0>();   // CTimeCycle::Initialise
+            // the are some vars at the end of the function body which should not be reseted while the game runs
+            // doesn't cause serious issues but well... shall we take care of them?
+        };
 
+        AddMerger<plants_store>("plants.dat", true, reinstall_since_load, gdir_refresh(ReloadPlantsDat));
+
+        AddDetour("timecyc.dat", reinstall_since_start, OpenFileDetour<0x5BBADE, timecyc_traits::dtraits>(), gdir_refresh(ReloadTimeCycle));
+
+        return true;
     }
-
-    // TODO create cache
-    return true;
+    return false;
 }
 
 /*
@@ -73,7 +101,7 @@ bool DataPlugin::OnStartup()
  */
 bool DataPlugin::OnShutdown()
 {
-    // TODO remove cache
+    cache.Shutdown(false);  // destroys the cache depending upon if the cache failed at some point
     return true;
 }
 
@@ -102,22 +130,16 @@ int DataPlugin::GetBehaviour(modloader::file& file)
         file.behaviour = SetCounter(file.behaviour, ++count);
         return MODLOADER_BEHAVIOUR_YES;
     }
-    else for(auto& item : files_behv)
+    else if(auto item = find_behv(file))
     {
-        // Iterate on this list of handleable data files and try to detect one
-        // Check the filename hash with this item
-        if(std::get<hash_elem>(item) == file.hash)
-        {
-            // Yeah, we can handle it, setup the behaviour....
-            file.behaviour = SetType(file.hash, Type::Data);
+        file.behaviour = SetType(file.hash, Type::Data);
             
-            // Does this data file can get mixed? If yeah, put a counter on the behaviour, so we can receive many
-            // data files of this same type on Install events
-            if(std::get<canmix_elem>(item))
-                file.behaviour = SetCounter(file.behaviour, ++std::get<count_elem>(item));
+        // Does this data file can get mixed? If yeah, put a counter on the behaviour, so we can receive many
+        // data files of this same type on Install events. Notice the count starts from 1 because 0 is reserved for canmix=false
+        if(item->canmix)
+            file.behaviour = SetCounter(file.behaviour, ++item->count);
 
-            return MODLOADER_BEHAVIOUR_YES;
-        }
+         return MODLOADER_BEHAVIOUR_YES;
     }
     return MODLOADER_BEHAVIOUR_NO;
 }
@@ -134,12 +156,19 @@ bool DataPlugin::InstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        auto m = FindMerger(file.filename());
-        if(m->CanInstall())
+        if(find_behv(file)->canmix)
         {
-            fs.add_file(file.filename(), file.filepath(), &file);
-            ovrefresh.emplace(FindMerger(file.filename()));
-            return true;
+            auto m = FindMerger(file.hash);
+            if(m->CanInstall())
+            {
+                fs.add_file(file.filename(), file.filepath(), &file);
+                ovrefresh.emplace(FindMerger(file.filename()));
+                return true;
+            }
+        }
+        else
+        {
+            return FindMerger(file.hash)->InstallFile(file);
         }
     }
 
@@ -158,11 +187,18 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        auto m = FindMerger(file.filename());
-        if(m->CanInstall())
+        if(find_behv(file)->canmix)
         {
-            ovrefresh.emplace(m);
-            return true;
+            auto m = FindMerger(file.filename());
+            if(m->CanInstall())
+            {
+                ovrefresh.emplace(m);
+                return true;
+            }
+        }
+        else
+        {
+            return FindMerger(file.hash)->ReinstallFile();
         }
     }
 
@@ -180,14 +216,21 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        auto m = FindMerger(file.filename());
-        if(m->CanUninstall())
+        if(find_behv(file)->canmix)
         {
-            if(fs.rem_file(file.filename(), &file))
+            auto m = FindMerger(file.filename());
+            if(m->CanUninstall())
             {
-                ovrefresh.emplace(m);
-                return true;
+                if(fs.rem_file(file.filename(), &file))
+                {
+                    ovrefresh.emplace(m);
+                    return true;
+                }
             }
+        }
+        else
+        {
+            return FindMerger(file.hash)->UninstallFile();
         }
     }
 

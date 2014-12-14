@@ -341,8 +341,11 @@ namespace modloader
     {
         if(!IsDirectoryA(szPath))
         {
-            CreateDirectoryA(szPath, NULL);
-            return FALSE;
+            if(!CreateDirectoryA(szPath, NULL))
+            {
+                if(GetLastError() != ERROR_ALREADY_EXISTS)
+                    return FALSE;
+            }
         }
         return TRUE;
     }

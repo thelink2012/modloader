@@ -88,6 +88,11 @@ class vfs
             return fs.equal_range(normalize(std::move(vpath)));
         }
 
+        void clear()
+        {
+            fs.clear();
+        }
+
 };
 
 

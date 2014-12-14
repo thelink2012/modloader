@@ -2,6 +2,7 @@
 #include <stdinc.hpp>
 #include "datalib.hpp"
 #include "vfs.hpp"
+#include "cache.hpp"
 
 enum class Type
 {
@@ -23,7 +24,7 @@ static const uint32_t count_mask_shf  = type_mask_shf + 3;      // Takes 28 bits
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)
 {
-    return modloader::file::set_mask(uint64_t(hash), hash_mask_base, type_mask_shf, type);
+    return modloader::file::set_mask(uint64_t(hash), type_mask_base, type_mask_shf, type);
 }
 
 inline uint64_t SetCounter(uint64_t behaviour, uint32_t count)
@@ -66,8 +67,10 @@ class DataPlugin : public modloader::basic_plugin
         std::map<size_t, modloader::file_overrider<>> ovmap;
         std::set<modloader::file_overrider<>*> ovrefresh;
 
+        CDataCache cache;
+
         template<class StoreType, class... Args>
-        modloader::file_overrider<>& AddMerger(const std::string& fsfile, const modloader::file_overrider<>::params& params, Args&&... xargs)
+        modloader::file_overrider<>& AddMerger(const std::string& fsfile, bool unique, const modloader::file_overrider<>::params& params, Args&&... xargs)
         {
             using namespace std::placeholders;
             using store_type  = StoreType;
@@ -84,16 +87,31 @@ class DataPlugin : public modloader::basic_plugin
 
             auto& d = ov.GetInjection().cast<detour_type>();
             d.make_call();  // TODO make some way this is called only on install from a file of this kind
-            d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile));
+            d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique));
 
             return ov;
+        }
+
+        // Adds a detour for the file with the specified hash to the overrider subsystem
+        template<class ...Args>
+        modloader::file_overrider<>& AddDetour(const std::string& fsfile, Args&&... args)
+        {
+            return ovmap.emplace(std::piecewise_construct,
+                std::forward_as_tuple(modloader::hash(fsfile)),
+                std::forward_as_tuple(tag_detour, std::forward<Args>(args)...)
+                ).first->second;
         }
 
     public:
         // Finds overrider for the file with the specified hash, rets null if not found
         modloader::file_overrider<>* FindMerger(const std::string& fsfile)
         {
-            auto it = ovmap.find(modloader::hash(fsfile));
+            return FindMerger(modloader::hash(fsfile));
+        }
+
+        modloader::file_overrider<>* FindMerger(size_t hash)
+        {
+            auto it = ovmap.find(hash);
             if(it != ovmap.end()) return &it->second;
             return nullptr;
         }
@@ -101,7 +119,7 @@ class DataPlugin : public modloader::basic_plugin
     private:
         
         template<class StoreType>  
-        std::string GetMergedData(std::string file, std::string fsfile)
+        std::string GetMergedData(std::string file, std::string fsfile, bool unique)
         {
             using store_type  = StoreType;
             using traits_type = typename store_type::traits_type;
@@ -144,7 +162,7 @@ class DataPlugin : public modloader::basic_plugin
 
                 if(!store.empty())
                 {
-                    file = "modloader/test.dat";    // TODO PROPER CACHE
+                    file = cache.GetPathForData(file, false, unique);
                     fullpath.assign(plugin_ptr->loader->gamepath).append(file);
                     if(gta3::merge_to_file<store_type>(fullpath.c_str(), store.begin(), store.end(), traits_type::domflags_fn()))
                         return file;

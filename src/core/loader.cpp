@@ -138,9 +138,10 @@ void Loader::Startup()
         this->pluginConfigDefault  = gamePath + pluginPath + "plugins.ini.0";
 
         // Make sure the important folders exist
-        MakeSureDirectoryExistA(dataPath.c_str());
-        MakeSureDirectoryExistA(pluginPath.c_str());
-        MakeSureDirectoryExistA(cachePath.c_str());
+        if(!MakeSureDirectoryExistA(dataPath.c_str())
+        || !MakeSureDirectoryExistA(pluginPath.c_str())
+        || !MakeSureDirectoryExistA(cachePath.c_str()))
+            Log("Warning: Mod Loader important directories could not be created.");
         
         // Before loading inis, we should update from the old ini format to the new ini format (ofc only if the ini format is old)
         this->UpdateOldConfig();
