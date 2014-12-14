@@ -3,11 +3,9 @@
 * Licensed under GNU GPL v3, see LICENSE at top level directory.
 *
 */
-#include <modloader/modloader.hpp>
-#include <modloader/util/hash.hpp>
+#include <stdinc.hpp>
 #include <tuple>
-
-
+using namespace modloader;
 
 static const size_t timecyc_dat  = modloader::hash("timecyc.dat");
 static const size_t popcycle_dat = modloader::hash("popcycle.dat");
@@ -18,75 +16,23 @@ static std::tuple<bool, size_t, uint32_t> files_behv[] = { // CanGetMixed, Hash,
         std::make_tuple(false,      timecyc_dat,    0u),
         std::make_tuple(true,       plants_dat,     0u),
 };
-
 static const int canmix_elem    = 0;
 static const int hash_elem      = 1;
 static const int count_elem     = 2;
 
-enum class Type
-{
-    Data        = 0,
-    Scene       = 1,
-    ObjTypes    = 2,
-
-    Max         = 7,    // Max 3 bits
-};
-
-// Basical maskes
-static const uint64_t hash_mask_base  = 0xFFFFFFFF;
-static const uint64_t type_mask_base  = 0x0007;                 // Mask for type without any shifting
-static const uint64_t count_mask_base = 0xFFFF;                 // Mask for count without any shifting
-static const uint32_t type_mask_shf   = 32;                     // Takes 3 bits, starts from 33th bit because first 32th bits is a hash
-static const uint32_t count_mask_shf  = type_mask_shf + 3;      // Takes 28 bits
 
 
-// Sets the initial value for a behaviour, by using an filename hash and file type
-inline uint64_t SetType(uint32_t hash, Type type)
-{
-    return modloader::file::set_mask(uint64_t(hash), hash_mask_base, type_mask_shf, type);
-}
-
-inline uint64_t SetCounter(uint64_t behaviour, uint32_t count)
-{
-    return modloader::file::set_mask(behaviour, count_mask_base, count_mask_shf, count);
-}
-
-inline Type GetType(uint64_t mask)
-{
-    return modloader::file::get_mask<Type>(mask, type_mask_base, type_mask_shf);
-}
-
-
-
-
-/*
- *  The plugin object
- */
-class ThePlugin : public modloader::basic_plugin
-{
-    public:
-        const info& GetInfo();
-
-        bool OnStartup();
-        bool OnShutdown();
-        int GetBehaviour(modloader::file&);
-        bool InstallFile(const modloader::file&);
-        bool ReinstallFile(const modloader::file&);
-        bool UninstallFile(const modloader::file&);
-        void Update();
-        
-} plugin;
-
+DataPlugin plugin;
 REGISTER_ML_PLUGIN(::plugin);
 
 /*
- *  ThePlugin::GetInfo
+ *  DataPlugin::GetInfo
  *      Returns information about this plugin 
  */
-const ThePlugin::info& ThePlugin::GetInfo()
+const DataPlugin::info& DataPlugin::GetInfo()
 {
     static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", 0 };
-    static const info xinfo      = { "std.data", "R0.1", "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 
@@ -94,21 +40,38 @@ const ThePlugin::info& ThePlugin::GetInfo()
 
 
 
+
 /*
- *  ThePlugin::OnStartup
+ *  DataPlugin::OnStartup
  *      Startups the plugin
  */
-bool ThePlugin::OnStartup()
+bool DataPlugin::OnStartup()
 {
+    {
+        // File overrider params
+        const auto reinstall_since_start = file_overrider<>::params(true, true, true, true);
+        const auto reinstall_since_load  = file_overrider<>::params(true, true, false, true);
+        const auto no_reinstall          = file_overrider<>::params(nullptr);
+
+        auto ReloadPlantsDat = []
+        {
+            if(!injector::cstd<char()>::call<0x5DD780>()) // CPlantMgr::ReloadConfig
+                plugin_ptr->Log("Failed to refresh plant manager");
+        };
+
+        AddMerger<plants_store>("plants.dat", reinstall_since_load, gdir_refresh(ReloadPlantsDat));
+
+    }
+
     // TODO create cache
     return true;
 }
 
 /*
- *  ThePlugin::OnShutdown
+ *  DataPlugin::OnShutdown
  *      Shutdowns the plugin
  */
-bool ThePlugin::OnShutdown()
+bool DataPlugin::OnShutdown()
 {
     // TODO remove cache
     return true;
@@ -116,10 +79,10 @@ bool ThePlugin::OnShutdown()
 
 
 /*
- *  ThePlugin::GetBehaviour
+ *  DataPlugin::GetBehaviour
  *      Gets the relationship between this plugin and the file
  */
-int ThePlugin::GetBehaviour(modloader::file& file)
+int DataPlugin::GetBehaviour(modloader::file& file)
 {
     if(file.is_ext("txt"))
     {
@@ -128,12 +91,16 @@ int ThePlugin::GetBehaviour(modloader::file& file)
     else if(file.is_ext("ide"))
     {
         static uint32_t count = 0;
-        // TODO
+        file.behaviour = SetType(file.hash, Type::ObjTypes);
+        file.behaviour = SetCounter(file.behaviour, ++count);
+        return MODLOADER_BEHAVIOUR_YES;
     }
     else if(file.is_ext("ipl") || file.is_ext("zon"))
     {
         static uint32_t count = 0;
-        // TODO
+        file.behaviour = SetType(file.hash, Type::Scene);
+        file.behaviour = SetCounter(file.behaviour, ++count);
+        return MODLOADER_BEHAVIOUR_YES;
     }
     else for(auto& item : files_behv)
     {
@@ -146,7 +113,8 @@ int ThePlugin::GetBehaviour(modloader::file& file)
             
             // Does this data file can get mixed? If yeah, put a counter on the behaviour, so we can receive many
             // data files of this same type on Install events
-            if(std::get<canmix_elem>(item)) SetCounter(file.behaviour, ++std::get<count_elem>(item));
+            if(std::get<canmix_elem>(item))
+                file.behaviour = SetCounter(file.behaviour, ++std::get<count_elem>(item));
 
             return MODLOADER_BEHAVIOUR_YES;
         }
@@ -155,46 +123,89 @@ int ThePlugin::GetBehaviour(modloader::file& file)
 }
 
 /*
- *  ThePlugin::InstallFile
+ *  DataPlugin::InstallFile
  *      Installs a file using this plugin
  */
-bool ThePlugin::InstallFile(const modloader::file& file)
+bool DataPlugin::InstallFile(const modloader::file& file)
+{
+    auto type = GetType(file.behaviour);
+
+    // delay in-game installs to go tho Update()
+
+    if(type == Type::Data)
+    {
+        auto m = FindMerger(file.filename());
+        if(m->CanInstall())
+        {
+            fs.add_file(file.filename(), file.filepath(), &file);
+            ovrefresh.emplace(FindMerger(file.filename()));
+            return true;
+        }
+    }
+
+    // TODO
+
+    return false;
+}
+
+/*
+ *  DataPlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
+ */
+bool DataPlugin::ReinstallFile(const modloader::file& file)
 {
     auto type = GetType(file.behaviour);
 
     if(type == Type::Data)
     {
-        if(file.hash == plants_dat)
-            ;//TODO
-
-        return true;
+        auto m = FindMerger(file.filename());
+        if(m->CanInstall())
+        {
+            ovrefresh.emplace(m);
+            return true;
+        }
     }
 
-    return false;
+    // TODO
+    return true; // Avoid catastrophical failure
 }
 
 /*
- *  ThePlugin::ReinstallFile
- *      Reinstall a file previosly installed that has been updated
- */
-bool ThePlugin::ReinstallFile(const modloader::file& file)
-{
-    return false;
-}
-
-/*
- *  ThePlugin::UninstallFile
+ *  DataPlugin::UninstallFile
  *      Uninstall a previosly installed file
  */
-bool ThePlugin::UninstallFile(const modloader::file& file)
+bool DataPlugin::UninstallFile(const modloader::file& file)
 {
+    auto type = GetType(file.behaviour);
+
+    if(type == Type::Data)
+    {
+        auto m = FindMerger(file.filename());
+        if(m->CanUninstall())
+        {
+            if(fs.rem_file(file.filename(), &file))
+            {
+                ovrefresh.emplace(m);
+                return true;
+            }
+        }
+    }
+
+    // TODO
     return false;
 }
 
 /*
- *  ThePlugin::Update
+ *  DataPlugin::Update
  *      Updates the state of this plugin after a serie of install/uninstalls
  */
-void ThePlugin::Update()
+void DataPlugin::Update()
 {
+    for(auto& ov : this->ovrefresh)
+    {
+        if(!ov->Refresh())
+            plugin_ptr->Log("Warning: Failed to refresh some data file");
+    }
+
+    ovrefresh.clear();
 }

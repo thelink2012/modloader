@@ -544,7 +544,4 @@ struct scoped_gdir : public modloader::scoped_chdir
 };
 
 
-
-
-
 #endif

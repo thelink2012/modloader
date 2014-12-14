@@ -31,6 +31,7 @@
 
 // Mod Loader stuff
 #include <modloader/modloader.hpp>
+#include <modloader/utility.hpp>
 #include <modloader/util/injector.hpp>
 #include <modloader/util/container.hpp>
 #include <modloader/util/path.hpp>

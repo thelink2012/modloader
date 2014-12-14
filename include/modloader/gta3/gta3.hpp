@@ -24,7 +24,7 @@ namespace modloader
     /*
         Detour helpers
     */
-    namespace detours
+    namespace dtraits
     {
         template<int Arg>
         struct base
@@ -39,23 +39,23 @@ namespace modloader
         using CreateVideoPlayer = base<2>;
     };
 
-    template<uintptr_t addr>
-    using LoadTxdDetour = modloader::basic_file_detour<detours::LoadTxd,
+    template<uintptr_t addr, class Traits = dtraits::LoadTxd>
+    using LoadTxdDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, char(int, const char*)>,
                                                                             char, int, const char*>;
 
-    template<uintptr_t addr>
-    using OpenFileDetour = modloader::basic_file_detour<detours::OpenFile,
+    template<uintptr_t addr, class Traits = dtraits::OpenFile>
+    using OpenFileDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, void*(const char*, const char*)>,
                                                                             void*, const char*, const char*>;
 
-    template<uintptr_t addr>
-    using RwStreamOpenDetour = modloader::basic_file_detour<detours::RwStreamOpen,
+    template<uintptr_t addr, class Traits = dtraits::RwStreamOpen>
+    using RwStreamOpenDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, void*(int, int, const char*)>,
                                                                             void*, int, int, const char*>;
 
-    template<uintptr_t addr>
-    using CreateVideoPlayerDetour = modloader::basic_file_detour<detours::CreateVideoPlayer,
+    template<uintptr_t addr, class Traits = dtraits::CreateVideoPlayer>
+    using CreateVideoPlayerDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, void*(int, const char*)>,
                                                                             void*, int, const char*>; 
 }

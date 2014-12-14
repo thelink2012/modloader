@@ -251,7 +251,7 @@ auto Loader::FolderInformation::GetModsByName() -> ref_list<ModInformation>
  */
 void Loader::FolderInformation::Scan()
 {
-    scoped_gdir xdir(this->path.c_str());
+    ::scoped_gdir xdir(this->path.c_str());
     Log("\n\nScanning mods at \"%s\"...", this->path.c_str());
 
     bool fine = true;

@@ -272,7 +272,8 @@ solution "modloader"
         "std.text",
         "std.bank",
         "std.stream",
-        "std.asi"
+        "std.asi",
+        "std.data"
     }
 
     project "build_gta3"

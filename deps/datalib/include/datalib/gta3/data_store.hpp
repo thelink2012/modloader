@@ -78,6 +78,9 @@ class data_store final : public datalib::data_store<ContainerType>
     protected:
         traits_type mtraits;
 
+    private:
+        using base = datalib::data_store<ContainerType>;
+
     public:
 
         //
@@ -87,10 +90,10 @@ class data_store final : public datalib::data_store<ContainerType>
         data_store() = default;
 
         data_store(const data_store& rhs) :
-            datalib::data_store(rhs), mtraits(rhs.mtraits) {}
+            base(rhs), mtraits(rhs.mtraits) {}
 
         data_store(data_store&& rhs) :
-            datalib::data_store(std::move(rhs)), mtraits(std::move(rhs.mtraits)) {}
+            base(std::move(rhs)), mtraits(std::move(rhs.mtraits)) {}
 
         //
         //  Assignment Operators
@@ -98,14 +101,16 @@ class data_store final : public datalib::data_store<ContainerType>
 
         data_store& operator=(const data_store& rhs)
         {
-            datalib::data_store::operator=(rhs);
+            base::operator=(rhs);
             this->mtraits = rhs.mtraits;
+            return *this;
         }
 
         data_store& operator=(data_store&& rhs)
         {
-            datalib::data_store::operator=(std::move(rhs));
+            base::operator=(std::move(rhs));
             this->mtraits = std::move(rhs.mtraits);
+            return *this;
         }
 
         /*

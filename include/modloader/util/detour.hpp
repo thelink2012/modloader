@@ -28,6 +28,8 @@ namespace modloader
     struct tag_detour_t {};
     static const tag_detour_t tag_detour;
     
+    struct tag_nofile_t {};
+    static const tag_nofile_t tag_nofile;
 
     /*
      *  File detour
@@ -59,6 +61,7 @@ namespace modloader
 
                 auto& arg = std::get<pos>(std::forward_as_tuple(args...));
                 char fullpath[MAX_PATH];
+                const char* lpath = nullptr;
 
                 // If has transform functor, use it to get new path
                 if(store().transform)
@@ -70,11 +73,16 @@ namespace modloader
 
                     // Make sure the file exists, if it does, change the parameter
                     if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)
+                    {
                         arg = fullpath;
+                        lpath = store().path.c_str();
+                    }
                 }
 
                 // If the file type is known, log what we're loading
-                if(what && what[0] && plugin_ptr) plugin_ptr->Log("Loading %s \"%s\"", what, arg);
+                if(what && what[0] && plugin_ptr)
+                    plugin_ptr->Log("Loading %s %s \"%s\"",
+                                    (lpath? "custom" : "default"), what, (lpath? lpath : arg));
 
                 // Call the function with the new filepath
                 return fun(args...);
@@ -147,18 +155,37 @@ namespace modloader
                 return injection_buf[i];
             }
             
+            // Checks if at this point of the game execution we can install stuff
+            bool CanInstall()
+            {
+                return (!plugin_ptr->loader->has_game_started || bCanReinstall);
+            }
+
+            // Checks if at this point of the game execution we can uninstall stuff
+            bool CanUninstall()
+            {
+                return (!plugin_ptr->loader->has_game_started || bCanUninstall);
+            }
+
             // Call to install/reinstall/uninstall the file (no file should be installed)
             bool InstallFile(const modloader::file& file)
             {
-                PerformInstall(&file);
-                return true;
+                if(this->CanInstall())
+                    return PerformInstall(&file);
+                return false;
+            }
+
+            //
+            bool Refresh()
+            {
+                return ReinstallFile();
             }
 
             // Reinstall the currently installed file
             bool ReinstallFile()
             {
                 // Can reinstall if the game hasn't started or if we can reinstall this kind
-                if(!plugin_ptr->loader->has_game_started || bCanReinstall)
+                if(this->CanInstall())
                     return PerformInstall(this->file);
                 return true;    // Mark as reinstalled anyway, so we won't happen to have a catastrophical failure
                                 // When both Reinstall and Uninstall fails, we have a problem.
@@ -168,7 +195,7 @@ namespace modloader
             bool UninstallFile()
             {
                 // Can uninstall if the game hasn't started or if we can uninstall this kind
-                if(!plugin_ptr->loader->has_game_started || bCanUninstall)
+                if(this->CanUninstall())
                     return PerformInstall(nullptr);
                 return false;
             }
@@ -250,6 +277,7 @@ namespace modloader
                 this->SetFileDetour(std::move(detour));
             }
 
+        protected:
             // Perform a install for the specified file, if null, it will uninstall the currently installed file
             bool PerformInstall(const modloader::file* file)
             {
@@ -259,7 +287,6 @@ namespace modloader
                 return true;
             }
 
-        protected:
             // Installs the necessary hooking to load the specified file
             void InstallHook()
             {
@@ -285,18 +312,43 @@ namespace modloader
                 }
             }
 
-        protected:  // OMG, so much tricks, thank you MSVC for your poor variadic template implementation
+        protected: // Because we don't have expression SFINAE on MSVC 2013 we need to do this kind of trick: ( :/ )
+                   // Eh, we could actually use integral_constant...
 
             template<size_t i, class T, class ...Args>
             typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
             {
-                T& detourer = GetInjection(i-1).template cast<T>();      // Get this type
-                detourer.setfile(f? f->filepath() : "");      // Set file
-                return Hlp_SetFile<i-1, Args...>(f);            // Continue to the next type
+                T& detourer = GetInjection(i-1).template cast<T>();
+                detourer.setfile(f? f->filepath() : "");
+                return Hlp_SetFile<i-1, Args...>(f); 
             }
 
             template<size_t i, class T, class ...Args>
             typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
+            {}  // The end of the args is represented with a nullptr_t
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
+            {
+                T& detourer = GetInjection(i-1).template cast<T>();
+                detourer.OnTransform(fn);
+                return Hlp_OnTransform<i-1, Args...>(fn);
+            }
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
+            {}  // The end of the args is represented with a nullptr_t
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
+            {
+                T& detourer = GetInjection(i-1).template cast<T>();
+                detourer.make_call();
+                return Hlp_MakeCall<i-1, Args...>(fn);
+            }
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
             {}  // The end of the args is represented with a nullptr_t
     };
 

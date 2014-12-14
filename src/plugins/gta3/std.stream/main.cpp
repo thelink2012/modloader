@@ -5,7 +5,7 @@
  *
  */
 #include <stdinc.hpp>
-using namespace modloader;
+//using namespace modloader;
 
 
 /*

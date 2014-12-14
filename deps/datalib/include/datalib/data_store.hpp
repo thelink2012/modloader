@@ -64,6 +64,7 @@ class data_store
             this->is_ready      = rhs.is_ready;
             this->is_default    = rhs.is_default;
             this->map           = rhs.map;
+            return *this;
         }
 
         data_store& operator=(data_store&& rhs)
@@ -71,7 +72,8 @@ class data_store
             this->is_ready      = rhs.is_ready;
             this->is_default    = rhs.is_default;
             this->map           = std::move(rhs.map);
-            rhs.is_ready = false;
+            rhs.is_ready        = false;
+            return *this;
         }
 
         // Gets the reference to the container used to store the data set

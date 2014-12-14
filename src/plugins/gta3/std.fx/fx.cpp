@@ -233,16 +233,16 @@ bool FxPlugin::OnStartup()
         AddDetour(loadscs_txd, reinstall_since_start, LoadTxdDetour<0x5900D2>());
 
         // Detouring for HUD
-        AddDetour(hud_txd, reinstall_since_load, LoadTxdDetour<0x5BA865>(), ReloadHud);
+        AddDetour(hud_txd, reinstall_since_load, LoadTxdDetour<0x5BA865>(), gdir_refresh(ReloadHud));
 
         // Detouring for fonts
-        AddDetour(fonts_txd, reinstall_since_start, LoadTxdDetour<0x5BA6A4>(), ReloadFonts);
-        AddDetour(pcbtns_txd, reinstall_since_start, LoadTxdDetour<0x5BA7D4>(), ReloadFonts);
+        AddDetour(fonts_txd, reinstall_since_start, LoadTxdDetour<0x5BA6A4>(), gdir_refresh(ReloadFonts));
+        AddDetour(pcbtns_txd, reinstall_since_start, LoadTxdDetour<0x5BA7D4>(), gdir_refresh(ReloadFonts));
 
         // Detouring for frontend textures
-        AddDetour(fronten1_txd, reinstall_since_start, LoadTxdDetour<0x572F1E>(), ReloadFronten);
-        AddDetour(fronten2_txd, reinstall_since_start, LoadTxdDetour<0x573040>(), ReloadFronten);
-        AddDetour(fronten_pc_txd, reinstall_since_start, LoadTxdDetour<0x572FB5>(), ReloadFronten);
+        AddDetour(fronten1_txd, reinstall_since_start, LoadTxdDetour<0x572F1E>(), gdir_refresh(ReloadFronten));
+        AddDetour(fronten2_txd, reinstall_since_start, LoadTxdDetour<0x573040>(), gdir_refresh(ReloadFronten));
+        AddDetour(fronten_pc_txd, reinstall_since_start, LoadTxdDetour<0x572FB5>(), gdir_refresh(ReloadFronten));
         AddDummy (fronten3_txd);
 
         // Detouring for common vehicle textures
