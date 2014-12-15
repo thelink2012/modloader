@@ -46,7 +46,7 @@ namespace modloader
 
             // Store for the path (relative to gamedir)
             struct store_type {
-                std::string path;
+                std::string path, temp;
                 std::function<std::string(std::string)> transform;
                 std::function<std::string(std::string)> postransform;
             };
@@ -63,25 +63,28 @@ namespace modloader
                 auto& arg = std::get<pos>(std::forward_as_tuple(args...));
                 char fullpath[MAX_PATH];
                 const char* lpath = nullptr;
+                
+                auto& path = store().temp;
+                path.assign(store().path);
 
                 // If has transform functor, use it to get new path
                 if(store().transform)
-                    store().path = store().transform(arg);
+                    path = store().transform(arg);
 
-                if(!store().path.empty())   // Has any path to override the original with?
+                if(!path.empty())   // Has any path to override the original with?
                 {
                     if(store().postransform)
-                        store().path = store().postransform(std::move(store().path));
+                        path = store().postransform(std::move(path));
 
-                    if(!store().path.empty())
+                    if(!path.empty())
                     {
-                        copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, store().path.c_str());
+                        copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, path.c_str());
 
                         // Make sure the file exists, if it does, change the parameter
                         if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)
                         {
                             arg = fullpath;
-                            lpath = store().path.c_str();
+                            lpath = path.c_str();
                         }
                     }
                 }
@@ -289,6 +292,13 @@ namespace modloader
                 this->SetFileDetour(std::move(detour));
             }
 
+            // Installs the necessary hooking to load the specified file
+            // (done automatically but you can call it manually if you want to always have the hook in place)
+            void InstallHook()
+            {
+                if(mInstallHook) mInstallHook(this->file);
+            }
+
         protected:
             // Perform a install for the specified file, if null, it will uninstall the currently installed file
             bool PerformInstall(const modloader::file* file)
@@ -297,12 +307,6 @@ namespace modloader
                 if(mOnChange) mOnChange(this->file);
                 InstallHook(); TryReload();
                 return true;
-            }
-
-            // Installs the necessary hooking to load the specified file
-            void InstallHook()
-            {
-                if(mInstallHook) mInstallHook(this->file);
             }
 
             // Tries to reload (if necessary) the current file

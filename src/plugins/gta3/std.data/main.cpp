@@ -1,24 +1,34 @@
 /*
-* Copyright (C) 2013-2014 LINK/2012 <dma_2012@hotmail.com>
-* Licensed under GNU GPL v3, see LICENSE at top level directory.
-*
-*/
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * 
+ */
 #include <stdinc.hpp>
 #include <tuple>
 using namespace modloader;
 
+DataPlugin plugin;
+REGISTER_ML_PLUGIN(::plugin);
+
+
+//
+//  The way data files are handled
+//
+
 struct files_behv_t
 {
-    bool        canmix;
-    size_t      hash;
-    uint32_t    count;
+    size_t      hash;       // Hash of this kind of file
+    bool        canmerge;   // Can many files of this get merged into a single one?
+    uint32_t    count;      // Must be initialized to 0, count of files (for merging, see GetBehaviour)
 };
 
 static files_behv_t files_behv[] = {
-        { false, modloader::hash("timecyc.dat"),    0 },
-        { true,  modloader::hash("plants.dat"),     0 }
+        { modloader::hash("timecyc.dat"), false,   0 },
+        { modloader::hash("plants.dat"),  true,    0 }
 };
 
+
+// Finds the information about the way the file 'f' should be handled
 static files_behv_t* find_behv(const modloader::file& f)
 {
     for(auto& item : files_behv)
@@ -31,8 +41,7 @@ static files_behv_t* find_behv(const modloader::file& f)
 
 
 
-DataPlugin plugin;
-REGISTER_ML_PLUGIN(::plugin);
+
 
 /*
  *  DataPlugin::GetInfo
@@ -48,13 +57,7 @@ const DataPlugin::info& DataPlugin::GetInfo()
 
 
 
-struct timecyc_traits
-{
-    struct dtraits : modloader::dtraits::OpenFile    // detour traits
-    {
-        static const char* what() { return "time cycle properties"; }
-    };
-};
+
 
 
 /*
@@ -65,15 +68,19 @@ bool DataPlugin::OnStartup()
 {
     if(gvm.IsSA())
     {
-        if(!cache.Startup("gta3.std.data"))
-            return false;
-
-        bool isSAMP = !!GetModuleHandleA("samp");
-
         // File overrider params
         const auto reinstall_since_start = file_overrider<>::params(true, true, true, true);
         const auto reinstall_since_load  = file_overrider<>::params(true, true, false, true);
         const auto no_reinstall          = file_overrider<>::params(nullptr);
+
+        //
+        bool isSAMP = !!GetModuleHandleA("samp");
+
+        // Initialise the caching
+        if(!cache.Startup("gta3.std.data"))
+            return false;
+
+        ///////////////////////////////////////////////////////////////
 
         auto ReloadPlantsDat = []
         {
@@ -84,18 +91,30 @@ bool DataPlugin::OnStartup()
         auto ReloadTimeCycle = []
         {
             injector::cstd<void()>::call<0x05BBAC0>();   // CTimeCycle::Initialise
-            // the are some vars at the end of the function body which should not be reseted while the game runs
+            // there are some vars at the end of that function body which should not be reseted while the game runs...
             // doesn't cause serious issues but well... shall we take care of them?
         };
 
+
+        //
+        //  Mergers and Overriders
+        //
+
+        // Detouring for plants surface properties
         AddMerger<plants_store>("plants.dat", true, reinstall_since_load, gdir_refresh(ReloadPlantsDat));
 
-        using OpenTimecycDetour = OpenFileDetour<0x5BBADE, timecyc_traits::dtraits>;
+        // Detouring for time cycle properties
         auto& timecyc_ov = AddDetour("timecyc.dat", reinstall_since_start, OpenTimecycDetour(), gdir_refresh(ReloadTimeCycle));
-        auto& timecyc_detour = timecyc_ov.GetInjection().cast<OpenTimecycDetour>();
-
         if(isSAMP)
         {
+            //
+            // SAMP changes the path from any file named timecyc.dat to a custom path. This hook takes place
+            // at kernel32:CreateFileA, so the only way to fix it is telling SAMP to load the timecyc using a different filename.
+            //
+            // So, the approach used here to get around this issue is, when the game is running under SAMP copy the
+            // custom timecyc (which is somewhere at the modloader directory) into the gta3.std.data cache with a different extension and voilá. 
+            //
+            auto& timecyc_detour = timecyc_ov.GetInjection().cast<OpenTimecycDetour>();
             timecyc_detour.OnPosTransform([this](std::string file) -> std::string
             {
                 if(file.size())
@@ -109,11 +128,15 @@ bool DataPlugin::OnStartup()
                         plugin_ptr->Log("Warning: Failed to make timecyc for SAMP.");
                     else
                         file = std::move(path);
-                        
                 }
                 return file;
             });
         }
+
+
+        // Installs the hooks in any case, so we have the log always logging the loading of data files
+        for(auto& pair : this->ovmap)
+            pair.second.InstallHook();
 
         return true;
     }
@@ -126,7 +149,7 @@ bool DataPlugin::OnStartup()
  */
 bool DataPlugin::OnShutdown()
 {
-    cache.Shutdown(false);  // destroys the cache depending upon if the cache failed at some point
+    cache.Shutdown(false);
     return true;
 }
 
@@ -137,6 +160,12 @@ bool DataPlugin::OnShutdown()
  */
 int DataPlugin::GetBehaviour(modloader::file& file)
 {
+    //
+    //  Note:
+    //      We Put a counter on the behaviour of mergeable data files so we can receive many of them.
+    //      Notice the count starts from 1 for those because 0 is reserved for non mergeable data files.
+    //
+
     if(file.is_ext("txt"))
     {
         // TODO
@@ -144,26 +173,18 @@ int DataPlugin::GetBehaviour(modloader::file& file)
     else if(file.is_ext("ide"))
     {
         static uint32_t count = 0;
-        file.behaviour = SetType(file.hash, Type::ObjTypes);
-        file.behaviour = SetCounter(file.behaviour, ++count);
+        file.behaviour = SetCounter(SetType(file.hash, Type::ObjTypes), ++count);
         return MODLOADER_BEHAVIOUR_YES;
     }
     else if(file.is_ext("ipl") || file.is_ext("zon"))
     {
         static uint32_t count = 0;
-        file.behaviour = SetType(file.hash, Type::Scene);
-        file.behaviour = SetCounter(file.behaviour, ++count);
+        file.behaviour = SetCounter(SetType(file.hash, Type::Scene), ++count);
         return MODLOADER_BEHAVIOUR_YES;
     }
     else if(auto item = find_behv(file))
     {
-        file.behaviour = SetType(file.hash, Type::Data);
-            
-        // Does this data file can get mixed? If yeah, put a counter on the behaviour, so we can receive many
-        // data files of this same type on Install events. Notice the count starts from 1 because 0 is reserved for canmix=false
-        if(item->canmix)
-            file.behaviour = SetCounter(file.behaviour, ++item->count);
-
+        file.behaviour = SetCounter(SetType(file.hash, Type::Data), (item->canmerge? ++item->count : 0));
          return MODLOADER_BEHAVIOUR_YES;
     }
     return MODLOADER_BEHAVIOUR_NO;
@@ -181,7 +202,7 @@ bool DataPlugin::InstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        if(find_behv(file)->canmix)
+        if(find_behv(file)->canmerge)
         {
             auto m = FindMerger(file.hash);
             if(m->CanInstall())
@@ -212,7 +233,7 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        if(find_behv(file)->canmix)
+        if(find_behv(file)->canmerge)
         {
             auto m = FindMerger(file.filename());
             if(m->CanInstall())
@@ -228,6 +249,7 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
     }
 
     // TODO
+
     return true; // Avoid catastrophical failure
 }
 
@@ -241,7 +263,7 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        if(find_behv(file)->canmix)
+        if(find_behv(file)->canmerge)
         {
             auto m = FindMerger(file.filename());
             if(m->CanUninstall())
@@ -260,6 +282,7 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
     }
 
     // TODO
+
     return false;
 }
 
@@ -269,11 +292,11 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
  */
 void DataPlugin::Update()
 {
+    // Refresh every overriden of multiple files right here
     for(auto& ov : this->ovrefresh)
     {
         if(!ov->Refresh())
             plugin_ptr->Log("Warning: Failed to refresh some data file");
     }
-
     ovrefresh.clear();
 }

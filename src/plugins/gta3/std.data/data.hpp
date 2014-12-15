@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * 
+ */
 #pragma once
 #include <stdinc.hpp>
 #include "datalib.hpp"
@@ -9,7 +14,6 @@ enum class Type
     Data        = 0,    // Its a common kind of data file (Have to check the hash part of the behaviour to see which data file is it)
     Scene       = 1,    // Its a IPL scene
     ObjTypes    = 2,    // Its a IDE def file
-
     Max         = 7,    // Max 3 bits
 };
 
@@ -27,16 +31,13 @@ inline uint64_t SetType(uint32_t hash, Type type)
     return modloader::file::set_mask(uint64_t(hash), type_mask_base, type_mask_shf, type);
 }
 
+// Sets the counter of the behaviour, note it is stored in a 28 bits integer.
 inline uint64_t SetCounter(uint64_t behaviour, uint32_t count)
 {
-    if(count == 0)
-    {
-        modloader::plugin_ptr->Error("std.data: SetCounter cannot have a count of 0, zero is reserved for non-counted files.\n"
-                                     "This error should never happen. It's a bug, please report it.");
-    }
     return modloader::file::set_mask(behaviour, count_mask_base, count_mask_shf, count);
 }
 
+// Gets the type of a behaviour
 inline Type GetType(uint64_t mask)
 {
     return modloader::file::get_mask<Type>(mask, type_mask_base, type_mask_shf);
@@ -48,7 +49,8 @@ inline Type GetType(uint64_t mask)
  */
 class DataPlugin : public modloader::basic_plugin
 {
-    public:
+    public: // Mod Loader Callbacks
+
         const info& GetInfo();
 
         bool OnStartup();
@@ -60,15 +62,23 @@ class DataPlugin : public modloader::basic_plugin
         void Update();
 
 
-    protected:
+    private:  // Plugin Stuff
+
+        // Stores a virtual file system which contains the list of data files we got
         vfs<const modloader::file*> fs;
-        modloader::file_overrider<> ov_plants;
 
-        std::map<size_t, modloader::file_overrider<>> ovmap;
-        std::set<modloader::file_overrider<>*> ovrefresh;
+        // Overriders
+        std::map<size_t, modloader::file_overrider<>> ovmap;        // Map of files overriders and mergers associated with their handling file names hashes
+        std::set<modloader::file_overrider<>*>        ovrefresh;    // Set of mergers to be refreshed on Update() 
 
+        // Caching stuff
         CDataCache cache;
 
+        // Registers a merger to work during the file verification and installation/uninstallation process
+        // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
+        // The parameter 'unique' especifies whether the specified file can have only one instance
+        //      (i.e. plants.dat have only one instance at data/ but vegass.ipl could have two at e.g. data/maps/vegas1 and data/maps/vegas2)
+        // The other parameters are familiar enought
         template<class StoreType, class... Args>
         modloader::file_overrider<>& AddMerger(const std::string& fsfile, bool unique, const modloader::file_overrider<>::params& params, Args&&... xargs)
         {
@@ -81,18 +91,23 @@ class DataPlugin : public modloader::basic_plugin
                 std::forward_as_tuple(modloader::hash(fsfile)),
                 std::forward_as_tuple(tag_detour, params, detour_type(), std::forward<Args>(xargs)...)
                 ).first->second;
-
-            
-            ov.OnHook(nullptr);
-
             auto& d = ov.GetInjection().cast<detour_type>();
-            d.make_call();  // TODO make some way this is called only on install from a file of this kind
+            
+            // Merges data whenever necessary to open this file. Notice caching can happen.
             d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique));
+
+            // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
+            // This gets called during InstallFile/ReinstallFile/UninstallFile
+            ov.OnHook([&ov](const modloader::file*)
+            {
+                ov.GetInjection().cast<detour_type>().make_call();
+            });
 
             return ov;
         }
 
-        // Adds a detour for the file with the specified hash to the overrider subsystem
+        // Adds a detour for the file with the specified file to the overrider system
+        // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
         template<class ...Args>
         modloader::file_overrider<>& AddDetour(const std::string& fsfile, Args&&... args)
         {
@@ -102,13 +117,13 @@ class DataPlugin : public modloader::basic_plugin
                 ).first->second;
         }
 
-    public:
-        // Finds overrider for the file with the specified hash, rets null if not found
+        // Finds overrider/merger for the file with the specified instance in the virtual filesystem, rets null if not found
         modloader::file_overrider<>* FindMerger(const std::string& fsfile)
         {
             return FindMerger(modloader::hash(fsfile));
         }
 
+        // Finds overrider/merger for the file with the specified hash, rets null if not found
         modloader::file_overrider<>* FindMerger(size_t hash)
         {
             auto it = ovmap.find(hash);
@@ -118,27 +133,32 @@ class DataPlugin : public modloader::basic_plugin
 
     private:
         
+        //
+        // Merges all the files in the virtual filesystem 'fs' which is in the 'fsfile' path, plus the file 'file' assuming the store type 'StoreType'
+        // For a explanation of the 'unique' parameter see AddMerger function
+        //
         template<class StoreType>  
         std::string GetMergedData(std::string file, std::string fsfile, bool unique)
         {
             using store_type  = StoreType;
             using traits_type = typename store_type::traits_type;
 
+            auto what  = traits_type::dtraits::what();
             auto range = this->fs.files_at(fsfile);
             auto count = std::distance(range.first, range.second);
 
-            // TODO make warnings display current trait name (identifier, what())
-
-            if(count > 0)
+            if(count > 0)   // any file to merge?
             {
-                if(count == 1)  // TODO but what if domflags says to not delete entries from the default file?
+                if(count == 1)
+                {
                     return range.first->second.first;   // return the only file in the vfs
+                }
 
                 std::vector<store_type> store;
-                std::string fullpath; fullpath.reserve(MAX_PATH);
                 store.reserve(count + 1);
+                std::string fullpath; fullpath.reserve(MAX_PATH);
 
-                auto add_store = [&store](const char* path, bool is_default)
+                auto add_store = [&store, &what](const char* path, bool is_default)
                 {
                     if(IsPathA(path))
                     {
@@ -146,8 +166,8 @@ class DataPlugin : public modloader::basic_plugin
                         st->set_as_default(is_default);
                         if(!st->load_from_file(path))
                         {
-                            plugin_ptr->Log("Warning: Failed to read %s data file into store: \"%s\"",
-                                            (is_default? "default" : "custom"), path);
+                            plugin_ptr->Log("Warning: Failed to read %s data file into store (%s): \"%s\"",
+                                            (is_default? "default" : "custom"), what, path);
                             store.erase(st);
                         }
                     }
@@ -160,14 +180,14 @@ class DataPlugin : public modloader::basic_plugin
                     add_store(f->fullpath(fullpath).c_str(), false);
                 }
 
-                if(!store.empty())
+                if(!store.empty())  // make sure we could read at least one store back in the loop
                 {
                     file = cache.GetPathForData(file, false, unique);
                     fullpath.assign(plugin_ptr->loader->gamepath).append(file);
                     if(gta3::merge_to_file<store_type>(fullpath.c_str(), store.begin(), store.end(), traits_type::domflags_fn()))
                         return file;
                     else
-                        plugin_ptr->Log("Warning: Failed to merge (next to load) data files into \"%s\"", file.c_str());
+                        plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, file.c_str());
                 }
             }
 

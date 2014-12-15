@@ -75,7 +75,7 @@ struct grass_dff_detour : RwStreamOpenDetour<addr>
 class FxPlugin : public modloader::basic_plugin
 {
     private:
-        std::map<size_t, modloader::file_overrider<>> ovmap;      // Map of files to be overriden, map<hash, overrider>
+        std::map<size_t, modloader::file_overrider<>> ovmap;    // Map of files to be overriden, map<hash, overrider>
         grass_dff_detour<0x5DD272> grass_detour;                // Grass needs a specialized detouring
 
     protected:

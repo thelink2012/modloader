@@ -8,7 +8,8 @@ bool CDataCache::Startup(const std::string& name)
     this->fullpath = std::string(plugin_ptr->loader->gamepath).append(path);
     if(MakeSureDirectoryExistA(fullpath.c_str()))
     {
-        this->GetPathForData("_STARTUP_", false, true);   // create /0/ directory
+        this->GetPathForData("_STARTUP_", false, true);     // create /0/ directory
+        this->GetPathForData("_STARTUP_", false, false);    // create /1/ directory
         this->initialized = true;
         return true;
     }
@@ -90,7 +91,7 @@ std::string CDataCache::GetPathForData(const std::string& at, bool fullpath, boo
     }
     else
     {
-        for(int i = 0; i < std::numeric_limits<int>::max(); ++i)
+        for(int i = 1; i < std::numeric_limits<int>::max(); ++i)
         {
             auto path = check(i);
             if(path.size()) return path;

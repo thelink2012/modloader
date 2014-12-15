@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * 
+ */
 #pragma once
 
 #if _MSC_VER
@@ -29,12 +34,16 @@
 
 using namespace datalib;
 
-// >>
+
+
+//
+// Useful types to use on our gta3 data processing
+//
+
 using real_t = basic_floating_point<float, floating_point_comparer::relative_epsilon<float>>;
 
 template<std::size_t N>
 using vecn = std::array<real_t, N>;
-
 using vec2 = vecn<2>;
 using vec3 = vecn<3>;
 using vec4 = vecn<4>;
