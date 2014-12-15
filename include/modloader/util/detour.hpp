@@ -48,6 +48,7 @@ namespace modloader
             struct store_type {
                 std::string path;
                 std::function<std::string(std::string)> transform;
+                std::function<std::string(std::string)> postransform;
             };
 
             static store_type& store()
@@ -69,13 +70,19 @@ namespace modloader
 
                 if(!store().path.empty())   // Has any path to override the original with?
                 {
-                    copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, store().path.c_str());
+                    if(store().postransform)
+                        store().path = store().postransform(std::move(store().path));
 
-                    // Make sure the file exists, if it does, change the parameter
-                    if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)
+                    if(!store().path.empty())
                     {
-                        arg = fullpath;
-                        lpath = store().path.c_str();
+                        copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, store().path.c_str());
+
+                        // Make sure the file exists, if it does, change the parameter
+                        if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)
+                        {
+                            arg = fullpath;
+                            lpath = store().path.c_str();
+                        }
                     }
                 }
 
@@ -113,6 +120,11 @@ namespace modloader
             void OnTransform(std::function<std::string(std::string)> functor)
             {
                 store().transform = std::move(functor);
+            }
+
+            void OnPosTransform(std::function<std::string(std::string)> functor)
+            {
+                store().postransform = std::move(functor);
             }
     };
 

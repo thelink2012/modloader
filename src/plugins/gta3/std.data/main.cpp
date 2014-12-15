@@ -68,6 +68,8 @@ bool DataPlugin::OnStartup()
         if(!cache.Startup("gta3.std.data"))
             return false;
 
+        bool isSAMP = !!GetModuleHandleA("samp");
+
         // File overrider params
         const auto reinstall_since_start = file_overrider<>::params(true, true, true, true);
         const auto reinstall_since_load  = file_overrider<>::params(true, true, false, true);
@@ -88,7 +90,30 @@ bool DataPlugin::OnStartup()
 
         AddMerger<plants_store>("plants.dat", true, reinstall_since_load, gdir_refresh(ReloadPlantsDat));
 
-        AddDetour("timecyc.dat", reinstall_since_start, OpenFileDetour<0x5BBADE, timecyc_traits::dtraits>(), gdir_refresh(ReloadTimeCycle));
+        using OpenTimecycDetour = OpenFileDetour<0x5BBADE, timecyc_traits::dtraits>;
+        auto& timecyc_ov = AddDetour("timecyc.dat", reinstall_since_start, OpenTimecycDetour(), gdir_refresh(ReloadTimeCycle));
+        auto& timecyc_detour = timecyc_ov.GetInjection().cast<OpenTimecycDetour>();
+
+        if(isSAMP)
+        {
+            timecyc_detour.OnPosTransform([this](std::string file) -> std::string
+            {
+                if(file.size())
+                {
+                    auto path = cache.GetPathForData("timecyc.samp", false, true);
+
+                    if(!CopyFileA(
+                        std::string(loader->gamepath).append(file).c_str(),
+                        std::string(loader->gamepath).append(path).c_str(),
+                        FALSE))
+                        plugin_ptr->Log("Warning: Failed to make timecyc for SAMP.");
+                    else
+                        file = std::move(path);
+                        
+                }
+                return file;
+            });
+        }
 
         return true;
     }
