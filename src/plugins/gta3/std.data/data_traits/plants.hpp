@@ -13,15 +13,6 @@ struct plants_traits : gta3::data_traits
     static const bool has_sections      = false;    // Does this data file contains sections?
     static const bool per_line_section  = false;    // Is the sections of this data file different on each line?
 
-    // Dominance Flags
-    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
-
-    template<class TData>
-    std::pair<std::size_t, int> key_from_value(TData& value)
-    {
-        return std::make_pair(std::hash<std::string>()(get<0>(value)), get<1>(value)); 
-    }
-
     // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
@@ -30,13 +21,24 @@ struct plants_traits : gta3::data_traits
     
     // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5DD3D1, dtraits>;
+
+    // Dominance Flags
+    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
+
+    // Plants data
+    using key_type      = std::pair<std::size_t, int>;
+    using value_type    = data_slice<std::string,
+                            int, int, int, int, int, int, int, int, int, int,
+                            real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
+
+    key_type key_from_value(const value_type& value)
+    {
+        return key_type(std::hash<std::string>()(get<0>(value)), get<1>(value)); 
+    }
 };
 
 //
 using plants_store = gta3::data_store<plants_traits, std::map<
-                        std::pair<std::size_t, int>,
-                        data_slice<std::string,
-                                  int, int, int, int, int, int, int, int, int, int,
-                                  real_t, real_t, real_t, real_t, real_t, real_t, real_t>
+                        plants_traits::key_type, plants_traits::value_type
                         >>;
 

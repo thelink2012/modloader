@@ -75,10 +75,10 @@ function main()
         execute("mingw32-make CC=gcc")
         os.chdir(cwd)
 
-        -- Strip binaries THEN install
-        if not debugsymbols then
-            gccstrip()
-        end
+        -- Strip binaries (ALWAYS)
+        gccstrip()
+        -- striping is not related to symbols, to have symbols send --export-all-symbols to the linker
+        
         install()
         
     else

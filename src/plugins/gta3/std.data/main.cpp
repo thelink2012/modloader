@@ -5,40 +5,11 @@
  */
 #include <stdinc.hpp>
 #include <tuple>
+#include "data_traits.hpp"
 using namespace modloader;
 
 DataPlugin plugin;
 REGISTER_ML_PLUGIN(::plugin);
-
-
-//
-//  The way data files are handled
-//
-
-struct files_behv_t
-{
-    size_t      hash;       // Hash of this kind of file
-    bool        canmerge;   // Can many files of this get merged into a single one?
-    uint32_t    count;      // Must be initialized to 0, count of files (for merging, see GetBehaviour)
-};
-
-static files_behv_t files_behv[] = {
-        { modloader::hash("timecyc.dat"), false,   0 },
-        { modloader::hash("plants.dat"),  true,    0 }
-};
-
-
-// Finds the information about the way the file 'f' should be handled
-static files_behv_t* find_behv(const modloader::file& f)
-{
-    for(auto& item : files_behv)
-    {
-        if(item.hash == f.hash)
-            return &item;
-    }
-    return nullptr;
-}
-
 
 
 
@@ -102,6 +73,9 @@ bool DataPlugin::OnStartup()
 
         // Detouring for plants surface properties
         AddMerger<plants_store>("plants.dat", true, reinstall_since_load, gdir_refresh(ReloadPlantsDat));
+
+        // Detouring for vehicle upgrades
+        AddMerger<carmods_store>("carmods.dat", true, no_reinstall);
 
         // Detouring for time cycle properties
         auto& timecyc_ov = AddDetour("timecyc.dat", reinstall_since_start, OpenTimecycDetour(), gdir_refresh(ReloadTimeCycle));
@@ -182,7 +156,7 @@ int DataPlugin::GetBehaviour(modloader::file& file)
         file.behaviour = SetCounter(SetType(file.hash, Type::Scene), ++count);
         return MODLOADER_BEHAVIOUR_YES;
     }
-    else if(auto item = find_behv(file))
+    else if(auto item = FindBehv(file))
     {
         file.behaviour = SetCounter(SetType(file.hash, Type::Data), (item->canmerge? ++item->count : 0));
          return MODLOADER_BEHAVIOUR_YES;
@@ -202,7 +176,7 @@ bool DataPlugin::InstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        if(find_behv(file)->canmerge)
+        if(FindBehv(file)->canmerge)
         {
             auto m = FindMerger(file.hash);
             if(m->CanInstall())
@@ -233,7 +207,7 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        if(find_behv(file)->canmerge)
+        if(FindBehv(file)->canmerge)
         {
             auto m = FindMerger(file.filename());
             if(m->CanInstall())
@@ -263,7 +237,7 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
 
     if(type == Type::Data)
     {
-        if(find_behv(file)->canmerge)
+        if(FindBehv(file)->canmerge)
         {
             auto m = FindMerger(file.filename());
             if(m->CanUninstall())

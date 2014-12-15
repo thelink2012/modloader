@@ -39,6 +39,7 @@ inline void clear(either<Types...>& e)
     e = either_blank();
 }
 
+using boost::apply_visitor;
 
 
 

@@ -17,6 +17,7 @@ namespace gta3 {
  *      Represents a gta3 section
  *      Construct a list of section infos by calling gta3::make_section_info(...), (e.g. gta3::make_section_info("objs", "cars", ...))
  */
+// NOTE SECTIONS MUST BE SENT IN THE SAME ORDER AS DATA DECLARED IN gta3::data_section !!!!!!!!!!!!!!!!!!!!!!!
 struct section_info
 {
     const char* name;   // The name of this section. How it will be indentified in the sectioned file
@@ -26,17 +27,23 @@ struct section_info
     section_info(const char* name) : name(name), id(-1) {}
 
     // Finds the a section_info object in the 'sections' array based on the specified name.
-    static const section_info* by_name(const section_info* sections, const std::string& line)
+    static const section_info* by_name(const section_info* sections, const char* line)
     {
         for(auto s = sections; s->name != nullptr; ++s)
         {
             if(s->name[0])
             {
-                if(!strcmp(line.data(), s->name))
+                if(!strcmp(line, s->name))
                     return s;
             }
         }
         return nullptr;
+    }
+
+    // Finds the a section_info object in the 'sections' array based on the specified name.
+    static const section_info* by_name(const section_info* sections, const std::string& line)
+    {
+        return by_name(sections, line.data());
     }
 
 
@@ -46,6 +53,7 @@ template<class... Args>
 using section_array = std::array<section_info, sizeof...(Args) + 1>;
 
 // Builds a array of section info objects, putting a null terminator and setting up the indices correctly
+// NOTE SECTIONS MUST BE SENT IN THE SAME ORDER AS DATA DECLARED IN gta3::data_section !!!!!!!!!!!!!!!!!!!!!!!
 template<class... Args> inline
 static section_array<Args...> make_section_info(Args&&... a)
 {
@@ -54,7 +62,6 @@ static section_array<Args...> make_section_info(Args&&... a)
         array[i].id = i;
     return array;
 }
-
 
 
 
@@ -152,21 +159,21 @@ class data_section
         bool check(const std::string& line) const
         {
             check_visitor visitor(line);
-            return boost::apply_visitor(visitor, this->data);
+            return ::apply_visitor(visitor, this->data);
         }
 
         // Sets the content of this data storer to be what's on the line (by interpreting it)
         bool set(const std::string& line)
         {
             set_visitor visitor(line);
-            return boost::apply_visitor(visitor, this->data);
+            return ::apply_visitor(visitor, this->data);
         }
 
         // Gets the content of this data storer into the line (by disassembling it)
         bool get(std::string& line)  const
         {
             get_visitor visitor(line);
-            return boost::apply_visitor(visitor, const_cast<either_type&>(this->data));
+            return ::apply_visitor(visitor, const_cast<either_type&>(this->data));
         }
 
         // Gets the nth element 'I' of type 'Type' from the working section data_slice
@@ -175,11 +182,25 @@ class data_section
         Type&& get() const
         {
             get_nth_visitor<I, Type> visitor;
-            return std::forward<Type&&>(boost::apply_visitor(visitor, const_cast<either_type&>(this->data)));
+            return std::forward<Type&&>(this->apply_visitor(visitor));
         }
 
+        // Gets the nth element 'I' of type 'Type' from the working section data_slice
+        // Assumes all data slices contains the same Type in the nth I element.
+        template<int I, typename Type>
+        Type* getp() const
+        {
+            get_nth_visitor_p<I, Type> visitor;
+            return (this->apply_visitor(visitor));
+        }
 
-
+        // CXX14 HELP-ME
+        template<class Visitor>
+        auto apply_visitor(Visitor& visitor) const -> decltype(::apply_visitor(std::declval<Visitor>(), std::declval<either_type>()))
+        {
+            using result_type = decltype(::apply_visitor(std::declval<Visitor>(), std::declval<either_type>()));
+            return std::forward<result_type>(::apply_visitor(visitor, const_cast<either_type&>(this->data)));
+        }
 
     private:
         // CXX14 HELP-ME
@@ -262,9 +283,9 @@ class data_section
         struct get_nth_visitor : either_static_visitor<Type&&>
         {
             template<class T>
-            Type&& operator()(T& value) const
+            Type&& operator()(T& slice) const
             {
-                return std::forward<Type&&>(::get<I>(value));
+                return std::forward<Type&&>(::get<I>(slice));
             }
 
             Type&& operator()(either_blank) const
@@ -273,8 +294,28 @@ class data_section
             }
         };
 
+        template<int I, class Type>
+        struct get_nth_visitor_p : either_static_visitor<Type*>
+        {
+            template<class T>
+            typename std::enable_if<std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T>()))>>::value, Type*>::type
+            /* Type* */ operator()(T& slice) const 
+            {
+                return &(::get<I>(slice));
+            }
+
+            template<class T>
+            typename std::enable_if<!std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T>()))>>::value, Type*>::type
+            /* Type* */ operator()(T& slice) const 
+            {
+                return nullptr;
+            }
+        };
 };
 
+
+template<class T>
+using data_section_visitor = either_static_visitor<T>;
 
 
 // CXX14 HELP-ME
@@ -294,6 +335,19 @@ auto get(const data_section<Sections...>& data) -> std::add_const_t<decltype(get
     return std::forward<return_type>(get<I, Type>(const_cast<data_section<Sections...>&>(data)));
 }
 
+template<int I, typename Type, class ...Sections> inline
+auto get(data_section<Sections...>* data) -> decltype(std::declval<data_section<Sections...>>().getp<I, Type>())
+{
+    using return_type = decltype(std::declval<data_section<Sections...>>().getp<I, Type>());
+    return std::forward<return_type>(data->getp<I, Type>());
+}
+
+template<int I, typename Type, class ...Sections> inline
+auto get(const data_section<Sections...>* data) -> std::add_const_t<decltype(get<I, Type>(&std::declval<data_section<Sections...>>()))>
+{
+    using return_type = decltype(get<I, Type>(&std::declval<data_section<Sections...>>()));
+    return std::forward<return_type>(get<I, Type>(const_cast<data_section<Sections...>*>(data)));
+}
 
 
 

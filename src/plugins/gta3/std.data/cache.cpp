@@ -2,6 +2,8 @@
 #include <stdinc.hpp>
 using namespace modloader;
 
+// TODO PROPER CACHING!!!!
+
 bool CDataCache::Startup(const std::string& name)
 {
     this->path = std::string(plugin_ptr->loader->cachepath).append(name).append("/");

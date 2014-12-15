@@ -64,12 +64,22 @@ class DataPlugin : public modloader::basic_plugin
 
     private:  // Plugin Stuff
 
+        struct files_behv_t
+        {
+            size_t      hash;       // Hash of this kind of file
+            bool        canmerge;   // Can many files of this get merged into a single one?
+            uint32_t    count;      // Must be initialized to 0, count of files (for merging, see GetBehaviour)
+        };
+
         // Stores a virtual file system which contains the list of data files we got
         vfs<const modloader::file*> fs;
 
         // Overriders
         std::map<size_t, modloader::file_overrider<>> ovmap;        // Map of files overriders and mergers associated with their handling file names hashes
         std::set<modloader::file_overrider<>*>        ovrefresh;    // Set of mergers to be refreshed on Update() 
+
+        // Info
+        std::vector<files_behv_t> vbehav;
 
         // Caching stuff
         CDataCache cache;
@@ -87,8 +97,10 @@ class DataPlugin : public modloader::basic_plugin
             using traits_type = typename store_type::traits_type;
             using detour_type = typename traits_type::detour_type;
 
+            auto hash = modloader::hash(fsfile);
+
             auto& ov = ovmap.emplace(std::piecewise_construct,
-                std::forward_as_tuple(modloader::hash(fsfile)),
+                std::forward_as_tuple(hash),
                 std::forward_as_tuple(tag_detour, params, detour_type(), std::forward<Args>(xargs)...)
                 ).first->second;
             auto& d = ov.GetInjection().cast<detour_type>();
@@ -103,6 +115,7 @@ class DataPlugin : public modloader::basic_plugin
                 ov.GetInjection().cast<detour_type>().make_call();
             });
 
+            vbehav.emplace_back(files_behv_t { hash, true, 0 });
             return ov;
         }
 
@@ -111,10 +124,15 @@ class DataPlugin : public modloader::basic_plugin
         template<class ...Args>
         modloader::file_overrider<>& AddDetour(const std::string& fsfile, Args&&... args)
         {
-            return ovmap.emplace(std::piecewise_construct,
-                std::forward_as_tuple(modloader::hash(fsfile)),
+            auto hash = modloader::hash(fsfile);
+
+            auto& ov = ovmap.emplace(std::piecewise_construct,
+                std::forward_as_tuple(hash),
                 std::forward_as_tuple(tag_detour, std::forward<Args>(args)...)
                 ).first->second;
+
+            vbehav.emplace_back(files_behv_t { hash, false, 0 });
+            return ov;
         }
 
         // Finds overrider/merger for the file with the specified instance in the virtual filesystem, rets null if not found
@@ -128,6 +146,16 @@ class DataPlugin : public modloader::basic_plugin
         {
             auto it = ovmap.find(hash);
             if(it != ovmap.end()) return &it->second;
+            return nullptr;
+        }
+
+        files_behv_t* FindBehv(const modloader::file& f)
+        {
+            for(auto& item : this->vbehav)
+            {
+                if(item.hash == f.hash)
+                    return &item;
+            }
             return nullptr;
         }
 
@@ -182,7 +210,7 @@ class DataPlugin : public modloader::basic_plugin
 
                 if(!store.empty())  // make sure we could read at least one store back in the loop
                 {
-                    file = cache.GetPathForData(file, false, unique);
+                    file = cache.GetPathForData(GetPathComponentBack(file), false, unique);
                     fullpath.assign(plugin_ptr->loader->gamepath).append(file);
                     if(gta3::merge_to_file<store_type>(fullpath.c_str(), store.begin(), store.end(), traits_type::domflags_fn()))
                         return file;
