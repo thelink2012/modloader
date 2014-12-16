@@ -206,6 +206,7 @@ solution "modloader"
 
     includedirs {
         "include",
+        "deps/cereal/include",
         "deps/injector/include",
         "deps/ini_parser/include",
         "deps/fxt_parser/include",
