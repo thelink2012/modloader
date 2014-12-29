@@ -102,6 +102,7 @@ void Loader::Patch()
 void Loader::Startup()
 {
     char rootPath[MAX_PATH];
+    char appDataPath[MAX_PATH];
 
     // If not running yet and 'modloader' folder exists, let's start up
     if(!this->bRunning && IsDirectoryA("modloader"))
@@ -130,6 +131,10 @@ void Loader::Startup()
         GetCurrentDirectoryA(sizeof(rootPath), rootPath);
         MakeSureStringIsDirectory(this->gamePath = rootPath);
 
+        // Setup "%ProgramData%/modloader/" variable
+        if(SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA|CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, appDataPath)))
+            MakeSureStringIsDirectory(MakeSureStringIsDirectory(this->commonAppDataPath = appDataPath).append("modloader"));
+
         // Setup config file names
         this->folderConfigFilename = "modloader.ini";
         this->basicConfig          = dataPath + "config.ini";
@@ -141,7 +146,8 @@ void Loader::Startup()
         // Make sure the important folders exist
         if(!MakeSureDirectoryExistA(dataPath.c_str())
         || !MakeSureDirectoryExistA(pluginPath.c_str())
-        || !MakeSureDirectoryExistA(cachePath.c_str()))
+        || !MakeSureDirectoryExistA(cachePath.c_str())
+        || !MakeSureDirectoryExistA(commonAppDataPath.c_str()))
             Log("Warning: Mod Loader important directories could not be created.");
         
         // Before loading inis, we should update from the old ini format to the new ini format (ofc only if the ini format is old)
@@ -163,6 +169,7 @@ void Loader::Startup()
         modloader_t::has_game_loaded = false;   // ^^                       ((see later below tho))
         modloader_t::gamepath        = this->gamePath.data();
         modloader_t::cachepath       = this->cachePath.data();
+        modloader_t::commonappdata   = this->commonAppDataPath.data();
         modloader_t::Log             = this->Log;
         modloader_t::vLog            = this->vLog;
         modloader_t::Error           = this->Error;

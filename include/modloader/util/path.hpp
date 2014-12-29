@@ -68,6 +68,23 @@ namespace modloader
     
     
     /*
+     *  IsAbsolutePath
+     *      Checks whether the path is absolute (e.g. C:/something/...)
+     */
+    inline bool IsAbsolutePath(const char* path)
+    {
+        char c = path[0];
+        if(c == '\\' || c == '/')
+            return true;
+        else if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
+            return path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+        return false;
+    }
+    inline bool IsAbsolutePath(const std::string& str)
+    { return IsAbsolutePath(str.c_str()); }
+
+
+    /*
      *  MakeSureStringIsDirectory
      *      Makes sure the string @dir is a directory path. If @touchEmpty is true,
      *      dir will be made a directory even when the string is empty.

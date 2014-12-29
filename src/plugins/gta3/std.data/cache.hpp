@@ -39,9 +39,6 @@ static const bool cache_force_reading = false;  // Forces reading the cache even
 static_assert(!disable_caching && !cache_force_reading, "Wrong release settings for caching");
 #endif
 
-// TODO caching on %APPDATA%
-// TODO remove project headers from stdinc (every modloader proj)
-
 template<class StoreType>
 class caching_stream;
 
@@ -389,7 +386,7 @@ class data_cache : modloader::basic_cache
                         {
                             get<0>(result) = cache_id;
                             get<1>(result) = this->GetCacheDir(cache_id, false).append(f.filename);
-                            get<2>(result) = std::string(plugin_ptr->loader->gamepath).append(get<1>(result));
+                            get<2>(result) = this->GetCacheDir(cache_id, true).append(f.filename);
                             return false;
                         }
                     }

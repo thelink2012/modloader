@@ -52,10 +52,21 @@ namespace modloader
         public:
 
             // Initializes the managed cache directory named 'name'
-            bool Startup(const std::string& name = plugin_ptr->data->name)
+            bool Startup(const std::string& name = plugin_ptr->data->name, bool useappdata = true)
             {
-                this->path      = std::string(plugin_ptr->loader->cachepath).append(name).append("/");
-                this->fullpath  = std::string(plugin_ptr->loader->gamepath).append(path);
+                if(useappdata)
+                {
+                    this->path      = std::string(plugin_ptr->loader->commonappdata).append(name);
+                    MakeSureStringIsDirectory(this->path);
+                    this->fullpath  = this->path;
+                }
+                else
+                {
+                    this->path      = std::string(plugin_ptr->loader->cachepath).append(name);
+                    MakeSureStringIsDirectory(this->path);
+                    this->fullpath  = std::string(plugin_ptr->loader->gamepath).append(path);
+                }
+
                 if(MakeSureDirectoryExistA(fullpath.c_str()))
                 {
                     this->initialized = true;
@@ -94,7 +105,7 @@ namespace modloader
             std::string GetCacheDir(const std::string& at, bool fullpath = true)
             {
                 auto result = GetCachePath(at, fullpath);
-                result.push_back('/');
+                result.push_back(cNormalizedSlash);
                 return result;
             }
 

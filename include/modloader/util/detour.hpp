@@ -78,7 +78,10 @@ namespace modloader
 
                     if(!path.empty())
                     {
-                        copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, path.c_str());
+                        if(!IsAbsolutePath(path))
+                            copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, path.c_str());
+                        else
+                            strcpy(fullpath, path.c_str());
 
                         // Make sure the file exists, if it does, change the parameter
                         if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)

@@ -7,6 +7,7 @@
  *
  */
 #include <stdinc.hpp>
+#include "streaming.hpp"
 
 extern "C" {
 

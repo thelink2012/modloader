@@ -206,7 +206,7 @@ class DataPlugin : public modloader::basic_plugin
                     }
                     else
                     {
-                        Log("No data file '%s' changed since last time, using cached data file", fsfile.c_str());
+                        //Log("No data file '%s' changed since last time, using cached data file", fsfile.c_str());
                         if(IsPathA(cs.FullPath().c_str()))
                             return cs.Path();
                         else

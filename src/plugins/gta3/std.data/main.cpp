@@ -99,15 +99,15 @@ bool DataPlugin::OnStartup()
             {
                 if(file.size())
                 {
-                    std::string path = get<1>(cache.AddCacheFile("timecyc.samp", true));
+                    std::string fullpath = get<2>(cache.AddCacheFile("timecyc.samp", true));
 
                     if(!CopyFileA(
                         std::string(loader->gamepath).append(file).c_str(),
-                        std::string(loader->gamepath).append(path).c_str(),
+                        (fullpath).c_str(),
                         FALSE))
                         plugin_ptr->Log("Warning: Failed to make timecyc for SAMP.");
                     else
-                        file = std::move(path);
+                        file = std::move(fullpath);
                 }
                 return file;
             });
