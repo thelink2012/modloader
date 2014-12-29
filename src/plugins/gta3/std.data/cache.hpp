@@ -284,7 +284,6 @@ class data_cache : modloader::basic_cache
 
             stream_type ss;
 
-            // TODO profile w/ and w/out this buffering
             std::unique_ptr<char[]> buffer(new char[buffer_size]);
             ss.rdbuf()->pubsetbuf(buffer.get(), buffer_size);
 
@@ -375,6 +374,7 @@ class data_cache : modloader::basic_cache
         template<class StoreType>
         cache_file_tuple MatchCache(caching_stream<StoreType>& cs, uint32_t cache_id)
         {
+            using namespace modloader;
             cache_file_tuple result(-1, "", "");
             modloader::FilesWalk(this->GetCacheDir(cache_id, true), "*.*", false, [&](modloader::FileWalkInfo& f)
             {
@@ -466,6 +466,7 @@ class caching_stream
         // Adds information about a data file with path relative to the current working directory
         caching_stream& AddFile(std::string path, bool is_default)
         {
+            using namespace modloader;
             if(IsPathA(path.c_str()))
             {
                 WIN32_FILE_ATTRIBUTE_DATA attribs;
@@ -493,6 +494,7 @@ class caching_stream
         // Adds information about a data file with path relative to the game directory
         caching_stream& AddFile(const modloader::file& file, bool is_default)
         {
+            using namespace modloader;
             if(IsPathA(file.fullpath().c_str()))
             {
                 auto& info = listing.emplace(listing.end(), std::piecewise_construct,
@@ -552,6 +554,7 @@ class caching_stream
         // Loads stores from data files that have changed since the last cache-write
         void LoadChangedFiles()
         {
+            using namespace modloader;
             for(size_t i = 0; i < this->store.size(); ++i)
             {
                 auto& path   = this->listing[i].first;

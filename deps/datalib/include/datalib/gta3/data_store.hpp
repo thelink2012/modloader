@@ -47,6 +47,9 @@ namespace gta3 {
  *          Inherithing from gta3::data_traits makes those methods optional:
  *
  *
+ *              SectionInfo* section_by_line(SectionInfo*, String)
+ *                                              -> Gets the current section object from the specified line
+ *
  *              bool setbyline(Store, MainData, SectionInfo*, String)
  *                                              -> Sets the state of the MainData object based on the received line String
  *                                                 Notice this should check and set the state of the MainData object.
@@ -228,6 +231,12 @@ class data_store final : public datalib::data_store<ContainerType>
         {
             return traits_type::prewrite<data_store>(merged);
         }
+
+        // Finds the section object from the current line
+        static const section_info* section_by_line(const section_info* sections, const std::string& line)
+        {
+            return traits_type::section_by_line(sections, line);
+        }
 };
 
 
@@ -277,6 +286,11 @@ struct data_traits
     static /* bool */ getline(const Key& key, const Value& value, std::string& line)
     {
         return key.get(line);
+    }
+
+    static const section_info* section_by_line(const section_info* sections, const std::string& line)
+    {
+        return section_info::by_name(sections, line);
     }
 
 };

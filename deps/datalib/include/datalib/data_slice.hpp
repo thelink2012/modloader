@@ -39,8 +39,12 @@ class data_slice
         // The bitset type used to determine whether a certain type has been fetched
         using bitset_type               = std::bitset<tuple_size>;              
 
+#if 1
         // 'sorted_type_indices' is a integer_sequence with the tuple indices sorted by complexity (less complexies first)
         using sorted_type_indices       = typename type_complexity_sort<tuple_type>::type;
+#else
+        using sorted_type_indices       = typename make_index_sequence<tuple_size>::type;
+#endif
 
     protected:
         tuple_type  tuple;              // Tuple to store the types
@@ -130,6 +134,37 @@ class data_slice
             return std::forward<return_type>(std::get<I>(this->tuple));
         }
 
+        // Sets the nth element I from this data silce to the specified object
+        template<size_t I, class T>
+        auto set(T&& obj) -> decltype(std::get<I>(std::declval<tuple_type()))
+        {
+            using return_type = decltype(std::get<I>(std::declval<tuple_type>()));
+            std::get<I>(this->tuple) = std::forward<T>(obj);
+            if(this->used.test(I) == false)
+            {
+                this->used_count.set(I);
+                ++this->used_count;
+            }
+            return std::forward<return_type>(this->get<I>());
+        }
+
+        // Resets the state of this object
+        void reset()
+        {
+            this->used.reset();
+            this->used_count = 0;
+        }
+
+        // Resets the state of the object at index i
+        void reset(size_t i)
+        {
+            if(this->used.test(i))
+            {
+                this->used.reset(i);
+                --this->used_count;
+            }
+        }
+
         // Checks whether this object contains data stored in it
         bool good() const
         {
@@ -192,7 +227,7 @@ class data_slice
         {
             imemstream stream(line, std::ios::in);
             scany_to_tuple<false> scanner(*this, stream);   // Scanner functor
-            used.reset(); this->used_count = 0;             // Reset used bitset and counter
+            this->reset();                                  // Reset used bitset and counter
             foreach_in_tuple(tuple, scanner);               // Perform the scanning (this rearranges the bitset)
             return (this->used_count = scanner.counter);    // Re-set the counter
         }

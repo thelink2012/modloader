@@ -3,12 +3,17 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#pragma once
 #include <stdinc.hpp>
+#include "../data.hpp"
+using namespace modloader;
+using namespace std::placeholders;
+
+// TODO refresh
 
 //
 struct carmods_traits : gta3::data_traits
 {
+    static const bool can_cache         = true;     // Can this store get cached?
     static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?
     static const bool has_sections      = true;     // Does this data file contains sections?
     static const bool per_line_section  = false;    // Is the sections of this data file different on each line?
@@ -126,9 +131,13 @@ using carmods_store = gta3::data_store<carmods_traits, std::map<
 namespace datalib {
     namespace gta3
     {
-        const section_info* sections(const carmods_traits::value_type&)
+        inline const section_info* sections(const carmods_traits::value_type&)
         {
             return carmods_traits::sections();
         }
     }
 }
+
+// Vehicle Upgrades Merger
+static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carmods_store>, _1, "carmods.dat", true, no_reinstall));
+

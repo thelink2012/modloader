@@ -160,7 +160,7 @@ struct parse_from_stream
                     // take care of sectioning
                     if(section == nullptr || per_line_section)
                     {
-                        section = section_info::by_name(sections, line);
+                        section = store.section_by_line(sections, line);
                         if(!per_line_section) continue;
                     }
                     else if(!strcmp(line.data(), "end"))

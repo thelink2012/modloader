@@ -41,6 +41,7 @@ using namespace datalib;
 //
 
 using real_t = basic_floating_point<float, floating_point_comparer::relative_epsilon<float>>;
+using dummy_value = datalib::delimopt;
 
 template<std::size_t N>
 using vecn = std::array<real_t, N>;

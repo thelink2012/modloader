@@ -22,9 +22,10 @@ struct section_info
 {
     const char* name;   // The name of this section. How it will be indentified in the sectioned file
     int         id;     // The index of this section in the sections array
+    size_t      len;    // The length of the name
 
-    section_info() : name(nullptr), id(-1) {}
-    section_info(const char* name) : name(name), id(-1) {}
+    section_info() : section_info(nullptr) {}
+    section_info(const char* name) : name(name), id(-1), len(name? strlen(name) : 0) {}
 
     // Finds the a section_info object in the 'sections' array based on the specified name.
     static const section_info* by_name(const section_info* sections, const char* line)
@@ -41,9 +42,32 @@ struct section_info
     }
 
     // Finds the a section_info object in the 'sections' array based on the specified name.
+    // This version looks only for the first 'n' characters from the line, or if -1 based on the strlen of the section name
+    static const section_info* by_name(const section_info* sections, const char* line, size_t line_strlen, int n)
+    {
+        for(auto s = sections; s->name != nullptr; ++s)
+        {
+            if(s->name[0])
+            {
+                size_t len = (n == -1? s->len : n);
+                if(line_strlen >= len && !strncmp(line, s->name, len))
+                    return s;
+            }
+        }
+        return nullptr;
+    }
+
+    // Finds the a section_info object in the 'sections' array based on the specified name.
     static const section_info* by_name(const section_info* sections, const std::string& line)
     {
         return by_name(sections, line.data());
+    }
+
+    // Finds the a section_info object in the 'sections' array based on the specified name.
+    // This version looks only for the first 'n' characters from the line, or if -1 based on the strlen of the section name
+    static const section_info* by_name(const section_info* sections, const std::string& line, int n)
+    {
+        return by_name(sections, line.data(), line.length(), n);
     }
 
 
@@ -124,7 +148,22 @@ class data_section
         {
             if(this->has_section() && rhs.has_section())
                 return (this->data == rhs.data);
+            else if(!this->has_section() && !rhs.has_section())
+                return true;
             return false;
+        }
+
+        bool operator<(const data_section& rhs) const
+        {
+            if(this->has_section() && rhs.has_section())
+            {
+                if(this->tsection->id == rhs.tsection->id)
+                    return (this->data < rhs.data);
+                return (this->tsection->id < rhs.tsection->id);
+            }
+            else if(!this->has_section() && !rhs.has_section())
+                return false;   // both are ''equal'', no section
+            return !this->has_section();    // no section goes first
         }
 
         //
@@ -135,11 +174,21 @@ class data_section
         // In case the line doesn't match the section specifier, the working section gets invalidated and the method returns false
         bool as_section(const section_info* tsection, const std::string& line)
         {
+            if(tsection) assert(tsection->id < sizeof...(Sections));
             as_section_fn fn(*this, tsection, line);
             foreach_type_variadic<Sections...>()(fn);
             this->tsection = (this->check(line)? tsection : nullptr);
             return has_section();
         }
+
+        // Forces the current section specifier to be 'tsection'
+        // Be very careful when using this function
+        void force_section(const section_info* tsection)
+        {
+            if(tsection) assert(tsection->id < sizeof...(Sections));
+            this->tsection = tsection;
+        }
+
 
         // Gets the working section for this object
         const section_info* section() const

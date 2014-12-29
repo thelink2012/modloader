@@ -4,20 +4,12 @@
  * 
  */
 #include <stdinc.hpp>
-#include <tuple>
-#include "data_traits.hpp"
+#include "data.hpp"
 using namespace modloader;
 
-#if 1
-#include "vfs.hpp"
-#include "cache.hpp"
-#include "data.hpp"
-#endif
 
 DataPlugin plugin;
 REGISTER_ML_PLUGIN(::plugin);
-
-
 
 
 /*
@@ -26,12 +18,10 @@ REGISTER_ML_PLUGIN(::plugin);
  */
 const DataPlugin::info& DataPlugin::GetInfo()
 {
-    static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", 0 };
+    static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "txt", 0 };
     static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
-
-
 
 
 
@@ -45,74 +35,13 @@ bool DataPlugin::OnStartup()
 {
     if(gvm.IsSA())
     {
-        // File overrider params
-        const auto reinstall_since_start = file_overrider<>::params(true, true, true, true);
-        const auto reinstall_since_load  = file_overrider<>::params(true, true, false, true);
-        const auto no_reinstall          = file_overrider<>::params(nullptr);
-
-        //
-        bool isSAMP = !!GetModuleHandleA("samp");
-
         // Initialise the caching
         if(!cache.Startup())
             return false;
 
-        ///////////////////////////////////////////////////////////////
-
-        auto ReloadPlantsDat = []
-        {
-            if(!injector::cstd<char()>::call<0x5DD780>()) // CPlantMgr::ReloadConfig
-                plugin_ptr->Log("Failed to refresh plant manager");
-        };
-
-        auto ReloadTimeCycle = []
-        {
-            injector::cstd<void()>::call<0x05BBAC0>();   // CTimeCycle::Initialise
-            // there are some vars at the end of that function body which should not be reseted while the game runs...
-            // doesn't cause serious issues but well... shall we take care of them?
-        };
-
-
-        //
-        //  Mergers and Overriders
-        //
-
-        // Detouring for plants surface properties
-        AddMerger<plants_store>("plants.dat", true, reinstall_since_load, gdir_refresh(ReloadPlantsDat));
-
-        // Detouring for vehicle upgrades
-        AddMerger<carmods_store>("carmods.dat", true, no_reinstall);
-
-        // Detouring for time cycle properties
-        auto& timecyc_ov = AddDetour("timecyc.dat", reinstall_since_start, OpenTimecycDetour(), gdir_refresh(ReloadTimeCycle));
-        if(isSAMP)
-        {
-            //
-            // SAMP changes the path from any file named timecyc.dat to a custom path. This hook takes place
-            // at kernel32:CreateFileA, so the only way to fix it is telling SAMP to load the timecyc using a different filename.
-            //
-            // So, the approach used here to get around this issue is, when the game is running under SAMP copy the
-            // custom timecyc (which is somewhere at the modloader directory) into the gta3.std.data cache with a different extension and voilá. 
-            //
-            auto& timecyc_detour = timecyc_ov.GetInjection().cast<OpenTimecycDetour>();
-            timecyc_detour.OnPosTransform([this](std::string file) -> std::string
-            {
-                if(file.size())
-                {
-                    std::string fullpath = get<2>(cache.AddCacheFile("timecyc.samp", true));
-
-                    if(!CopyFileA(
-                        std::string(loader->gamepath).append(file).c_str(),
-                        (fullpath).c_str(),
-                        FALSE))
-                        plugin_ptr->Log("Warning: Failed to make timecyc for SAMP.");
-                    else
-                        file = std::move(fullpath);
-                }
-                return file;
-            });
-        }
-
+        // Initialises all the merges and overrides (see 'data_traits/' directory for those)
+        for(auto& p : initializer::list())
+            p->initialise(this);
 
         // Installs the hooks in any case, so we have the log always logging the loading of data files
         for(auto& pair : this->ovmap)

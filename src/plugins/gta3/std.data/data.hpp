@@ -5,7 +5,6 @@
  */
 #pragma once
 #include <stdinc.hpp>
-#include "datalib.hpp"
 #include "vfs.hpp"
 #include "cache.hpp"
 
@@ -81,8 +80,11 @@ class DataPlugin : public modloader::basic_plugin
         // Info
         std::vector<files_behv_t> vbehav;
 
+    public:
         // Caching stuff
         data_cache cache;
+
+    public:
 
         // Registers a merger to work during the file verification and installation/uninstallation process
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
@@ -92,6 +94,7 @@ class DataPlugin : public modloader::basic_plugin
         template<class StoreType, class... Args>
         modloader::file_overrider<>& AddMerger(const std::string& fsfile, bool unique, const modloader::file_overrider<>::params& params, Args&&... xargs)
         {
+            using namespace modloader;
             using namespace std::placeholders;
             using store_type  = StoreType;
             using traits_type = typename store_type::traits_type;
@@ -165,10 +168,11 @@ class DataPlugin : public modloader::basic_plugin
         // Merges all the files in the virtual filesystem 'fs' which is in the 'fsfile' path, plus the file 'file' assuming the store type 'StoreType'
         // For a explanation of the 'unique' parameter see AddMerger function
         //
-        // TODO balance warnings
         template<class StoreType>  
         std::string GetMergedData(std::string file, std::string fsfile, bool unique)
         {
+            using namespace modloader;
+
             using store_type  = StoreType;
             using traits_type = typename store_type::traits_type;
 
@@ -191,7 +195,11 @@ class DataPlugin : public modloader::basic_plugin
                     cs.AddFile(f, false);
                 }
 
-                if(cs.Apply(cache.FindCachedDataFor(cs)))
+                // TODO make can_cache work for when anything changed == false etc
+                // To do so just make the store (.d) not be saved and remove traits_type::can_cache from the following if
+                // (but leave it at the check after DidAnythingChange)
+
+                if(traits_type::can_cache && cs.Apply(cache.FindCachedDataFor(cs)))
                 {
                     // We have a saved cache for this data file.
                     //
@@ -201,8 +209,11 @@ class DataPlugin : public modloader::basic_plugin
                     //
                     if(cs.DidAnythingChange())
                     {
-                        if(!cache.ReadCachedStore(cs))
-                            Log("Warning: Could not read cached store for '%s', skipping cache...", cs.Path().c_str());
+                        if(traits_type::can_cache)
+                        {
+                            if(!cache.ReadCachedStore(cs))
+                                Log("Warning: Could not read cached store for '%s', skipping cache...", cs.Path().c_str());
+                        }
                     }
                     else
                     {
@@ -221,8 +232,11 @@ class DataPlugin : public modloader::basic_plugin
 
                 // Load data files that have been added/changed and rewrite the listing and store cache
                 cs.LoadChangedFiles();
-                if(!cache.WriteCachedStore(cs))
-                    Log("Warning: Could not write cache at '%s'", cs.Path().c_str());
+                if(traits_type::can_cache)
+                {
+                    if(!cache.WriteCachedStore(cs))
+                        Log("Warning: Could not write cache at '%s'", cs.Path().c_str());
+                }
                 
                 // Merge all the stored data into a single data file
                 if(gta3::merge_to_file<store_type>(cs.FullPath().c_str(), cs.StoreList().begin(), cs.StoreList().end(), traits_type::domflags_fn()))
@@ -236,5 +250,41 @@ class DataPlugin : public modloader::basic_plugin
         }
 
 };
-
 extern DataPlugin plugin;
+
+
+/*
+ *  initializer object
+ *      This allows the separation of many merges/overrides in .cpp files, which will improve our compilation speed.
+ *      Leaving everything in a single cpp (using headers) would be a pain to compile since we HEAVILY rely on templates and more templates.
+ */
+class initializer
+{
+    protected:
+        friend class DataPlugin;
+
+        // The initializer callback
+        std::function<void(DataPlugin*)> initialise;
+
+        // List of initializers
+        static std::vector<initializer*>& list()
+        { static std::vector<initializer*> x; return x; }
+
+    public:
+
+        // Construct a initializer. This should be instantiated in a cpp file.
+        // When initialization time comes, the specified callback gets called
+        template<class FuncT>
+        initializer(FuncT cb)
+        {
+            list().emplace_back(this);
+            initialise = [cb](DataPlugin* p) mutable {
+                cb(p);
+            };
+        }
+};
+
+// Global const params vars for AddMerger/AddDetour
+static const auto no_reinstall          = modloader::file_overrider<>::params(nullptr);
+static const auto reinstall_since_start = modloader::file_overrider<>::params(true, true, true, true);
+static const auto reinstall_since_load  = modloader::file_overrider<>::params(true, true, false, true);
