@@ -4,6 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
+#include "CAECustomBankLoader.hpp"
 
 // TODO cue points for sound loop offset
 

@@ -4,6 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
+#include "loader.hpp"
 using namespace modloader;
 
 // TODO don't call OnShutdown if OnStartup wasn't successful

@@ -103,12 +103,24 @@ class data_store
             this->is_default = as_default;
         }
 
+        void set_as_ready(bool is_ready = true)
+        {
+            this->is_ready = is_ready;
+        }
+
         // Checks the state of this object
         bool ready() const   { return this->is_ready; }
         bool default() const { return this->is_default; }
 
 
-    public:
+    public: // not to be used directly
+
+        template<class Archive>
+        void serialize(Archive& ar)
+        {
+            ar(this->is_default, this->is_ready, this->map);
+        }
+
         template<typename Result, typename Key, typename ForwardIterator>
         friend Result find_dominant_data(ForwardIterator, ForwardIterator, const Key&, int);
 };

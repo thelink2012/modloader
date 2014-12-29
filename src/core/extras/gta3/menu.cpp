@@ -7,6 +7,7 @@
  */
 #include <stdinc.hpp>
 #include "menu.hpp"
+#include "loader.hpp"
 #include <modloader/gta3/fxt.hpp>
 using namespace modloader;
 

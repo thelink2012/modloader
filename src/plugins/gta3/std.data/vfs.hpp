@@ -16,6 +16,7 @@ class vfs
     public:
         static std::string normalize(std::string path)
         {
+            // ANSWER FOR QUESTION BELOW: YES, LEAVE NORMALIZE PATH HERE! SEE CACHE!
             // TODO since mod loader paths sent to plugins are already normalized should we just return path itself? (YEAHHH CASE SENSITIVE, but still we'd need to normalize)
             // if we do so, may we get values by const-reference at the public functions? 
             // TODO the UData file* has a hash in it, should we use it?

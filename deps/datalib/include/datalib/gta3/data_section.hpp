@@ -64,7 +64,6 @@ static section_array<Args...> make_section_info(Args&&... a)
 }
 
 
-
 /*
  *  data_section
  *      An set of data_slice<> objects, each one represents one of the possible sections.
@@ -201,6 +200,21 @@ class data_section
             using result_type = decltype(::apply_visitor(std::declval<Visitor>(), std::declval<either_type>()));
             return std::forward<result_type>(::apply_visitor(visitor, const_cast<either_type&>(this->data)));
         }
+
+    public: // not to be used directly
+        template<class Archive>
+        void save(Archive& ar) const
+        {
+            ar(data, (has_section()? tsection->id : -1));
+        }
+        template<class Archive>
+        void load(Archive& ar)
+        {
+            int id;
+            ar(data, id);
+            this->tsection = (id != -1? sections(*this) + id : nullptr);
+        }
+
 
     private:
         // CXX14 HELP-ME
@@ -347,6 +361,14 @@ auto get(const data_section<Sections...>* data) -> std::add_const_t<decltype(get
 {
     using return_type = decltype(get<I, Type>(&std::declval<data_section<Sections...>>()));
     return std::forward<return_type>(get<I, Type>(const_cast<data_section<Sections...>*>(data)));
+}
+
+
+// helper to find out the sections array used in a data_section
+template<typename ...Sections> inline
+const section_info* sections(const data_section<Sections...>& ds)
+{
+    static_assert(false, "sections(...) not implemented for this data_section type");
 }
 
 

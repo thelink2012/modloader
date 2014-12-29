@@ -14,6 +14,7 @@
  * 
  */
 #include <stdinc.hpp>
+#include "CAECustomBankLoader.hpp"
 
 using namespace modloader;
 

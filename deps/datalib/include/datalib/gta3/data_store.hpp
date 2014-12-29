@@ -24,7 +24,7 @@ namespace gta3 {
  *      TraitsType details:
  *      {
  *
- *          The traits may contain non-static data, it is instantiated and copied together this store.
+ *          The traits may contain non-static data, it is instantiated and copied together this store, but not serialized.
  *          The following should be implemented in the traits to meet the gta3::data_store::traits_type concept
  *
  *          static const bool has_sections      -> Whether this store have sections (as in .ide files)

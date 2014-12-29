@@ -82,7 +82,7 @@ class DataPlugin : public modloader::basic_plugin
         std::vector<files_behv_t> vbehav;
 
         // Caching stuff
-        CDataCache cache;
+        data_cache cache;
 
         // Registers a merger to work during the file verification and installation/uninstallation process
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
@@ -165,6 +165,7 @@ class DataPlugin : public modloader::basic_plugin
         // Merges all the files in the virtual filesystem 'fs' which is in the 'fsfile' path, plus the file 'file' assuming the store type 'StoreType'
         // For a explanation of the 'unique' parameter see AddMerger function
         //
+        // TODO balance warnings
         template<class StoreType>  
         std::string GetMergedData(std::string file, std::string fsfile, bool unique)
         {
@@ -175,48 +176,60 @@ class DataPlugin : public modloader::basic_plugin
             auto range = this->fs.files_at(fsfile);
             auto count = std::distance(range.first, range.second);
 
-            if(count > 0)   // any file to merge?
+            if(count == 1) // only one file, so let's just override
+                return range.first->second.first;
+            else if(count >= 2)   // any file to merge? we need at least 2 files to be able to do merging
             {
-                if(count == 1)
-                {
-                    return range.first->second.first;   // return the only file in the vfs
-                }
-
-                std::vector<store_type> store;
-                store.reserve(count + 1);
-                std::string fullpath; fullpath.reserve(MAX_PATH);
-
-                auto add_store = [&store, &what](const char* path, bool is_default)
-                {
-                    if(IsPathA(path))
-                    {
-                        auto st = store.emplace(store.end());
-                        st->set_as_default(is_default);
-                        if(!st->load_from_file(path))
-                        {
-                            plugin_ptr->Log("Warning: Failed to read %s data file into store (%s): \"%s\"",
-                                            (is_default? "default" : "custom"), what, path);
-                            store.erase(st);
-                        }
-                    }
-                };
-
-                add_store(file.c_str(), true);
+                auto fsfile = NormalizePath(GetPathComponentBack(file));
+                caching_stream<StoreType> cs(fsfile, unique);
+                
+                // Add data files we'll work on to the caching stream
+                cs.AddFile(file.c_str(), true);
                 for(auto it = range.first; it != range.second; ++it)
                 {
-                    auto& f = it->second.second;
-                    add_store(f->fullpath(fullpath).c_str(), false);
+                    const modloader::file& f = *(it->second.second);
+                    cs.AddFile(f, false);
                 }
 
-                if(!store.empty())  // make sure we could read at least one store back in the loop
+                if(cs.Apply(cache.FindCachedDataFor(cs)))
                 {
-                    file = cache.GetPathForData(GetPathComponentBack(file), false, unique);
-                    fullpath.assign(plugin_ptr->loader->gamepath).append(file);
-                    if(gta3::merge_to_file<store_type>(fullpath.c_str(), store.begin(), store.end(), traits_type::domflags_fn()))
-                        return file;
+                    // We have a saved cache for this data file.
+                    //
+                    // Check out if any file has been added, changed or removed since the last cache-write
+                    // If it did not change, simply return the previosly generated merged data file,
+                    // otherwise read cached stores that didn't change and continue to load changed data files
+                    //
+                    if(cs.DidAnythingChange())
+                    {
+                        if(!cache.ReadCachedStore(cs))
+                            Log("Warning: Could not read cached store for '%s', skipping cache...", cs.Path().c_str());
+                    }
                     else
-                        plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, file.c_str());
+                    {
+                        Log("No data file '%s' changed since last time, using cached data file", fsfile.c_str());
+                        if(IsPathA(cs.FullPath().c_str()))
+                            return cs.Path();
+                        else
+                            Log("Warning: Could not find cached data file '%s', skipping cache...", cs.Path().c_str());
+                    }
                 }
+                else
+                {
+                    // No cache saved for this data file, find a cache directory for this
+                    cs.Apply(cache.AddCacheFile(fsfile, unique));
+                }
+
+                // Load data files that have been added/changed and rewrite the listing and store cache
+                cs.LoadChangedFiles();
+                if(!cache.WriteCachedStore(cs))
+                    Log("Warning: Could not write cache at '%s'", cs.Path().c_str());
+                
+                // Merge all the stored data into a single data file
+                if(gta3::merge_to_file<store_type>(cs.FullPath().c_str(), cs.StoreList().begin(), cs.StoreList().end(), traits_type::domflags_fn()))
+                    return cs.Path();
+                else
+                    plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, cs.Path().c_str());
+
             }
 
             return "";  // use default file
@@ -225,4 +238,3 @@ class DataPlugin : public modloader::basic_plugin
 };
 
 extern DataPlugin plugin;
-

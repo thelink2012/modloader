@@ -12,6 +12,7 @@
  * 
  */
 #include <stdinc.hpp>
+#include "loader.hpp"
 
 /*
     Special Note:

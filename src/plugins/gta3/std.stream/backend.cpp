@@ -5,6 +5,7 @@
  * 
  */
 #include <stdinc.hpp>
+#include "streaming.hpp"
 using namespace modloader;
 
 extern "C"

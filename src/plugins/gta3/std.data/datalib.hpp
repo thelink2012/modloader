@@ -47,3 +47,10 @@ using vecn = std::array<real_t, N>;
 using vec2 = vecn<2>;
 using vec3 = vecn<3>;
 using vec4 = vecn<4>;
+
+
+template<class Archive, class T, class Base>
+inline void serialize(Archive& ar, type_wrapper<T, Base>& tw)
+{
+    ar(tw.get_());
+}

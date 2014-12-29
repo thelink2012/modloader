@@ -164,6 +164,13 @@ class data_slice
             return count;
         }
 
+    public: // not to be used directly
+        template<class Archive>
+        void serialize(Archive& ar)
+        {
+            ar(this->tuple, this->used_count, this->used);
+        }
+
     protected:
 
         // Determines whether 'this' contains the same data as 'rhs'

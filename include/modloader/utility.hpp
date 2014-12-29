@@ -39,6 +39,72 @@ namespace modloader
         };
     }
 
+    /*
+     *  basic_cache
+     *      Base utility for accessing the modloader/.data/cache/ directory
+     */
+    class basic_cache
+    {
+        protected:
+            std::string path, fullpath;     // relative and fullpath to the chosen cache name
+            bool initialized = false;
+
+        public:
+
+            // Initializes the managed cache directory named 'name'
+            bool Startup(const std::string& name = plugin_ptr->data->name)
+            {
+                this->path      = std::string(plugin_ptr->loader->cachepath).append(name).append("/");
+                this->fullpath  = std::string(plugin_ptr->loader->gamepath).append(path);
+                if(MakeSureDirectoryExistA(fullpath.c_str()))
+                {
+                    this->initialized = true;
+                    return true;
+                }
+                return false;
+            }
+
+            // Unitialises the managed cache directory, destroying such directory if 'destroydir=true'
+            void Shutdown(bool destroydir = false)
+            {
+                if(this->initialized)
+                {
+                    if(destroydir)
+                        DestroyDirectoryA(this->GetCachePath(true).c_str());
+                }
+                this->path.clear();
+                this->fullpath.clear();
+                this->initialized = false;
+            }
+
+            // Gets path to the managed cache directory
+            const std::string& GetCachePath(bool fullpath = true)
+            {
+                return fullpath? this->fullpath : this->path;
+            }
+
+            // Gets path to the specified file 'at' in the managed cache directory
+            std::string GetCachePath(const std::string& at, bool fullpath = true)
+            {
+                return GetCachePath(fullpath) + at;
+            }
+
+            // Gets path to the specified directory 'at' in the managed cache directory
+            // The difference between GetCachePath and GetCacheDir is that GetCacheDir pushes a slash into the path.
+            std::string GetCacheDir(const std::string& at, bool fullpath = true)
+            {
+                auto result = GetCachePath(at, fullpath);
+                result.push_back('/');
+                return result;
+            }
+
+            // Creates the specified directory in the managed cache path
+            bool CreateDir(const std::string& at)
+            {
+                return !!MakeSureDirectoryExistA(GetCacheDir(at, true).c_str());
+            }
+
+    };
 }
 
 #endif

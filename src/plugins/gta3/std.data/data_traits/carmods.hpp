@@ -74,7 +74,7 @@ struct carmods_traits : gta3::data_traits
             { return a < b; }
         };
 
-        key_type() = delete;
+        key_type() = default;
         key_type(int id) : e(id) {}
         key_type(std::size_t hash) : e(hash) {}
         key_type(std::size_t l1, std::size_t l2) : e(link_type(l1, l2)) {}
@@ -85,6 +85,12 @@ struct carmods_traits : gta3::data_traits
             if(this->e.which() == rhs.e.which())
                 return apply_visitor(check_leq(), this->e, rhs.e);
             return (this->e.which() < rhs.e.which());
+        }
+
+        template<class Archive>
+        void serialize(Archive& ar)
+        {
+            ar(this->e);
         }
     };
 
@@ -115,3 +121,14 @@ using carmods_store = gta3::data_store<carmods_traits, std::map<
                         carmods_traits::key_type, carmods_traits::value_type
                         >>;
 
+
+// sections function specialization
+namespace datalib {
+    namespace gta3
+    {
+        const section_info* sections(const carmods_traits::value_type&)
+        {
+            return carmods_traits::sections();
+        }
+    }
+}

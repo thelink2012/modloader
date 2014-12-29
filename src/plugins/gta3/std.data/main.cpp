@@ -8,6 +8,12 @@
 #include "data_traits.hpp"
 using namespace modloader;
 
+#if 1
+#include "vfs.hpp"
+#include "cache.hpp"
+#include "data.hpp"
+#endif
+
 DataPlugin plugin;
 REGISTER_ML_PLUGIN(::plugin);
 
@@ -48,7 +54,7 @@ bool DataPlugin::OnStartup()
         bool isSAMP = !!GetModuleHandleA("samp");
 
         // Initialise the caching
-        if(!cache.Startup("gta3.std.data"))
+        if(!cache.Startup())
             return false;
 
         ///////////////////////////////////////////////////////////////
@@ -93,7 +99,7 @@ bool DataPlugin::OnStartup()
             {
                 if(file.size())
                 {
-                    auto path = cache.GetPathForData("timecyc.samp", false, true);
+                    std::string path = get<1>(cache.AddCacheFile("timecyc.samp", true));
 
                     if(!CopyFileA(
                         std::string(loader->gamepath).append(file).c_str(),
@@ -123,7 +129,7 @@ bool DataPlugin::OnStartup()
  */
 bool DataPlugin::OnShutdown()
 {
-    cache.Shutdown(false);
+    cache.Shutdown();
     return true;
 }
 

@@ -403,8 +403,11 @@ struct store_merger
 
             for(auto st = st_begin; st != st_end; ++st)
             {
-                for(auto& kv : st->container())
-                    push_unique(keys, kv.first);
+                if(st->ready())
+                {
+                    for(auto& kv : st->container())
+                        push_unique(keys, kv.first);
+                }
             }
 
             for(auto& key : keys)

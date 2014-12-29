@@ -4,6 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
+#include "loader.hpp"
 using namespace modloader;
 
 /*

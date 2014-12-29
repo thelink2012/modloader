@@ -4,6 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
+#include "loader.hpp"
 
 // Not thread-safe
 static FILE* logfile = 0;
