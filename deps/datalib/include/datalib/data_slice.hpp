@@ -127,25 +127,25 @@ class data_slice
         }
 
         // Gets an element from the data tuple
-        template<int I>
+        template<size_t I>
         auto get() -> decltype(std::get<I>(std::declval<tuple_type>()))
         {
-            using return_type = decltype(std::get<I>(std::declval<tuple_type>()));
-            return std::forward<return_type>(std::get<I>(this->tuple));
+            using result_type = decltype(std::get<I>(std::declval<tuple_type>()));
+            return std::forward<result_type>(std::get<I>(this->tuple));
         }
 
         // Sets the nth element I from this data silce to the specified object
         template<size_t I, class T>
-        auto set(T&& obj) -> decltype(std::get<I>(std::declval<tuple_type()))
+        auto set(T&& obj) -> decltype(std::get<I>(std::declval<tuple_type>()))
         {
-            using return_type = decltype(std::get<I>(std::declval<tuple_type>()));
             std::get<I>(this->tuple) = std::forward<T>(obj);
             if(this->used.test(I) == false)
             {
-                this->used_count.set(I);
+                this->used.set(I);
                 ++this->used_count;
             }
-            return std::forward<return_type>(this->get<I>());
+            using result_type = decltype(std::get<I>(std::declval<tuple_type>()));
+            return std::forward<result_type>(this->get<I>());
         }
 
         // Resets the state of this object
@@ -469,15 +469,13 @@ class data_slice
 template<int I, class ...Types> inline
 auto get(data_slice<Types...>& data) -> decltype(std::declval<data_slice<Types...>>().get<I>())
 {
-    using return_type = decltype(std::declval<data_slice<Types...>>().get<I>());
-    return std::forward<return_type>(data.get<I>());
+    return data.get<I>();
 }
 
 template<int I, class ...Types> inline
 auto get(const data_slice<Types...>& data) -> std::add_const_t<decltype(get<I>(std::declval<data_slice<Types...>>()))>
 {
-    using return_type = decltype(get<I>(std::declval<data_slice<Types...>>()));
-    return std::forward<return_type>(get<I>(const_cast<data_slice<Types...>&>(data)));
+    return get<I>(const_cast<data_slice<Types...>&>(data));
 }
 
 

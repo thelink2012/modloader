@@ -1,6 +1,9 @@
 v0.2.2 (In Dev)
 ------------------------
  * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.
+ * The data merger and overriden plugin *std.data* is back up and running, changes on it as follow.
+ * Any custom timecyc is now loaded properly for SAMP
+ * Implemented caching for mergeable data files *(so it does not need to merge every time the game loads)*
 
 v0.2.1 (Nov 23 2014)
 ------------------------
@@ -32,7 +35,7 @@ v0.2.0 (Aug 02 2014)
  * __Hotfix 1 (Aug 03 2014)__:
     + Fixed streamed ifp files not being handled
     + Fixed streamed col/rrr/scm files not being re-registered properly
-
+ 
 v0.1.15 (Mar 05 2014)
 ------------------------
  * CLEO scripts injection works with CLEO 4.1 and below

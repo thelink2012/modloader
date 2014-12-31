@@ -52,6 +52,7 @@ struct carmods_traits : gta3::data_traits
     {
         // Note: must be in the same order as declared in value_type
         static auto sections = gta3::make_section_info("wheel", "mods", "link");
+        static_assert(std::tuple_size<decltype(sections)>::value == 1 + value_type::num_sections, "incompatible sizes");
         return sections.data();
     }
 
@@ -139,5 +140,5 @@ namespace datalib {
 }
 
 // Vehicle Upgrades Merger
-static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carmods_store>, _1, "carmods.dat", true, no_reinstall));
+static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carmods_store>, _1, "carmods.dat", true, false, no_reinstall));
 

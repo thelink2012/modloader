@@ -37,17 +37,116 @@ namespace modloader
      *      @addr is the address to hook 
      *      Note the object is dummy (has no content), all stored information is static
      */
-    template<class Traits, class MyBase, class Ret, class ...Args>
-    struct basic_file_detour : public MyBase
+    template<class Traits, class MyHooker, class Ret, class ...Args>
+    struct basic_file_detour : public MyHooker
     {
         protected:
-            typedef MyBase                     function_hooker;
-            typedef typename MyBase::func_type func_type;
+            typedef MyHooker                     function_hooker;
+            typedef typename MyHooker::func_type func_type;
+
+
+            /*
+             *  Used to set up a printer on each function call that prints what is getting loaded.
+             *  Notice incref() should be called before you set up your hook over the function.
+             *  Static and reference counted hook.
+             */
+            class printer_t : public MyHooker
+            {
+                public:
+                    // Before calling the printer, those variables should be set up by the user
+                    bool print_next = false;        // Prints on the next print call
+                    bool is_custom  = false;        // Is loading a custom file
+                    bool use_lpath  = false;        // Prints lpath for the file path instead of the argument
+                    const char* lpath;              // When use_lpath=true, this gets used as the file path to print
+
+                private:
+                    MyHooker hook;
+                    uint32_t ref = 0;
+
+                    Ret print(func_type fun, Args&... args)
+                    {
+                        if(this->print_next)
+                        {
+                            static const char* what = Traits::what();
+                            static const auto  pos  = Traits::arg - 1;
+                            auto& arg = std::get<pos>(std::forward_as_tuple(args...));
+
+                            this->print_next = false;
+                            if(this->has_info_for_print())
+                                plugin_ptr->Log("Loading %s %s \"%s\"",
+                                                (is_custom? "custom" : "default"), what, (use_lpath? lpath : arg));
+                        }
+                        return fun(args...);
+                    }
+
+                public:
+                    // Constructors, move constructors, assigment operators........
+                    // nope and nope, just default construction
+                    printer_t() = default;
+                    printer_t(const printer_t&) = delete;
+                    printer_t(printer_t&& rhs) = delete;
+                    printer_t& operator=(const printer_t& rhs) = delete;
+                    printer_t& operator=(printer_t&& rhs) = delete;
+
+                    ~printer_t()
+                    {
+                        this->restore();
+                    }
+
+                    // Makes the hook of the printer
+                    // If the hook has already been installed by another function hooker of this same trait
+                    // just increase a reference counter...
+                    void incref()
+                    {
+                        if(this->ref != 0)
+                            ++this->ref;
+                        else
+                        {
+                            this->ref = 1;
+                            MyHooker::make_call([this](func_type func, Args&... args) -> Ret
+                            {
+                                return this->print(std::move(func), args...);
+                            });
+                        }
+                    }
+
+                    // Restores the call we've replaced for the printer
+                    // If the reference counter isn't unique, just decreases it
+                    void decref()
+                    {
+                        if(this->ref)   // make sure there's any reference
+                        {
+                            if(this->ref != 1)
+                                --this->ref;
+                            else
+                            {
+                                this->ref = 0;
+                                MyHooker::restore();
+                            }
+                        }
+                    }
+
+                    // Checks if we have enought information about the trait and the plugin to print anything
+                    static bool has_info_for_print()
+                    {
+                        static const char* what = Traits::what();
+                        return (what && what[0] && plugin_ptr);
+                    }
+
+                    // The instance of a printer
+                    // Uses a shared_ptr to avoid static destruction order problems
+                    static std::shared_ptr<printer_t> instance()
+                    {
+                        static auto p = std::shared_ptr<printer_t>(has_info_for_print()? new printer_t() : nullptr);
+                        return p;
+                    }
+            };
 
             // Store for the path (relative to gamedir)
             std::string path, temp;
             std::function<std::string(std::string)> transform;
             std::function<std::string(std::string)> postransform;
+            std::shared_ptr<printer_t> printer;
 
             // The detoured function goes to here
             Ret hook(func_type fun, Args&... args)
@@ -87,10 +186,14 @@ namespace modloader
                     }
                 }
 
-                // If the file type is known, log what we're loading
-                if(what && what[0] && plugin_ptr)
-                    plugin_ptr->Log("Loading %s %s \"%s\"",
-                                    (lpath? "custom" : "default"), what, (lpath? lpath : arg));
+                // Set ups the printer to print the next loading file
+                if(printer && !printer->print_next) // avoid double setuping
+                {
+                    printer->print_next = true;
+                    printer->lpath      = lpath;
+                    printer->is_custom  = (lpath != 0);
+                    printer->use_lpath  = (lpath != 0);
+                }
 
                 // Call the function with the new filepath
                 return fun(args...);
@@ -99,20 +202,27 @@ namespace modloader
         public:
 
             // Constructors, move constructors, assigment operators........
-            basic_file_detour() = default;
+            basic_file_detour() : printer(printer_t::instance()) {}
             basic_file_detour(const basic_file_detour&) = delete;
             basic_file_detour(basic_file_detour&& rhs)
-                : MyBase(std::move(rhs)), path(std::move(rhs.path)),
-                transform(std::move(rhs.transform)), postransform(rhs.postransform)
+                : MyHooker(std::move(rhs)), path(std::move(rhs.path)),
+                transform(std::move(rhs.transform)), postransform(rhs.postransform),
+                printer(rhs.printer)    // (dont move the printer)
             {}
             basic_file_detour& operator=(const basic_file_detour& rhs) = delete;
             basic_file_detour& operator=(basic_file_detour&& rhs)
             {
-                MyBase::operator=(std::move(rhs));
+                MyHooker::operator=(std::move(rhs));
                 this->path = std::move(rhs.path);
                 this->transform = std::move(rhs.transform);
                 this->postransform = std::move(rhs.postransform);
+                this->printer = rhs.printer; // (dont move the printer)
                 return *this;
+            }
+
+            ~basic_file_detour()
+            {
+                this->restore();
             }
 
             // Makes the hook
@@ -120,18 +230,32 @@ namespace modloader
             {
                 if(!this->has_hooked())
                 {
-                    MyBase::make_call([this](func_type func, Args&... args) -> Ret
+                    if(printer) printer->incref();
+                    MyHooker::make_call([this](func_type func, Args&... args) -> Ret
                     {
-                        return this->hook(func, args...);
+                        return this->hook(std::move(func), args...);
                     });
                 }
             }
 
+            // Restore need to also restore the printer
+            void restore()
+            {
+                if(printer && this->has_hooked()) printer->decref();
+                MyHooker::restore();
+            }
+
+            // Sets the file to override with
             void setfile(std::string path)
             {
                 this->make_call();
                 this->path = std::move(path);
             }
+
+            
+            //
+            // the following callbacks setupers follows file_overrider naming conventions not function_hookers
+            //
 
             void OnTransform(std::function<std::string(std::string)> functor)
             {
@@ -174,11 +298,9 @@ namespace modloader
             file_overrider(const file_overrider&) = delete;     // cba to implement those
             file_overrider(file_overrider&&) = delete;          // ^^
 
-            // Get the injection buffer
-            scoped_base& GetInjection(size_t i = 0)
-            {
-                return *injections.at(i);
-            }
+            // Injections accessors
+            size_t NumInjections() { return injections.size(); }
+            scoped_base& GetInjection(size_t i) { return *injections.at(i); }
             
             // Checks if at this point of the game execution we can install stuff
             bool CanInstall()

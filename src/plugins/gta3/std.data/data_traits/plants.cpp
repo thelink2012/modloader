@@ -55,6 +55,6 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
             plugin_ptr->Log("Failed to refresh plant manager");
     };
 
-    plugin_ptr->AddMerger<plants_store>("plants.dat", true, reinstall_since_load, ReloadPlantsDat);
+    plugin_ptr->AddMerger<plants_store>("plants.dat", true, false, reinstall_since_load, ReloadPlantsDat);
 });
 

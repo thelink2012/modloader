@@ -7,10 +7,10 @@
 #undef INJECTOR_GVM_HAS_TRANSLATOR  // TODO make it use the translator
 #include <stdinc/gta3/stdinc.hpp>
 #include "datalib.hpp"
-#if 0
-#include "vfs.hpp"
-#include "cache.hpp"
-#include "data.hpp"
-#endif
+
+// data.hpp and cache.hpp should not be included over here
+// see main.cpp for details why
+
+
 
 

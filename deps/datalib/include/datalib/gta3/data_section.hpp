@@ -107,6 +107,8 @@ class data_section
 
     public:
 
+        static const size_t num_sections = sizeof...(Sections);
+
         //
         //  Constructors
         //
@@ -174,8 +176,8 @@ class data_section
         // In case the line doesn't match the section specifier, the working section gets invalidated and the method returns false
         bool as_section(const section_info* tsection, const std::string& line)
         {
-            if(tsection) assert(tsection->id < sizeof...(Sections));
-            as_section_fn fn(*this, tsection, line);
+            if(tsection) assert(tsection->id < num_sections);
+            as_section_fn fn(*this, tsection);
             foreach_type_variadic<Sections...>()(fn);
             this->tsection = (this->check(line)? tsection : nullptr);
             return has_section();
@@ -185,7 +187,9 @@ class data_section
         // Be very careful when using this function
         void force_section(const section_info* tsection)
         {
-            if(tsection) assert(tsection->id < sizeof...(Sections));
+            if(tsection) assert(tsection->id < num_sections);
+            as_section_fn fn(*this, tsection);
+            foreach_type_variadic<Sections...>()(fn);
             this->tsection = tsection;
         }
 
@@ -227,10 +231,10 @@ class data_section
         // Gets the nth element 'I' of type 'Type' from the working section data_slice
         // Assumes all data slices contains the same Type in the nth I element.
         template<int I, typename Type>
-        Type&& get() const
+        Type& get() const
         {
             get_nth_visitor<I, Type> visitor;
-            return std::forward<Type&&>(this->apply_visitor(visitor));
+            return (this->apply_visitor(visitor));
         }
 
         // Gets the nth element 'I' of type 'Type' from the working section data_slice
@@ -242,12 +246,20 @@ class data_section
             return (this->apply_visitor(visitor));
         }
 
+        // Gets the data_slice with the specified 'Type' (Type=some data_slice<>)
+        // Throws a exception if the current bound type is not the same as 'Type'
+        template<typename Type>
+        Type& get_slice() const
+        {
+            get_slice_visitor<Type> visitor;
+            return this->apply_visitor(visitor);
+        }
+
         // CXX14 HELP-ME
         template<class Visitor>
         auto apply_visitor(Visitor& visitor) const -> decltype(::apply_visitor(std::declval<Visitor>(), std::declval<either_type>()))
         {
-            using result_type = decltype(::apply_visitor(std::declval<Visitor>(), std::declval<either_type>()));
-            return std::forward<result_type>(::apply_visitor(visitor, const_cast<either_type&>(this->data)));
+            return ::apply_visitor(visitor, const_cast<either_type&>(this->data));
         }
 
     public: // not to be used directly
@@ -272,10 +284,9 @@ class data_section
         {
             data_section& data;
             const section_info* tsection;
-            const std::string& line;
 
-            as_section_fn(data_section& data, const section_info* tsection, const std::string& line) :
-                data(data), tsection(tsection), line(line)
+            as_section_fn(data_section& data, const section_info* tsection) :
+                data(data), tsection(tsection)
             {}
 
             template<class Integral, class TypeWr>
@@ -343,15 +354,15 @@ class data_section
         };
 
         template<int I, class Type>
-        struct get_nth_visitor : either_static_visitor<Type&&>
+        struct get_nth_visitor : either_static_visitor<Type&>
         {
             template<class T>
-            Type&& operator()(T& slice) const
+            Type& operator()(T& slice) const
             {
-                return std::forward<Type&&>(::get<I>(slice));
+                return ::get<I>(slice);
             }
 
-            Type&& operator()(either_blank) const
+            Type& operator()(either_blank) const
             {
                 throw std::runtime_error("get_nth_visitor called while object state is empty");
             }
@@ -374,43 +385,31 @@ class data_section
                 return nullptr;
             }
         };
+
+        template<class Type>
+        struct get_slice_visitor : either_static_visitor<Type&>
+        {
+            Type& operator()(Type& slice) const
+            {
+                return slice;
+            }
+
+            template<class T>
+            Type& operator()(T& slice) const
+            {
+                throw std::runtime_error("get_slice_visitor called with wrong which");
+            }
+
+            Type& operator()(either_blank) const
+            {
+               throw std::runtime_error("get_slice_visitor called while object state is empty");
+            }
+        };
 };
 
 
 template<class T>
 using data_section_visitor = either_static_visitor<T>;
-
-
-// CXX14 HELP-ME
-
-// Gets the nth element I from the working section slice in the data_section object assuming its type is 'Type'
-template<int I, typename Type, class ...Sections> inline
-auto get(data_section<Sections...>& data) -> decltype(std::declval<data_section<Sections...>>().get<I, Type>())
-{
-    using return_type = decltype(std::declval<data_section<Sections...>>().get<I, Type>());
-    return std::forward<return_type>(data.get<I, Type>());
-}
-
-template<int I, typename Type, class ...Sections> inline
-auto get(const data_section<Sections...>& data) -> std::add_const_t<decltype(get<I, Type>(std::declval<data_section<Sections...>>()))>
-{
-    using return_type = decltype(get<I, Type>(std::declval<data_section<Sections...>>()));
-    return std::forward<return_type>(get<I, Type>(const_cast<data_section<Sections...>&>(data)));
-}
-
-template<int I, typename Type, class ...Sections> inline
-auto get(data_section<Sections...>* data) -> decltype(std::declval<data_section<Sections...>>().getp<I, Type>())
-{
-    using return_type = decltype(std::declval<data_section<Sections...>>().getp<I, Type>());
-    return std::forward<return_type>(data->getp<I, Type>());
-}
-
-template<int I, typename Type, class ...Sections> inline
-auto get(const data_section<Sections...>* data) -> std::add_const_t<decltype(get<I, Type>(&std::declval<data_section<Sections...>>()))>
-{
-    using return_type = decltype(get<I, Type>(&std::declval<data_section<Sections...>>()));
-    return std::forward<return_type>(get<I, Type>(const_cast<data_section<Sections...>*>(data)));
-}
 
 
 // helper to find out the sections array used in a data_section

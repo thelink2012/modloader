@@ -30,7 +30,12 @@
 #include <cereal/types/vector.hpp>
 
 // Whenever a serialized data format changes, this number should increase so the serialized file gets incompatible
-static const uint32_t current_cereal_data_version = 1;
+// NOTICE, this function should be static so it gets one instantiation on each translation unit!!!
+static /* <--- YES STATIC */ uint32_t current_cereal_data_version()
+{
+    static const uint32_t version = modloader::hash(__DATE__ " " __TIME__);
+    return version;
+}
 
 // Some settings for debugging caching
 static const bool disable_caching     = false;  // Disables reading from the cache
@@ -46,10 +51,6 @@ class data_cache : modloader::basic_cache
 {
     private:
         vfs<> fs;
-
-        //
-        //  NOTE: cache_id 0 is for unique data files
-        //
 
     public:
         using cache_file_tuple = std::tuple<int, std::string, std::string>;
@@ -72,6 +73,10 @@ class data_cache : modloader::basic_cache
             fs.clear();
             return basic_cache::Shutdown(false);
         }
+
+        //
+        //  NOTE: cache_id 0 is for unique data files
+        //
 
         // Gets directory for the specified cache id
         std::string GetCacheDir(int cache_id, bool fullpath = true)
@@ -290,15 +295,17 @@ class data_cache : modloader::basic_cache
             ss.open(filepath, std::ios::binary);
             if(ss.is_open())
             {
-                uint32_t version = current_cereal_data_version; // This variable won't change in the case of a output stream,
+                uint32_t version = current_cereal_data_version(); // This variable won't change in the case of a output stream,
                                                                 // but will in the case of a input stream, in any case default initialize for the output case
                 archive_type archive(ss);
                 archive(version);
-                if(version == current_cereal_data_version)      // Make sure serialization version matches
+                if(version == current_cereal_data_version())      // Make sure serialization version matches
                 {
                     func(ss, archive);
                     return true;
                 }
+                else
+                    plugin_ptr->Log("Warning: Incompatible cache version, a new cache will be generated.");
             }
             return false;
         }

@@ -88,11 +88,12 @@ class DataPlugin : public modloader::basic_plugin
 
         // Registers a merger to work during the file verification and installation/uninstallation process
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
-        // The parameter 'unique' especifies whether the specified file can have only one instance
+        // The boolean parameter 'unique' especifies whether the specified file can have only one instance
         //      (i.e. plants.dat have only one instance at data/ but vegass.ipl could have two at e.g. data/maps/vegas1 and data/maps/vegas2)
+        // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         // The other parameters are familiar enought
         template<class StoreType, class... Args>
-        modloader::file_overrider& AddMerger(const std::string& fsfile, bool unique, const modloader::file_overrider::params& params, Args&&... xargs)
+        modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, const modloader::file_overrider::params& params, Args&&... xargs)
         {
             using namespace modloader;
             using namespace std::placeholders;
@@ -100,22 +101,28 @@ class DataPlugin : public modloader::basic_plugin
             using traits_type = typename store_type::traits_type;
             using detour_type = typename traits_type::detour_type;
 
+            fsfile = modloader::NormalizePath(std::move(fsfile));
+
             auto hash = modloader::hash(fsfile);
 
             auto& ov = ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
                 std::forward_as_tuple(tag_detour, params, detour_type(), std::forward<Args>(xargs)...)
                 ).first->second;
-            auto& d = static_cast<detour_type&>(ov.GetInjection());
-            
-            // Merges data whenever necessary to open this file. Notice caching can happen.
-            d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique));
+
+            for(size_t i = 0; i < ov.NumInjections(); ++i)
+            {
+                // Merges data whenever necessary to open this file. Caching can happen.
+                auto& d = static_cast<detour_type&>(ov.GetInjection(i));
+                d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique, samefile));
+            }
 
             // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
             // This gets called during InstallFile/ReinstallFile/UninstallFile
             ov.OnHook([&ov](const modloader::file*)
             {
-                static_cast<detour_type&>(ov.GetInjection()).make_call();
+                for(size_t i = 0; i < ov.NumInjections(); ++i)
+                    static_cast<detour_type&>(ov.GetInjection(i)).make_call();
             });
 
             vbehav.emplace_back(files_behv_t { hash, true, 0 });
@@ -125,8 +132,9 @@ class DataPlugin : public modloader::basic_plugin
         // Adds a detour for the file with the specified file to the overrider system
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
         template<class ...Args>
-        modloader::file_overrider& AddDetour(const std::string& fsfile, Args&&... args)
+        modloader::file_overrider& AddDetour(std::string fsfile, Args&&... args)
         {
+            fsfile = modloader::NormalizePath(std::move(fsfile));
             auto hash = modloader::hash(fsfile);
 
             auto& ov = ovmap.emplace(std::piecewise_construct,
@@ -139,8 +147,9 @@ class DataPlugin : public modloader::basic_plugin
         }
 
         // Finds overrider/merger for the file with the specified instance in the virtual filesystem, rets null if not found
-        modloader::file_overrider* FindMerger(const std::string& fsfile)
+        modloader::file_overrider* FindMerger(std::string fsfile)
         {
+            fsfile = modloader::NormalizePath(std::move(fsfile));
             return FindMerger(modloader::hash(fsfile));
         }
 
@@ -167,24 +176,29 @@ class DataPlugin : public modloader::basic_plugin
         //
         // Merges all the files in the virtual filesystem 'fs' which is in the 'fsfile' path, plus the file 'file' assuming the store type 'StoreType'
         // For a explanation of the 'unique' parameter see AddMerger function
+        // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         //
         template<class StoreType>  
-        std::string GetMergedData(std::string file, std::string fsfile, bool unique)
+        std::string GetMergedData(std::string file, std::string fsfile, bool unique, bool samefile)
         {
             using namespace modloader;
-
             using store_type  = StoreType;
             using traits_type = typename store_type::traits_type;
+            auto filename     = modloader::NormalizePath(GetPathComponentBack(file));
 
-            auto what  = traits_type::dtraits::what();
-            auto range = this->fs.files_at(fsfile);
-            auto count = std::distance(range.first, range.second);
+            // Make sure filename matches if samefile has been specified
+            if(samefile && filename != fsfile)
+                return std::string(); // use default file
+
+            auto what     = traits_type::dtraits::what();
+            auto range    = this->fs.files_at(fsfile);
+            auto count    = std::distance(range.first, range.second);
 
             if(count == 1) // only one file, so let's just override
                 return range.first->second.first;
             else if(count >= 2)   // any file to merge? we need at least 2 files to be able to do merging
             {
-                auto fsfile = NormalizePath(GetPathComponentBack(file));
+                auto fsfile = filename;
                 caching_stream<StoreType> cs(fsfile, unique);
                 
                 // Add data files we'll work on to the caching stream
@@ -246,7 +260,7 @@ class DataPlugin : public modloader::basic_plugin
 
             }
 
-            return "";  // use default file
+            return std::string();  // use default file
         }
 
 #if 0
