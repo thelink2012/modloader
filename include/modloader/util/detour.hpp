@@ -38,24 +38,19 @@ namespace modloader
      *      Note the object is dummy (has no content), all stored information is static
      */
     template<class Traits, class MyBase, class Ret, class ...Args>
-    struct basic_file_detour : MyBase
+    struct basic_file_detour : public MyBase
     {
         protected:
             typedef MyBase                     function_hooker;
             typedef typename MyBase::func_type func_type;
 
             // Store for the path (relative to gamedir)
-            struct store_type {
-                std::string path, temp;
-                std::function<std::string(std::string)> transform;
-                std::function<std::string(std::string)> postransform;
-            };
+            std::string path, temp;
+            std::function<std::string(std::string)> transform;
+            std::function<std::string(std::string)> postransform;
 
-            static store_type& store()
-            { static store_type x; return x; }
-   
             // The detoured function goes to here
-            static Ret hook(func_type fun, Args&... args)
+            Ret hook(func_type fun, Args&... args)
             {
                 static const auto  pos  = Traits::arg - 1;
                 static const char* what = Traits::what();
@@ -64,17 +59,17 @@ namespace modloader
                 char fullpath[MAX_PATH];
                 const char* lpath = nullptr;
                 
-                auto& path = store().temp;
-                path.assign(store().path);
+                auto& path = this->temp;
+                path.assign(this->path);
 
                 // If has transform functor, use it to get new path
-                if(store().transform)
-                    path = store().transform(arg);
+                if(this->transform)
+                    path = this->transform(arg);
 
                 if(!path.empty())   // Has any path to override the original with?
                 {
-                    if(store().postransform)
-                        path = store().postransform(std::move(path));
+                    if(this->postransform)
+                        path = this->postransform(std::move(path));
 
                     if(!path.empty())
                     {
@@ -106,31 +101,46 @@ namespace modloader
             // Constructors, move constructors, assigment operators........
             basic_file_detour() = default;
             basic_file_detour(const basic_file_detour&) = delete;
-            basic_file_detour(basic_file_detour&& rhs) : MyBase(std::move(rhs)) {}
+            basic_file_detour(basic_file_detour&& rhs)
+                : MyBase(std::move(rhs)), path(std::move(rhs.path)),
+                transform(std::move(rhs.transform)), postransform(rhs.postransform)
+            {}
             basic_file_detour& operator=(const basic_file_detour& rhs) = delete;
             basic_file_detour& operator=(basic_file_detour&& rhs)
-            { MyBase::operator=(std::move(rhs)); return *this; }
+            {
+                MyBase::operator=(std::move(rhs));
+                this->path = std::move(rhs.path);
+                this->transform = std::move(rhs.transform);
+                this->postransform = std::move(rhs.postransform);
+                return *this;
+            }
 
             // Makes the hook
             void make_call()
             {
-                MyBase::make_call(hook);
+                if(!this->has_hooked())
+                {
+                    MyBase::make_call([this](func_type func, Args&... args) -> Ret
+                    {
+                        return this->hook(func, args...);
+                    });
+                }
             }
 
             void setfile(std::string path)
             {
-                make_call();
-                store().path = std::move(path);
+                this->make_call();
+                this->path = std::move(path);
             }
 
             void OnTransform(std::function<std::string(std::string)> functor)
             {
-                store().transform = std::move(functor);
+                this->transform = std::move(functor);
             }
 
             void OnPosTransform(std::function<std::string(std::string)> functor)
             {
-                store().postransform = std::move(functor);
+                this->postransform = std::move(functor);
             }
     };
 
@@ -140,16 +150,13 @@ namespace modloader
             Made to easily override some game file
             Works better in conjunction with a file detour (basic_file_detour)
     */
-    template<unsigned int NumInjections = 1>
     struct file_overrider
     {
-        public:
-            typedef injector::scoped_basic<32> scoped_buffer_type;
-            static const auto num_injections = NumInjections;
-
         protected:
+            using injection_list_t = std::vector<std::unique_ptr<scoped_base>>;
+
+            injection_list_t injections;                    // List of injections attached to this overrider
             const modloader::file* file = nullptr;          // The file being used as overrider
-            scoped_buffer_type injection_buf[NumInjections];// Buffer to store scoped injection
             bool bCanReinstall = false;                     // Can this overrider get reinstalled?
             bool bCanUninstall = false;                     // Can this overrider get uninstalled?
 
@@ -168,9 +175,9 @@ namespace modloader
             file_overrider(file_overrider&&) = delete;          // ^^
 
             // Get the injection buffer
-            injector::scoped_base& GetInjection(unsigned int i = 0)
+            scoped_base& GetInjection(size_t i = 0)
             {
-                return injection_buf[i];
+                return *injections.at(i);
             }
             
             // Checks if at this point of the game execution we can install stuff
@@ -240,15 +247,27 @@ namespace modloader
             // This overrides OnHook
             template<class ...Args> void SetFileDetour(Args&&... detourers_)
             {
-                std::reference_wrapper<scoped_base> d[] = { detourers_... };
-                for(int i = 0; i < sizeof...(Args); ++i)
-                    GetInjection(i) = std::move(d[i].get().template cast<scoped_buffer_type>());
+                this->injections.resize(sizeof...(detourers_));
+                HlpSetFileDetour<0>(std::forward<Args>(detourers_)...);
 
                 OnHook([this](const modloader::file* f)
                 {
                     Hlp_SetFile<sizeof...(Args), Args..., std::nullptr_t>(f);
                 });
             }
+
+        private:
+            template<size_t I>
+            void HlpSetFileDetour()
+            {}
+
+            template<size_t I, class Arg, class ...Args>
+            void HlpSetFileDetour(Arg&& detour, Args&&... detours)
+            {
+                injections.at(I).reset(new std::decay_t<Arg>(std::forward<Arg>(detour)));
+                return HlpSetFileDetour<I+1>(std::forward<Args>(detours)...);
+            }
+
 
         public: // Helpers for construction
             // Pack of basic boolean states to help the initialization of this object
@@ -337,7 +356,7 @@ namespace modloader
             template<size_t i, class T, class ...Args>
             typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
             {
-                T& detourer = GetInjection(i-1).template cast<T>();
+                T& detourer = static_cast<T&>(GetInjection(i-1));
                 detourer.setfile(f? f->filepath() : "");
                 return Hlp_SetFile<i-1, Args...>(f); 
             }
@@ -349,7 +368,7 @@ namespace modloader
             template<size_t i, class T, class ...Args>
             typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
             {
-                T& detourer = GetInjection(i-1).template cast<T>();
+                T& detourer = static_cast<T&>(GetInjection(i-1));
                 detourer.OnTransform(fn);
                 return Hlp_OnTransform<i-1, Args...>(fn);
             }
@@ -361,7 +380,7 @@ namespace modloader
             template<size_t i, class T, class ...Args>
             typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
             {
-                T& detourer = GetInjection(i-1).template cast<T>();
+                T& detourer = static_cast<T&>(GetInjection(i-1));
                 detourer.make_call();
                 return Hlp_MakeCall<i-1, Args...>(fn);
             }
@@ -369,6 +388,7 @@ namespace modloader
             template<size_t i, class T, class ...Args>
             typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
             {}  // The end of the args is represented with a nullptr_t
+
     };
 
 }

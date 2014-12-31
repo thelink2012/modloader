@@ -51,7 +51,7 @@ void Loader::Patch()
     {
         // Hook WinMain to run mod loader
         injector::make_static_hook<winmain_hook>([this](winmain_hook::func_type WinMain,
-                                                    HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
+                                                    HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
         {
             // Avoind circular looping forever
             static bool bRan = false;
@@ -80,12 +80,13 @@ void Loader::Patch()
 
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
             // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
+            {
             this->Startup();
-            WinMain = ReadRelativeOffset(winmain_hook::addr + 1).get();
+            auto WinMain = (winmain_hook::func_type_raw) ReadRelativeOffset(winmain_hook::addr + 1).get();
             auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             this->Shutdown();
-
             return result;
+            }
         });
     }
     else

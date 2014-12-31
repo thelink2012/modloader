@@ -15,7 +15,7 @@
 class ThePlugin : public modloader::basic_plugin
 {
     private:
-        file_overrider<> ov_ped_ifp;
+        file_overrider ov_ped_ifp;
 
     public:
         const info& GetInfo();
@@ -58,7 +58,7 @@ bool ThePlugin::OnStartup()
         streaming.Patch();
 
         // Setup ped.ifp overrider
-        ov_ped_ifp.SetParams(file_overrider<>::params(nullptr));
+        ov_ped_ifp.SetParams(file_overrider::params(nullptr));
         ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());
 
         return true;

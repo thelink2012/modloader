@@ -272,7 +272,7 @@ class CAbstractStreaming
     private:
         // Fetching and loading of cd directories
         void FetchCdDirectory(TempCdDir_t& cd_dir, const char*& filename, int id);
-        void FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)());
+        void FetchCdDirectories(TempCdDir_t& cd_dir, std::function<void()> LoadCdDirectories);
         void LoadCdDirectories(TempCdDir_t& cd_dir);
         void LoadAbstractCdDirectory(ref_list<const modloader::file*> files);
         void BuildPrevOnCdMap();

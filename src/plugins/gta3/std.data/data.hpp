@@ -74,8 +74,8 @@ class DataPlugin : public modloader::basic_plugin
         vfs<const modloader::file*> fs;
 
         // Overriders
-        std::map<size_t, modloader::file_overrider<>> ovmap;        // Map of files overriders and mergers associated with their handling file names hashes
-        std::set<modloader::file_overrider<>*>        ovrefresh;    // Set of mergers to be refreshed on Update() 
+        std::map<size_t, modloader::file_overrider> ovmap;        // Map of files overriders and mergers associated with their handling file names hashes
+        std::set<modloader::file_overrider*>        ovrefresh;    // Set of mergers to be refreshed on Update() 
 
         // Info
         std::vector<files_behv_t> vbehav;
@@ -92,7 +92,7 @@ class DataPlugin : public modloader::basic_plugin
         //      (i.e. plants.dat have only one instance at data/ but vegass.ipl could have two at e.g. data/maps/vegas1 and data/maps/vegas2)
         // The other parameters are familiar enought
         template<class StoreType, class... Args>
-        modloader::file_overrider<>& AddMerger(const std::string& fsfile, bool unique, const modloader::file_overrider<>::params& params, Args&&... xargs)
+        modloader::file_overrider& AddMerger(const std::string& fsfile, bool unique, const modloader::file_overrider::params& params, Args&&... xargs)
         {
             using namespace modloader;
             using namespace std::placeholders;
@@ -106,7 +106,7 @@ class DataPlugin : public modloader::basic_plugin
                 std::forward_as_tuple(hash),
                 std::forward_as_tuple(tag_detour, params, detour_type(), std::forward<Args>(xargs)...)
                 ).first->second;
-            auto& d = ov.GetInjection().cast<detour_type>();
+            auto& d = static_cast<detour_type&>(ov.GetInjection());
             
             // Merges data whenever necessary to open this file. Notice caching can happen.
             d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique));
@@ -115,7 +115,7 @@ class DataPlugin : public modloader::basic_plugin
             // This gets called during InstallFile/ReinstallFile/UninstallFile
             ov.OnHook([&ov](const modloader::file*)
             {
-                ov.GetInjection().cast<detour_type>().make_call();
+                static_cast<detour_type&>(ov.GetInjection()).make_call();
             });
 
             vbehav.emplace_back(files_behv_t { hash, true, 0 });
@@ -125,7 +125,7 @@ class DataPlugin : public modloader::basic_plugin
         // Adds a detour for the file with the specified file to the overrider system
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
         template<class ...Args>
-        modloader::file_overrider<>& AddDetour(const std::string& fsfile, Args&&... args)
+        modloader::file_overrider& AddDetour(const std::string& fsfile, Args&&... args)
         {
             auto hash = modloader::hash(fsfile);
 
@@ -139,13 +139,13 @@ class DataPlugin : public modloader::basic_plugin
         }
 
         // Finds overrider/merger for the file with the specified instance in the virtual filesystem, rets null if not found
-        modloader::file_overrider<>* FindMerger(const std::string& fsfile)
+        modloader::file_overrider* FindMerger(const std::string& fsfile)
         {
             return FindMerger(modloader::hash(fsfile));
         }
 
         // Finds overrider/merger for the file with the specified hash, rets null if not found
-        modloader::file_overrider<>* FindMerger(size_t hash)
+        modloader::file_overrider* FindMerger(size_t hash)
         {
             auto it = ovmap.find(hash);
             if(it != ovmap.end()) return &it->second;
@@ -249,6 +249,17 @@ class DataPlugin : public modloader::basic_plugin
             return "";  // use default file
         }
 
+#if 0
+        using fGetMergedData_t = std::function<std::string(std::string, std::string, bool)>;
+        using DetourMap_t      = std::map<uintptr_t, std::pair<std::string, fGetMergedData_t>>;
+
+        DetourMap_t& GetDetourMap()
+        {
+            static DetourMap_t map;
+            return map;
+        }
+#endif
+
 };
 extern DataPlugin plugin;
 
@@ -285,6 +296,6 @@ class initializer
 };
 
 // Global const params vars for AddMerger/AddDetour
-static const auto no_reinstall          = modloader::file_overrider<>::params(nullptr);
-static const auto reinstall_since_start = modloader::file_overrider<>::params(true, true, true, true);
-static const auto reinstall_since_load  = modloader::file_overrider<>::params(true, true, false, true);
+static const auto no_reinstall          = modloader::file_overrider::params(nullptr);
+static const auto reinstall_since_start = modloader::file_overrider::params(true, true, true, true);
+static const auto reinstall_since_load  = modloader::file_overrider::params(true, true, false, true);

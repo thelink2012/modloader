@@ -104,7 +104,7 @@ static void PerformDirectoryRead(size_t size,
  *  CAbstractStreaming::FetchCdDirectories
  *      Fetches (but do not load) the cd directories into @cd_dir
  */
-void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)())
+void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, std::function<void()> LoadCdDirectories)
 {
     using namespace std::placeholders;
     typedef function_hooker<0x5B8310, void(const char*, int)> fetchcd_hook;

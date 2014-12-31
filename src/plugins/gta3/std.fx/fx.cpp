@@ -30,15 +30,15 @@ struct grass_dff_detour : RwStreamOpenDetour<addr>
         static std::string& grass(int i, int j) { static grass_store x; return x.grass[i][j-1]; }
 
         // This hook just wraps around the base hook, we'll call it
-        static void* hook(typename base::func_type fun, int& a, int& b, const char*& fpath)
+        void* hook(typename base::func_type fun, int& a, int& b, const char*& fpath)
         {
             int i, j;
 
             // Get d grazz
             if(sscanf(&fpath[GetLastPathComponent(std::string(fpath))], "grass%d_%d.dff", &i, &j) >= 2)
-                MyBase::store().path = grass(i,j);
+                this->path = grass(i,j);
             else
-                MyBase::store().path.clear();
+                this->path.clear();
 
             // Forward to base
             return MyBase::hook(fun, a, b, fpath);
@@ -58,7 +58,8 @@ struct grass_dff_detour : RwStreamOpenDetour<addr>
         // Makes the hook
         void make_call()
         {
-            base::function_hooker::make_call(hook);
+            using namespace std::placeholders;
+            base::function_hooker::make_call(std::bind(&grass_dff_detour::hook, this, _1, _2, _3, _4));
         }
 
         void setfile(std::string path, int i, int j)
@@ -75,12 +76,12 @@ struct grass_dff_detour : RwStreamOpenDetour<addr>
 class FxPlugin : public modloader::basic_plugin
 {
     private:
-        std::map<size_t, modloader::file_overrider<>> ovmap;    // Map of files to be overriden, map<hash, overrider>
+        std::map<size_t, modloader::file_overrider> ovmap;    // Map of files to be overriden, map<hash, overrider>
         grass_dff_detour<0x5DD272> grass_detour;                // Grass needs a specialized detouring
 
     protected:
         // Adds a detour for the file with the specified hash to the overrider subsystem
-        template<class ...Args> file_overrider<>& AddDetour(size_t hash, Args&&... args)
+        template<class ...Args> file_overrider& AddDetour(size_t hash, Args&&... args)
         {
             return ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
@@ -90,7 +91,7 @@ class FxPlugin : public modloader::basic_plugin
 
         // Add dummy detour (does nothing ever) to the overrider subsystem
         // Useful for files that should've been handled by us but won't take any effect in game because they're unused files
-        file_overrider<>& AddDummy(size_t hash)
+        file_overrider& AddDummy(size_t hash)
         {
             return ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
@@ -99,7 +100,7 @@ class FxPlugin : public modloader::basic_plugin
         }
 
         // Add a manual detourer to the overrider subsystem
-        file_overrider<>& AddManualDetour(size_t hash, const file_overrider<>::params& p)
+        file_overrider& AddManualDetour(size_t hash, const file_overrider::params& p)
         {
             return ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash), std::forward_as_tuple(p)
@@ -110,7 +111,7 @@ class FxPlugin : public modloader::basic_plugin
         void AddGrass(int i, int j)
         {
             char buf[64]; sprintf(buf, "grass%d_%d.dff", i, j);
-            AddManualDetour(modloader::hash(buf), file_overrider<>::params(nullptr)).OnChange([this, i, j](const modloader::file* f)
+            AddManualDetour(modloader::hash(buf), file_overrider::params(nullptr)).OnChange([this, i, j](const modloader::file* f)
             {
                 grass_detour.setfile(f? f->filepath() : "", i, j);
             });
@@ -118,7 +119,7 @@ class FxPlugin : public modloader::basic_plugin
 
     public:
         // Finds overrider for the file with the specified hash, rets null if not found
-        file_overrider<>* FindOverrider(size_t hash)
+        file_overrider* FindOverrider(size_t hash)
         {
             auto it = ovmap.find(hash);
             if(it != ovmap.end()) return &it->second;
@@ -162,9 +163,9 @@ bool FxPlugin::OnStartup()
     if(gvm.IsSA())
     {
         // File overrider params
-        const auto reinstall_since_start = file_overrider<>::params(true, true, true, true);
-        const auto reinstall_since_load  = file_overrider<>::params(true, true, false, true);
-        const auto no_reinstall          = file_overrider<>::params(nullptr);
+        const auto reinstall_since_start = file_overrider::params(true, true, true, true);
+        const auto reinstall_since_load  = file_overrider::params(true, true, false, true);
+        const auto no_reinstall          = file_overrider::params(nullptr);
 
         // Files hashes
         const auto loadscs_txd       = modloader::hash("loadscs.txd");

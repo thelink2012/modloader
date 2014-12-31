@@ -40,7 +40,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
         // So, the approach used here to get around this issue is, when the game is running under SAMP copy the
         // custom timecyc (which is somewhere at the modloader directory) into the gta3.std.data cache with a different extension and voilá. 
         //
-        auto& timecyc_detour = timecyc_ov.GetInjection().cast<OpenTimecycDetour>();
+        auto& timecyc_detour = static_cast<OpenTimecycDetour&>(timecyc_ov.GetInjection());
         timecyc_detour.OnPosTransform([plugin_ptr](std::string file) -> std::string
         {
             if(file.size())
@@ -59,4 +59,6 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
         });
     }
 });
+
+
 

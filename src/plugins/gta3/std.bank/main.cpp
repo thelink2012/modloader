@@ -14,10 +14,10 @@
 class ThePlugin : public modloader::basic_plugin
 {
     private:
-        modloader::file_overrider<> ov_banklkup;    // BankLkup.dat overrider
-        modloader::file_overrider<> ov_bankslot;    // BankSlot.dat overrider
-        modloader::file_overrider<> ov_pakfiles;    // PakFiles.dat overrider
-        modloader::file_overrider<> ov_eventvol;    // EventVol.dat overrider
+        modloader::file_overrider ov_banklkup;    // BankLkup.dat overrider
+        modloader::file_overrider ov_bankslot;    // BankSlot.dat overrider
+        modloader::file_overrider ov_pakfiles;    // PakFiles.dat overrider
+        modloader::file_overrider ov_eventvol;    // EventVol.dat overrider
 
     public:
         const info& GetInfo();
@@ -58,7 +58,7 @@ bool ThePlugin::OnStartup()
     {
         // Setup overrider parameters...
         // It's not possible to reinstall those config files, too much trouble
-        auto no_reinstall = file_overrider<>::params(nullptr);
+        auto no_reinstall = file_overrider::params(nullptr);
         ov_banklkup.SetParams(no_reinstall);
         ov_bankslot.SetParams(no_reinstall);
         ov_pakfiles.SetParams(no_reinstall);

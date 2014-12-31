@@ -42,7 +42,7 @@ void FixColFile()
     ColModelPool_new = MakeCALL(0x5B4F2E, HOOK_LoadColFileFix).get();
 
     // Reads collision info and check if we need to use our own collision buffer
-    auto ReadColInfo = [](rcolinfo_f* Read, void*& f, uint32_t*& buffer, size_t& size)
+    auto ReadColInfo = [](std::function<rcolinfo_f> Read, void*& f, uint32_t*& buffer, size_t& size)
     {
         auto r    = Read(f, buffer, size);
         empty_colmodel = (buffer[1] <= 0x18);
@@ -52,7 +52,7 @@ void FixColFile()
     };
 
     // Replace buffer if necessary
-    auto ReadColModel = [](rcolmodel_f* Read, void*& f, char*& buffer, size_t& size)
+    auto ReadColModel = [](std::function<rcolmodel_f> Read, void*& f, char*& buffer, size_t& size)
     {
         if(!empty_colmodel)
             return Read(f, using_colbuf? colbuf.data() : buffer, size);
@@ -60,13 +60,13 @@ void FixColFile()
     };
 
     // Replace buffer if necessary
-    auto LoadCollisionModel = [](lcol_f* LoadColModel, char*& buf, int& size, void*& colmodel, char*& modelname)
+    auto LoadCollisionModel = [](std::function<lcol_f> LoadColModel, char*& buf, int& size, void*& colmodel, char*& modelname)
     {
         return LoadColModel(using_colbuf? colbuf.data() : buf, size, colmodel, modelname);
     };
 
     // Frees our buffer
-    auto ReleaseBuffer = [](rel_f* fclose, void*& f)
+    auto ReleaseBuffer = [](std::function<rel_f> fclose, void*& f)
     {
         colbuf.clear(); colbuf.shrink_to_fit();
         return fclose(f);
