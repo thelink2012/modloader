@@ -494,10 +494,21 @@ void CAbstractStreaming::Patch()
 
         // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
         static void* pCreateFileForCdStream = (void*) &CreateFileForCdStream;
-        static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);  // Used on the obfuscated executable
 
         if(gvm.IsSA() && gvm.IsHoodlum())
-            injector::WriteMemory(raw_ptr(0x01564B56 + 1), &SRXorCreateFileForCdStream, true);
+        {
+            static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);
+            memory_pointer_raw p;
+
+            if(gvm.IsUS())
+                p = raw_ptr(0x01564B56 + 1);
+            else if(gvm.IsEU())
+                p = raw_ptr(0x01564AED + 1);
+            else
+                plugin_ptr->Error("SRXorCreateFileForCdStream patch failed");
+
+            injector::WriteMemory(p, &SRXorCreateFileForCdStream, true);
+        }
         else
             injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
     }

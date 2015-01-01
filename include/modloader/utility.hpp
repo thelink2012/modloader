@@ -62,9 +62,10 @@ namespace modloader
                 }
                 else
                 {
-                    this->path      = std::string(plugin_ptr->loader->cachepath).append(name);
-                    MakeSureStringIsDirectory(this->path);
-                    this->fullpath  = std::string(plugin_ptr->loader->gamepath).append(path);
+                    return false;
+                    //this->path      = std::string(plugin_ptr->loader->cachepath).append(name);
+                    //MakeSureStringIsDirectory(this->path);
+                    //this->fullpath  = std::string(plugin_ptr->loader->gamepath).append(path);
                 }
 
                 if(MakeSureDirectoryExistA(fullpath.c_str()))

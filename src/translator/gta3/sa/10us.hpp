@@ -4,6 +4,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
+#pragma once
 #include <modloader/util/injector.hpp>
 #include <map>
 

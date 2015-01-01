@@ -125,7 +125,7 @@ typedef void (*modloader_fError)(const char* errmsg, ...);
 typedef struct modloader_t
 {
     const char* gamepath;       /* game path */
-    const char* cachepath;      /* cache path (relative to gamepath), should not be used, see globalappdata instead */
+    const char* _rsvc;          /* (deprecated - reserved) */
     const char* commonappdata;  /* fullpath to a "modloader/" directory in the %ProgramData% directory */
     const char* _rsv0[3];       /* Reserved */
 

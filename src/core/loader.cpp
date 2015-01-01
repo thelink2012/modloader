@@ -128,7 +128,7 @@ void Loader::Startup()
         // Setup basic path variables
         this->dataPath    = "modloader/.data/";
         this->pluginPath  = "modloader/.data/plugins/";
-        this->cachePath   = "modloader/.data/cache/";
+        //this->cachePath   = "modloader/.data/cache/";
         GetCurrentDirectoryA(sizeof(rootPath), rootPath);
         MakeSureStringIsDirectory(this->gamePath = rootPath);
 
@@ -142,12 +142,12 @@ void Loader::Startup()
         this->pluginConfigFilename = "plugins.ini";
         this->folderConfigDefault  = gamePath + dataPath + "modloader.ini.0";
         this->basicConfigDefault   = gamePath + dataPath + "config.ini.0";
-        this->pluginConfigDefault  = gamePath + pluginPath + "plugins.ini.0";
+        this->pluginConfigDefault  = gamePath + dataPath + "plugins.ini.0";
 
         // Make sure the important folders exist
         if(!MakeSureDirectoryExistA(dataPath.c_str())
         || !MakeSureDirectoryExistA(pluginPath.c_str())
-        || !MakeSureDirectoryExistA(cachePath.c_str())
+        //|| !MakeSureDirectoryExistA(cachePath.c_str())
         || !MakeSureDirectoryExistA(commonAppDataPath.c_str()))
             Log("Warning: Mod Loader important directories could not be created.");
         
@@ -169,7 +169,7 @@ void Loader::Startup()
         modloader_t::has_game_started= false;   // TODO find a more realiable way to find this information
         modloader_t::has_game_loaded = false;   // ^^                       ((see later below tho))
         modloader_t::gamepath        = this->gamePath.data();
-        modloader_t::cachepath       = this->cachePath.data();
+        //modloader_t::cachepath       = this->cachePath.data();
         modloader_t::commonappdata   = this->commonAppDataPath.data();
         modloader_t::Log             = this->Log;
         modloader_t::vLog            = this->vLog;

@@ -1,9 +1,11 @@
 v0.2.2 (In Dev)
 ------------------------
- * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.
- * The data merger and overriden plugin *std.data* is back up and running, changes on it as follow.
+ * The game version 'GTA San Andreas 1.0 EU' is now supported
+ * The data merger and overriden plugin *std.data* is back up and running.
  * Any custom timecyc is now loaded properly for SAMP
  * Implemented caching for mergeable data files *(so it does not need to merge every time the game loads)*
+ * Fixed the loader not creating the default plugin.ini file
+ * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.
 
 v0.2.1 (Nov 23 2014)
 ------------------------
