@@ -263,7 +263,7 @@ void Loader::ReadBasicConfig()
         {
             if(!compare(pair.first, "EnableMenu", false))
                 this->bEnableMenu = to_bool(pair.second);
-            if(!compare(pair.first, "EnablePlugins", false))
+            else if(!compare(pair.first, "EnablePlugins", false))
                 this->bEnablePlugins = to_bool(pair.second);
             else if(!compare(pair.first, "EnableLog", false))
                 this->bEnableLog = to_bool(pair.second);

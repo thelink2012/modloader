@@ -5,6 +5,7 @@ v0.2.2 (In Dev)
  * Any custom timecyc is now loaded properly for SAMP
  * Implemented caching for mergeable data files *(so it does not need to merge every time the game loads)*
  * Fixed the loader not creating the default plugin.ini file
+ * Fixed Mod Loader FXT hooks mistakenly relying on CLEO hooks.
  * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.
 
 v0.2.1 (Nov 23 2014)

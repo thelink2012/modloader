@@ -174,5 +174,5 @@ namespace datalib {
 }
 
 // Level File Merger
-static auto xinit1 = initializer(std::bind(&DataPlugin::AddMerger<gtadat_store>, _1, "gta.dat", true, true, no_reinstall));
-static auto xinit2 = initializer(std::bind(&DataPlugin::AddMerger<gtadat_store>, _1, "default.dat", true, true, no_reinstall));
+static auto xinit1 = initializer(std::bind(&DataPlugin::AddMerger<gtadat_store>, _1, "gta.dat", true, true, false, no_reinstall));
+static auto xinit2 = initializer(std::bind(&DataPlugin::AddMerger<gtadat_store>, _1, "default.dat", true, true, false, no_reinstall));

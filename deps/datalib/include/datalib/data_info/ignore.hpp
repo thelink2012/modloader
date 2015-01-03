@@ -30,7 +30,7 @@ struct ignore
 template<class T>
 struct ignore_traits
 {
-    static T    output(const ignore<T>&) { return T();  }   // Called to know what should it output to the file
+    static T output() { return T();  }   // Called to know what should it output to the file
 };
 
 

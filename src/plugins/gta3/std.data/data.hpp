@@ -23,6 +23,10 @@ static const uint64_t count_mask_base = 0xFFFF;                 // Mask for coun
 static const uint32_t type_mask_shf   = 32;                     // Takes 3 bits, starts from 33th bit because first 32th bits is a hash
 static const uint32_t count_mask_shf  = type_mask_shf + 3;      // Takes 28 bits
 
+// Non unique files merger fs names
+static const char* ipl_merger_name = "**.ipl";
+static const char* ide_merger_name = "**.ide";
+
 
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)
@@ -93,7 +97,8 @@ class DataPlugin : public modloader::basic_plugin
         // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         // The other parameters are familiar enought
         template<class StoreType, class... Args>
-        modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, const modloader::file_overrider::params& params, Args&&... xargs)
+        modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, bool complete_path,
+                                              const modloader::file_overrider::params& params, Args&&... xargs)
         {
             using namespace modloader;
             using namespace std::placeholders;
@@ -114,7 +119,7 @@ class DataPlugin : public modloader::basic_plugin
             {
                 // Merges data whenever necessary to open this file. Caching can happen.
                 auto& d = static_cast<detour_type&>(ov.GetInjection(i));
-                d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique, samefile));
+                d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique, samefile, complete_path));
             }
 
             // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
@@ -161,14 +166,24 @@ class DataPlugin : public modloader::basic_plugin
             return nullptr;
         }
 
-        files_behv_t* FindBehv(const modloader::file& f)
+        files_behv_t* FindBehv(size_t hash)
         {
             for(auto& item : this->vbehav)
             {
-                if(item.hash == f.hash)
+                if(item.hash == hash)
                     return &item;
             }
             return nullptr;
+        }
+
+        files_behv_t* FindBehv(const modloader::file& f)
+        {
+            return FindBehv(f.hash);
+        }
+
+        files_behv_t* FindBehv(std::string fname)
+        {
+            return FindBehv(modloader::hash(fname));
         }
 
     private:
@@ -179,7 +194,7 @@ class DataPlugin : public modloader::basic_plugin
         // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         //
         template<class StoreType>  
-        std::string GetMergedData(std::string file, std::string fsfile, bool unique, bool samefile)
+        std::string GetMergedData(std::string file, std::string fsfile, bool unique, bool samefile, bool complete_path)
         {
             using namespace modloader;
             using store_type  = StoreType;
@@ -191,7 +206,7 @@ class DataPlugin : public modloader::basic_plugin
                 return std::string(); // use default file
 
             auto what     = traits_type::dtraits::what();
-            auto range    = this->fs.files_at(fsfile);
+            auto range    = this->fs.files_at(complete_path? file : fsfile);
             auto count    = std::distance(range.first, range.second);
 
             if(count == 1) // only one file, so let's just override
@@ -244,17 +259,21 @@ class DataPlugin : public modloader::basic_plugin
                     cs.Apply(cache.AddCacheFile(fsfile, unique));
                 }
 
-                // Load data files that have been added/changed and rewrite the listing and store cache
+                // Load data files that have been added/changed
                 cs.LoadChangedFiles();
-                if(traits_type::can_cache)
-                {
-                    if(!cache.WriteCachedStore(cs))
-                        Log("Warning: Could not write cache at '%s'", cs.Path().c_str());
-                }
                 
                 // Merge all the stored data into a single data file
                 if(gta3::merge_to_file<store_type>(cs.FullPath().c_str(), cs.StoreList().begin(), cs.StoreList().end(), traits_type::domflags_fn()))
+                {
+                    // Rewrite the cached store/listing
+                    if(traits_type::can_cache)
+                    {
+                        if(!cache.WriteCachedStore(cs))
+                            Log("Warning: Could not write cache at '%s'", cs.Path().c_str());
+                    }
+
                     return cs.Path();
+                }
                 else
                     plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, cs.Path().c_str());
 
@@ -262,17 +281,6 @@ class DataPlugin : public modloader::basic_plugin
 
             return std::string();  // use default file
         }
-
-#if 0
-        using fGetMergedData_t = std::function<std::string(std::string, std::string, bool)>;
-        using DetourMap_t      = std::map<uintptr_t, std::pair<std::string, fGetMergedData_t>>;
-
-        DetourMap_t& GetDetourMap()
-        {
-            static DetourMap_t map;
-            return map;
-        }
-#endif
 
 };
 extern DataPlugin plugin;

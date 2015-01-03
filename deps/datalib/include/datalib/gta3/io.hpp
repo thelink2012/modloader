@@ -265,13 +265,7 @@ struct store_merger
         {
             std::ofstream stream(outfilename);
             if(stream)
-            {
-                auto mlist = this->merge(st_begin, st_end, domflags);
-                auto& mlist2 = StoreType::prewrite(mlist);  // CXX14 HELP-ME (decltype(auto) instead of auto& allowing any kind of value as return)
-                return this->write<StoreType>(
-                    std::integral_constant<bool, StoreType::has_sections>(),
-                    mlist2.begin(), mlist2.end(), stream);
-            }
+                return do_merge<StoreType>(stream, st_begin, st_end, domflags);
             return false;
         }
 
@@ -373,22 +367,26 @@ struct store_merger
             return false;
         }
 
+        template<class ForwardIterator>
+        using merge_result = std::vector<std::pair<
+                                std::reference_wrapper<std::add_const_t<typename std::iterator_traits<ForwardIterator>::value_type::key_type>>,
+                                std::reference_wrapper<typename std::iterator_traits<ForwardIterator>::value_type::mapped_type>
+                            >>;
+
         // Merges the data_store range [st_begin, st_end] and outputs a list of pairs with the results
         template<class ForwardIterator, class DomFlags>
         auto merge(ForwardIterator st_begin, ForwardIterator st_end, DomFlags domflags) ->
-                        std::vector<std::pair<
-                            std::reference_wrapper<const typename std::decay<decltype(*st_begin)>::type::key_type>,
-                            std::reference_wrapper<typename std::decay<decltype(*st_begin)>::type::mapped_type>
-                        >>
+                merge_result<ForwardIterator>
         {
             // Aliases
-            using store_type = typename std::decay<decltype(*st_begin)>::type;
+            using store_type = std::iterator_traits<ForwardIterator>::value_type;
             using key_type = typename store_type::key_type;
             using mapped_type = typename store_type::mapped_type;
 
-            using relist_type = std::vector < std::pair <
-                std::reference_wrapper<const key_type>, std::reference_wrapper < mapped_type >
-                >> ;
+            //using relist_type = std::vector < std::pair <
+            //    std::reference_wrapper<const key_type>, std::reference_wrapper < mapped_type >
+            //    >> ;
+            using relist_type = merge_result<ForwardIterator>;
 
             using keylist_type =
                 std::conditional < store_type::is_sorted,
@@ -412,12 +410,41 @@ struct store_merger
 
             for(auto& key : keys)
             {
-                if(auto* vdom = find_dominant_data(st_begin, st_end, key, domflags(key)))
+                if(auto* vdom = find_dominant_data(st_begin, st_end, key.get(), domflags(key.get())))
                     output.emplace_back(key, *vdom);
             }
 
             return output;
         }
+
+        // CXX14 HELP ME
+
+        template<class StoreType, class ForwardIterator, class DomFlags>
+        bool do_merge(std::false_type, std::ofstream& stream, ForwardIterator st_begin, ForwardIterator st_end, DomFlags domflags)
+        {
+            auto mlist2 = StoreType::prewrite(merge(st_begin, st_end, domflags));
+            return this->write<StoreType>(
+                std::integral_constant<bool, StoreType::has_sections>(),
+                mlist2.begin(), mlist2.end(), stream);
+        }
+
+        template<class StoreType, class ForwardIterator, class DomFlags>
+        bool do_merge(std::true_type, std::ofstream& stream, ForwardIterator st_begin, ForwardIterator st_end, DomFlags domflags)
+        {
+            auto xc = StoreType::traits_type::process_stlist<StoreType>(st_begin, st_end);
+            auto mlist2 = StoreType::prewrite(merge(xc.begin(), xc.end(), domflags));
+            return this->write<StoreType>(
+                std::integral_constant<bool, StoreType::has_sections>(),
+                mlist2.begin(), mlist2.end(), stream);
+        }
+
+        template<class StoreType, class ForwardIterator, class DomFlags>
+        bool do_merge(std::ofstream& stream, ForwardIterator st_begin, ForwardIterator st_end, DomFlags domflags)
+        {
+            return do_merge<StoreType>(std::integral_constant<bool, StoreType::traits_type::do_stlist>(),
+                                              stream, st_begin, st_end, domflags);
+        }
+
 };
 
 

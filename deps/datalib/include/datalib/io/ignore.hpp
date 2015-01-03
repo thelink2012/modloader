@@ -49,7 +49,7 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
     std::basic_ostream<CharT, Traits>::sentry xsentry(os);
     if(xsentry)
     {
-        auto obj = IgTraits::output(ig);
+        auto obj = IgTraits::output();
         os << obj;
     }
     return os;

@@ -47,6 +47,22 @@ auto find_dominant_data(ForwardIterator first, ForwardIterator last, const Key& 
 
     //static_assert(std::is_same<key_type, typename std::decay<Key>::type>::value, "type of 'key' parameter is not the same as store_type::key_type");
 
+    //
+    //  Don't remove those checks, they're important
+    //
+    if(first == last)           // nope
+        return nullptr;
+    else if(std::next(first) == last)  // if have only 1 item, just search on it and that's it
+    {
+        if(first->ready())
+        {
+            auto it = first->container().find(key);
+            if(it != first->container().end())
+                return &it->second;
+        }
+        return nullptr;
+    }
+
     // must store the key-value pairs in the same order as they were inserted because of the rule of this algorithm
     // that if many different elements are present the first found is returned
     using map_counter_type = flat_linear_map<

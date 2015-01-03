@@ -30,12 +30,18 @@ REGISTER_ML_PLUGIN(::plugin);
 const DataPlugin::info& DataPlugin::GetInfo()
 {
     static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "txt", 0 };
-    static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", -1, extable };
+    static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", 54, extable };
     return xinfo;
 }
 
 
 
+// Makes for example "folder1/folder2/data/a.ipl" turn into "data/a.ipl"
+inline std::string find_gta_path(std::string path)
+{
+    static const auto data = MakeSureStringIsDirectory(NormalizePath("data/"));
+    return GetProperlyPath(std::move(path), data.c_str());
+}
 
 
 /*
@@ -86,21 +92,30 @@ int DataPlugin::GetBehaviour(modloader::file& file)
     //      Notice the count starts from 1 for those because 0 is reserved for non mergeable data files.
     //
 
+    static const bool has_ipl_behv = FindBehv(ipl_merger_name) != nullptr;
+    static const bool has_ide_behv = FindBehv(ide_merger_name) != nullptr;
+
     if(file.is_ext("txt"))
     {
         // TODO
     }
     else if(file.is_ext("ide"))
     {
-        static uint32_t count = 0;
-        file.behaviour = SetCounter(SetType(file.hash, Type::ObjTypes), ++count);
-        return MODLOADER_BEHAVIOUR_YES;
+        if(has_ide_behv)
+        {
+            static uint32_t count = 0;
+            file.behaviour = SetCounter(SetType(file.hash, Type::ObjTypes), ++count);
+            return MODLOADER_BEHAVIOUR_YES;
+        }
     }
     else if(file.is_ext("ipl") || file.is_ext("zon"))
     {
-        static uint32_t count = 0;
-        file.behaviour = SetCounter(SetType(file.hash, Type::Scene), ++count);
-        return MODLOADER_BEHAVIOUR_YES;
+        if(has_ipl_behv)
+        {
+            static uint32_t count = 0;
+            file.behaviour = SetCounter(SetType(file.hash, Type::Scene), ++count);
+            return MODLOADER_BEHAVIOUR_YES;
+        }
     }
     else if(auto item = FindBehv(file))
     {
@@ -137,6 +152,16 @@ bool DataPlugin::InstallFile(const modloader::file& file)
             return FindMerger(file.hash)->InstallFile(file);
         }
     }
+    else if(type == Type::Scene)
+    {
+        auto m = FindMerger(ipl_merger_name);
+        if(m->CanInstall())
+        {
+            fs.add_file(find_gta_path(file.filedir()), file.filepath(), &file);
+            return true;
+        }
+    }
+
 
     // TODO
 
@@ -165,6 +190,15 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
         else
         {
             return FindMerger(file.hash)->ReinstallFile();
+        }
+    }
+    else if(type == Type::Scene)
+    {
+        auto m = FindMerger(ipl_merger_name);
+        if(m->CanInstall())
+        {
+            fs.add_file(find_gta_path(file.filedir()), file.filepath(), &file);
+            return true;
         }
     }
 
@@ -198,6 +232,15 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
         else
         {
             return FindMerger(file.hash)->UninstallFile();
+        }
+    }
+    else if(type == Type::Scene)
+    {
+        auto m = FindMerger(ipl_merger_name);
+        if(m->CanUninstall())
+        {
+            if(fs.rem_file(file.filename(), &file))
+                return true;
         }
     }
 

@@ -351,6 +351,7 @@ class data_cache : modloader::basic_cache
         template<class StoreType>
         cache_file_tuple MatchNonUniqueCache(caching_stream<StoreType>& cs)
         {
+            // TODO stop walking the tree every time, get around it
             cache_file_tuple result(-1, "", "");
             modloader::FilesWalk(this->fullpath, "*.*", false, [&](modloader::FileWalkInfo& f)
             {

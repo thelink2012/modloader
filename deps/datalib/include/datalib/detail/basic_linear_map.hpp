@@ -130,6 +130,12 @@ class basic_linear_map
             return it->second;
         }
 
+        std::pair<iterator, bool> insert(const value_type& pair)
+        {
+            auto it = this->find(pair.first);
+            return (it == this->end()? force_emplace(pair) : result_pair(it, false));
+        }
+
         // Inserts a new element into the container by constructing it in-place with the given args if there is no element with the key in the container.
         template<class... Args>
         std::pair<iterator, bool> emplace(Args&&... args)
@@ -155,6 +161,13 @@ class basic_linear_map
         { return this->list > rhs.list; }
         bool operator>=(const basic_linear_map& rhs) const
         { return this->list >= rhs.list; }
+
+    public:
+        template<class Archive>
+        void serialize(Archive& ar)
+        {
+            ar(this->list);
+        }
 
     private:
         template<class... Args>

@@ -48,10 +48,26 @@ using vecn = std::array<real_t, N>;
 using vec2 = vecn<2>;
 using vec3 = vecn<3>;
 using vec4 = vecn<4>;
-
+using bbox = std::array<vec3, 2>;
+using bsphere = std::tuple<vec3, float>;
 
 template<class Archive, class T, class Base>
 inline void serialize(Archive& ar, type_wrapper<T, Base>& tw)
 {
     ar(tw.get_());
 }
+
+// TODO what if we didn't implement serialize() for the following types, what would happen in the cache (or would it cause a compilation error?)
+
+template<class Archive>
+inline void serialize(Archive&, datalib::delimopt&)
+{
+    // nothing to serialize for this type
+}
+
+template<class Archive, class T, class Traits>
+inline void serialize(Archive&, datalib::ignore<T, Traits>&)
+{
+    // nothing to serialize for this type
+}
+

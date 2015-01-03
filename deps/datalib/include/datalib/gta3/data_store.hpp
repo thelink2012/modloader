@@ -44,8 +44,9 @@ namespace gta3 {
  *                                                 This may not be implemented if 'has_section=false'
  *
  *
- *          Inherithing from gta3::data_traits makes those methods optional:
+ *          Inherithing from gta3::data_traits makes those optional:
  *
+ *              static const bool do_stlist -> Whether this trait has the process_stlist method
  *
  *              SectionInfo* section_by_line(SectionInfo*, String)
  *                                              -> Gets the current section object from the specified line
@@ -62,6 +63,10 @@ namespace gta3 {
  *              static bool getline(Key, Value, String)
  *                                              -> Outputs a line into the specified string based on the data in the key-value pair
  *                                                  Returns false on failure.
+ *
+ *               static process_stlist(begin, end)  (!!!!NOTICE!!!, only needed if do_stlist=true)
+ *                                              -> Processes a list of data stores outputing another list of data stores to be used instead
+ *                                                 to build the merged list.
  *
  *              static MergedList prewrite(MergedList)
  *                                              -> Before writing to the file the merged list (of dominant data) you can take a chance
@@ -227,9 +232,9 @@ class data_store final : public datalib::data_store<ContainerType>
 
         // Called before writing the merge results into a file, to process the merged list.
         template<class MergedList>
-        static MergedList& prewrite(MergedList& merged)
+        static MergedList prewrite(MergedList merged)
         {
-            return traits_type::prewrite<data_store>(merged);
+            return traits_type::prewrite<data_store>(std::move(merged));
         }
 
         // Finds the section object from the current line
@@ -248,6 +253,8 @@ class data_store final : public datalib::data_store<ContainerType>
  */
 struct data_traits
 {
+    static const bool do_stlist = false;
+
     template<class StoreType>
     bool posread(StoreType&)
     {
@@ -255,7 +262,7 @@ struct data_traits
     }
 
     template<class StoreType, class MergedList>
-    static MergedList& prewrite(MergedList& list)
+    static MergedList prewrite(MergedList list)
     {
         return list;
     }

@@ -77,12 +77,16 @@ namespace modloader
     
     inline int compare(const std::string& str1, const std::string& str2, bool case_sensitive)
     {
-        return strcmp(str1.c_str(), str2.c_str(), case_sensitive);
+        if(str1.length() == str2.length())
+            return strcmp(str1.c_str(), str2.c_str(), case_sensitive);
+        return (str1.length() < str2.length()? -1 : 1);
     }
     
     inline int compare(const std::string& str1, const std::string& str2, size_t num, bool case_sensitive)
     {
-        return strcmp(str1.c_str(), str2.c_str(), num, case_sensitive);
+        if(str1.length() == str2.length())
+            return strcmp(str1.c_str(), str2.c_str(), num, case_sensitive);
+        return (str1.length() < str2.length()? -1 : 1);
     }
     
     inline int compare(const char* str1, const char* str2, bool case_sensitive)

@@ -140,5 +140,5 @@ namespace datalib {
 }
 
 // Vehicle Upgrades Merger
-static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carmods_store>, _1, "carmods.dat", true, false, no_reinstall));
+static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carmods_store>, _1, "carmods.dat", true, false, false, no_reinstall));
 
