@@ -20,8 +20,9 @@
 #include <type_wrapper/floating_point.hpp>
 #include <type_wrapper/datalib/io/floating_point.hpp>
 
-// datalib I/O with std types
+// datalib I/O with common types
 #include <datalib/io/either.hpp>
+#include <datalib/io/optional.hpp>
 #include <datalib/io/tuple.hpp>
 #include <datalib/io/array.hpp>
 #include <datalib/io/string.hpp>
@@ -49,7 +50,7 @@ using vec2 = vecn<2>;
 using vec3 = vecn<3>;
 using vec4 = vecn<4>;
 using bbox = std::array<vec3, 2>;
-using bsphere = std::tuple<vec3, float>;
+using bsphere = std::tuple<vec3, real_t>;
 
 template<class Archive, class T, class Base>
 inline void serialize(Archive& ar, type_wrapper<T, Base>& tw)

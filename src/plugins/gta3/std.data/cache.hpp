@@ -18,6 +18,7 @@
 #include <cereal/types/base_class.hpp>
 #include <cereal/types/bitset.hpp>
 #include <cereal/types/boost_variant.hpp>
+#include <cereal/types/boost_optional.hpp>
 #include <cereal/types/common.hpp>
 #include <cereal/types/list.hpp>
 #include <cereal/types/map.hpp>
@@ -429,7 +430,7 @@ class data_cache : modloader::basic_cache
                 {
                     if(!IsPathA(cachedir.data()))
                         continue;
-                    if(DestroyDirectoryA(cachedir.data()))
+                    if(cache_id <= 1 || DestroyDirectoryA(cachedir.data()))
                         continue;
                 }
 

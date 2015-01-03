@@ -1,7 +1,9 @@
-Boost.Variant is required by datalib
-Notice boost/ doesn't contain the entire boost library but boost::variant and its dependencies.
-
+Only Boost.Variant and Boost.Optional is required for us
+Notice boost/ doesn't contain the entire boost library but boost::variant, boost::optional and its dependencies.
 The boost version on here is 1.57.0
 
+Additional Notice:
+  boost/optional/detail/optional.hpp has been modified, added a macro in between the forwardly declared operator<< so it
+  doesn't conflict with user defined one (from datalib)
 
 
