@@ -37,6 +37,10 @@ static /* <--- YES STATIC */ uint32_t current_cereal_data_version()
     return version;
 }
 
+// Maximum number of /0/, /1/, and so on cache directories
+// Higher decreases performance since it needs to loop/trytoprocess more
+static const int max_cache_dirs = 10;
+
 // Some settings for debugging caching
 static const bool disable_caching     = false;  // Disables reading from the cache
 static const bool cache_force_reading = false;  // Forces reading the cache even when nothing changed
@@ -62,7 +66,16 @@ class data_cache : modloader::basic_cache
             {
                 if(get<0>(this->AddCacheFile("_STARTUP_", false)) != -1     // Creates /0/ directory
                 && get<0>(this->AddCacheFile("_STARTUP_", true)) != -1)     // Creates /1/ directory
+                {
+                    // Setup a hook to delete the not used cache files after the loading screen, so we don't keep trash in there
+                    using initialise_hook = function_hooker<0x748CFB, void()>;
+                    make_static_hook<initialise_hook>([this](initialise_hook::func_type InitialiseGame)
+                    {
+                        InitialiseGame();
+                        this->DeleteUnusedCaches();
+                    });
                     return true;
+                }
             }
             return false;
         }
@@ -120,7 +133,7 @@ class data_cache : modloader::basic_cache
             else
             {
                 cache_file_tuple tuple;
-                for(int i = 1; i < 100; ++i)    // try maximum of /99/ folders
+                for(int i = 1; i <= max_cache_dirs; ++i)
                 {
                     tuple = AddCacheFile(i, file, false);
                     if(std::get<0>(tuple) != -1)
@@ -312,7 +325,7 @@ class data_cache : modloader::basic_cache
 
     private: /// XXX refactore those functions
     
-        cache_file_tuple AddCacheFile(int cache_id, std::string file, bool unique)
+        cache_file_tuple AddCacheFile(int cache_id, std::string file, bool force)
         {
             using tuple_type = std::tuple < int, std::string, std::string > ;
 
@@ -322,7 +335,7 @@ class data_cache : modloader::basic_cache
             vdir.assign(std::to_string(cache_id)).push_back('/');
             vpath.assign(vdir).append(file);
 
-            if(unique || fs.count(vpath) == 0)
+            if(force || fs.count(vpath) == 0)
             {
                 if(fs.count(vdir) == 0)
                 {
@@ -392,9 +405,7 @@ class data_cache : modloader::basic_cache
                     {
                         if(cs.MatchListing())
                         {
-                            get<0>(result) = cache_id;
-                            get<1>(result) = this->GetCacheDir(cache_id, false).append(f.filename);
-                            get<2>(result) = this->GetCacheDir(cache_id, true).append(f.filename);
+                            result = this->AddCacheFile(cache_id, f.filename, true);
                             return false;
                         }
                     }
@@ -402,6 +413,54 @@ class data_cache : modloader::basic_cache
                 return true;
             });
             return result;
+        }
+
+        void DeleteUnusedCaches()
+        {
+            using namespace modloader;
+            std::string vdir, vpath, filename;
+            for(int cache_id = 0; cache_id <= max_cache_dirs; ++cache_id)
+            {
+                auto cachedir = this->GetCacheDir(cache_id, true);
+                vdir.assign(std::to_string(cache_id)).push_back('/');
+
+                // If this cache id has not even been used, delete it (if it even exists in the OS filesystem)
+                if(fs.count(vdir) == 0)
+                {
+                    if(!IsPathA(cachedir.data()))
+                        continue;
+                    if(DestroyDirectoryA(cachedir.data()))
+                        continue;
+                }
+
+                // Walk over this cache directory finding the unused cache files in it
+                std::map<std::string, std::string> to_delete;       // <filename, fullpath>
+                modloader::FilesWalk(cachedir, "*.*", false, [&](modloader::FileWalkInfo& f)
+                {
+                    if(!stricmp(f.filext, "d") || !stricmp(f.filext, "l"))
+                        filename.assign(f.filename, (f.filext - f.filename) - 1);   // use the filename without the .d and .l sufix
+                    else
+                        filename.assign(f.filename);                            // use this filename since it's not special sufixed
+
+                    filename = NormalizePath(std::move(filename));
+                    if(to_delete.count(filename) == 0)  // make sure we didn't add this file to the list yet (it may have a .l, .d, etc with same key)
+                    {
+                        if(fs.count(vpath.assign(vdir).append(filename)) == 0)
+                            to_delete.emplace(filename, f.filepath);
+                    }
+
+                    return true;
+                });
+
+                // Delete the files we found out previosly
+                for(auto& pair : to_delete)
+                {
+                    auto& path = pair.second;
+                    DeleteFileA(path.data());
+                    DeleteFileA((path + ".d").data());
+                    DeleteFileA((path + ".l").data());
+                }
+            }
         }
 
 };
