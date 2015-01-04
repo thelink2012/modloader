@@ -24,9 +24,11 @@ static const uint32_t type_mask_shf   = 32;                     // Takes 3 bits,
 static const uint32_t count_mask_shf  = type_mask_shf + 3;      // Takes 28 bits
 
 // Non unique files merger fs names
+// Since ipls and ides do not have a single file name to be merged (i.e. there are many ides and ipls files to merge) we use the followin'
 static const char* ipl_merger_name = "**.ipl";
 static const char* ide_merger_name = "**.ide";
-
+static const size_t ipl_merger_hash = modloader::hash(ipl_merger_name);
+static const size_t ide_merger_hash = modloader::hash(ide_merger_name);
 
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)
@@ -64,6 +66,10 @@ class DataPlugin : public modloader::basic_plugin
         bool UninstallFile(const modloader::file&);
         void Update();
 
+    private: // Effective methods
+        bool InstallFile(const modloader::file&, size_t merger_hash, std::string fspath, std::string fullpath, bool isreinstall = false);
+        bool ReinstallFile(const modloader::file&, size_t merger_hash);
+        bool UninstallFile(const modloader::file&, size_t merger_hash, std::string fspath);
 
     private:  // Plugin Stuff
 

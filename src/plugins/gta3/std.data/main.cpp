@@ -14,7 +14,12 @@ using namespace modloader;
  *   [*] Note data.hpp / cache.hpp should not be included in a PCH but in the data traits cpp, that because the magic for each cache
  *       is the hash of the compilation time of the trait translation unit, that means it is a static (by unit) function in cache.hpp
  *       meaning including it by PCH (stdinc.hpp) would defeat it purposes of one hash for each translation unit for each time it compiles.
+ *
+ *   [*] Remember the order of stuff in the either<> object matters, it'll try to match the first type, then the second, and so on.
+ *       So be warned because e.g. either<string, float> will always match the string, use either<float, string> instead!
+ *
  *       
+ *   [*] Remember not to use int8, uint8 and so in the data_slice<> thinking it is a integer type, instead it will be readen as a character
  */
 
 
@@ -132,41 +137,18 @@ int DataPlugin::GetBehaviour(modloader::file& file)
 bool DataPlugin::InstallFile(const modloader::file& file)
 {
     auto type = GetType(file.behaviour);
-
-    // delay in-game installs to go tho Update()
-
     if(type == Type::Data)
     {
-        if(FindBehv(file)->canmerge)
-        {
-            auto m = FindMerger(file.hash);
-            if(m->CanInstall())
-            {
-                fs.add_file(file.filename(), file.filepath(), &file);
-                ovrefresh.emplace(FindMerger(file.filename()));
-                return true;
-            }
-        }
-        else
-        {
-            return FindMerger(file.hash)->InstallFile(file);
-        }
+        return this->InstallFile(file, file.hash, file.filename(), file.filepath());
     }
-    else if(type == Type::Scene)
+    else if(type == Type::Scene || type == Type::ObjTypes)
     {
-        auto m = FindMerger(ipl_merger_name);
-        if(m->CanInstall())
-        {
-            fs.add_file(find_gta_path(file.filedir()), file.filepath(), &file);
-            return true;
-        }
+        auto hash = (type == Type::Scene? ipl_merger_hash : ide_merger_hash);
+        return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
     }
-
-
-    // TODO
-
     return false;
 }
+
 
 /*
  *  DataPlugin::ReinstallFile
@@ -175,35 +157,15 @@ bool DataPlugin::InstallFile(const modloader::file& file)
 bool DataPlugin::ReinstallFile(const modloader::file& file)
 {
     auto type = GetType(file.behaviour);
-
     if(type == Type::Data)
     {
-        if(FindBehv(file)->canmerge)
-        {
-            auto m = FindMerger(file.filename());
-            if(m->CanInstall())
-            {
-                ovrefresh.emplace(m);
-                return true;
-            }
-        }
-        else
-        {
-            return FindMerger(file.hash)->ReinstallFile();
-        }
+        return this->ReinstallFile(file, file.hash);
     }
-    else if(type == Type::Scene)
+    else if(type == Type::Scene || type == Type::ObjTypes)
     {
-        auto m = FindMerger(ipl_merger_name);
-        if(m->CanInstall())
-        {
-            fs.add_file(find_gta_path(file.filedir()), file.filepath(), &file);
-            return true;
-        }
+        auto hash = (type == Type::Scene? ipl_merger_hash : ide_merger_hash);
+        return this->ReinstallFile(file, hash);
     }
-
-    // TODO
-
     return true; // Avoid catastrophical failure
 }
 
@@ -214,38 +176,15 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
 bool DataPlugin::UninstallFile(const modloader::file& file)
 {
     auto type = GetType(file.behaviour);
-
     if(type == Type::Data)
     {
-        if(FindBehv(file)->canmerge)
-        {
-            auto m = FindMerger(file.filename());
-            if(m->CanUninstall())
-            {
-                if(fs.rem_file(file.filename(), &file))
-                {
-                    ovrefresh.emplace(m);
-                    return true;
-                }
-            }
-        }
-        else
-        {
-            return FindMerger(file.hash)->UninstallFile();
-        }
+        return this->UninstallFile(file, file.hash, file.filename());
     }
-    else if(type == Type::Scene)
+    else if(type == Type::Scene || type == Type::ObjTypes)
     {
-        auto m = FindMerger(ipl_merger_name);
-        if(m->CanUninstall())
-        {
-            if(fs.rem_file(file.filename(), &file))
-                return true;
-        }
+        auto hash = (type == Type::Scene? ipl_merger_hash : ide_merger_hash);
+        return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
     }
-
-    // TODO
-
     return false;
 }
 
@@ -256,10 +195,91 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
 void DataPlugin::Update()
 {
     // Refresh every overriden of multiple files right here
+    // Note: Don't worry about this being called before the game evens boot up, the ov->Refresh() method takes care of it
     for(auto& ov : this->ovrefresh)
     {
         if(!ov->Refresh())
-            plugin_ptr->Log("Warning: Failed to refresh some data file");
+            plugin_ptr->Log("Warning: Failed to refresh some data file");   // very useful warning indeed
     }
     ovrefresh.clear();
 }
+
+
+///////////////////////////
+
+
+/*
+ *  DataPlugin::InstallFile (Effectively)
+ *      Installs a file assuming it's Behv and/or Merger hash to be 'merger_hash', 'fspath' the file's path in our virtual filesystem and
+ *      fullpath the actual absolute path to the file in disk.
+ *
+ *      The 'isreinstall' parameter is a helper (defaults to false) to allow both install and reinstall in the same function;
+ *      NOTE: fspath and fullpath can safely be empty when isreinstall=true
+ */
+bool DataPlugin::InstallFile(const modloader::file& file, size_t merger_hash, std::string fspath, std::string fullpath, bool isreinstall)
+{
+    // NOTE: fspath and fullpath can safely be empty when isreinstall=true
+
+    if(FindBehv(merger_hash)->canmerge)
+    {
+        auto m = FindMerger(merger_hash);
+        if(m->CanInstall())
+        {
+            if(!isreinstall)
+                fs.add_file(std::move(fspath), std::move(fullpath), &file);
+
+            // Delay in-game installs to go through DataPlugin::Update()
+            ovrefresh.emplace(m);
+            return true;
+        }
+    }
+    else
+    {
+        // TODO check if ipl breakpoints here or up there (SHOULD BE UP THERE)
+        if(!isreinstall)
+            return FindMerger(merger_hash)->InstallFile(file);
+        else
+            return FindMerger(merger_hash)->ReinstallFile();
+    }
+    return false;
+}
+
+/*
+ *  DataPlugin::ReinstallFile (Effectively)
+ *      Reinstalls a file assuming it's Behv and/or Merger hash to be 'merger_hash'
+ */
+bool DataPlugin::ReinstallFile(const modloader::file& file, size_t merger_hash)
+{
+    // Just forward the call to InstallFile. It does not need the fspath and fullpath parameter on reinstall.
+    if(!this->InstallFile(file, merger_hash, "", "", true))
+        return true;    // Avoid catastrophical failure
+    return true;
+}
+
+/*
+ *  DataPlugin::UninstallFile (Effectively)
+ *      Uninstalls a file assuming it's Behv and/or Merger hash to be 'merger_hash', 'fspath' the file's path in our virtual filesystem and
+ *      fullpath the actual absolute path to the file in disk.
+ */
+bool DataPlugin::UninstallFile(const modloader::file& file, size_t merger_hash, std::string fspath)
+{
+    if(FindBehv(merger_hash)->canmerge)
+    {
+        auto m = FindMerger(merger_hash);
+        if(m->CanUninstall())
+        {
+            // Removing it from our virtual filesystem and possibily refreshing should do it
+            if(fs.rem_file(std::move(fspath), &file))
+            {
+                ovrefresh.emplace(m);
+                return true;
+            }
+        }
+    }
+    else
+    {
+        return FindMerger(merger_hash)->UninstallFile();
+    }
+    return false;
+}
+

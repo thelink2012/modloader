@@ -588,7 +588,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         // Fast check for hexadecimal digits
         static bool isxdigit(int c)
         {
-            return isdigit(c) || (c >= 'A' && c <= 'F');
+            return isdigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
         }
 
         // Fast check for octal digits
@@ -715,13 +715,15 @@ basic_icheckstream<CharT, Traits>& operator>>(basic_icheckstream<CharT, Traits>&
 template<class Traits> inline
 basic_icheckstream<char, Traits>& operator>>(basic_icheckstream<char, Traits>& is, const signed char& ch)
 {
-    return (is >> (const char&)ch);
+    const char c;   // needs this, we should not deference ch in any way, may be null
+    return (is >> c);
 }
 
 template<class Traits> inline
 basic_icheckstream<char, Traits>& operator>>(basic_icheckstream<char, Traits>& is, const unsigned char& ch)
 {
-    return (is >> (const char&)ch);
+    const char c;   // needs this, we should not deference ch in any way, may be null
+    return (is >> c);
 }
 
 template<class Traits> inline

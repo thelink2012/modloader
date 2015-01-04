@@ -32,18 +32,18 @@ struct carmods_traits : gta3::data_traits
 
     // Wheel Section Slice
     using wheel_type = data_slice<int, delimopt,
-                                       std::string, std::string, std::string, std::string, std::string,
-                                       std::string, std::string, std::string, std::string, std::string, 
-                                       std::string, std::string, std::string, std::string, std::string>;
+                                       modelname, modelname, modelname, modelname, modelname,
+                                       modelname, modelname, modelname, modelname, modelname, 
+                                       modelname, modelname, modelname, modelname, modelname>;
 
     // Mods Section Slice
-    using mods_type = data_slice<std::string, delimopt,
-                                       std::string, std::string, std::string, std::string, std::string, std::string,
-                                       std::string, std::string, std::string, std::string, std::string, std::string,
-                                       std::string, std::string, std::string, std::string, std::string, std::string>;
+    using mods_type = data_slice<modelname, delimopt,
+                                       modelname, modelname, modelname, modelname, modelname, modelname,
+                                       modelname, modelname, modelname, modelname, modelname, modelname,
+                                       modelname, modelname, modelname, modelname, modelname, modelname>;
 
     // Link Section Slice
-    using link_type = data_slice<std::string, std::string>;
+    using link_type = data_slice<modelname, modelname>;
                                         
     //
     using value_type = gta3::data_section<wheel_type, mods_type, link_type>;
@@ -107,10 +107,10 @@ struct carmods_traits : gta3::data_traits
         { return key_type(get<0>(slice)); }
 
         key_type operator()(const mods_type& slice) const
-        { return key_type(modloader::hash(get<0>(slice))); }
+        { return key_type(hash_model(get<0>(slice))); }
 
         key_type operator()(const link_type& slice) const
-        { return key_type(modloader::hash(get<0>(slice)), modloader::hash(get<1>(slice))); }
+        { return key_type(hash_model(get<0>(slice)), hash_model(get<1>(slice))); }
 
         key_type operator()(const either_blank& slice) const
         { throw std::invalid_argument("blank type"); }

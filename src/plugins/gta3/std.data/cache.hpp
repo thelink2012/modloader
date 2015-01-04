@@ -7,6 +7,7 @@
 #include <modloader/modloader.hpp>
 #include <modloader/utility.hpp>
 #include <modloader/util/container.hpp>
+#include <modloader/util/injector.hpp>
 #include <tuple>
 #include <string>
 #include <vector>
@@ -69,8 +70,8 @@ class data_cache : modloader::basic_cache
                 && get<0>(this->AddCacheFile("_STARTUP_", true)) != -1)     // Creates /1/ directory
                 {
                     // Setup a hook to delete the not used cache files after the loading screen, so we don't keep trash in there
-                    using initialise_hook = function_hooker<0x748CFB, void()>;
-                    make_static_hook<initialise_hook>([this](initialise_hook::func_type InitialiseGame)
+                    using initialise_hook = injector::function_hooker<0x748CFB, void()>;
+                    injector::make_static_hook<initialise_hook>([this](initialise_hook::func_type InitialiseGame)
                     {
                         InitialiseGame();
                         this->DeleteUnusedCaches();

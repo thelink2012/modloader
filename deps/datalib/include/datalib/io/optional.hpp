@@ -68,7 +68,7 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
         if(opt) 
         {
             using data_info = datalib::data_info<optional<T>>;
-            if(os << opt.get() && data_info::base_separator)
+            if((os << opt.get()) && data_info::base_separator)
                 os << data_info::base_separator;
         }
     }

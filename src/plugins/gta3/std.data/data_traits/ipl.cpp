@@ -61,24 +61,24 @@ struct ipl_traits : gta3::data_traits
     // Let's not waste space and all that comparing a irrelevant string
     struct ignore_output_dummy
     {
-        static string output() { return string("_");  }
+        static modelname output() { return make_insen_string("_");  }
     };
-    using model_ignore = ignore<string, ignore_output_dummy>;
+    using model_ignore = ignore<modelname, ignore_output_dummy>;
 
     // Section slices
     using path_type = data_slice<>;             // path section is unused in SA
     using mult_type = data_slice<>;             // mult section is not even implemented by the game
     using pick_type = data_slice<int, vec3>;
-    using zone_type = data_slice<string, int, bbox, int, string>;
+    using zone_type = data_slice<insen<string>, int, bbox, int, labelname>;
     using jump_type = data_slice<vec3, vec3, vec3, vec3, vec3, int>;
-    using inst_type = data_slice<int, model_ignore, int, vec3, vec4, int>;  // TODO LOD (last) should not be compared on ==
-    using auzo_type = data_slice<string, int, int, either<bbox, bsphere>>;
+    using inst_type = data_slice<int, model_ignore, int, vec3, quat, int>;  // TODO LOD (last) should not be compared on ==
+    using auzo_type = data_slice<insen<string>, int, int, either<bbox, bsphere>>;
     using tcyc_type = data_slice<bbox, int, int, real_t, delimopt, real_t, real_t, real_t>;
     using occl_type = data_slice<vec2, real_t, vec2, real_t, real_t, delimopt, real_t, real_t, int>;
     using cars_type = data_slice<real_t, real_t, real_t, real_t, int, int, int, int, int, int, int, int>;
-    using enex_type = data_slice<vec3, real_t, vec2, real_t, vec3, real_t, int, int, string, int, delimopt, int, int, int>;
+    using enex_type = data_slice<vec3, real_t, vec2, real_t, vec3, real_t, int, int, insen<string>, int, delimopt, int, int, int>;
     using cull_type = data_slice<vec3, real_t, real_t, real_t, real_t, real_t, real_t, int, either<tuple<vec3, real_t>, int>>;
-    using grge_type = data_slice<real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, int, string, delimopt, int, int, int>;   
+    using grge_type = data_slice<real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, int, insen<string>, delimopt, int, int, int>;   
                                                         // grge optional part is for http://gtaforums.com/topic/536465-garage-extender/
 
       

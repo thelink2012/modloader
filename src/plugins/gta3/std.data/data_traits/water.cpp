@@ -10,14 +10,14 @@ using namespace std::placeholders;
 using std::tuple;
 
 // A water point defines a vertice and some water properties related to this vertice
-// Notice we are using 'float' type on the XY instead 'real_t', that's because water.dat XY floats are actually integers
+// Notice we are using 'float' type on the XY instead of 'real_t', that's because water.dat XY floats are actually integers
 // So, since XY is rounded, there's no need for taking time to do a epsilon comparision nor have precision
 using water_point = std::tuple<float, float, real_t, real_t, real_t, real_t, real_t>;
 using xyz         = std::tuple<int, int, real_t>;
 
 static xyz make_xyz(const water_point& wp)
 {
-    return xyz(get<0>(wp), get<1>(wp), get<2>(wp));
+    return xyz((int)(get<0>(wp)), (int)(get<1>(wp)), get<2>(wp));
 }
 
 static xyz make_xyz(const optional<water_point>& wp)
@@ -95,7 +95,7 @@ using water_store = gta3::data_store<water_traits, std::map<
                         >>;
 
 
-// water Surface Properties Merger
+// Water Level Merger
 static auto xinit = initializer(
     std::bind(&DataPlugin::AddMerger<water_store, std::function<void()>>, _1,
         "water.dat", true, false, false, reinstall_since_load, injector::cstd<void()>::call<0x6EAE80>)
