@@ -49,7 +49,7 @@ static std::array<xyz, N> make_xyz_array(const value_type& data)
 
 
 //
-struct water_traits : gta3::data_traits
+struct water_traits : public data_traits
 {
     static const bool can_cache         = true;     // Can this store get cached?
     static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?

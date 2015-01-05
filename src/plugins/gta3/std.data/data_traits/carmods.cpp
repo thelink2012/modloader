@@ -11,7 +11,7 @@ using namespace std::placeholders;
 // TODO refresh
 
 //
-struct carmods_traits : gta3::data_traits
+struct carmods_traits : public data_traits
 {
     static const bool can_cache         = true;     // Can this store get cached?
     static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?

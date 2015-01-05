@@ -9,7 +9,7 @@ using namespace modloader;
 using namespace std::placeholders;
 
 //
-struct plants_traits : gta3::data_traits
+struct plants_traits : public data_traits
 {
     static const bool can_cache         = true;     // Can this store get cached?
     static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?

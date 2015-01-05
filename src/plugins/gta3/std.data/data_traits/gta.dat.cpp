@@ -9,7 +9,7 @@ using namespace modloader;
 using namespace std::placeholders;
 
 //
-struct gtadat_traits : gta3::data_traits
+struct gtadat_traits : public data_traits
 {
     static const bool can_cache         = false;    // -> This store cannot be cached because of static indices
     static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?

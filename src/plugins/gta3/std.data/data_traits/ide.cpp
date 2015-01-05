@@ -37,7 +37,7 @@ using fx5_9e = tuple<int, real_t, real_t, real_t, real_t, ipair,  ipair, ipair, 
 
 
 //
-struct ide_traits : gta3::data_traits
+struct ide_traits : public data_traits
 {
     static const bool can_cache         = true;     // Can this store get cached?
     static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?

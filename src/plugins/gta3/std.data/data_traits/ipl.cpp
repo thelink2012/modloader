@@ -26,7 +26,7 @@ using std::string;
 
 
 //
-struct ipl_traits : gta3::data_traits
+struct ipl_traits : public data_traits
 {
     static const bool do_stlist         = true;     // WE NEED TO PROCESS THE LIST OF STORES BEFORE LETING IT MERGE!
     static const bool can_cache         = true;     // Can this store get cached?

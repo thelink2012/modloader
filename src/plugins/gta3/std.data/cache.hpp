@@ -215,21 +215,25 @@ class data_cache : modloader::basic_cache
         template<class StoreList>
         static void SaveStore(std::ofstream& ss, cereal::BinaryOutputArchive& archive, StoreList& store)
         {
-            std::streamsize blocksize;
-            archive(static_cast<cereal::size_type>(store.size()));
-
-            for(auto& elem : store)
+            using traits_type = typename StoreList::value_type::traits_type;
+            traits_type::static_serialize(archive, true, [&]
             {
-                auto prevpos = ss.tellp();
-                ss.seekp(sizeof(blocksize), std::ios::cur);         // skip to overwrite later on
-                archive(elem);                                      // save element
+                std::streamsize blocksize;
+                archive(static_cast<cereal::size_type>(store.size()));
+
+                for(auto& elem : store)
+                {
+                    auto prevpos = ss.tellp();
+                    ss.seekp(sizeof(blocksize), std::ios::cur);         // skip to overwrite later on
+                    archive(elem);                                      // save element
                     
-                blocksize = (ss.tellp() - prevpos);                 // the size of the block written since 'prevpos'
-                blocksize = blocksize - sizeof(blocksize);          // blocksize should not contain the blocksize variable itself in it
-                ss.seekp(prevpos, std::ios::beg);                   // get back to the sparse space we left a while ago...
-                archive.saveBinary(&blocksize, sizeof(blocksize));  // ...and overwrite it with the proper blocksize
-                ss.seekp(blocksize, std::ios::cur);                 // skip the block so we get again to the place we should write the next block
-            }
+                    blocksize = (ss.tellp() - prevpos);                 // the size of the block written since 'prevpos'
+                    blocksize = blocksize - sizeof(blocksize);          // blocksize should not contain the blocksize variable itself in it
+                    ss.seekp(prevpos, std::ios::beg);                   // get back to the sparse space we left a while ago...
+                    archive.saveBinary(&blocksize, sizeof(blocksize));  // ...and overwrite it with the proper blocksize
+                    ss.seekp(blocksize, std::ios::cur);                 // skip the block so we get again to the place we should write the next block
+                }
+            });
         }
 
         // Loads the list of UNMODIFIED data stores into 'store'
@@ -237,22 +241,26 @@ class data_cache : modloader::basic_cache
         template<class StoreList>
         static void LoadStore(std::ifstream& ss, cereal::BinaryInputArchive& archive, StoreList& store, std::map<size_t, int>& cache2current)
         {
-            std::streamsize blocksize;
-            cereal::size_type csize;
-            
-            // Notice: do not resize the store object, it is the object from caching_stream that passed tho Apply()
-            // Just pick the size and use it in the loop to read from the serialized data
-            archive(csize);
-
-            for(size_t i = 0, size = size_t(csize); i < size && !ss.fail(); ++i)
+            using traits_type = typename StoreList::value_type::traits_type;
+            traits_type::static_serialize(archive, false, [&]
             {
-                archive.loadBinary(&blocksize, sizeof(blocksize));
-                int k = cache2current[i];
-                if(k == -1) // no association with the current store, skip this element
-                    ss.seekg(blocksize, std::ios::cur);
-                else
-                    archive(store[k]);
-            }
+                std::streamsize blocksize;
+                cereal::size_type csize;
+            
+                // Notice: do not resize the store object, it is the object from caching_stream that passed tho Apply()
+                // Just pick the size and use it in the loop to read from the serialized data
+                archive(csize);
+
+                for(size_t i = 0, size = size_t(csize); i < size && !ss.fail(); ++i)
+                {
+                    archive.loadBinary(&blocksize, sizeof(blocksize));
+                    int k = cache2current[i];
+                    if(k == -1) // no association with the current store, skip this element
+                        ss.seekg(blocksize, std::ios::cur);
+                    else
+                        archive(store[k]);
+                }
+            });
         }
 
 
