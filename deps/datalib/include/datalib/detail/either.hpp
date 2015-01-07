@@ -27,7 +27,7 @@ using either = boost::variant<either_blank, Types...>;
 
 // Checks if the either object is empty
 template<typename... Types>
-inline bool empty(either<Types...>& e)
+inline bool empty(const either<Types...>& e)
 {
     return !(e.which() > 0);    // index 0 is boost::blank, which means it's empty                               
 }

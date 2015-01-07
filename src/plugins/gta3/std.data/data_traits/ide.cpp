@@ -65,11 +65,11 @@ struct ide_traits : public data_traits
     using objs_type = data_slice<int, modelname, texname, either<objs3e, objs2e, objs1e, objs0e>>;
     using tobj_type = data_slice<int, modelname, texname, either<tobj3e, tobj2e, tobj1e, tobj0e>>;
     using _2dfx_type= data_slice<int, vec3, int, either<fx5_9e, fx0_8e, fx3_7e, fx6_6e, fx10_5e, fx7_4e, fx9_3e, fx8_2e, fx1_1e>>;
-    using peds_type = data_slice<int, modelname, texname, string, string, string, hex<int>, hex<int>, animname, int, int, string, string, string>;
-    using cars_type = data_slice<int, modelname, texname, string, string, labelname, animname, string, int, int, hex<int>, delimopt, int, real_t, real_t, int>;
+    using peds_type = data_slice<int, modelname, texname, string, string, string, hex<uint32_t>, hex<uint32_t>, animname, int, int, string, string, string>;
+    using cars_type = data_slice<int, modelname, texname, string, string, labelname, animname, string, int, int, hex<uint32_t>, delimopt, int, real_t, real_t, int>;
 
     // Data
-    using key_type   = either<int, std::tuple<int, vec3, int>, std::size_t>;   // <int> for all sections but 2dfx, <int, vec3> for 2dfx
+    using key_type   = either<int, std::size_t, std::tuple<int, vec3, int>>;   // <int> for most sections, <size_t> for txdp, <int, vec3> for 2dfx
     using value_type = gta3::data_section<objs_type, tobj_type, hier_type, anim_type, weap_type, cars_type, peds_type, txdp_type, _2dfx_type>;
 
     static const gta3::section_info* sections()

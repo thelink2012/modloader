@@ -96,12 +96,18 @@ class basic_linear_map
 
         void clear()
         { return list.clear(); }
-        
+
+        // Finds an element that matches the predicate
+        template<class Pred>
+        iterator find(Pred pred)
+        {
+            return std::find_if(begin(), end(), pred);
+        }
+
         // Finds an element with key equivalent to key. 
         iterator find(const key_type& k)
         {
-            return std::find_if(begin(), end(), [this, &k](const value_type& pair)
-            {
+            return find([&](const value_type& pair) {
                 return key_compare()(pair.first, k);
             });
         }

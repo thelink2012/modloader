@@ -82,6 +82,7 @@ template<>
 struct data_info<delimopt> : data_info_base
 {
     static const bool ignore = true;        // The type should be ignored but it is handled internally to allow optional types after it
+    static const int  complexity = 0;       // Unecessary since we won't touch it at all, only used by compile time compares, but yeah lets use
 };
 
 

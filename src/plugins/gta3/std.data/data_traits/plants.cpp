@@ -36,7 +36,7 @@ struct plants_traits : public data_traits
 
     key_type key_from_value(const value_type& value)
     {
-        return key_type(std::hash<std::string>()(get<0>(value)), get<1>(value)); 
+        return key_type(modloader::hash(get<0>(value)), get<1>(value)); 
     }
 };
 

@@ -189,7 +189,7 @@ solution "modloader"
         "StaticRuntime",
         "Symbols",          -- Produce symbols whenever possible for logging purposes
         "NoImportLib",      -- Mod Loader itself and it's plugins are dlls which exports some funcs but a implib isn't required
-        "NoRTTI",
+        --"NoRTTI", (std.data uses it now on handling.cpp)
         "NoBufferSecurityCheck"
     }
 

@@ -9,9 +9,9 @@
 
 namespace datalib {
 
-// If the key do not exist in at least one custom trait BUT exists in the default trait, just remove the value (return null)
+// If the key do not exist in at least one custom store BUT exists in the default store, just remove the value (return null)
 static const int flag_RemoveIfNotExistInOneCustomButInDefault   = 0x0001; 
-// If the key do not exist in any of the custom traits, remove the value (return null)
+// If the key do not exist in any of the custom store, remove the value (return null)
 static const int flag_RemoveIfNotExistInAnyCustom               = 0x0002;
 
 

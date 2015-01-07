@@ -54,6 +54,7 @@ struct ipl_traits : public data_traits
             // TODO explain why we do return 'no flags' for inst section
             static auto instsec = gta3::section_info::by_name(sections(), "inst");
             return (key.section() == instsec? 0 : flag_RemoveIfNotExistInOneCustomButInDefault);
+            // TODO actually return 0 for all sections?
         }
     };
 

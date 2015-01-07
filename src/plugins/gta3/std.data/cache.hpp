@@ -21,6 +21,7 @@
 #include <cereal/types/boost_variant.hpp>
 #include <cereal/types/boost_optional.hpp>
 #include <cereal/types/common.hpp>
+#include <cereal/types/vector.hpp>
 #include <cereal/types/list.hpp>
 #include <cereal/types/map.hpp>
 #include <cereal/types/set.hpp>
@@ -29,7 +30,9 @@
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/unordered_set.hpp>
 #include <cereal/types/utility.hpp>
-#include <cereal/types/vector.hpp>
+#include <cereal/types/memory.hpp>
+#include <cereal/types/polymorphic.hpp>
+
 
 // Whenever a serialized data format changes, this number should increase so the serialized file gets incompatible
 // NOTICE, this function should be static so it gets one instantiation on each translation unit!!!
@@ -201,6 +204,14 @@ class data_cache : modloader::basic_cache
                 return true;
             }
             return false;
+        }
+
+        // Deletes the list and the store associated with the caching
+        template<class StoreType>
+        void DeleteCachedStore(caching_stream<StoreType>& cs)
+        {
+            DeleteFileA(GetCachePath(cs.cache_id, cs.fsfile + ".l").c_str());
+            DeleteFileA(GetCachePath(cs.cache_id, cs.fsfile + ".d").c_str());
         }
 
     private: // Serialization specialization for store type

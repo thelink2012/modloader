@@ -419,23 +419,37 @@ struct store_merger
 
         // CXX14 HELP ME
 
+        template<class StoreType>
+        struct fn_dowrite
+        {
+            fn_dowrite(store_merger& merger, std::ofstream& stream) :
+                merger(merger), stream(stream)
+            {}
+
+            template<class MergedList>
+            bool operator()(const MergedList& mlist) const
+            {
+                return merger.write<StoreType>(
+                    std::integral_constant<bool, StoreType::has_sections>(),
+                    mlist.begin(), mlist.end(), stream);
+            }
+
+            private:
+            store_merger& merger;
+            std::ofstream& stream;
+        };
+
         template<class StoreType, class ForwardIterator, class DomFlags>
         bool do_merge(std::false_type, std::ofstream& stream, ForwardIterator st_begin, ForwardIterator st_end, DomFlags domflags)
         {
-            auto mlist2 = StoreType::prewrite(merge(st_begin, st_end, domflags));
-            return this->write<StoreType>(
-                std::integral_constant<bool, StoreType::has_sections>(),
-                mlist2.begin(), mlist2.end(), stream);
+            return StoreType::prewrite(merge(st_begin, st_end, domflags), fn_dowrite<StoreType>(*this, stream));
         }
 
         template<class StoreType, class ForwardIterator, class DomFlags>
         bool do_merge(std::true_type, std::ofstream& stream, ForwardIterator st_begin, ForwardIterator st_end, DomFlags domflags)
         {
             auto xc = StoreType::traits_type::process_stlist<StoreType>(st_begin, st_end);
-            auto mlist2 = StoreType::prewrite(merge(xc.begin(), xc.end(), domflags));
-            return this->write<StoreType>(
-                std::integral_constant<bool, StoreType::has_sections>(),
-                mlist2.begin(), mlist2.end(), stream);
+            return StoreType::prewrite(merge(xc.begin(), xc.end(), domflags), fn_dowrite<StoreType>(*this, stream));
         }
 
         template<class StoreType, class ForwardIterator, class DomFlags>

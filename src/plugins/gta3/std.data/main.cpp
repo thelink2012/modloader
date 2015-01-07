@@ -100,6 +100,12 @@ int DataPlugin::GetBehaviour(modloader::file& file)
     static const bool has_ipl_behv = FindBehv(ipl_merger_name) != nullptr;
     static const bool has_ide_behv = FindBehv(ide_merger_name) != nullptr;
 
+    // TODO more reliable behaviour for different files
+    // NOTES FOR THIS TODO: 
+    //      Each merger should have a unique id
+    //      Each file at the SAME PATH (not SAME FILENAME) should have the same behaviour as before
+    //
+
     if(file.is_ext("txt"))
     {
         // TODO
@@ -108,7 +114,7 @@ int DataPlugin::GetBehaviour(modloader::file& file)
     {
         if(has_ide_behv)
         {
-            static uint32_t count = 0;
+            static uint32_t count = 0;// TODO NOT RELIABLE
             file.behaviour = SetCounter(SetType(file.hash, Type::ObjTypes), ++count);
             return MODLOADER_BEHAVIOUR_YES;
         }
@@ -124,7 +130,7 @@ int DataPlugin::GetBehaviour(modloader::file& file)
     }
     else if(auto item = FindBehv(file))
     {
-        file.behaviour = SetCounter(SetType(file.hash, Type::Data), (item->canmerge? ++item->count : 0));
+        file.behaviour = SetCounter(SetType(modloader::hash(file.filepath())/*file.hash*/, Type::Data), (item->canmerge? /*++item->count*/1 : 0));
          return MODLOADER_BEHAVIOUR_YES;
     }
     return MODLOADER_BEHAVIOUR_NO;
@@ -235,7 +241,6 @@ bool DataPlugin::InstallFile(const modloader::file& file, size_t merger_hash, st
     }
     else
     {
-        // TODO check if ipl breakpoints here or up there (SHOULD BE UP THERE)
         if(!isreinstall)
             return FindMerger(merger_hash)->InstallFile(file);
         else

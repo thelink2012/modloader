@@ -18,6 +18,18 @@
 namespace datalib {
 
 /*
+ *  data_slice_base
+ *      Allows polymorphic behaviour on a data_slice object
+ */
+struct data_slice_base
+{
+    virtual ~data_slice_base() = 0;
+};
+
+inline data_slice_base::~data_slice_base() { }
+
+
+/*
  *  data_slice
  *      Stores a single piece of data (i.e. a single line).
  *      The piece of data stored is specified by the 'Types' variadic template argument.
@@ -27,7 +39,7 @@ namespace datalib {
  *      [*] The type delimopt determines that the types following it are optional (i.e. the line might or might not contain them)
  */
 template<typename ...Types>
-class data_slice
+class data_slice : public data_slice_base
 {
     public:
         // Tuple used to store the types

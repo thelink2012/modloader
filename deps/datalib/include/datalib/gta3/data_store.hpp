@@ -68,9 +68,11 @@ namespace gta3 {
  *                                              -> Processes a list of data stores outputing another list of data stores to be used instead
  *                                                 to build the merged list.
  *
- *              static MergedList prewrite(MergedList)
+ *              static bool prewrite(MergedList, FuncDoWrite)
  *                                              -> Before writing to the file the merged list (of dominant data) you can take a chance
  *                                                 to post-process the merged list.
+ *                                                 This function should forward the call to FuncDoWrite and (probably) return it's result boolean.
+ *                                                 The FuncDoWrite takes a MergedList as parameter and returns a boolean of success or failure.
  *
  *      }
  *
@@ -231,10 +233,10 @@ class data_store final : public datalib::data_store<ContainerType>
         }
 
         // Called before writing the merge results into a file, to process the merged list.
-        template<class MergedList>
-        static MergedList prewrite(MergedList merged)
+        template<class MergedList, class FuncDoWrite>
+        static bool prewrite(MergedList merged, FuncDoWrite dowrite)
         {
-            return traits_type::prewrite<data_store>(std::move(merged));
+            return traits_type::prewrite<data_store>(std::move(merged), std::move(dowrite));
         }
 
         // Finds the section object from the current line
@@ -261,10 +263,10 @@ struct data_traits
         return true;
     }
 
-    template<class StoreType, class MergedList>
-    static MergedList prewrite(MergedList list)
+    template<class StoreType, class MergedList, class FuncDoWrite>
+    static bool prewrite(MergedList list, FuncDoWrite dowrite)
     {
-        return list;
+        return dowrite(list);
     }
 
 

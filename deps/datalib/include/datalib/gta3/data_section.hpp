@@ -123,6 +123,9 @@ class data_section
             : tsection(rhs.tsection), data(std::move(rhs.data))
         { rhs.tsection = nullptr; }
 
+        data_section(const section_info* section)   // sets the working section after construction
+        { this->force_section(section); }
+
         //
         //  Assignment Operators
         //

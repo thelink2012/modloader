@@ -68,6 +68,35 @@ size_t hash_model(const insen<T>& model)
     return hash_model(get(model));
 }
 
+//
+//  UData of shared pointers
+//
+namespace datalib
+{
+    template<typename T>
+    struct data_info<udata<std::shared_ptr<T>>> : data_info_base
+    {
+        static const int complexity = 1;    // comparing a pointer should be as quick as a fundamental type
+    };
+}
+namespace std
+{
+    /*
+     *  shared_ptr should fail to be readen by datalib
+     */
+    template<class CharT, class Traits, class T> inline
+    datalib::basic_icheckstream<CharT, Traits>& operator>>(datalib::basic_icheckstream<CharT, Traits>& is, const std::shared_ptr<T>& ptr)
+    {
+        is.setstate(std::ios::failbit);
+        return is;
+    }
+    template<class CharT, class Traits, class T> inline
+    std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is, const std::shared_ptr<T>& ptr)
+    {
+        is.setstate(std::ios::failbit);
+        return is;
+    }
+}
 
 
 //

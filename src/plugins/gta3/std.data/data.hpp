@@ -230,10 +230,6 @@ class DataPlugin : public modloader::basic_plugin
                     cs.AddFile(f, false);
                 }
 
-                // TODO make can_cache work for when anything changed == false etc
-                // To do so just make the store (.d) not be saved and remove traits_type::can_cache from the following if
-                // (but leave it at the check after DidAnythingChange)
-
                 if(traits_type::can_cache && cs.Apply(cache.FindCachedDataFor(cs)))
                 {
                     // We have a saved cache for this data file.
@@ -268,21 +264,26 @@ class DataPlugin : public modloader::basic_plugin
                 // Load data files that have been added/changed
                 cs.LoadChangedFiles();
                 
+                // Rewrite the cached store/listing
+                // !!!NOTE: Do not do this after the merge_to_file call because the data store is allowed to change the data... alot!!!
+                if(traits_type::can_cache)
+                {
+                    if(!cache.WriteCachedStore(cs))
+                        Log("Warning: Could not write cache at '%s.#'", cs.Path().c_str());
+                }
+
                 // Merge all the stored data into a single data file
                 if(gta3::merge_to_file<store_type>(cs.FullPath().c_str(), cs.StoreList().begin(), cs.StoreList().end(), traits_type::domflags_fn()))
                 {
-                    // Rewrite the cached store/listing
-                    if(traits_type::can_cache)
-                    {
-                        if(!cache.WriteCachedStore(cs))
-                            Log("Warning: Could not write cache at '%s'", cs.Path().c_str());
-                    }
-
+                    traits_type::after_merge(true);
                     return cs.Path();
                 }
                 else
+                {
                     plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, cs.Path().c_str());
-
+                    traits_type::after_merge(false);
+                    if(traits_type::can_cache) cache.DeleteCachedStore(cs);    // Remove the cache we previosly wrote
+                }
             }
 
             return std::string();  // use default file

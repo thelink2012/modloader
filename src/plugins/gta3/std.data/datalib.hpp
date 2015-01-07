@@ -29,6 +29,7 @@
 #include <datalib/io/ignore.hpp>
 #include <datalib/io/hex.hpp>
 #include <datalib/io/tagged_type.hpp>
+#include <datalib/io/udata.hpp>
 
 // datalib gta3 stuff
 #include <datalib/gta3/io.hpp>
@@ -36,6 +37,8 @@
 #include <datalib/gta3/data_store.hpp>
 
 using namespace datalib;
+
+#include <modloader/modloader.hpp>
 
 /*
  *  data_traits
@@ -53,12 +56,32 @@ using namespace datalib;
  *                                                 The Archive argument is a reference to the serializer (call it's operator()() to serialize something)
  *                                                 and the Functor is a function that serializes the content of a list of stores (should usually be done)
  *
+ *          [optional] void after_merge(HasBeenSucessful)
+ *                                              -> Called after a merge happened, this means all the data you used for the merging process
+ *                                                 can be freed.
+ *
  */
 struct data_traits : public gta3::data_traits
 {
     template<class Archive, class FuncT>
-    void static_serialize(Archive& archive, bool saving, FuncT serialize_store)
+    static void static_serialize(Archive& archive, bool saving, FuncT serialize_store)
     {
         serialize_store();
+    }
+
+
+    static void after_merge(bool successful)
+    {}
+
+    // make setbyline output a error on failure
+    template<class StoreType, typename TData>
+    static bool setbyline(StoreType& store, TData& data, const gta3::section_info* section, const std::string& line, bool allowlog = true)
+    {
+        if(!gta3::data_traits::setbyline(store, data, section, line))
+        {
+            if(allowlog) plugin_ptr->Log("Warning: Failed to parse data line: %s", line.c_str());
+            return false;
+        }
+        return true;
     }
 };

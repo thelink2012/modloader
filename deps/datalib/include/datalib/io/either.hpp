@@ -182,6 +182,17 @@ basic_imemstream<CharT, Traits>& operator>>(basic_imemstream<CharT, Traits>& is,
 }
 
 /*
+ *  Input
+ */
+template<class CharT, class Traits, class ...Args> inline
+std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is_, either<Args...>& either)
+{
+    auto& is = static_cast<imemstream&>(is_);   // unsafe
+    is >> either;
+    return is;
+}
+
+/*
  *  Output is implemented by the either class itself
  */
 
