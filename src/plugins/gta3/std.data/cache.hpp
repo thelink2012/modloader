@@ -189,29 +189,29 @@ class data_cache : modloader::basic_cache
             return false;
         }
 
-        // Writes the listing and the store to the cache path associated with the caching stream
+        // Caches the current data_store state and deletes the previous listing file ('cuz it was associated with another data_store).
+        // Do not write the listing here directly because the merging process may fail and so we don't want a valid cache state on such case.
         template<class StoreType>
-        bool WriteCachedStore(caching_stream<StoreType>& cs)
+        bool WriteCachedStore_DataStore(caching_stream<StoreType>& cs)
         {
             using namespace std::placeholders;
             using store_list_type   = caching_stream<StoreType>::store_list_type;
 
-            auto fSaveStore = std::bind(&data_cache::SaveStore<store_list_type>, _1, _2, std::ref(cs.store));
+            auto path = GetCachePath(cs.cache_id, cs.fsfile);
+            auto result = cereal_to_file_byfunc(path + ".d",
+                std::bind(&data_cache::SaveStore<store_list_type>, _1, _2, std::ref(cs.store))
+              );
+            DeleteFileA((path + ".l").c_str());
 
-            if(cereal_to_file(GetCachePath(cs.cache_id, cs.fsfile + ".l"), cs.listing)
-            && cereal_to_file_byfunc(GetCachePath(cs.cache_id, cs.fsfile + ".d"), fSaveStore))
-            {
-                return true;
-            }
-            return false;
+            return result;
         }
 
-        // Deletes the list and the store associated with the caching
+        // Caches the current file listing (timestamps and sizes)
         template<class StoreType>
-        void DeleteCachedStore(caching_stream<StoreType>& cs)
+        bool WriteCachedStore_Listing(caching_stream<StoreType>& cs)
         {
-            DeleteFileA(GetCachePath(cs.cache_id, cs.fsfile + ".l").c_str());
-            DeleteFileA(GetCachePath(cs.cache_id, cs.fsfile + ".d").c_str());
+            auto path = GetCachePath(cs.cache_id, cs.fsfile);
+            return cereal_to_file(path + ".l", cs.listing);
         }
 
     private: // Serialization specialization for store type

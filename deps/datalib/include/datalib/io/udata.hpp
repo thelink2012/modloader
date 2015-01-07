@@ -19,6 +19,7 @@ namespace datalib {
 template<class CharT, class Traits, class T> inline
 datalib::basic_icheckstream<CharT, Traits>& operator>>(datalib::basic_icheckstream<CharT, Traits>& is, const udata<T>&)
 {
+    // fail to read
     is.setstate(std::ios::failbit);
     return is;
 }
@@ -30,6 +31,7 @@ datalib::basic_icheckstream<CharT, Traits>& operator>>(datalib::basic_icheckstre
 template<class CharT, class Traits, class T> inline
 std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is, udata<T>&)
 {
+    // fail to read
     is.setstate(std::ios::failbit);
     return is;
 }
@@ -40,7 +42,7 @@ std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>&
 template<class CharT, class Traits, class T> inline
 std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const udata<T>&)
 {
-    os.setstate(std::ios::failbit);
+    // dont write
     return os;
 }
 

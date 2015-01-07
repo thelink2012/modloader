@@ -53,6 +53,7 @@ std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>&
     opt = none;
     is.clear();         // clear failure flags, optional object (note seekg fails with eof flag active)
     is.seekg(tell);     // seek back to old pos, before we have read input
+    is.clear();
     return is;
 }
 

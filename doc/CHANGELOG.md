@@ -2,8 +2,10 @@ v0.2.2 (In Dev)
 ------------------------
  * The game version 'GTA San Andreas 1.0 EU' is now supported
  * The data merger and overriden plugin *std.data* is back up and running.
- * Any custom timecyc is now loaded properly for SAMP
+ * Just like before, gta.dat, **.ipl, **.ide, handling.cfg, carmods.dat plants.dat, water.dat merges and timecyc.dat overrider are supported.
+ * Implemented carcols.dat merger
  * Implemented caching for mergeable data files *(so it does not need to merge every time the game loads)*
+ * Any custom timecyc is now loaded properly for SAMP
  * Fixed the loader not creating the default plugin.ini file
  * Fixed Mod Loader FXT hooks mistakenly relying on CLEO hooks.
  * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.

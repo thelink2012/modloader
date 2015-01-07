@@ -194,6 +194,9 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
             You can manually reposition the stream by calling the repos() member and avoid reposition on destruction by calling norepos()
             Useful on this stream because a reading failure.
             Note this should probably come before the sentry construction.
+
+            NOTE You might ask why to use reposer instead of .tellg() and .seekg()
+            Well, because it is faster since it does not go tho a sentry.
         */
         class reposer
         {

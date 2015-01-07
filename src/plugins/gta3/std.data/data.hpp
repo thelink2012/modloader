@@ -8,20 +8,13 @@
 #include "vfs.hpp"
 #include "cache.hpp"
 
-enum class Type
-{
-    Data        = 0,    // Its a common kind of data file (Have to check the hash part of the behaviour to see which data file is it)
-    Scene       = 1,    // Its a IPL scene
-    ObjTypes    = 2,    // Its a IDE def file
-    Max         = 7,    // Max 3 bits
-};
+// Type of config file identifier (see files_behv_t)
+using Type = std::uint8_t;
 
 // Basical maskes
 static const uint64_t hash_mask_base  = 0xFFFFFFFF;
-static const uint64_t type_mask_base  = 0x0007;                 // Mask for type without any shifting
-static const uint64_t count_mask_base = 0xFFFF;                 // Mask for count without any shifting
-static const uint32_t type_mask_shf   = 32;                     // Takes 3 bits, starts from 33th bit because first 32th bits is a hash
-static const uint32_t count_mask_shf  = type_mask_shf + 3;      // Takes 28 bits
+static const uint64_t type_mask_base  = 0xFF;                 // Mask for type without any shifting
+static const uint32_t type_mask_shf   = 32;                   // Takes 8 bits, starts from 33th bit because first 32th bits is a hash
 
 // Non unique files merger fs names
 // Since ipls and ides do not have a single file name to be merged (i.e. there are many ides and ipls files to merge) we use the followin'
@@ -36,16 +29,10 @@ inline uint64_t SetType(uint32_t hash, Type type)
     return modloader::file::set_mask(uint64_t(hash), type_mask_base, type_mask_shf, type);
 }
 
-// Sets the counter of the behaviour, note it is stored in a 28 bits integer.
-inline uint64_t SetCounter(uint64_t behaviour, uint32_t count)
-{
-    return modloader::file::set_mask(behaviour, count_mask_base, count_mask_shf, count);
-}
-
 // Gets the type of a behaviour
 inline Type GetType(uint64_t mask)
 {
-    return modloader::file::get_mask<Type>(mask, type_mask_base, type_mask_shf);
+    return modloader::file::get_mask<uint8_t>(mask, type_mask_base, type_mask_shf);
 }
 
 
@@ -77,7 +64,7 @@ class DataPlugin : public modloader::basic_plugin
         {
             size_t      hash;       // Hash of this kind of file
             bool        canmerge;   // Can many files of this get merged into a single one?
-            uint32_t    count;      // Must be initialized to 0, count of files (for merging, see GetBehaviour)
+            Type        index;      // Index of this behv... don't use this index to access myself in vbehav[], it mayn't be the same
         };
 
         // Stores a virtual file system which contains the list of data files we got
@@ -136,7 +123,7 @@ class DataPlugin : public modloader::basic_plugin
                     static_cast<detour_type&>(ov.GetInjection(i)).make_call();
             });
 
-            vbehav.emplace_back(files_behv_t { hash, true, 0 });
+            AddBehv(hash, true);
             return ov;
         }
 
@@ -153,7 +140,7 @@ class DataPlugin : public modloader::basic_plugin
                 std::forward_as_tuple(tag_detour, std::forward<Args>(args)...)
                 ).first->second;
 
-            vbehav.emplace_back(files_behv_t { hash, false, 0 });
+            AddBehv(hash, false);
             return ov;
         }
 
@@ -170,6 +157,12 @@ class DataPlugin : public modloader::basic_plugin
             auto it = ovmap.find(hash);
             if(it != ovmap.end()) return &it->second;
             return nullptr;
+        }
+
+        void AddBehv(size_t hash, bool canmerge)
+        {
+            vbehav.emplace_back(files_behv_t { hash, canmerge, vbehav.size()+1 });
+            if(vbehav.size() >= type_mask_base) throw std::logic_error("type_mask_base too small");
         }
 
         files_behv_t* FindBehv(size_t hash)
@@ -264,25 +257,28 @@ class DataPlugin : public modloader::basic_plugin
                 // Load data files that have been added/changed
                 cs.LoadChangedFiles();
                 
-                // Rewrite the cached store/listing
-                // !!!NOTE: Do not do this after the merge_to_file call because the data store is allowed to change the data... alot!!!
+                // Rewrite the cached store... Notice we write only the data_store (.d) file on here
+                // That's because we cannot do so after the merge since the data store states can have changed (damn side effects)
+                bool allow_listing = false;
                 if(traits_type::can_cache)
                 {
-                    if(!cache.WriteCachedStore(cs))
+                    if(!cache.WriteCachedStore_DataStore(cs))
                         Log("Warning: Could not write cache at '%s.#'", cs.Path().c_str());
+                    else
+                        allow_listing = true;
                 }
 
                 // Merge all the stored data into a single data file
                 if(gta3::merge_to_file<store_type>(cs.FullPath().c_str(), cs.StoreList().begin(), cs.StoreList().end(), traits_type::domflags_fn()))
                 {
                     traits_type::after_merge(true);
+                    if(allow_listing) cache.WriteCachedStore_Listing(cs);
                     return cs.Path();
                 }
                 else
                 {
                     plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, cs.Path().c_str());
                     traits_type::after_merge(false);
-                    if(traits_type::can_cache) cache.DeleteCachedStore(cs);    // Remove the cache we previosly wrote
                 }
             }
 

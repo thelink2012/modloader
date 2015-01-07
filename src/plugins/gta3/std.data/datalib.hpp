@@ -30,6 +30,11 @@
 #include <datalib/io/hex.hpp>
 #include <datalib/io/tagged_type.hpp>
 #include <datalib/io/udata.hpp>
+#include <datalib/io/dyncontainer.hpp>
+#include <datalib/data_info/vector.hpp>
+#include <datalib/data_info/list.hpp>
+#include <datalib/data_info/set.hpp>
+#include <datalib/data_info/deque.hpp>
 
 // datalib gta3 stuff
 #include <datalib/gta3/io.hpp>

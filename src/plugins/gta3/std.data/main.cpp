@@ -91,20 +91,23 @@ bool DataPlugin::OnShutdown()
  */
 int DataPlugin::GetBehaviour(modloader::file& file)
 {
-    //
-    //  Note:
-    //      We Put a counter on the behaviour of mergeable data files so we can receive many of them.
-    //      Notice the count starts from 1 for those because 0 is reserved for non mergeable data files.
-    //
+    static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
+    static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
 
-    static const bool has_ipl_behv = FindBehv(ipl_merger_name) != nullptr;
-    static const bool has_ide_behv = FindBehv(ide_merger_name) != nullptr;
-
-    // TODO more reliable behaviour for different files
-    // NOTES FOR THIS TODO: 
-    //      Each merger should have a unique id
-    //      Each file at the SAME PATH (not SAME FILENAME) should have the same behaviour as before
-    //
+    // Setups the behaviour of a file based on the specified behv object (which can be null for none)
+    // Each specific behv should have a unique identifier, for mergable files the filepath is used to identify
+    // the file (as many files of the same name can come at us) otherwise the filename is used as an identifier.
+    auto setup_behaviour = [](modloader::file& file, const files_behv_t* behv)
+    {
+        if(behv)
+        {
+            file.behaviour = behv->canmerge?
+                SetType(modloader::hash(file.filepath()), behv->index) :
+                SetType(file.hash, behv->index);    // filename hash
+            return true;
+        }
+        return false;
+    };
 
     if(file.is_ext("txt"))
     {
@@ -112,27 +115,17 @@ int DataPlugin::GetBehaviour(modloader::file& file)
     }
     else if(file.is_ext("ide"))
     {
-        if(has_ide_behv)
-        {
-            static uint32_t count = 0;// TODO NOT RELIABLE
-            file.behaviour = SetCounter(SetType(file.hash, Type::ObjTypes), ++count);
+        if(setup_behaviour(file, ide_behv))
             return MODLOADER_BEHAVIOUR_YES;
-        }
     }
     else if(file.is_ext("ipl") || file.is_ext("zon"))
     {
-        if(has_ipl_behv)
-        {
-            static uint32_t count = 0;
-            file.behaviour = SetCounter(SetType(file.hash, Type::Scene), ++count);
+        if(setup_behaviour(file, ipl_behv))
             return MODLOADER_BEHAVIOUR_YES;
-        }
     }
-    else if(auto item = FindBehv(file))
-    {
-        file.behaviour = SetCounter(SetType(modloader::hash(file.filepath())/*file.hash*/, Type::Data), (item->canmerge? /*++item->count*/1 : 0));
-         return MODLOADER_BEHAVIOUR_YES;
-    }
+    else if(setup_behaviour(file, FindBehv(file)))
+        return MODLOADER_BEHAVIOUR_YES;
+
     return MODLOADER_BEHAVIOUR_NO;
 }
 
@@ -142,15 +135,18 @@ int DataPlugin::GetBehaviour(modloader::file& file)
  */
 bool DataPlugin::InstallFile(const modloader::file& file)
 {
+    static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
+    static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+
     auto type = GetType(file.behaviour);
-    if(type == Type::Data)
+    if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+    {
+        auto hash = (type == ipl_behv->index? ipl_merger_hash : ide_merger_hash);
+        return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
+    }
+    else
     {
         return this->InstallFile(file, file.hash, file.filename(), file.filepath());
-    }
-    else if(type == Type::Scene || type == Type::ObjTypes)
-    {
-        auto hash = (type == Type::Scene? ipl_merger_hash : ide_merger_hash);
-        return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
     }
     return false;
 }
@@ -162,15 +158,18 @@ bool DataPlugin::InstallFile(const modloader::file& file)
  */
 bool DataPlugin::ReinstallFile(const modloader::file& file)
 {
+    static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
+    static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+
     auto type = GetType(file.behaviour);
-    if(type == Type::Data)
+    if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+    {
+        auto hash = (type == ipl_behv->index? ipl_merger_hash : ide_merger_hash);
+        return this->ReinstallFile(file, hash);
+    }
+    else
     {
         return this->ReinstallFile(file, file.hash);
-    }
-    else if(type == Type::Scene || type == Type::ObjTypes)
-    {
-        auto hash = (type == Type::Scene? ipl_merger_hash : ide_merger_hash);
-        return this->ReinstallFile(file, hash);
     }
     return true; // Avoid catastrophical failure
 }
@@ -181,15 +180,18 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
  */
 bool DataPlugin::UninstallFile(const modloader::file& file)
 {
+    static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
+    static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+
     auto type = GetType(file.behaviour);
-    if(type == Type::Data)
+    if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+    {
+        auto hash = (type == ipl_behv->index? ipl_merger_hash : ide_merger_hash);
+        return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
+    }
+    else
     {
         return this->UninstallFile(file, file.hash, file.filename());
-    }
-    else if(type == Type::Scene || type == Type::ObjTypes)
-    {
-        auto hash = (type == Type::Scene? ipl_merger_hash : ide_merger_hash);
-        return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
     }
     return false;
 }

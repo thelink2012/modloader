@@ -43,6 +43,8 @@ using vec4 = vecn<4>;
 using quat = vec4;
 using bbox = std::array<vec3, 2>;
 using bsphere = std::tuple<vec3, real_t>;
+using rgb  = std::array<uint16_t, 3>;   // cannot be uint8 because it is actually char
+using rgba = std::array<uint16_t, 4>;   // 
 using modelname = insen<std::string>;
 using animname = insen<std::string>;
 using texname = insen<std::string>;
@@ -96,6 +98,15 @@ namespace std
         is.setstate(std::ios::failbit);
         return is;
     }
+}
+
+
+// Other udata specializations
+namespace datalib
+{
+    template<>
+    struct data_info<udata<int>> : data_info<int>
+    {};
 }
 
 

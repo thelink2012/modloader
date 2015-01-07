@@ -5,7 +5,6 @@
  */
 #include <stdinc.hpp>
 #include "../data.hpp"
-#include <numeric>
 using namespace modloader;
 using namespace std::placeholders;
 using std::string;
