@@ -79,6 +79,7 @@ class DataPlugin : public modloader::basic_plugin
         // Info
         std::vector<files_behv_t> vbehav;
 
+
     public:
         // Caching stuff
         data_cache cache;
@@ -317,7 +318,6 @@ class initializer
         {
             list().emplace_back(this);
             initialise = [cb](DataPlugin* p) mutable {
-                scoped_gdir xdir("");
                 cb(p);
             };
         }

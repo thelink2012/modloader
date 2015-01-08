@@ -283,4 +283,3 @@ bool DataPlugin::UninstallFile(const modloader::file& file, size_t merger_hash, 
     }
     return false;
 }
-

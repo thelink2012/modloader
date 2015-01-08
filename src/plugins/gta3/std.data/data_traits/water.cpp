@@ -96,9 +96,10 @@ using water_store = gta3::data_store<water_traits, std::map<
 
 
 // Water Level Merger
-static auto xinit = initializer(
-    std::bind(&DataPlugin::AddMerger<water_store, std::function<void()>>, _1,
-        "water.dat", true, false, false, reinstall_since_load, injector::cstd<void()>::call<0x6EAE80>)
-);
+static auto xinit = initializer([](DataPlugin* plugin_ptr)
+{
+    auto ReloadWater = injector::cstd<void()>::call<0x6EAE80>;
+    plugin_ptr->AddMerger<water_store>("water.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadWater));
+});
 
 

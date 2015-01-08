@@ -7,6 +7,8 @@
 #include <stdinc.hpp>
 #include "streaming.hpp"
 
+// TODO for MODELFILE, TEXDICTION and other entries related to the files the streaming handles
+
 extern "C"
 {
     void* (*ColModelPool_new)(int)  = nullptr;

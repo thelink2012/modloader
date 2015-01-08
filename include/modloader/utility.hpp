@@ -30,7 +30,7 @@ namespace modloader
     };
 
     template<class FuncT>
-    std::function<void()> gdir_refresh(FuncT& func)
+    std::function<void()> gdir_refresh(FuncT func)
     {
         return [func]
         {

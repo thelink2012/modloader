@@ -127,6 +127,6 @@ namespace datalib {
     }
 }
 
-// Vehicle Upgrades Merger
+// Object Types Merger
 static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<ide_store>, _1, ide_merger_name, false, false, true, no_reinstall));
 

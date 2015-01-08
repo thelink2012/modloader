@@ -124,6 +124,9 @@ namespace datalib {
     }
 }
 
-// Vehicle Upgrades Merger
-static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carcols_store, std::function<void()>>, _1,
-    "carcols.dat", true, false, false, reinstall_since_load, injector::cstd<void()>::call<0x5B6890>));
+// Vehicle Colours Merger
+static auto xinit = initializer([](DataPlugin* plugin_ptr)
+{
+    auto ReloadColours = injector::cstd<void()>::call<0x5B6890>;
+    plugin_ptr->AddMerger<carcols_store>("carcols.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadColours));
+});
