@@ -9,6 +9,7 @@ class vfs
         using multimap  = std::unordered_multimap<std::string, std::pair<std::string, UData>>;
         using iterator  = typename multimap::iterator;
         using size_type = typename multimap::size_type;
+        using value_type = typename multimap::value_type;
 
     private:
         multimap fs;
@@ -22,6 +23,11 @@ class vfs
     public:
 
         // TODO ctors, moves, etc
+
+        iterator begin() { return fs.begin(); }
+        iterator end()   { return fs.end(); }
+
+        iterator erase(iterator it) { return fs.erase(it); }
 
         // undefined behaviour if you add two files to the same vpath pointing to the same real path (see @rem_files)
         iterator add_file(std::string vpath, std::string path, UData userdata = UData())
@@ -72,7 +78,10 @@ class vfs
         }
 
 
-
+        iterator insert(value_type&& value)
+        {
+            return fs.insert(std::move(value));
+        }
 
 
         size_type count(std::string vpath)
@@ -90,6 +99,22 @@ class vfs
             fs.clear();
         }
 
+        iterator move_file(iterator file_it, std::string dest_vpath)
+        {
+            auto itx  = this->add_file(std::move(dest_vpath), std::move(file_it->second.first), std::move(file_it->second.second));
+            this->erase(file_it);
+            return itx;
+        }
+
+        template<class FuncT>
+        void walk(FuncT func)
+        {
+            for(auto it = begin(); it != end(); ++it)
+            {
+                if(func(it) == false)   // yes send iterator
+                    break;
+            }
+        }
 };
 
 

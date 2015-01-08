@@ -22,7 +22,7 @@ using namespace modloader;
  *   [*] Remember not to use int8, uint8 and so in the data_slice<> thinking it is a integer type, instead it will be readen as a character
  */
 
-
+void LazyGtaDatPatch();
 
 DataPlugin plugin;
 REGISTER_ML_PLUGIN(::plugin);
@@ -37,15 +37,6 @@ const DataPlugin::info& DataPlugin::GetInfo()
     static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "txt", 0 };
     static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", 54, extable };
     return xinfo;
-}
-
-
-
-// Makes for example "folder1/folder2/data/a.ipl" turn into "data/a.ipl"
-inline std::string find_gta_path(std::string path)
-{
-    static const auto data = MakeSureStringIsDirectory(NormalizePath("data/"));
-    return GetProperlyPath(std::move(path), data.c_str());
 }
 
 
@@ -68,6 +59,9 @@ bool DataPlugin::OnStartup()
         // Installs the hooks in any case, so we have the log always logging the loading of data files
         for(auto& pair : this->ovmap)
             pair.second.InstallHook();
+
+        // Makes default.dat/gta.dat load in a lazy way
+        LazyGtaDatPatch();
 
         return true;
     }
@@ -141,7 +135,7 @@ bool DataPlugin::InstallFile(const modloader::file& file)
     auto type = GetType(file.behaviour);
     if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
     {
-        auto hash = (type == ipl_behv->index? ipl_merger_hash : ide_merger_hash);
+        auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
         return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
     }
     else
@@ -164,7 +158,7 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
     auto type = GetType(file.behaviour);
     if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
     {
-        auto hash = (type == ipl_behv->index? ipl_merger_hash : ide_merger_hash);
+        auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
         return this->ReinstallFile(file, hash);
     }
     else
@@ -186,7 +180,7 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
     auto type = GetType(file.behaviour);
     if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
     {
-        auto hash = (type == ipl_behv->index? ipl_merger_hash : ide_merger_hash);
+        auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
         return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
     }
     else

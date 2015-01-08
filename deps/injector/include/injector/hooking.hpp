@@ -154,7 +154,6 @@ namespace injector
             scoped_write& operator=(const scoped_write& rhs) = delete;
             scoped_write& operator=(scoped_write&& rhs)
             { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
-
     };
 
     /*
@@ -178,6 +177,9 @@ namespace injector
             scoped_fill& operator=(const scoped_fill& rhs) = delete;
             scoped_fill& operator=(scoped_fill&& rhs)
             { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
+
+            scoped_fill(memory_pointer_tr addr, uint8_t value, size_t size, bool vp)
+            { fill(addr, value, vp); }
     };
     
     /*
@@ -201,6 +203,9 @@ namespace injector
             scoped_nop& operator=(const scoped_nop& rhs) = delete;
             scoped_nop& operator=(scoped_nop&& rhs)
             { scoped_basic<bufsize_>::operator=(std::move(rhs)); return *this; }
+
+            scoped_nop(memory_pointer_tr addr, size_t size = 1, bool vp = true)
+            { make_nop(addr, size, vp); }
     };
     
     /*
@@ -223,6 +228,9 @@ namespace injector
             scoped_jmp& operator=(const scoped_jmp& rhs) = delete;
             scoped_jmp& operator=(scoped_jmp&& rhs)
             { scoped_basic<5>::operator=(std::move(rhs)); return *this; }
+
+            scoped_jmp(memory_pointer_tr at, memory_pointer_raw dest, bool vp = true)
+            { make_jmp(at, dest, vp); }
     };
     
     /*
@@ -245,6 +253,9 @@ namespace injector
             scoped_call& operator=(const scoped_call& rhs) = delete;
             scoped_call& operator=(scoped_call&& rhs)
             { scoped_basic<5>::operator=(std::move(rhs)); return *this; }
+
+            scoped_call(memory_pointer_tr at, memory_pointer_raw dest, bool vp = true)
+            { make_call(at, dest, vp); }
     };
 
 

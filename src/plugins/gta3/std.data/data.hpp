@@ -58,7 +58,9 @@ class DataPlugin : public modloader::basic_plugin
         bool ReinstallFile(const modloader::file&, size_t merger_hash);
         bool UninstallFile(const modloader::file&, size_t merger_hash, std::string fspath);
 
-    private:  // Plugin Stuff
+    protected:  // Plugin Stuff
+
+        friend void ProcessGtaDatEntries();
 
         struct files_behv_t
         {
@@ -185,6 +187,7 @@ class DataPlugin : public modloader::basic_plugin
             return FindBehv(modloader::hash(fname));
         }
 
+
     private:
         
         //
@@ -286,7 +289,6 @@ class DataPlugin : public modloader::basic_plugin
         }
 
 };
-extern DataPlugin plugin;
 
 
 /*
@@ -324,3 +326,13 @@ class initializer
 static const auto no_reinstall          = modloader::file_overrider::params(nullptr);
 static const auto reinstall_since_start = modloader::file_overrider::params(true, true, true, true);
 static const auto reinstall_since_load  = modloader::file_overrider::params(true, true, false, true);
+
+
+
+// Makes for example "folder1/folder2/data/a.ipl" turn into "data/a.ipl"
+inline std::string find_gta_path(std::string path)
+{
+    using namespace modloader;
+    static const auto data = MakeSureStringIsDirectory(NormalizePath("data/"));
+    return GetProperlyPath(std::move(path), data.c_str());
+}
