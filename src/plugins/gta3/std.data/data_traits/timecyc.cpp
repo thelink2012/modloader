@@ -30,7 +30,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
         // doesn't cause serious issues but well... shall we take care of them?
     };
 
-    auto& timecyc_ov = plugin_ptr->AddDetour("timecyc.dat", reinstall_since_start, OpenTimecycDetour(), gdir_refresh(ReloadTimeCycle));
+    auto& timecyc_ov = plugin_ptr->AddDetour("timecyc.dat", reinstall_since_start, OpenTimecycDetour(), ReloadTimeCycle);
     if(GetModuleHandleA("samp"))
     {
         //

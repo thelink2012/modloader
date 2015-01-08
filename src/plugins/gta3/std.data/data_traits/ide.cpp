@@ -11,8 +11,6 @@ using std::tuple;
 using std::string;
 using ipair = std::pair<int, int>;
 
-// TODO refresh?
-
 // Aliases of the possible endings of the OBJS and TOBJ lines
 using objs0e = tuple<real_t, int>;
 using objs1e = tuple<int, real_t, int>;

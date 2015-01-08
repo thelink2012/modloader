@@ -317,6 +317,7 @@ class initializer
         {
             list().emplace_back(this);
             initialise = [cb](DataPlugin* p) mutable {
+                scoped_gdir xdir("");
                 cb(p);
             };
         }

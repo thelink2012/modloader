@@ -212,54 +212,10 @@ struct handling_traits : public data_traits
     }
 
 
-
     // Stores all the unique data found in all the handling files we have read
     // In the data slices (final_type) we store pointers to the stuff stored on here
-    struct datastore_t
-    {
-        std::list<main_ptr>  vehdata;
-        std::list<boat_ptr>  boatdata;
-        std::list<bike_ptr>  bikedata;
-        std::list<plane_ptr> planedata;
+    using datastore_t = data_list<main_ptr, boat_ptr, bike_ptr, plane_ptr>;
 
-        // Serializes our stored data
-        // Notice: The serialization of a datastore_t should come before the serialization
-        // of any handling data slice!!! That's because of the way cereal deals with shared pointers serialization
-        // as there should be the first pointer, that will have the data stored...
-        // Since other slices (and thus pointers) can be skipped by further cache reads, we should store this data before the slices!
-        template<class Archive>
-        void serialize(Archive& ar)
-        {
-            ar(vehdata, boatdata, bikedata, planedata);
-        }
-
-        // Clears the content of this store
-        void clear()
-        {
-            vehdata.clear(); boatdata.clear();
-            bikedata.clear(); planedata.clear();
-        }
-
-        // Clears any data that's only being held by us
-        void clear_uniques()
-        {
-            clear_uniques(vehdata); clear_uniques(boatdata);
-            clear_uniques(bikedata); clear_uniques(planedata);
-        }
-
-        // Clears any pointer that's only being held by the specified list of pointers
-        template<class SharedPtr>
-        void clear_uniques(std::list<SharedPtr>& list)
-        {
-            for(auto it = list.begin(); it != list.end(); )
-            {
-                if(it->unique())
-                    it = list.erase(it);
-                else
-                    ++it;
-            }
-        }
-    };
     // Exposes an static instance of datastore_t
     static datastore_t& datastore()
     {
@@ -288,25 +244,25 @@ struct handling_traits : public data_traits
     // Registers the existence of the specified main_type and returns a shared pointer to it.
     static main_ptr register_vehdata(const main_type& a)
     {
-        return register_stuff(datastore().vehdata, a).first;
+        return register_stuff(datastore().get<main_ptr>(), a).first;
     }
 
     // Registers the existence of the specified boat_type and returns a shared pointer to it.
     static boat_ptr register_boatdata(const boat_type& a)
     {
-        return register_stuff(datastore().boatdata, a).first;
+        return register_stuff(datastore().get<boat_ptr>(), a).first;
     }
 
     // Registers the existence of the specified bike_type and returns a shared pointer to it.
     static bike_ptr register_bikedata(const bike_type& a)
     {
-        return register_stuff(datastore().bikedata, a).first;
+        return register_stuff(datastore().get<bike_ptr>(), a).first;
     }
 
     // Registers the existence of the specified plane_type and returns a shared pointer to it.
     static plane_ptr register_planedata(const plane_type& a)
     {
-        return register_stuff(datastore().planedata, a).first;
+        return register_stuff(datastore().get<plane_ptr>(), a).first;
     }
 
     // Helper function to register an item into the specific data map.

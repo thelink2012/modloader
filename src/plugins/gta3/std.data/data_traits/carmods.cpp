@@ -6,9 +6,8 @@
 #include <stdinc.hpp>
 #include "../data.hpp"
 using namespace modloader;
+using namespace injector;
 using namespace std::placeholders;
-
-// TODO refresh
 
 //
 struct carmods_traits : public data_traits
@@ -140,5 +139,22 @@ namespace datalib {
 }
 
 // Vehicle Upgrades Merger
-static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carmods_store>, _1, "carmods.dat", true, false, false, no_reinstall));
+static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<carmods_store, std::function<void()>>, _1,
+    "carmods.dat", true, false, false, reinstall_since_load, []()
+{
+    // Restore the amount of linked upgrades so carmods.dat can fill it again
+    char* linkedUpgradeList = mem_ptr(0xB4E6D8).get();
+    *(int*)(linkedUpgradeList + 0x78) = 0;
+
+    // Restore the '-1' at the CVehicleModelInfo::m_wUpgrades so it can be filled by carmods.dat again
+    uintptr_t pVehStore = ReadMemory<uintptr_t>(0x4C6770+1, true);
+    for(size_t i = 0; i < *(size_t*)(pVehStore); ++i)
+    {
+        uintptr_t pVeh = (pVehStore + 4) + (0x308 * i);
+        auto* pUpgrades = (unsigned short*)(pVeh + 0x2D6);
+        std::fill(&pUpgrades[0], &pUpgrades[18], 0xFFFF);
+    }
+
+    injector::cstd<void()>::call<0x5B65A0>();
+}));
 
