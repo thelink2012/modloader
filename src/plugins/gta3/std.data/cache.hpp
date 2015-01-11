@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include "vfs.hpp"
+#include <file_block.hpp>
 
 // Serialization
 #include <cereal/archives/binary.hpp>
@@ -19,7 +20,6 @@
 #include <cereal/types/base_class.hpp>
 #include <cereal/types/bitset.hpp>
 #include <cereal/types/boost_variant.hpp>
-#include <cereal/types/boost_optional.hpp>
 #include <cereal/types/common.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/list.hpp>
@@ -32,6 +32,18 @@
 #include <cereal/types/utility.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/polymorphic.hpp>
+
+// Custom Types Serialization
+#include <cereal/types/boost_optional.hpp>
+#include <cereal/types/typeindex.hpp>
+#include <cereal/types/boost_any.hpp>
+
+// Allows the specified type to be used in a boost::any
+// -> name is a cross-platform name for the type, type is the type itself
+#define REGISTER_RTTI_FOR_ANY(name, type)       \
+    CEREAL_REGISTER_RTTI_WITH_NAME(type, name); \
+    CEREAL_REGISTER_FOR_ANY(type);               
+
 
 
 // Whenever a serialized data format changes, this number should increase so the serialized file gets incompatible
@@ -173,12 +185,13 @@ class data_cache : modloader::basic_cache
 
             // Maps the index of the store in the cache to the index of the store in the current caching stream
             std::map<size_t, int> cache2current;
-            for(size_t i = 0; i < cs.listing.size(); ++i)
-                cache2current[i] = -1;  // make sure cache2current has max(cs.listing.size(), cs.cached_listing.size()) indices mapped
-            for(size_t i = 0; i < cs.cached_listing.size(); ++i)
+            for(size_t i = 0; i < cs.readme_point; ++i)
+                cache2current[i] = -1;  // make sure cache2current has max(cs.readme_point, cs.cached_readme_point) indices mapped
+            for(size_t i = 0; i < cs.cached_readme_point; ++i)
             {
-                auto it = std::find(cs.listing.begin(), cs.listing.end(), cs.cached_listing[i]);
-                cache2current[i] = (it == cs.listing.end()? -1 : std::distance(cs.listing.begin(), it));
+                auto end_point = cs.listing.begin() + cs.readme_point;
+                auto it = std::find(cs.listing.begin(), end_point, cs.cached_listing[i]);
+                cache2current[i] = (it == end_point? -1 : std::distance(cs.listing.begin(), it));
             }
             
             auto fLoadStore = std::bind(&data_cache::LoadStore<store_list_type>, _1, _2, std::ref(cs.store), std::ref(cache2current));
@@ -199,7 +212,7 @@ class data_cache : modloader::basic_cache
 
             auto path = GetCachePath(cs.cache_id, cs.fsfile);
             auto result = cereal_to_file_byfunc(path + ".d",
-                std::bind(&data_cache::SaveStore<store_list_type>, _1, _2, std::ref(cs.store))
+                std::bind(&data_cache::SaveStore<store_list_type>, _1, _2, std::ref(cs.store), cs.readme_point)
               );
             DeleteFileA((path + ".l").c_str());
 
@@ -211,7 +224,8 @@ class data_cache : modloader::basic_cache
         bool WriteCachedStore_Listing(caching_stream<StoreType>& cs)
         {
             auto path = GetCachePath(cs.cache_id, cs.fsfile);
-            return cereal_to_file(path + ".l", cs.listing);
+            return cereal_to_file_byfunc(path + ".l",
+                std::bind(&data_cache::SerializeListing<decltype(cs.listing), cereal::BinaryOutputArchive>, _2, std::ref(cs.listing), cs.readme_point));
         }
 
     private: // Serialization specialization for store type
@@ -224,25 +238,17 @@ class data_cache : modloader::basic_cache
 
         // Saves the list of data stores 'store' and put the block size taken by each element before it
         template<class StoreList>
-        static void SaveStore(std::ofstream& ss, cereal::BinaryOutputArchive& archive, StoreList& store)
+        static void SaveStore(std::ofstream& ss, cereal::BinaryOutputArchive& archive, StoreList& store, size_t readme_point)
         {
             using traits_type = typename StoreList::value_type::traits_type;
             traits_type::static_serialize(archive, true, [&]
             {
-                std::streamsize blocksize;
-                archive(static_cast<cereal::size_type>(store.size()));
+                archive(static_cast<cereal::size_type>(readme_point));
 
-                for(auto& elem : store)
+                for(size_t i = 0; i < readme_point; ++i)
                 {
-                    auto prevpos = ss.tellp();
-                    ss.seekp(sizeof(blocksize), std::ios::cur);         // skip to overwrite later on
-                    archive(elem);                                      // save element
-                    
-                    blocksize = (ss.tellp() - prevpos);                 // the size of the block written since 'prevpos'
-                    blocksize = blocksize - sizeof(blocksize);          // blocksize should not contain the blocksize variable itself in it
-                    ss.seekp(prevpos, std::ios::beg);                   // get back to the sparse space we left a while ago...
-                    archive.saveBinary(&blocksize, sizeof(blocksize));  // ...and overwrite it with the proper blocksize
-                    ss.seekp(blocksize, std::ios::cur);                 // skip the block so we get again to the place we should write the next block
+                    block_writer xblock(ss);
+                    archive(store[i]);
                 }
             });
         }
@@ -260,20 +266,27 @@ class data_cache : modloader::basic_cache
             
                 // Notice: do not resize the store object, it is the object from caching_stream that passed tho Apply()
                 // Just pick the size and use it in the loop to read from the serialized data
-                archive(csize);
+                archive(csize); // <--- cached readme point
 
                 for(size_t i = 0, size = size_t(csize); i < size && !ss.fail(); ++i)
                 {
-                    archive.loadBinary(&blocksize, sizeof(blocksize));
+                    block_reader xblock(ss);
                     int k = cache2current[i];
                     if(k == -1) // no association with the current store, skip this element
-                        ss.seekg(blocksize, std::ios::cur);
+                        xblock.skip();
                     else
                         archive(store[k]);
                 }
             });
         }
 
+        // Serializes a listing of files into archive.
+        // Readme point is how many normal files there is until we reach the readme files in the listing.
+        template<class ListingList, class ArchiveType>
+        static void SerializeListing(ArchiveType& archive, ListingList& listing, size_t& readme_point)
+        {
+            archive(readme_point, listing);
+        }
 
     private: // Serialization, with version information
 
@@ -344,31 +357,35 @@ class data_cache : modloader::basic_cache
             return false;
         }
 
-    private: /// XXX refactore those functions
-    
+    private:
+
+        // Tries to add a cache file into the specified cache_id directory
+        // You might force the success of the function at all cost by specifying 'force'
+        // Returns a little handle for the cache, <0>=id, <1>=path, <2>=fullpath. On failure <0> is equal to -1.
         cache_file_tuple AddCacheFile(int cache_id, std::string file, bool force)
         {
-            using tuple_type = std::tuple < int, std::string, std::string > ;
-
             using modloader::plugin_ptr;
+            using tuple_type = std::tuple <int, std::string, std::string>;
 
             std::string vdir, vpath;
-            vdir.assign(std::to_string(cache_id)).push_back('/');
-            vpath.assign(vdir).append(file);
+            vdir.assign(std::to_string(cache_id)).push_back('/');   // virtual dir for the cache id
+            vpath.assign(vdir).append(file);                        // virtual path for the file in the cache id
 
             if(force || fs.count(vpath) == 0)
             {
-                if(fs.count(vdir) == 0)
+                if(fs.count(vdir) == 0) // if directory still doesn't exist create it
                 {
                     if(this->CreateDir(vdir) == false)
                     {
+                        // ...ops
                         plugin_ptr->Error("Fatal Error: std.data: Failed to create directory for caching: \"%s\"", vdir.c_str());
                         return cache_file_tuple(-1, "", "");
                     }
                     else
-                        fs.add_file(vdir, "");
+                        fs.add_file(vdir, "");  // make a representation in the vfs about the existence of our directory
                 }
 
+                // make a representation in the vfs about our cached file
                 fs.add_file(vpath, "");
 
                 return cache_file_tuple(
@@ -382,10 +399,14 @@ class data_cache : modloader::basic_cache
             return cache_file_tuple(-1, "", "");
         }
 
+        // Finds a cache that we can store the specified file (in the caching stream) trying to get the same place
+        // as the previous cache run (not in the same game session!) did, so we can own it's cache.
+        // Assumes this file is not unique (i.e. there can be various of the same name, like ipl files)
+        // Returns a little handle for the cache, <0>=id, <1>=path, <2>=fullpath. On failure <0> is equal to -1.
         template<class StoreType>
         cache_file_tuple MatchNonUniqueCache(caching_stream<StoreType>& cs)
         {
-            // TODO stop walking the tree every time, get around it
+            // TODO stop walking the tree every time, get around it (?)
             cache_file_tuple result(-1, "", "");
             modloader::FilesWalk(this->fullpath, "*.*", false, [&](modloader::FileWalkInfo& f)
             {
@@ -395,7 +416,7 @@ class data_cache : modloader::basic_cache
 
                     try {
                         cache_id = std::stoul(f.filename);
-                        if(cache_id == 0) return true;
+                        if(cache_id == 0) return true;  // don't try with cache id 0, it's for unique files
                     }
                     catch(const std::exception&) {
                         return true;
@@ -405,7 +426,7 @@ class data_cache : modloader::basic_cache
                     if(get<0>(tuple) != -1)
                     {
                         result = std::move(tuple);
-                        return false;
+                        return false;   // stop iteration, we are done!
                     }
                 }
                 return true;
@@ -413,21 +434,28 @@ class data_cache : modloader::basic_cache
             return result;
         }
 
+        // Tries to match a cache file in the specified caching directory 'cache_id' that may have been associated with the
+        // caching stream in the previous game run
+        // // Returns a little handle for the cache, <0>=id, <1>=path, <2>=fullpath. On failure <0> is equal to -1.
         template<class StoreType>
         cache_file_tuple MatchCache(caching_stream<StoreType>& cs, uint32_t cache_id)
         {
+            // TODO stop walking the tree every time, get around it (?)
             using namespace modloader;
             cache_file_tuple result(-1, "", "");
             modloader::FilesWalk(this->GetCacheDir(cache_id, true), "*.*", false, [&](modloader::FileWalkInfo& f)
             {
                 if(!strcmp(f.filename, cs.fsfile.c_str(), false))
                 {
-                    if(cereal_from_file(std::string(f.filepath).append(".l"), cs.cached_listing))
+                    // Reads the listing of files for this cache and tries to match it with the current listing
+                    if(cereal_from_file_byfunc(std::string(f.filepath).append(".l"),
+                        std::bind(&data_cache::SerializeListing<decltype(cs.cached_listing), cereal::BinaryInputArchive>, 
+                        _2, std::ref(cs.cached_listing), cs.cached_readme_point)))
                     {
                         if(cs.MatchListing())
                         {
                             result = this->AddCacheFile(cache_id, f.filename, true);
-                            return false;
+                            return false;   // stop iteration, we are done
                         }
                     }
                 }
@@ -436,6 +464,8 @@ class data_cache : modloader::basic_cache
             return result;
         }
 
+        // Deletes unused cache files left in the cache directory (i.e. garbage old caches)
+        // This in fact just deletes the cache files that weren't used in the current session
         void DeleteUnusedCaches()
         {
             using namespace modloader;
@@ -486,6 +516,30 @@ class data_cache : modloader::basic_cache
 
 };
 
+struct cached_file_info
+{
+    size_t   path_hash  = 0;
+    uint32_t flags      = 0;
+    uint64_t size       = 0;
+    uint64_t time       = 0;
+
+    cached_file_info(const modloader::file& file) :
+        path_hash(modloader::hash(file.filepath())), flags(file.flags),
+        size(file.size), time(file.time)
+    {}
+
+    cached_file_info(const cached_file_info&) = default;
+    cached_file_info& operator=(const cached_file_info&) = default;
+
+    bool operator==(const cached_file_info& rhs) const
+    {
+        return this->path_hash  == rhs.path_hash
+            && this->flags      == rhs.flags
+            && this->size       == rhs.size
+            && this->time       == rhs.time;
+    }
+};
+
 template<class StoreType>
 class caching_stream
 {
@@ -496,35 +550,39 @@ class caching_stream
         struct info
         {
             bool is_default = false;    // Is this data store a default one? (see data_store.hpp for the meaning of default in store context)
+            bool is_readme  = false;    // Is readme file
             bool relpath    = false;    // Is this path relative to the current working directory?
-            bool rsv1       = false;    // reserved
             bool rsv2       = false;    // reserved
             uint32_t flags  = 0;        // Flags as in modloader::file::flags
             uint64_t size   = 0;        // Size of this file (as in modloader::file::size)
             uint64_t time   = 0;        // Write time of this file (as in modloader::file::time)
+            size_t linenum  = 0;        // When is_readme=true specifies in which line the data related to this is at
 
             // Compare with another info to check if anything changed in the data file
             bool operator==(const info& rhs) const
             {
                 return this->is_default == rhs.is_default
+                    && this->is_readme  == rhs.is_readme
                     && this->relpath    == rhs.relpath
-                    && this->rsv1       == rhs.rsv1
                     && this->rsv2       == rhs.rsv2
                     && this->flags      == rhs.flags
                     && this->size       == rhs.size
-                    && this->time       == rhs.time;
+                    && this->time       == rhs.time
+                    && this->linenum    == rhs.linenum;
             }
 
             // Serializer to load/save this type into a cache
             template <class Archive>
             void serialize(Archive& ar)
             {
-                ar(is_default, relpath, rsv1, rsv2, flags, size, time);
+                ar(is_default, is_readme, relpath, rsv2, flags, size, time, linenum);
             }
         };
 
-        using listing_list_type = std::vector<std::pair<std::string, info>>;
+        // Aliases
+        using listing_list_type = std::vector<std::pair<std::string, info>>;    // .first is file path, .second is file info
         using store_list_type   = std::vector<StoreType>;
+        using readme_data_type  = std::list<std::pair<const modloader::file*, std::pair<size_t, std::reference_wrapper<const StoreType>>>>; // comes from data.hpp
 
     protected:
 
@@ -540,6 +598,11 @@ class caching_stream
         listing_list_type   listing;            // The current listing built from AddFile calls
         store_list_type     store;              // The current store
         
+        readme_data_type    readme_data;        // Data associated with readmes
+
+        size_t cached_readme_point = -1;        // The point where readme files listing begins in 'cached_listing'
+        size_t readme_point = -1;               // The point where readme files listing beings in 'listing'
+
     public:
 
         caching_stream(std::string fsfile, bool unique) :
@@ -579,8 +642,8 @@ class caching_stream
             return *this;
         }
 
-        // Adds information about a data file with path relative to the game directory
-        caching_stream& AddFile(const modloader::file& file, bool is_default)
+        // Adds information about a mod loader file with path relative to the game directory
+        caching_stream& AddFile(const modloader::file& file, bool is_default, bool is_readme, size_t linenum = 0)
         {
             using namespace modloader;
             if(IsPathA(file.fullpath().c_str()))
@@ -590,10 +653,32 @@ class caching_stream
                     std::forward_as_tuple())->second;
 
                 info.is_default = is_default;
+                info.is_readme  = is_readme;
                 info.relpath    = false;
                 info.flags     |= file.flags;
                 info.size       = file.size;
                 info.time       = file.time;
+
+                // readme line number
+                if(is_readme) info.linenum = linenum;
+            }
+            return *this;
+        }
+
+        // Adds information about a data file with path relative to the game directory
+        caching_stream& AddFile(const modloader::file& file, bool is_default)
+        {
+            return this->AddFile(file, is_default, false, 0);
+        }
+
+        // Adds information about a set of data present in a readme file that is related to this StoreType
+        caching_stream& AddReadmeData(readme_data_type&& data)
+        {
+            if(data.size())
+            {
+                this->readme_data = std::move(data);
+                for(auto& item : readme_data)
+                    this->AddFile(*item.first, false, true, item.second.first);
             }
             return *this;
         }
@@ -609,8 +694,17 @@ class caching_stream
                 this->path      = std::move(get<1>(cidpath));
                 this->fullpath  = std::move(get<2>(cidpath));
 
-                this->store.resize(this->listing.size());
-                for(size_t i = 0; i < this->store.size(); ++i)
+                // put readmes files after normal files
+                auto readme_point_it = std::stable_partition(this->listing.begin(), this->listing.end(), 
+                    [](const listing_list_type::value_type& a)
+                {
+                    return !a.second.is_readme;
+                });
+                this->readme_point = std::distance(this->listing.begin(), readme_point_it);
+
+                this->store.reserve(readme_point + 1);  // reserve one additional elem space for the readme store
+                this->store.resize(readme_point);
+                for(size_t i = 0; i < readme_point; ++i)
                 {
                     bool is_default = this->listing[i].second.is_default;
                     this->store[i].set_as_default(is_default);
@@ -626,7 +720,7 @@ class caching_stream
         bool DidAnythingChange() const
         {
             if(cache_force_reading) return true;
-            return !(this->cached_listing == this->listing);
+            return !(this->cached_listing == this->listing);    // yes ordering matters
         }
 
         // Checks if the cached listing has anything to do with the listing built from the AddFile calls
@@ -643,7 +737,7 @@ class caching_stream
         void LoadChangedFiles()
         {
             using namespace modloader;
-            for(size_t i = 0; i < this->store.size(); ++i)
+            for(size_t i = 0; i < readme_point; ++i)
             {
                 auto& path   = this->listing[i].first;
                 bool relpath = this->listing[i].second.relpath;
@@ -655,6 +749,21 @@ class caching_stream
                 if(!good)
                     plugin_ptr->Log("Warning: Failed to build data store from data file %d:'%s'", relpath, path.c_str());
             }
+        }
+
+        // Builds an additional store that contains data related to readme files
+        void MakeReadmeStore()
+        {
+            assert(this->store.capacity() > this->store.size());
+            
+            this->store.emplace_back(this->store.front());  // make it be equivalent to the default file
+            auto& store = this->store.back();
+
+            for(auto& r : this->readme_data)                // merge content from readme files into the store
+                store.force_merge(r.second.second);
+
+            store.set_as_ready(true);
+            store.set_as_default(false);
         }
 
 };

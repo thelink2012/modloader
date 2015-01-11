@@ -21,7 +21,8 @@ struct carcols_traits : public data_traits
     // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
-        static const char* what() { return "vehicle colours"; }
+        static const char* what()       { return "vehicle colours"; }
+        static const char* datafile()   { return "carcols.dat"; }
     };
     
     // Detouring type
@@ -112,6 +113,7 @@ using carcols_store = gta3::data_store<carcols_traits, std::map<
                         carcols_traits::key_type, carcols_traits::value_type
                         >>;
 
+REGISTER_RTTI_FOR_ANY("carcols_traits", carcols_store);
 
 // sections function specialization
 namespace datalib {
@@ -129,4 +131,37 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     auto ReloadColours = injector::cstd<void()>::call<0x5B6890>;
     plugin_ptr->AddMerger<carcols_store>("carcols.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadColours));
+
+    plugin_ptr->AddReader<carcols_store>([plugin_ptr](const std::string& line) -> maybe_readable<carcols_store>
+    {
+        static auto regex = make_regex(R"___(^(\w+)(?:((?: (?: \d+){2}){2,})|((?: (?: \d+){4}){2,}))\s*$)___");
+        static auto car_sec = gta3::section_info::by_name(carcols_traits::sections(), "car");
+        static auto car4_sec = gta3::section_info::by_name(carcols_traits::sections(), "car4");
+
+        smatch match;
+        if(regex_match(line, match, regex))
+        {
+            if(HasModelInfo())
+            {
+                if(match.size() == 4 && MatchModelString(match[1]))
+                {
+                    carcols_store store;
+                    if(match[2].length())
+                    {
+                        store.insert(car_sec, line);
+                        return store;
+                    }
+                    else if(match[3].length())
+                    {
+                        store.insert(car4_sec, line);
+                        return store;
+                    }
+                }
+            }
+            else
+                return maybe<carcols_store>();
+        }
+
+        return nothing;
+    });
 });

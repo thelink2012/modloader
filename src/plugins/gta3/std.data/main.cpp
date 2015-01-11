@@ -63,6 +63,14 @@ bool DataPlugin::OnStartup()
         // Makes default.dat/gta.dat load in a lazy way
         LazyGtaDatPatch();
 
+        // Hook allowing us to know when we are ready to know about the model names of the game
+        using modelinfo_hook =  function_hooker<0x5B922F, void()>;
+        make_static_hook<modelinfo_hook>([this](modelinfo_hook::func_type MatchAllModelStrings)
+        {
+            this->has_model_info = true;
+            return MatchAllModelStrings();
+        });
+
         return true;
     }
     return false;
@@ -105,7 +113,7 @@ int DataPlugin::GetBehaviour(modloader::file& file)
 
     if(file.is_ext("txt"))
     {
-        // TODO
+        return MODLOADER_BEHAVIOUR_CALLME;
     }
     else if(file.is_ext("ide"))
     {
@@ -129,18 +137,26 @@ int DataPlugin::GetBehaviour(modloader::file& file)
  */
 bool DataPlugin::InstallFile(const modloader::file& file)
 {
-    static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
-    static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
-
-    auto type = GetType(file.behaviour);
-    if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+    if(file.is_ext("txt"))
     {
-        auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
-        return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
+        this->InstallReadme(file);
+        return true;
     }
     else
     {
-        return this->InstallFile(file, file.hash, file.filename(), file.filepath());
+        static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
+        static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+
+        auto type = GetType(file.behaviour);
+        if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+        {
+            auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
+            return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
+        }
+        else
+        {
+            return this->InstallFile(file, file.hash, file.filename(), file.filepath());
+        }
     }
     return false;
 }
@@ -152,18 +168,26 @@ bool DataPlugin::InstallFile(const modloader::file& file)
  */
 bool DataPlugin::ReinstallFile(const modloader::file& file)
 {
-    static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
-    static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
-
-    auto type = GetType(file.behaviour);
-    if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+    if(file.is_ext("txt"))
     {
-        auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
-        return this->ReinstallFile(file, hash);
+        this->ReinstallReadme(file);
+        return true;
     }
     else
     {
-        return this->ReinstallFile(file, file.hash);
+        static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
+        static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+
+        auto type = GetType(file.behaviour);
+        if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+        {
+            auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
+            return this->ReinstallFile(file, hash);
+        }
+        else
+        {
+            return this->ReinstallFile(file, file.hash);
+        }
     }
     return true; // Avoid catastrophical failure
 }
@@ -174,18 +198,26 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
  */
 bool DataPlugin::UninstallFile(const modloader::file& file)
 {
-    static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
-    static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
-
-    auto type = GetType(file.behaviour);
-    if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+    if(file.is_ext("txt"))
     {
-        auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
-        return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
+        this->UninstallReadme(file);
+        return true;
     }
     else
     {
-        return this->UninstallFile(file, file.hash, file.filename());
+        static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
+        static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+
+        auto type = GetType(file.behaviour);
+        if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
+        {
+            auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
+            return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
+        }
+        else
+        {
+            return this->UninstallFile(file, file.hash, file.filename());
+        }
     }
     return false;
 }
@@ -196,12 +228,15 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
  */
 void DataPlugin::Update()
 {
+    // The readme buffer has been probably allocated in the installation process, free it up.
+    this->readme_buffer.reset();
+
     // Refresh every overriden of multiple files right here
     // Note: Don't worry about this being called before the game evens boot up, the ov->Refresh() method takes care of it
     for(auto& ov : this->ovrefresh)
     {
         if(!ov->Refresh())
-            plugin_ptr->Log("Warning: Failed to refresh some data file");   // very useful warning indeed
+            plugin_ptr->Log("Warning: Failed to refresh some data file.");   // very useful warning indeed
     }
     ovrefresh.clear();
 }
@@ -282,4 +317,118 @@ bool DataPlugin::UninstallFile(const modloader::file& file, size_t merger_hash, 
         return FindMerger(merger_hash)->UninstallFile();
     }
     return false;
+}
+
+/*
+ *  DataPlugin::InstallReadme
+ *      Installs a readme file which may contain some interesting data line in it
+ */
+void DataPlugin::InstallReadme(const modloader::file& file)
+{
+    // ParseReadme returns a list of mergers related to the data lines
+    // found in the readme so we can refresh them.
+    for(auto merger_hash : ParseReadme(file))
+    {
+        auto m = FindMerger(merger_hash);
+        if(m && m->CanInstall())
+            ovrefresh.emplace(m);
+    }
+}
+
+/*
+ *  DataPlugin::UninstallReadme
+ *      Uninstalls a readme file which may previosly gave us some data lines
+ */
+void DataPlugin::UninstallReadme(const modloader::file& file)
+{
+    // Finds all the mergers related to the specified readme file
+    // and signals the updater that they should be refreshed
+    for(auto& data : this->maybe_readme[&file])
+    {
+        if(data.merger_hash)   // maybe has a merger associated with this data?
+        {
+            auto m = FindMerger(data.merger_hash.get());
+            if(m && m->CanUninstall())
+                ovrefresh.emplace(m);
+        }
+    }
+
+    // Remove all the content related to this readme file
+    this->maybe_readme.erase(&file);
+
+}
+
+/*
+ *  DataPlugin::ReinstallReadme
+ *      Refreshes the readme content
+ */
+void DataPlugin::ReinstallReadme(const modloader::file& file)
+{
+    this->UninstallReadme(file);
+    this->InstallReadme(file);
+}
+
+
+/*
+ *  DataPlugin::ParseReadme
+ *      Parses the specified readme file and returns a list of mergers that are related to data found in this file
+ */
+std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file)
+{
+    static const size_t max_readme_size = 10000; // ~10KB, don't increase too much, gotta read to memory
+
+    if(file.size <= max_readme_size)
+    {
+        std::ifstream stream(file.fullpath(), std::ios::binary);
+        if(stream)
+        {
+            // Allocate buffer to work with readme files
+            // This buffer will be later freed at Update() time
+            if(readme_buffer == nullptr)
+                readme_buffer.reset(new char[max_readme_size]);
+
+            if(stream.read(&readme_buffer[0], file.size))
+                return this->ParseReadme(file, std::make_pair(&readme_buffer[0], &readme_buffer[file.size]));
+            else
+                this->Log("Warning: Failed to read from \"%s\".", file.filepath());
+        }
+        else
+            this->Log("Warning: Failed to open \"%s\" for reading.", file.filepath());
+    }
+    else
+        this->Log("Ignoring text file \"%s\" because it's too big.", file.filepath());
+
+    return std::set<size_t>();
+}
+
+/*
+ *  DataPlugin::ParseReadme
+ *      Parses the specified readme buffer (the 'buffer' pair represents begin and end respectively) from the readme file
+  *     and returns a list of mergers that are related to data found in this file
+ */
+std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file, std::pair<const char*, const char*> buffer)
+{
+    std::string line; line.reserve(256);
+    std::set<size_t> mergers;
+    size_t line_number = 0;
+
+    this->Log("Reading readme file \"%s\"", file.filepath());
+    while(datalib::gta3::getline(buffer, line))
+    {
+        ++line_number;
+        if(datalib::gta3::trim_config_line(line).size())    // remove trailing spaces, comments and replace ',' with ' '
+        {
+            for(auto& reader_pair : this->readers)
+            {
+                auto& reader = reader_pair.second;
+                if(auto merger_hash = reader(file, line, line_number)) // calls one of the readme files handlers
+                {
+                    mergers.emplace(merger_hash.get());
+                    break;
+                }
+            }
+        }
+    }
+
+    return mergers;
 }

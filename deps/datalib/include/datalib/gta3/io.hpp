@@ -26,7 +26,7 @@ namespace gta3 {
  *      Trims a config line just like gta3 does internally
  *      Essentially removes all comments (';', '#"), replaces ',' and space characters with ' ' and trims left and right.
  */
-inline std::string& trim_config_line(std::string& line)
+inline std::string& trim_config_line(std::string& line, bool remove_separators = true)
 {
     bool trim_front = true;
     std::size_t trim_back = line.npos;
@@ -36,8 +36,11 @@ inline std::string& trim_config_line(std::string& line)
         char c = line[pos];
         if(c <= ' ' || c == ',')
         {
-            if(trim_back == line.npos) trim_back = pos;
-            line[pos] = ' ';
+            if(c != ',' || remove_separators)
+            {
+                if(trim_back == line.npos) trim_back = pos;
+                line[pos] = ' ';
+            }
         }
         else if(c == '#' || c == ';')
         {

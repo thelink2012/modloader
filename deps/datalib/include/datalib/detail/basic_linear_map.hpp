@@ -151,6 +151,12 @@ class basic_linear_map
             return (it == this->end()? force_emplace(std::move(pair)) : result_pair(it, false));
         }
 
+        void erase(const key_type& key)
+        {
+            auto it = this->find(key);
+            if(it != this->end()) this->list.erase(it);
+        }
+
 
         //
         //  Comparision

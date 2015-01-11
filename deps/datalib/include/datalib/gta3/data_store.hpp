@@ -168,6 +168,21 @@ class data_store final : public datalib::data_store<ContainerType>
             return false;
         }
 
+        // Merges the specified data_store into this data_store, replacing any existing element from 
+        // this data_store with the one from the other data_store
+        void force_merge(const data_store& rhs)
+        {
+            for(auto& x : rhs.map)
+            {
+                auto it = this->map.find(x.first);
+                if(it == this->map.end())
+                    this->map.emplace(x.first, x.second);
+                else
+                    it->second = x.second;
+            }
+        }
+
+
         /*
          *  section_by_kv method
          *      Gets the section_info* pointer based on the received key-value pair
