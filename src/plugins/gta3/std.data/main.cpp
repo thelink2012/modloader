@@ -27,6 +27,8 @@ void LazyGtaDatPatch();
 DataPlugin plugin;
 REGISTER_ML_PLUGIN(::plugin);
 
+CEREAL_REGISTER_RTTI(void); // for DataPlugin::line_data_base
+
 
 /*
  *  DataPlugin::GetInfo
@@ -48,6 +50,8 @@ bool DataPlugin::OnStartup()
 {
     if(gvm.IsSA())
     {
+        this->readme_magics.reserve(20);
+
         // Initialise the caching
         if(!cache.Startup())
             return false;
@@ -70,6 +74,24 @@ bool DataPlugin::OnStartup()
             this->has_model_info = true;
             return MatchAllModelStrings();
         });
+
+        // Hook after the loading screen to write a readme cache
+        using initialise_hook = injector::function_hooker<0x748CFB, void()>;
+        make_static_hook<initialise_hook>([this](initialise_hook::func_type InitialiseGame)
+        {
+            InitialiseGame();
+            if(this->changed_readme_data)
+            {
+                // If we have a empty list of readme data and we previosly had a cached readme, overwrite it with empty data
+                // In the case the list is not empty, overwrite with new data
+                if(!this->maybe_readme.empty() || this->had_cached_readme)
+                    this->WriteReadmeCache();
+            }
+        });
+
+        // When there's no cache present mark changed_readme_data as true because we'll need to generate a cache
+        this->had_cached_readme   = IsPathA(cache.GetCachePath("readme.ld").data());;
+        this->changed_readme_data = !had_cached_readme;
 
         return true;
     }
@@ -139,7 +161,8 @@ bool DataPlugin::InstallFile(const modloader::file& file)
 {
     if(file.is_ext("txt"))
     {
-        this->InstallReadme(file);
+        this->readme_toinstall.emplace(&file, 0);
+        this->readme_touninstall.erase(&file);
         return true;
     }
     else
@@ -170,7 +193,8 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
 {
     if(file.is_ext("txt"))
     {
-        this->ReinstallReadme(file);
+        this->readme_touninstall.emplace(&file, 0);
+        this->readme_toinstall.emplace(&file, 0);
         return true;
     }
     else
@@ -200,7 +224,8 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
 {
     if(file.is_ext("txt"))
     {
-        this->UninstallReadme(file);
+        this->readme_touninstall.emplace(&file, 0);
+        this->readme_toinstall.erase(&file);
         return true;
     }
     else
@@ -228,8 +253,13 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
  */
 void DataPlugin::Update()
 {
-    // The readme buffer has been probably allocated in the installation process, free it up.
-    this->readme_buffer.reset();
+    plugin_ptr->Log("Updating %s state...", this->data->name);
+
+    bool has_readme_changes = (this->readme_toinstall.size() || this->readme_touninstall.size());
+
+    // Perform the Update of readmes before refreshing!
+    if(has_readme_changes)
+        this->UpdateReadmeState();
 
     // Refresh every overriden of multiple files right here
     // Note: Don't worry about this being called before the game evens boot up, the ov->Refresh() method takes care of it
@@ -238,7 +268,20 @@ void DataPlugin::Update()
         if(!ov->Refresh())
             plugin_ptr->Log("Warning: Failed to refresh some data file.");   // very useful warning indeed
     }
-    ovrefresh.clear();
+    this->ovrefresh.clear();
+
+    // Free up the temporary readme_buffer that may have been allocated in ParseReadme()
+    this->readme_buffer.reset();
+
+    // If anything changed in the readmes state (i.e. installed, removed or reinstalled a readme)
+    // then rewrite it's cache
+    if(has_readme_changes)
+    {
+        if(this->MayWriteReadmeCache()) // write caches on Update() only if we did pass tho the loading screen
+            this->WriteReadmeCache();
+    }
+
+    plugin_ptr->Log("Done updating %s state.", this->data->name);
 }
 
 
@@ -321,13 +364,11 @@ bool DataPlugin::UninstallFile(const modloader::file& file, size_t merger_hash, 
 
 /*
  *  DataPlugin::InstallReadme
- *      Installs a readme file which may contain some interesting data line in it
+ *      Makes sure the specified mergers get refreshed
  */
-void DataPlugin::InstallReadme(const modloader::file& file)
+void DataPlugin::InstallReadme(const std::set<size_t>& mergers)
 {
-    // ParseReadme returns a list of mergers related to the data lines
-    // found in the readme so we can refresh them.
-    for(auto merger_hash : ParseReadme(file))
+    for(auto merger_hash : mergers)
     {
         auto m = FindMerger(merger_hash);
         if(m && m->CanInstall())
@@ -354,18 +395,70 @@ void DataPlugin::UninstallReadme(const modloader::file& file)
     }
 
     // Remove all the content related to this readme file
-    this->maybe_readme.erase(&file);
-
+    this->RemoveReadmeData(file);
 }
 
 /*
- *  DataPlugin::ReinstallReadme
- *      Refreshes the readme content
+ *  DataPlugin::UpdateReadmeState
+ *      Installs / Uninstalls / Reinstalls pending readmes
  */
-void DataPlugin::ReinstallReadme(const modloader::file& file)
+void DataPlugin::UpdateReadmeState()
 {
-    this->UninstallReadme(file);
-    this->InstallReadme(file);
+    // First of all, uninstalls all the readmes that needs to be uninstalled
+    // Do so first because it may be a reinstall, during a reinstall the file is both in the uninstall and the install list.
+    for(auto& r : this->readme_touninstall)
+        this->UninstallReadme(*r.first);
+
+    if(readme_toinstall.size())
+    {
+        readme_listing_type cached_readme_listing = this->ReadCachedReadmeListing();
+        readme_listing_type installing_listing;
+        readme_data_store   cached_readme_store;
+        
+        // Builds the listing about the readmes going to be installed...
+        installing_listing.reserve(this->readme_toinstall.size());
+        std::transform(readme_toinstall.begin(), readme_toinstall.end(), std::back_inserter(installing_listing),
+            [](const std::pair<const modloader::file*, int>& file) -> const modloader::file& {
+                return *file.first;
+        });
+
+        if(cached_readme_listing.size())    // Do we have any cached readme?
+        {
+            // Yeah, we do have cached readmes!!! Read the cached readmes content, i.e. lines itself and their data
+            cached_readme_store = this->ReadCachedReadmeStore();
+            if(cached_readme_store.size() != cached_readme_listing.size())
+            {
+                plugin_ptr->Log("Warning: Cached readme listing seems to not match the cached store, something is really wrong here!");
+                cached_readme_listing.clear();  // problems with the cache, so no cached readme ;)
+                cached_readme_store.clear();    // ^^
+            }
+        }
+
+        // Installs the pending readmes, either by parsing the readme file again or by fetching the data from the cache
+        auto install_it = readme_toinstall.begin();
+        for(size_t i = 0; i < readme_toinstall.size(); ++i, ++install_it)
+        {
+            auto& file = *install_it->first;
+            auto it = std::find(cached_readme_listing.begin(), cached_readme_listing.end(), installing_listing[i]);
+            if(it == cached_readme_listing.end())
+            {
+                this->Log("Parsing readme file \"%s\"", file.filepath());
+                this->InstallReadme(ParseReadme(file));
+            }
+            else
+            {
+                auto old_state = this->changed_readme_data; // AddReadmeData changes this, but we are over cache
+                this->Log("Parsing cached readme data for \"%s\"", file.filepath());
+                auto index = std::distance(cached_readme_listing.begin(), it);
+                this->InstallReadme(AddReadmeData(file, std::move(cached_readme_store[index])));
+                this->changed_readme_data = old_state;
+            }
+        }
+    }
+
+    // Clear the update lists
+    this->readme_touninstall.clear();
+    this->readme_toinstall.clear();
 }
 
 
@@ -404,7 +497,7 @@ std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file)
 /*
  *  DataPlugin::ParseReadme
  *      Parses the specified readme buffer (the 'buffer' pair represents begin and end respectively) from the readme file
-  *     and returns a list of mergers that are related to data found in this file
+ *      and returns a list of mergers that are related to data found in this file
  */
 std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file, std::pair<const char*, const char*> buffer)
 {
@@ -412,7 +505,6 @@ std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file, std::pair<
     std::set<size_t> mergers;
     size_t line_number = 0;
 
-    this->Log("Reading readme file \"%s\"", file.filepath());
     while(datalib::gta3::getline(buffer, line))
     {
         ++line_number;
@@ -431,4 +523,126 @@ std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file, std::pair<
     }
 
     return mergers;
+}
+
+/*
+ *  DataPlugin::VerifyCachedReadme
+ *      Reads the cache header and make sure it's compatible with the current build.
+ *      Also fetches all the RTTI type indices possibily used by the cache so we can skip them later on.
+ */
+bool DataPlugin::VerifyCachedReadme(std::ifstream& ss, cereal::BinaryInputArchive& archive)
+{
+    decltype(this->readme_magics) magics;
+    size_t magic;
+
+    archive(magic); // magic for this translation unit in specific
+    if(magic == build_identifier())
+    {
+        block_reader magics_block(ss);
+        archive(magics);                    // magic for the other translation units related to the readmes
+        if(magics == this->readme_magics)   // notice order matters
+            return true;
+    }
+
+    this->Log("Warning: Incompatible readme cache version, a new cache will be generated.");
+    return false;
+}
+
+/*
+ *  DataPlugin::ReadCachedReadmeListing
+ *      Reads and outputs the readme cache file listing.
+ */
+auto DataPlugin::ReadCachedReadmeListing() -> readme_listing_type
+{
+    readme_listing_type cached_readme_listing;
+
+    std::ifstream ss(cache.GetCachePath("readme.ld"), std::ios::binary);
+    if(ss.is_open())
+    {
+        cereal::BinaryInputArchive archive(ss);
+        if(VerifyCachedReadme(ss, archive))
+        {
+            block_reader listing_block(ss);
+            archive(cached_readme_listing);
+        }
+    }
+    return cached_readme_listing;
+}
+
+/*
+ *  DataPlugin::ReadCachedReadmeStore
+ *      Reads and outputs the data_line objects stored in the readme cache
+ */
+auto DataPlugin::ReadCachedReadmeStore() -> readme_data_store
+{
+    readme_data_store store_lines;
+
+    std::ifstream ss(cache.GetCachePath("readme.ld"), std::ios::binary);
+    if(ss.is_open())
+    {
+        cereal::BinaryInputArchive archive(ss);
+        if(VerifyCachedReadme(ss, archive))
+        {
+            block_reader::skip(ss); // skip listing block
+            block_reader lines_block(ss);
+            archive(store_lines);
+        }
+    }
+    return store_lines;
+}
+
+/*
+ *  DataPlugin::WriteReadmeCache
+ *      Writes the 'this->maybe_readme' object into a readme cache
+ */
+void DataPlugin::WriteReadmeCache()
+{
+    std::ofstream ss(cache.GetCachePath("readme.ld"), std::ios::binary);
+    if(ss.is_open())
+    {
+        cereal::BinaryOutputArchive archive(ss);
+
+        archive(build_identifier());
+
+        // magics
+        {
+            block_writer magics_block(ss);
+            archive(this->readme_magics);
+        }
+
+        // readmes listing
+        {
+            readme_listing_type files;
+            files.reserve(maybe_readme.size());
+
+            std::transform(maybe_readme.begin(), maybe_readme.end(), std::back_inserter(files),
+                [](const maybe_readme_type::value_type& pair) -> const modloader::file&
+                { return *pair.first; });
+
+            block_writer listing_block(ss);
+            archive(files);
+        }
+
+        // readme data_line stores
+        {
+            readme_data_store stores;
+            stores.reserve(maybe_readme.size());
+
+            // each item in 'stores' stores a list of data from lines in files
+            for(auto& m : this->maybe_readme)
+            {
+                stores.emplace_back();
+                stores.back().reserve(m.second.size());
+                std::transform(m.second.begin(), m.second.end(), std::back_inserter(stores.back()), [](const line_data& line) {
+                    return line.base();
+                });
+            }
+
+            block_writer store_block(ss);
+            archive(stores);
+        }
+
+        this->changed_readme_data = false;
+        this->had_cached_readme = true;
+    }
 }

@@ -38,6 +38,12 @@ class block_writer
         block_writer& operator=(const block_writer&) = delete;
         block_writer& operator=(block_writer&&) = delete;
 
+        // Writes an empty block in the specified stream
+        static void empty(std::ostream& os)
+        {
+            block_writer block(os);
+        }
+
     private:
         std::ostream::pos_type prevpos;
         std::ostream& os;
@@ -65,6 +71,13 @@ class block_reader
         block_reader(block_reader&&) = delete;
         block_reader& operator=(const block_reader&) = delete;
         block_reader& operator=(block_reader&&) = delete;
+
+        // Skips the next block in the specified stream
+        static void skip(std::istream& is)
+        {
+            block_reader block(is);
+            block.skip();
+        }
 
     private:
         std::streamsize blocksize;

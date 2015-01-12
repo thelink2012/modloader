@@ -38,7 +38,7 @@ inline Type GetType(uint64_t mask)
 }
 
 
-
+// Helper monoid
 template<class StoreType>
 using maybe_readable = maybe<maybe<StoreType>>;
 
@@ -50,6 +50,8 @@ class DataPlugin : public modloader::basic_plugin
 {
     public: // Mod Loader Callbacks
 
+        friend void ProcessGtaDatEntries();
+
         const info& GetInfo();
 
         bool OnStartup();
@@ -60,30 +62,99 @@ class DataPlugin : public modloader::basic_plugin
         bool UninstallFile(const modloader::file&);
         void Update();
 
-    private: // Effective methods
-        bool InstallFile(const modloader::file&, size_t merger_hash, std::string fspath, std::string fullpath, bool isreinstall = false);
-        bool ReinstallFile(const modloader::file&, size_t merger_hash);
-        bool UninstallFile(const modloader::file&, size_t merger_hash, std::string fspath);
+    protected:  // Plugin stuff, variables, etc
 
-        void InstallReadme(const modloader::file&);
-        void UninstallReadme(const modloader::file&);
-        void ReinstallReadme(const modloader::file&);
+        // Base for line_data, the base is serializable
+        struct line_data_base
+        {
+            uint32_t                        line_number = -1;// The line number this data is related to
+            maybe<size_t>                   merger_hash;  // The hash of the merger this data is related to (or nothing if no related merger yet)
+            either<std::string, boost::any> data;         // Data related to the line, either the original string or the data_store (wrapped in a boost::any)
+            std::type_index                 owner;        // The StoreType that owns this data (when it points to typeid(void) means no owner)
 
-        std::set<size_t> ParseReadme(const modloader::file&);
-        std::set<size_t> ParseReadme(const modloader::file&, std::pair<const char* /*begin*/, const char* /*end*/>);
+            line_data_base() : owner(typeid(void)) {}
+            line_data_base(maybe<size_t> merger_hash, either<std::string, boost::any> data, size_t line_number, std::type_index owner)
+                : merger_hash(std::move(merger_hash)), data(std::move(data)), line_number(line_number), owner(owner)
+            {}
+            
+            // Too lazy to implement those
+            //line_data_base(const line_data_base&) = delete;
+            //line_data_base(line_data_base&&) = delete;
+            //line_data_base& operator=(const line_data_base&) = delete;
+            //line_data_base& operator=(line_data_base&&) = delete;
 
-    protected:  // Plugin Stuff
+            bool has_owner() const { return owner != typeid(void); }
 
-        struct line_data;
+            //
+            template<class Archive>
+            void serialize(Archive& archive)
+            {
+                archive(owner, line_number, merger_hash, data);
+            }
+        };
 
-        friend void ProcessGtaDatEntries();
-        
+        // Line data, represents one piece of queryable important data in one line (from a readme)
+        struct line_data : public line_data_base
+        {
+            const modloader::file&  file;   // File related to this line data
+            
+            line_data() = delete;
+
+            line_data(const modloader::file& file, maybe<size_t> merger_hash, either<std::string, boost::any> data,
+                size_t line_number, std::type_index owner)
+                : line_data_base(merger_hash, std::move(data), line_number, owner), file(file)
+            {}
+
+            // Too lazy to implement those
+            line_data(const line_data&) = delete;
+            line_data(line_data&& rhs) = delete;
+            line_data& operator=(const line_data&) = delete;
+            line_data& operator=(line_data&&) = delete;
+
+            // Gets the reference to our base which can be serialized
+            const line_data_base& base() const
+            { return *this; }
+        };
+
+        // Stores an unique identifier of readme reader
+        // This should be used only and only for checking in the serialized format that the readers match
+        struct readme_reader_magic_t
+        {
+            size_t          magic;      // Magic (compilation time) for the specific reader
+            std::type_index type;       // StoreType related to it. Must be here (and serialized together the magic) because of the way cereal works
+                                        // it does backreferencing to the first type_index of that type found (RTTI-only) and so we need to store
+                                        // a first time reference that is not skippable
+
+            readme_reader_magic_t() :  // Default constructor for cereal
+                magic(0), type(typeid(void))
+            {}
+
+            readme_reader_magic_t(size_t magic, std::type_index type) :
+                magic(magic), type(type)
+            {}
+
+            // Checks only for the magic, not necessary to check for the type
+            bool operator==(const readme_reader_magic_t& rhs) const
+            { return this->magic == rhs.magic; }
+
+            template<class Archive>
+            void serialize(Archive& archive)
+            {
+                archive(magic, type);
+            }
+        };
+
         struct files_behv_t
         {
             size_t      hash;       // Hash of this kind of file
             bool        canmerge;   // Can many files of this get merged into a single one?
             Type        index;      // Index of this behv... don't use this index to access myself in vbehav[], it mayn't be the same
         };
+
+
+        using readme_file_info      = cached_file_info;
+        using readme_data_store     = std::vector<std::vector<line_data_base>>;
+        using readme_listing_type   = std::vector<readme_file_info>;
 
         // Stores a virtual file system which contains the list of data files we got
         vfs<const modloader::file*> fs;
@@ -106,6 +177,47 @@ class DataPlugin : public modloader::basic_plugin
         template<class StoreType> // shouldn't contain any data.hpp specific type since it'll be sent over cache.hpp
         using readme_data_list = std::list<std::pair<const modloader::file*,
                                             std::pair<uint32_t, std::reference_wrapper<const StoreType>>>>;
+
+
+        // Set of readme files that needs to be installed/uninstalled
+        linear_map<const modloader::file*, int /*dummy*/> readme_toinstall;
+        linear_map<const modloader::file*, int /*dummy*/> readme_touninstall;
+        
+        // Magic of all the readme readers registered
+        std::vector<readme_reader_magic_t> readme_magics;
+        
+        // List of possibily useful data or lines in readme files
+        linear_map<const modloader::file*, std::list<line_data>> maybe_readme;
+        using maybe_readme_type = decltype(maybe_readme);
+
+        std::map<std::type_index, const char*> storetype2what;
+
+        bool had_cached_readme = false;
+        bool changed_readme_data = false;
+
+    private: // Effective methods
+
+        bool InstallFile(const modloader::file&, size_t merger_hash, std::string fspath, std::string fullpath, bool isreinstall = false);
+        bool ReinstallFile(const modloader::file&, size_t merger_hash);
+        bool UninstallFile(const modloader::file&, size_t merger_hash, std::string fspath);
+
+        void UpdateReadmeState();
+        void InstallReadme(const modloader::file&);
+        void InstallReadme(const std::set<size_t>&);
+        void UninstallReadme(const modloader::file&);
+
+        std::set<size_t> ParseReadme(const modloader::file&);
+        std::set<size_t> ParseReadme(const modloader::file&, std::pair<const char* /*begin*/, const char* /*end*/>);
+        
+        // Before the game startups we shouldn't write a readme cache, because during the loading screen it's the time
+        // the readme query turns strings into data stores, so we only want to save when we have the data stores :)
+        bool MayWriteReadmeCache() { return this->loader->has_game_loaded; }
+
+        // Cached readme I/O
+        bool VerifyCachedReadme(std::ifstream& ss, cereal::BinaryInputArchive& archive);
+        readme_listing_type ReadCachedReadmeListing();
+        readme_data_store   ReadCachedReadmeStore();
+        void WriteReadmeCache();
 
     public:
         // Caching stuff
@@ -229,50 +341,52 @@ class DataPlugin : public modloader::basic_plugin
         }
 
 
-
-
-
-
-
-
-
-
-        // TODO ORGANIZE FOLLOWING FUNCS
-        // TODO TAKE CARE OF GetMergedData stuff relationship with install/uninstall/reinstall readmes
-        protected:
-        using readme_file_info = cached_file_info;
-        /*struct readme_file_info : cached_file_info
+        // Adds a readme data related to the specified 'file' into the query
+        void AddReadmeData(const modloader::file& file, maybe<size_t> merger_hash, either<std::string, boost::any> data,
+            size_t line_number, std::type_index owner)
         {
-            readme_file_info(const modloader::file& file) :
-                cached_file_info(file)
-            {}
-        };*/
+            this->changed_readme_data = true;
+            maybe_readme[&file].emplace_back(file, merger_hash, std::move(data), line_number, owner);
+        }
 
-        struct line_data
+        // Adds a readme data related to the specified 'file' into the query (from unserialization)
+        void AddReadmeData(const modloader::file& file, line_data_base&& base)
         {
-            const modloader::file&          file;
-            uint32_t                        line_number;
-            maybe<size_t>                   merger_hash;
-            either<std::string, boost::any> data;
-            
-            line_data() = delete;
-            line_data(const line_data&) = delete;
-            line_data(line_data&& rhs) = delete;
-            line_data& operator=(const line_data&) = delete;
-            line_data& operator=(line_data&&) = delete;
+            this->changed_readme_data = true;
 
-            line_data(const modloader::file& file, maybe<size_t> merger_hash, either<std::string, boost::any> data, size_t line_number)
-                : file(file), merger_hash(std::move(merger_hash)), data(std::move(data)), line_number(line_number)
-            {}
+            if(base.has_owner())
+            {
+                if(auto* str = get<std::string>(&base.data))
+                    this->LogAboutReadmeLineCached(file, *str, base.line_number, base.owner);
+                else
+                    this->LogAboutReadmeLineCached(file, base.line_number, base.owner);
+            }
 
-        };
-        public:
+            maybe_readme[&file].emplace_back(file, base.merger_hash, std::move(base.data), base.line_number, base.owner);
+            //base = line_data_base();
+        }
 
-        // order matters, so linear... stores the list of readme files and the data related to it
-        linear_map<const modloader::file*, std::list<line_data>> maybe_readme;
+        // Adds a readme data related to the specified 'file' into the query (from unserialized)
+        // Outputs a set of mergers related to the data in the readme
+        std::set<size_t> AddReadmeData(const modloader::file& file, std::vector<line_data_base>&& list)
+        {
+            std::set<size_t> mergers;
+            for(auto& x : list)
+            {
+                if(x.merger_hash) mergers.emplace(x.merger_hash.get());
+                AddReadmeData(file, std::move(x));
+            }
+            list = std::vector<line_data_base>();
+            return mergers;
+        }
 
-
-
+        // Remove all the content related to this readme file
+        void RemoveReadmeData(const modloader::file& file)
+        {
+            this->changed_readme_data = true;
+            this->maybe_readme.erase(&file);
+        }
+        
 
 
 
@@ -290,6 +404,10 @@ class DataPlugin : public modloader::basic_plugin
 
             static_assert(cereal::has_rtti<StoreType>::value, "Missing RTTI for StoreType, use REGISTER_RTTI_FOR_ANY macro");
 
+
+            readme_magics.emplace_back(build_identifier(), typeid(StoreType));
+            storetype2what[typeid(StoreType)] = StoreType::traits_type::dtraits::what();
+
             AddReaderTypeErased(typeid(StoreType),
                 [=](const modloader::file& file, const std::string& line, either<uint32_t, line_data*> ref) -> maybe<size_t>
             {
@@ -305,14 +423,16 @@ class DataPlugin : public modloader::basic_plugin
                         {
                             // it seems it's the first time we read this line (and we already know it's handler!)
                             this->LogAboutReadmeLine<StoreType>(file, line, *linenum);
-                            maybe_readme[&file].emplace_back(file, merger_hash, boost::any(std::move(maybe_store.get())), *linenum);
+                            this->AddReadmeData(file, merger_hash, boost::any(std::move(maybe_store.get())), *linenum, typeid(StoreType));
                         }
                         else if(auto* refx = get<line_data*>(&ref))
                         {
                             // not the first time we read this line, just modify the existing data
                             this->LogAboutReadmeLine<StoreType>(file, line, (*refx)->line_number);
                             (*refx)->merger_hash = merger_hash;
+                            (*refx)->owner = typeid(StoreType);
                             (*refx)->data = boost::any(std::move(maybe_store.get()));
+                            this->changed_readme_data = true;
                         }
                         else
                             assert(false);
@@ -322,7 +442,7 @@ class DataPlugin : public modloader::basic_plugin
                     {
                         // if it's the first time we read this line, register it
                         if(auto* linenum = get<size_t>(&ref))
-                            maybe_readme[&file].emplace_back(file, nothing, line, *linenum);
+                            this->AddReadmeData(file, nothing, line, *linenum, typeid(void));
                         return nothing; // we may have found a merger for it, but we aren't sure atm, try later
                     }
                 }
@@ -362,6 +482,20 @@ class DataPlugin : public modloader::basic_plugin
         {
             this->Log("Found %s line at '%s':%u: %s",
                 StoreType::traits_type::dtraits::what(), file.filepath(), line_number, line.c_str());
+        }
+
+        // Logs about the finding of a readme line directly related to a specific store type
+        void LogAboutReadmeLineCached(const modloader::file& file, const std::string& line, size_t line_number, std::type_index type)
+        {
+            this->Log("Found cached %s line at '%s':%u: %s",
+                storetype2what[type], file.filepath(), line_number, line.c_str());
+        }
+
+        // Logs about the finding of a readme line directly related to a specific store type
+        void LogAboutReadmeLineCached(const modloader::file& file, size_t line_number, std::type_index type)
+        {
+            this->Log("Found cached %s line at '%s':%u",
+                storetype2what[type], file.filepath(), line_number);
         }
 
         //

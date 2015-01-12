@@ -46,9 +46,10 @@
 
 
 
-// Whenever a serialized data format changes, this number should increase so the serialized file gets incompatible
+// Whenever a serialized data format changes, this identifier should change so the serialized file gets incompatible
+// So, let's use the compilation time of each compilation unit to represent this identifier
 // NOTICE, this function should be static so it gets one instantiation on each translation unit!!!
-static /* <--- YES STATIC */ uint32_t current_cereal_data_version()
+static /* <--- YES STATIC */ uint32_t build_identifier()
 {
     static const uint32_t version = modloader::hash(__DATE__ " " __TIME__);
     return version;
@@ -65,10 +66,53 @@ static const bool cache_force_reading = false;  // Forces reading the cache even
 static_assert(!disable_caching && !cache_force_reading, "Wrong release settings for caching");
 #endif
 
+
 template<class StoreType>
 class caching_stream;
 
-class data_cache : modloader::basic_cache
+
+// Important information to cache when saving a file listing
+struct cached_file_info
+{
+    protected:
+        size_t   path_hash  = 0;    // Hash of the modloader file path
+        uint32_t flags      = 0;    // Flags as in modloader::file::flags
+        uint64_t size       = 0;    // Size of this file (as in modloader::file::size)
+        uint64_t time       = 0;    // Write time of this file (as in modloader::file::time)
+
+    public:
+        //
+        cached_file_info() = default;
+
+        // Constructs from a modloader::file information
+        cached_file_info(const modloader::file& file) :
+            path_hash(modloader::hash(file.filepath())), flags(file.flags),
+            size(file.size), time(file.time)
+        {}
+
+        cached_file_info(const cached_file_info&) = default;
+        cached_file_info& operator=(const cached_file_info&) = default;
+
+        // Compares in the a order that false evaluates faster
+        bool operator==(const cached_file_info& rhs) const
+        {
+            return this->path_hash  == rhs.path_hash
+                && this->time       == rhs.time
+                && this->size       == rhs.size
+                && this->flags      == rhs.flags;
+            
+        }
+
+        //
+        template<class Archive>
+        void serialize(Archive& archive)
+        {
+            archive(path_hash, flags, size, time);
+        }
+};
+
+// Base caching
+class data_cache : public modloader::basic_cache
 {
     private:
         vfs<> fs;
@@ -114,6 +158,11 @@ class data_cache : modloader::basic_cache
             if(cache_id >= 0)
                 return basic_cache::GetCacheDir(std::to_string(cache_id), fullpath);
             throw std::runtime_error("");
+        }
+
+        std::string GetCachePath(const std::string& file, bool fullpath = true)
+        {
+            return basic_cache::GetCachePath(file, fullpath);
         }
 
         // Gets path for cache file in the specified cache id directory
@@ -342,11 +391,11 @@ class data_cache : modloader::basic_cache
             ss.open(filepath, std::ios::binary);
             if(ss.is_open())
             {
-                uint32_t version = current_cereal_data_version(); // This variable won't change in the case of a output stream,
+                uint32_t version = build_identifier(); // This variable won't change in the case of a output stream,
                                                                 // but will in the case of a input stream, in any case default initialize for the output case
                 archive_type archive(ss);
                 archive(version);
-                if(version == current_cereal_data_version())      // Make sure serialization version matches
+                if(version == build_identifier())      // Make sure serialization version matches
                 {
                     func(ss, archive);
                     return true;
@@ -516,30 +565,7 @@ class data_cache : modloader::basic_cache
 
 };
 
-struct cached_file_info
-{
-    size_t   path_hash  = 0;
-    uint32_t flags      = 0;
-    uint64_t size       = 0;
-    uint64_t time       = 0;
-
-    cached_file_info(const modloader::file& file) :
-        path_hash(modloader::hash(file.filepath())), flags(file.flags),
-        size(file.size), time(file.time)
-    {}
-
-    cached_file_info(const cached_file_info&) = default;
-    cached_file_info& operator=(const cached_file_info&) = default;
-
-    bool operator==(const cached_file_info& rhs) const
-    {
-        return this->path_hash  == rhs.path_hash
-            && this->flags      == rhs.flags
-            && this->size       == rhs.size
-            && this->time       == rhs.time;
-    }
-};
-
+// Stream of information for data_store caching
 template<class StoreType>
 class caching_stream
 {
@@ -547,36 +573,53 @@ class caching_stream
         friend class data_cache;
 
         // Stores file system information about a single data file
-        struct info
+        struct info : public cached_file_info
         {
-            bool is_default = false;    // Is this data store a default one? (see data_store.hpp for the meaning of default in store context)
-            bool is_readme  = false;    // Is readme file
-            bool relpath    = false;    // Is this path relative to the current working directory?
-            bool rsv2       = false;    // reserved
-            uint32_t flags  = 0;        // Flags as in modloader::file::flags
-            uint64_t size   = 0;        // Size of this file (as in modloader::file::size)
-            uint64_t time   = 0;        // Write time of this file (as in modloader::file::time)
-            size_t linenum  = 0;        // When is_readme=true specifies in which line the data related to this is at
+            protected:
+                bool is_default = false;    // Is this data store a default one? (see data_store.hpp for the meaning of default in store context)
+                bool is_readme  = false;    // Is readme file
+                bool relpath    = false;    // Is this path relative to the current working directory?
+                size_t linenum  = 0;        // When is_readme=true specifies in which line the data related to this is at
 
-            // Compare with another info to check if anything changed in the data file
-            bool operator==(const info& rhs) const
-            {
-                return this->is_default == rhs.is_default
-                    && this->is_readme  == rhs.is_readme
-                    && this->relpath    == rhs.relpath
-                    && this->rsv2       == rhs.rsv2
-                    && this->flags      == rhs.flags
-                    && this->size       == rhs.size
-                    && this->time       == rhs.time
-                    && this->linenum    == rhs.linenum;
-            }
+                friend class caching_stream;
 
-            // Serializer to load/save this type into a cache
-            template <class Archive>
-            void serialize(Archive& ar)
-            {
-                ar(is_default, is_readme, relpath, rsv2, flags, size, time, linenum);
-            }
+            public:
+                //
+                info() = default;
+
+                // Builds the information from a modloader file information
+                info(const modloader::file& file, bool is_default, bool is_readme, size_t linenum) :
+                    cached_file_info(file), is_default(is_default), is_readme(is_readme),
+                    relpath(false), linenum(is_readme? linenum : 0)
+                {}
+
+                // Build the information from a standard filesystem attribute information
+                info(const WIN32_FILE_ATTRIBUTE_DATA& attribs, bool is_default) :
+                    cached_file_info(), is_default(is_default), is_readme(false),
+                    relpath(true), linenum(0)
+                {
+                    this->path_hash = 0;
+                    this->flags     = (attribs.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)? MODLOADER_FF_IS_DIRECTORY : 0;
+                    this->size      = GetLongFromLargeInteger(attribs.nFileSizeLow, attribs.nFileSizeHigh);
+                    this->time      = GetLongFromLargeInteger(attribs.ftLastWriteTime.dwLowDateTime, attribs.ftLastWriteTime.dwHighDateTime);
+                }
+
+                // Compare with another info to check if anything changed in the data file
+                bool operator==(const info& rhs) const
+                {
+                    return cached_file_info::operator==(rhs)
+                        && this->is_default == rhs.is_default
+                        && this->is_readme  == rhs.is_readme
+                        && this->relpath    == rhs.relpath
+                        && this->linenum    == rhs.linenum;
+                }
+
+                // Serializer to load/save this type into a cache
+                template <class Archive>
+                void serialize(Archive& ar)
+                {
+                    ar(cereal::base_class<cached_file_info>(this), is_default, is_readme, relpath, linenum);
+                }
         };
 
         // Aliases
@@ -622,22 +665,12 @@ class caching_stream
             {
                 WIN32_FILE_ATTRIBUTE_DATA attribs;
                 path = modloader::NormalizePath(std::move(path));
-
-                auto it = listing.emplace(listing.end(), std::piecewise_construct,
-                    std::forward_as_tuple(std::move(path)),
-                    std::forward_as_tuple());
-
-                if(GetFileAttributesExA(it->first.c_str(), GetFileExInfoStandard, &attribs))
+                if(GetFileAttributesExA(path.c_str(), GetFileExInfoStandard, &attribs))
                 {
-                    auto& info = it->second;
-                    info.is_default = is_default;
-                    info.relpath    = true;
-                    info.flags     |= (attribs.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)? MODLOADER_FF_IS_DIRECTORY : 0;
-                    info.size       = GetLongFromLargeInteger(attribs.nFileSizeLow, attribs.nFileSizeHigh);
-                    info.time       = GetLongFromLargeInteger(attribs.ftLastWriteTime.dwLowDateTime, attribs.ftLastWriteTime.dwHighDateTime);
+                    listing.emplace(listing.end(), std::piecewise_construct,
+                        std::forward_as_tuple(std::move(path)),
+                        std::forward_as_tuple(attribs, is_default));
                 }
-                else
-                    listing.erase(it);
             }
             return *this;
         }
@@ -648,19 +681,9 @@ class caching_stream
             using namespace modloader;
             if(IsPathA(file.fullpath().c_str()))
             {
-                auto& info = listing.emplace(listing.end(), std::piecewise_construct,
+                listing.emplace(listing.end(), std::piecewise_construct,
                     std::forward_as_tuple(file.filepath()),
-                    std::forward_as_tuple())->second;
-
-                info.is_default = is_default;
-                info.is_readme  = is_readme;
-                info.relpath    = false;
-                info.flags     |= file.flags;
-                info.size       = file.size;
-                info.time       = file.time;
-
-                // readme line number
-                if(is_readme) info.linenum = linenum;
+                    std::forward_as_tuple(file, is_default, is_readme, linenum))->second;
             }
             return *this;
         }
