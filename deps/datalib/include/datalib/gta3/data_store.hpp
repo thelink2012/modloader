@@ -64,7 +64,11 @@ namespace gta3 {
  *                                              -> Outputs a line into the specified string based on the data in the key-value pair
  *                                                  Returns false on failure.
  *
- *               static process_stlist(begin, end)  (!!!!NOTICE!!!, only needed if do_stlist=true)
+ *              bool premerge(Store)            -> Called before starting the merge process (comparisions and all that).
+ *                                              -> Returns false on failure.
+ *
+ *
+ *              static process_stlist(begin, end)  (!!!!NOTICE!!!, only needed if do_stlist=true)
  *                                              -> Processes a list of data stores outputing another list of data stores to be used instead
  *                                                 to build the merged list.
  *
@@ -73,6 +77,9 @@ namespace gta3 {
  *                                                 to post-process the merged list.
  *                                                 This function should forward the call to FuncDoWrite and (probably) return it's result boolean.
  *                                                 The FuncDoWrite takes a MergedList as parameter and returns a boolean of success or failure.
+ *
+ *
+ *              bool posmerge(Store)            -> Called after the merge process; Returns false on failure.
  *
  *      }
  *
@@ -168,6 +175,20 @@ class data_store final : public datalib::data_store<ContainerType>
             return false;
         }
 
+        template<class Section, class traits_type = TraitsType>
+        typename std::enable_if<traits_type::has_sections && !traits_type::is_reversed_kv, bool>::type
+        /* bool */ insert(const std::string& line)
+        {
+            return this->insert(mapped_type::section_by_slice<Section>(), line);
+        }
+
+        template<class Section, class traits_type = TraitsType>
+        typename std::enable_if<traits_type::has_sections && traits_type::is_reversed_kv, bool>::type
+        /* bool */ insert(const std::string& line)
+        {
+            return this->insert(key_type::section_by_slice<Section>(), line);
+        }
+
         // Merges the specified data_store into this data_store, replacing any existing element from 
         // this data_store with the one from the other data_store
         void force_merge(const data_store& rhs)
@@ -241,6 +262,12 @@ class data_store final : public datalib::data_store<ContainerType>
          *  They should forward the call to the traits object.
          */
 
+        // Finds the section object from the current line
+        static const section_info* section_by_line(const section_info* sections, const std::string& line)
+        {
+            return traits_type::section_by_line(sections, line);
+        }
+
         // Called after successfully reading a file
         bool posread()
         {
@@ -254,10 +281,16 @@ class data_store final : public datalib::data_store<ContainerType>
             return traits_type::prewrite<data_store>(std::move(merged), std::move(dowrite));
         }
 
-        // Finds the section object from the current line
-        static const section_info* section_by_line(const section_info* sections, const std::string& line)
+        // Called just before the merging process (comparisions and all that)
+        bool premerge()
         {
-            return traits_type::section_by_line(sections, line);
+            return mtraits.premerge(*this);
+        }
+
+        // Called just after the merging process
+        bool posmerge()
+        {
+            return mtraits.posmerge(*this);
         }
 
     public: // not to be used directly
@@ -293,6 +326,17 @@ struct data_traits
         return dowrite(list);
     }
 
+    template<class StoreType>
+    bool premerge(StoreType&)
+    {
+        return true;
+    }
+
+    template<class StoreType>
+    bool posmerge(StoreType&)
+    {
+        return true;
+    }
 
     template<class StoreType, typename TData>
     typename std::enable_if<StoreType::traits_type::has_sections, bool>::type

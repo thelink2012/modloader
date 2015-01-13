@@ -1,6 +1,5 @@
-﻿gta3.std.stream
+gta3.std.stream
 =========================================================================
- + __Version__:  Reloaded 0.1
  + __Author__:   LINK/2012 (<dma_2012@hotmail.com>)
  + __Priority__: 52
 
@@ -21,6 +20,10 @@ __Description__:
 
 It can also handle *img* files itself and override it's loading from the one in the default location.
 
+It also takes care or does the following:
+  * Takes care of ped.ifp overriding.
+  * Detouring of IMG/CDIMAGE, COLFILE, TEXDICTION, MODELFILE and HIERFILE from gta.dat.
+  * Fixes the COLFILE command in GTA San Andreas not working properly.
 
 __Usage__:
 

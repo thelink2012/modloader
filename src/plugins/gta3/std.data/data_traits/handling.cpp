@@ -19,6 +19,8 @@ using data_slice_ptr = shared_ptr<data_slice_base>;
 template<class T>
 using fixtok =  either<T, string>;
 
+static bool reading_from_readme = false;
+
 //
 struct handling_traits : public data_traits
 {
@@ -30,7 +32,8 @@ struct handling_traits : public data_traits
     // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
-        static const char* what() { return "vehicles handling"; }
+        static const char* what()       { return "vehicles handling"; }
+        static const char* datafile()   { return "handling.cfg"; }
     };
     
     // Detouring type
@@ -135,10 +138,12 @@ struct handling_traits : public data_traits
     }
 
 
-    // Runs after parsing the data from a handling.cfg file
-    // We are, now, going to process this data and build a final_type container.
+    // Runs before merging the data, process this data and build a final_type container.
+    // The final_type is important/necessary because it associates a couple of vehicle data (maindata, boatdata, etc)
+    // into a single type, meaning all this data is weld together and should be merged together (ohhh, marry me)
+    // Don't do this after reading from the file (posread) because of the readme data
     template<class StoreType>
-    bool posread(StoreType& store)
+    bool premerge(StoreType& store)
     {
         using container_type = typename StoreType::container_type;
         using iterator = typename container_type::iterator;
@@ -211,6 +216,21 @@ struct handling_traits : public data_traits
         return true;
     }
 
+    // After merging finish up the shared pointers we own
+    template<class StoreType>
+    bool posmerge(StoreType&)
+    {
+        datastore().clear();
+        return true;
+    }
+
+    // Disables error logging when reading from readme
+    template<class StoreType>
+    static bool setbyline(StoreType& store, value_type& data, const gta3::section_info* section, const std::string& line)
+    {
+        return data_traits::setbyline(store, data, section, line, !reading_from_readme);
+    }
+
 
     // Stores all the unique data found in all the handling files we have read
     // In the data slices (final_type) we store pointers to the stuff stored on here
@@ -222,24 +242,6 @@ struct handling_traits : public data_traits
         static datastore_t ds;
         return ds;
     }
-
-    // Serializes the handling data into the archive
-    // We need to have this function on here because... well just read the reason at datastore_t::serialize
-    template<class Archive, class FuncT>
-    static void static_serialize(Archive& archive, bool saving, FuncT serialize_store)
-    {
-        archive(datastore());   // this should come at the top, since it stores the pointers data
-        serialize_store();
-        if(!saving) datastore().clear_uniques();
-    }
-
-    // After the merge took place we are fine to delete the used data in the merging process
-    static void after_merge(bool successful)
-    {
-        datastore().clear();
-    }
-
-
 
     // Registers the existence of the specified main_type and returns a shared pointer to it.
     static main_ptr register_vehdata(const main_type& a)
@@ -320,6 +322,8 @@ using handling_store = gta3::data_store<handling_traits, std::map<
                         handling_traits::key_type, handling_traits::value_type
                         >>;
 
+REGISTER_RTTI_FOR_ANY(handling_store);
+
 
 // sections function specialization
 namespace datalib {
@@ -332,6 +336,7 @@ namespace datalib {
     }
 }
 
+
 // Handling Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
@@ -341,5 +346,20 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
         injector::thiscall<void(void*)>::call<0x5BD830>(handling_data);
     };
 
+    // Handling Merger
     plugin_ptr->AddMerger<handling_store>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));
+
+    // Readme Reader for handling.cfg lines
+    plugin_ptr->AddReader<handling_store>([](const std::string& line) -> maybe_readable<handling_store>
+    {
+        handling_store store;
+        reading_from_readme = true;
+        if(store.insert(handling_traits::section_by_line(handling_traits::sections(), line), line))
+        {
+            reading_from_readme = false;
+            return store;
+        }
+        reading_from_readme = false;
+        return nothing;
+    });
 });

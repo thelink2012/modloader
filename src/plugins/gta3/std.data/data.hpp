@@ -173,12 +173,6 @@ class DataPlugin : public modloader::basic_plugin
         using read_handler = std::function<maybe<size_t>(const modloader::file&, const std::string&, either<uint32_t, line_data*>)>;
         std::unordered_multimap<std::type_index, read_handler> readers;
 
-        // stores references to queried readme data
-        template<class StoreType> // shouldn't contain any data.hpp specific type since it'll be sent over cache.hpp
-        using readme_data_list = std::list<std::pair<const modloader::file*,
-                                            std::pair<uint32_t, std::reference_wrapper<const StoreType>>>>;
-
-
         // Set of readme files that needs to be installed/uninstalled
         linear_map<const modloader::file*, int /*dummy*/> readme_toinstall;
         linear_map<const modloader::file*, int /*dummy*/> readme_touninstall;
@@ -211,7 +205,7 @@ class DataPlugin : public modloader::basic_plugin
         
         // Before the game startups we shouldn't write a readme cache, because during the loading screen it's the time
         // the readme query turns strings into data stores, so we only want to save when we have the data stores :)
-        bool MayWriteReadmeCache() { return this->loader->has_game_loaded; }
+        bool MayWriteReadmeCache() { return !!this->loader->has_game_loaded; }
 
         // Cached readme I/O
         bool VerifyCachedReadme(std::ifstream& ss, cereal::BinaryInputArchive& archive);
@@ -225,6 +219,12 @@ class DataPlugin : public modloader::basic_plugin
 
         // Game states
         bool has_model_info = false;
+
+
+        // stores references to queried readme data
+        template<class StoreType> // shouldn't contain any data.hpp specific type since it'll be sent over cache.hpp
+        using readme_data_list = std::list<std::pair<const modloader::file*,
+                                            std::pair<uint32_t, std::reference_wrapper<const StoreType>>>>;
 
     public:
 
@@ -341,6 +341,13 @@ class DataPlugin : public modloader::basic_plugin
         }
 
 
+        // Adds a readme data which contains no line data at all
+        void AddDummyReadme(const modloader::file& file)
+        {
+            this->changed_readme_data = true;
+            maybe_readme[&file];
+        }
+
         // Adds a readme data related to the specified 'file' into the query
         void AddReadmeData(const modloader::file& file, maybe<size_t> merger_hash, either<std::string, boost::any> data,
             size_t line_number, std::type_index owner)
@@ -353,17 +360,12 @@ class DataPlugin : public modloader::basic_plugin
         void AddReadmeData(const modloader::file& file, line_data_base&& base)
         {
             this->changed_readme_data = true;
-
-            if(base.has_owner())
-            {
-                if(auto* str = get<std::string>(&base.data))
-                    this->LogAboutReadmeLineCached(file, *str, base.line_number, base.owner);
-                else
-                    this->LogAboutReadmeLineCached(file, base.line_number, base.owner);
-            }
-
             maybe_readme[&file].emplace_back(file, base.merger_hash, std::move(base.data), base.line_number, base.owner);
-            //base = line_data_base();
+
+            if(auto* xline = get<std::string>(&base.data))
+                this->LogAboutReadmeLineCached(file, *xline, base.line_number, base.owner);
+            else
+                this->LogAboutReadmeLineCached(file, nothing, base.line_number, base.owner);
         }
 
         // Adds a readme data related to the specified 'file' into the query (from unserialized)
@@ -440,9 +442,12 @@ class DataPlugin : public modloader::basic_plugin
                     }
                     else
                     {
-                        // if it's the first time we read this line, register it
+                        // if it's the first time we read this line, register it, otherwise no need it's already registered
                         if(auto* linenum = get<size_t>(&ref))
+                        {
+                            this->LogAboutReadmeLine(file, line, *linenum);
                             this->AddReadmeData(file, nothing, line, *linenum, typeid(void));
+                        }
                         return nothing; // we may have found a merger for it, but we aren't sure atm, try later
                     }
                 }
@@ -478,25 +483,39 @@ class DataPlugin : public modloader::basic_plugin
 
         // Logs about the finding of a readme line directly related to a specific store type
         template<class StoreType>
-        void LogAboutReadmeLine(const modloader::file& file, const std::string& line, size_t line_number)
+        void LogAboutReadmeLine(const modloader::file& file, maybe<const std::string&> line, size_t line_number)
         {
-            this->Log("Found %s line at '%s':%u: %s",
-                StoreType::traits_type::dtraits::what(), file.filepath(), line_number, line.c_str());
+            return LogAboutReadmeLineInternal(file, line, line_number, "", StoreType::traits_type::dtraits::what());
         }
 
-        // Logs about the finding of a readme line directly related to a specific store type
-        void LogAboutReadmeLineCached(const modloader::file& file, const std::string& line, size_t line_number, std::type_index type)
+        // Logs about the finding of a readme line not related to any store type YET
+        void LogAboutReadmeLine(const modloader::file& file, maybe<const std::string&> line, size_t line_number)
         {
-            this->Log("Found cached %s line at '%s':%u: %s",
-                storetype2what[type], file.filepath(), line_number, line.c_str());
+            return LogAboutReadmeLineInternal(file, line, line_number, "", nullptr);
         }
 
-        // Logs about the finding of a readme line directly related to a specific store type
-        void LogAboutReadmeLineCached(const modloader::file& file, size_t line_number, std::type_index type)
+        // Logs about the finding of a readme line directly related to a specific store 'type' or just a possible data if it's void
+        void LogAboutReadmeLineCached(const modloader::file& file, maybe<const std::string&> line, size_t line_number, std::type_index type = typeid(void))
         {
-            this->Log("Found cached %s line at '%s':%u",
-                storetype2what[type], file.filepath(), line_number);
+            return LogAboutReadmeLineInternal(file, line, line_number, "cached ", (type != typeid(void)? storetype2what[type] : nullptr));
         }
+
+        //
+        void LogAboutReadmeLineInternal(const modloader::file& file, maybe<const std::string&> line, size_t line_number, const char* descrp = "", const char* what = nullptr)
+        {
+            if(what)
+            {
+                if(line)
+                    this->Log("Found %s%s line for '%s':%u: %s",
+                        descrp, what, file.filepath(), line_number, line.get().c_str());
+                else
+                    this->Log("Found %s%s line for '%s':%u",
+                        descrp, what, file.filepath(), line_number);
+            }
+            else
+                return LogAboutReadmeLineInternal(file, line, line_number, descrp, "possible data");
+        }
+
 
         //
         // Merges all the files in the virtual filesystem 'fs' which is in the 'fsfile' path, plus the file 'file' assuming the store type 'StoreType'
@@ -586,14 +605,12 @@ class DataPlugin : public modloader::basic_plugin
                 cs.MakeReadmeStore();
                 if(gta3::merge_to_file<store_type>(cs.FullPath().c_str(), cs.StoreList().begin(), cs.StoreList().end(), traits_type::domflags_fn()))
                 {
-                    traits_type::after_merge(true);
                     if(allow_listing) cache.WriteCachedStore_Listing(cs);
                     return cs.Path();
                 }
                 else
                 {
                     plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, cs.Path().c_str());
-                    traits_type::after_merge(false);
                 }
             }
 
@@ -686,10 +703,6 @@ class initializer
  *                                                 The Archive argument is a reference to the serializer (call it's operator()() to serialize something)
  *                                                 and the Functor is a function that serializes the content of a list of stores (should usually be done)
  *
- *          [optional] void after_merge(HasBeenSucessful)
- *                                              -> Called after a merge happened, this means all the data you used for the merging process
- *                                                 can be freed.
- *
  *          [optional] List query_readme_data(NormalizedFileName)
  *                                              -> Called to query data stores containing data for the specified store from readme lines
  *                                                 NormalizedFileName is the filename of the data file we are dealing with.
@@ -703,9 +716,6 @@ struct data_traits : public gta3::data_traits
     {
         serialize_store();
     }
-
-    static void after_merge(bool successful)
-    {}
 
     template<class StoreType>
     static DataPlugin::readme_data_list<StoreType> query_readme_data(const std::string& filename)
@@ -761,13 +771,3 @@ inline void* MatchModelString(const std::string& modelname, int* out = nullptr)
     return MatchModelString(modelname.c_str(), out);
 }
 
-
-//
-// TODO README TESTING:
-// IS IT WORKING PROPERLY (MERGE)?
-// TEST INSTALL / UNINSTALL / REINSTALL
-// CHECK LOG TO SEE IF IT IS BEAUTIFUL
-// IS IT SAVING THE LISTING PROPERLY IN THE CACHE? AND LOADING IT? ETC
-// TEST PRIORITIES WITH READMES
-// DO README CACHE
-//

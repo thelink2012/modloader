@@ -91,7 +91,7 @@ namespace cereal
 
             //! Writes the content of a boost::any into an archive
             template<class Archive>
-            bool CastIntoArchive(Archive& archive, const boost::any& any, const std::type_index& type) const
+            void CastIntoArchive(Archive& archive, const boost::any& any, const std::type_index& type) const
             {
                 auto it = this->output_casters.find(type);
                 if(it == this->output_casters.end())
@@ -102,7 +102,7 @@ namespace cereal
 
             //! Reads the content of a boost::any from an archive
             template<class Archive>
-            bool CastFromArchive(Archive& archive, boost::any& any, const std::type_index& type) const
+            void CastFromArchive(Archive& archive, boost::any& any, const std::type_index& type) const
             {
                 auto it = this->input_casters.find(type);
                 if(it == this->input_casters.end())

@@ -265,6 +265,13 @@ class data_section
             return ::apply_visitor(visitor, const_cast<either_type&>(this->data));
         }
 
+        template<class Section>
+        static const section_info* section_by_slice()
+        {
+            static auto section = sections(*(const data_section*)(nullptr)) + tuple_elem_index<Section, std::tuple<Sections...>>::value;
+            return section;
+        }
+
     public: // not to be used directly
         template<class Archive>
         void save(Archive& ar) const
@@ -407,6 +414,21 @@ class data_section
             {
                throw std::runtime_error("get_slice_visitor called while object state is empty");
             }
+        };
+
+
+        // http://stackoverflow.com/questions/18063451/get-index-of-a-tuple-elements-type
+        template <class T, class Tuple>
+        struct tuple_elem_index;
+
+        template <class T, class... Types>
+        struct tuple_elem_index<T, std::tuple<T, Types...>> {
+            static const std::size_t value = 0;
+        };
+
+        template <class T, class U, class... Types>
+        struct tuple_elem_index<T, std::tuple<U, Types...>> {
+            static const std::size_t value = 1 + tuple_elem_index<T, std::tuple<Types...>>::value;
         };
 };
 

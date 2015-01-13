@@ -268,7 +268,12 @@ struct store_merger
         {
             std::ofstream stream(outfilename);
             if(stream)
-                return do_merge<StoreType>(stream, st_begin, st_end, domflags);
+            {
+                std::for_each(st_begin, st_end, [](StoreType& store) { store.premerge(); });
+                auto result = do_merge<StoreType>(stream, st_begin, st_end, domflags);
+                std::for_each(st_begin, st_end, [](StoreType& store) { store.posmerge(); });
+                return result;
+            }
             return false;
         }
 

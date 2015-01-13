@@ -9,6 +9,7 @@
 #undef INJECTOR_GVM_HAS_TRANSLATOR  // TODO make it use the translator
 #include <stdinc/gta3/stdinc.hpp>
 #include <regex/regex.hpp>          // Abstraction over boost::xpressive or std::regex
+#include <regex/fregex.hpp>
 #include <boost/optional.hpp>
 #include "datalib.hpp"
 #include "utility.hpp"

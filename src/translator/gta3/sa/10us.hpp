@@ -24,6 +24,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x8246EC] = 0x8246EC;   // call    _WinMain
         map[0x53ECBD] = 0x53ECBD;   // call    _Z4IdlePv
         map[0x53ECCB] = 0x53ECCB;   // call    _Z12FrontendIdlePv
+        map[0xC8D4C0] = 0xC8D4C0;   // int gGameState
     }
 
     // std.fx

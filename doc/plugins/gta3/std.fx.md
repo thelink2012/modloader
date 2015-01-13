@@ -1,6 +1,5 @@
 gta3.std.fx
 =========================================================================
- + __Version__:  Reloaded 0.1
  + __Author__:   LINK/2012 (<dma_2012@hotmail.com>)
  + __Priority__: 50
 
@@ -53,3 +52,4 @@ __Description__:
    * grass3_2.dff
    * grass3_3.dff
    * grass3_4.dff
+

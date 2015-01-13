@@ -113,7 +113,7 @@ using carcols_store = gta3::data_store<carcols_traits, std::map<
                         carcols_traits::key_type, carcols_traits::value_type
                         >>;
 
-REGISTER_RTTI_FOR_ANY("carcols_traits", carcols_store);
+REGISTER_RTTI_FOR_ANY(carcols_store);
 
 // sections function specialization
 namespace datalib {
@@ -132,36 +132,30 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
     auto ReloadColours = injector::cstd<void()>::call<0x5B6890>;
     plugin_ptr->AddMerger<carcols_store>("carcols.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadColours));
 
-    plugin_ptr->AddReader<carcols_store>([plugin_ptr](const std::string& line) -> maybe_readable<carcols_store>
+    // Readme reader
+    plugin_ptr->AddReader<carcols_store>([](const std::string& line) -> maybe_readable<carcols_store>
     {
-        static auto regex = make_regex(R"___(^(\w+)(?:((?: (?: \d+){2}){2,})|((?: (?: \d+){4}){2,}))\s*$)___");
-        static auto car_sec = gta3::section_info::by_name(carcols_traits::sections(), "car");
-        static auto car4_sec = gta3::section_info::by_name(carcols_traits::sections(), "car4");
+        // A pattern for a carcols line is very specific and needs special spacing, it is exactly:
+        // <VEHMODEL>$REPEAT(  <c1> <c2> [<c3> <c4>])
+        static auto regex = make_regex(R"___(^(\w+)\s*(?:((?: (?: \d+){2}){2,})|((?: (?: \d+){4}){2,}))\s*$)___");
 
         smatch match;
         if(regex_match(line, match, regex))
         {
+            // Oh, the pattern matches with this line!
             if(HasModelInfo())
             {
-                if(match.size() == 4 && MatchModelString(match[1]))
+                if(match.size() == 4 && MatchModelString(match[1])) // matches vehicle model?
                 {
                     carcols_store store;
-                    if(match[2].length())
-                    {
-                        store.insert(car_sec, line);
-                        return store;
-                    }
-                    else if(match[3].length())
-                    {
-                        store.insert(car4_sec, line);
-                        return store;
-                    }
+                    if(match[2].length()) store.insert<carcols_traits::car_type>(line);
+                    else if(match[3].length()) store.insert<carcols_traits::car4_type>(line);
+                    return store;
                 }
             }
-            else
+            else // We're still not able to tell if this is a carcol line, we need the models names! But maybe...
                 return maybe<carcols_store>();
         }
-
         return nothing;
     });
 });

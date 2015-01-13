@@ -166,8 +166,8 @@ void Loader::Startup()
         }
 
         // Register exported methods and vars
-        modloader_t::has_game_started= false;   // TODO find a more realiable way to find this information
-        modloader_t::has_game_loaded = false;   // ^^                       ((see later below tho))
+        modloader_t::has_game_started= false;
+        modloader_t::has_game_loaded = false;
         modloader_t::gamepath        = this->gamePath.data();
         //modloader_t::cachepath       = this->cachePath.data();
         modloader_t::commonappdata   = this->commonAppDataPath.data();
@@ -184,9 +184,6 @@ void Loader::Startup()
         // Startup successfully
         this->bRunning = true;
         Log("\nMod Loader has started up!\n");
-
-        // >> HERE
-        modloader_t::has_game_started = modloader_t::has_game_loaded = true;
     }
 }
 
@@ -221,6 +218,9 @@ void Loader::Shutdown()
  */
 void Loader::Tick()
 {
+    static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
+    this->has_game_started = (gGameState >= 7);
+    this->has_game_loaded  = (gGameState >= 9);
     this->TestHotkeys();
 }
 

@@ -7,6 +7,8 @@
 #include "data.hpp"
 using namespace modloader;
 
+// TODO CACHE READMES WITH NO DATA LINES
+
 /*
  *  !!!! data_traits important implementation information !!!!
  *
@@ -90,7 +92,7 @@ bool DataPlugin::OnStartup()
         });
 
         // When there's no cache present mark changed_readme_data as true because we'll need to generate a cache
-        this->had_cached_readme   = IsPathA(cache.GetCachePath("readme.ld").data());;
+        this->had_cached_readme   = IsPathA(cache.GetCachePath("readme.ld").data()) != 0;
         this->changed_readme_data = !had_cached_readme;
 
         return true;
@@ -481,7 +483,7 @@ std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file)
                 readme_buffer.reset(new char[max_readme_size]);
 
             if(stream.read(&readme_buffer[0], file.size))
-                return this->ParseReadme(file, std::make_pair(&readme_buffer[0], &readme_buffer[file.size]));
+                return this->ParseReadme(file, std::make_pair(&readme_buffer[0], &readme_buffer[(size_t)(file.size)]));
             else
                 this->Log("Warning: Failed to read from \"%s\".", file.filepath());
         }
@@ -504,6 +506,8 @@ std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file, std::pair<
     std::string line; line.reserve(256);
     std::set<size_t> mergers;
     size_t line_number = 0;
+
+    this->AddDummyReadme(file); // this makes even empty readmes be cached (so it doesn't re-read it again)
 
     while(datalib::gta3::getline(buffer, line))
     {

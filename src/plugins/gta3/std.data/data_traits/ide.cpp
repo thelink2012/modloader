@@ -33,7 +33,6 @@ using fx0_8e = tuple<int, int, int, int, string, string, real_t, real_t, real_t,
 using fx7_4e = tuple<real_t, real_t, real_t, real_t, real_t, int, optional<string>, optional<string>, optional<string>, optional<string>>;
 using fx5_9e = tuple<int, real_t, real_t, real_t, real_t, ipair,  ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair>;
 
-
 //
 struct ide_traits : public data_traits
 {
@@ -45,7 +44,8 @@ struct ide_traits : public data_traits
     // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
-        static const char* what() { return "object types"; }
+        static const char* what()       { return "object types"; }
+        static const char* datafile()   { return ide_merger_name; }
     };
     
     // Detouring type
@@ -108,12 +108,47 @@ struct ide_traits : public data_traits
     {
         return value.apply_visitor(key_from_value_visitor());
     }
+
+    // Specialize this one so we can filter out IDE readme entries for specific files
+    template<class StoreType>
+    static DataPlugin::readme_data_list<StoreType>
+        query_readme_data(const std::string& filename)
+    {
+        DataPlugin::readme_data_list<StoreType> list;
+        bool is_peds_ide     = (filename == "peds.ide");
+        bool is_vehicles_ide = (filename == "vehicles.ide");
+        bool is_vehmods_ide  = (filename == "veh_mods.ide");
+
+        if(is_peds_ide || is_vehicles_ide || is_vehmods_ide)   // can only have readme entries for those
+        {
+            list = data_traits::query_readme_data<StoreType>(filename);
+            auto section = gta3::section_info::by_name(sections(), is_peds_ide? "peds" :
+                                                                   is_vehicles_ide? "cars" :
+                                                                   is_vehmods_ide? "objs" : "");
+
+            // Filter outs readme stores that aren't related to the section type related to this file
+            for(auto it = list.begin(); it != list.end(); )
+            {
+                auto& container = it->second.second.get().container();
+                if(std::any_of(container.begin(), container.end(), [&](const std::pair<const key_type, value_type>& kv) {
+                    return (StoreType::section_by_kv(kv.first, kv.second) != section);
+                }))
+                    it = list.erase(it);
+                else
+                    ++it;
+            }
+        }
+
+        return list;
+    }
 };
 
 //
 using ide_store = gta3::data_store<ide_traits, std::map<
                         ide_traits::key_type, ide_traits::value_type
                         >>;
+
+REGISTER_RTTI_FOR_ANY(ide_store);
 
 
 // sections function specialization
@@ -128,5 +163,61 @@ namespace datalib {
 }
 
 // Object Types Merger
-static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<ide_store>, _1, ide_merger_name, false, false, true, no_reinstall));
+static auto xinit = initializer([](DataPlugin* plugin_ptr)
+{
+    // IDE Merger
+    plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, no_reinstall);
 
+    // Readme Reader for CARS entries (vehicles.ide)
+    plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
+    {
+        static auto regex_vehicles = make_fregex(
+                            "^%d %s %s "
+                            "%{car|mtruck|quad|heli|f_heli|plane|f_plane|boat|train|bike|bmx|trailer} "
+                            "%s %s %s "
+                            "%{normal|poorfamily|richfamily|executive|worker|big|taxi|moped|motorbike|leisureboat|workerboat|bicycle|ignore} "
+                            "%d %d %x(?: %d)?(?: %f)?(?: %f)?(?: %d)?$");
+
+        if(regex_match(line, regex_vehicles))
+        {
+            ide_store store;
+            if(store.insert<ide_traits::cars_type>(line))
+                return store;
+        }
+        return nothing;
+    });
+
+    // Readme Reader for tunning OBJS entries (veh_mods.ide)
+    plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
+    {
+        static auto regex_vehmods = make_fregex(
+            "^%d "
+            R"___(%{hydralics|stereo|wheel_\w+|nto_\w+|bnt_\w+|chss_\w+|exh_\w+|bntl_\w+|bntr_\w+|spl_\w+|wg_l_\w+|wg_r_\w+|fbb_\w+|bbb_\w+|lgt_\w+|rf_\w+|fbmp_\w+|rbmp_\w+|misc_a_\w+|misc_b_\w+|misc_c_\w+})___"
+            " %s %d %d$");
+
+        if(regex_match(line, regex_vehmods))
+        {
+            ide_store store;
+            if(store.insert<ide_traits::objs_type>(line))
+                return store;
+        }
+        return nothing;
+    });
+
+    // Readme Reader for tunning PEDS entries (peds.ide)
+    plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
+    {
+        static auto regex_vehmods = make_fregex(
+            "^%d %s %s "
+            "%{CIVMALE|CIVFEMALE|COP|GANG\\d+|PLAYER1|PLAYER2|PLAYER_NETWORK|PLAYER_UNUSED|DEALER|MEDIC|FIREMAN|CRIMINAL|BUM|PROSTITUTE|SPECIAL|MISSION\\d+} "
+            "%{STAT_\\w+} %s %x %x %s %d %d %{PED_TYPE_\\w+} %{VOICE_\\w+} %{VOICE_\\w+}$");
+
+        if(regex_match(line, regex_vehmods))
+        {
+            ide_store store;
+            if(store.insert<ide_traits::peds_type>(line))
+                return store;
+        }
+        return nothing;
+    });
+});

@@ -40,8 +40,8 @@
 
 // Allows the specified type to be used in a boost::any
 // -> name is a cross-platform name for the type, type is the type itself
-#define REGISTER_RTTI_FOR_ANY(name, type)       \
-    CEREAL_REGISTER_RTTI_WITH_NAME(type, name); \
+#define REGISTER_RTTI_FOR_ANY(type)             \
+    CEREAL_REGISTER_RTTI_WITH_NAME(type, #type);\
     CEREAL_REGISTER_FOR_ANY(type);               
 
 
@@ -274,7 +274,7 @@ class data_cache : public modloader::basic_cache
         {
             auto path = GetCachePath(cs.cache_id, cs.fsfile);
             return cereal_to_file_byfunc(path + ".l",
-                std::bind(&data_cache::SerializeListing<decltype(cs.listing), cereal::BinaryOutputArchive>, _2, std::ref(cs.listing), cs.readme_point));
+                std::bind(&data_cache::SerializeListing<decltype(cs.listing), cereal::BinaryOutputArchive>, _2, std::ref(cs.listing), std::ref(cs.readme_point)));
         }
 
     private: // Serialization specialization for store type
@@ -310,7 +310,6 @@ class data_cache : public modloader::basic_cache
             using traits_type = typename StoreList::value_type::traits_type;
             traits_type::static_serialize(archive, false, [&]
             {
-                std::streamsize blocksize;
                 cereal::size_type csize;
             
                 // Notice: do not resize the store object, it is the object from caching_stream that passed tho Apply()
@@ -499,7 +498,7 @@ class data_cache : public modloader::basic_cache
                     // Reads the listing of files for this cache and tries to match it with the current listing
                     if(cereal_from_file_byfunc(std::string(f.filepath).append(".l"),
                         std::bind(&data_cache::SerializeListing<decltype(cs.cached_listing), cereal::BinaryInputArchive>, 
-                        _2, std::ref(cs.cached_listing), cs.cached_readme_point)))
+                        _2, std::ref(cs.cached_listing), std::ref(cs.cached_readme_point))))
                     {
                         if(cs.MatchListing())
                         {
@@ -537,7 +536,7 @@ class data_cache : public modloader::basic_cache
                 std::map<std::string, std::string> to_delete;       // <filename, fullpath>
                 modloader::FilesWalk(cachedir, "*.*", false, [&](modloader::FileWalkInfo& f)
                 {
-                    if(!stricmp(f.filext, "d") || !stricmp(f.filext, "l"))
+                    if(!strcmp(f.filext, "d", false) || !strcmp(f.filext, "l", false))
                         filename.assign(f.filename, (f.filext - f.filename) - 1);   // use the filename without the .d and .l sufix
                     else
                         filename.assign(f.filename);                            // use this filename since it's not special sufixed

@@ -33,4 +33,9 @@ inline sregex make_regex(const char* begin, sregex::flag_type flags = sregex::EC
 #endif
 }
 
+inline sregex make_regex(const std::string& begin, sregex::flag_type flags = sregex::ECMAScript|sregex::optimize)
+{
+    return make_regex(begin.c_str(), flags);
+}
+
 

@@ -8,6 +8,8 @@
 using namespace modloader;
 using namespace std::placeholders;
 
+// TODO README
+
 //
 struct gtadat_traits : public data_traits
 {

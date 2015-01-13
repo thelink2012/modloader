@@ -302,7 +302,7 @@ bool Loader::PluginInformation::Install(FileInformation& file)
             return true;
         }
     }
-    else
+    else // not main handler but a callme
         return this->InstallFile(file);
 
     return false;
@@ -314,11 +314,17 @@ bool Loader::PluginInformation::Install(FileInformation& file)
  */
 bool Loader::PluginInformation::Uninstall(FileInformation& file)
 {
-    if(EnsureBehaviourPresent(file) && this->UninstallFile(file))
+    if(this->IsMainHandlerFor(file))
     {
-        if(this->IsMainHandlerFor(file)) behv.erase(file.behaviour);
-        return true;
+        if(this->EnsureBehaviourPresent(file) && this->UninstallFile(file))
+        {
+            behv.erase(file.behaviour);
+            return true;
+        }
     }
+    else // not main handler but a callme
+        return this->UninstallFile(file);
+
     return false;
 }
 
@@ -328,17 +334,19 @@ bool Loader::PluginInformation::Uninstall(FileInformation& file)
  */
 bool Loader::PluginInformation::Reinstall(FileInformation& file)
 {
-    if(EnsureBehaviourPresent(file) && !this->ReinstallFile(file))
+    if(this->IsMainHandlerFor(file))
     {
-        if(this->IsMainHandlerFor(file))
-        {
-            // Somehow we failed to Reinstall, so Uninstall it instead.
-            if(!file.Uninstall())
-                FatalError("Catastrophical failure at Reinstall");
-        }
+        if(this->EnsureBehaviourPresent(file) && this->ReinstallFile(file))
+            return true;
+
+        // Somehow we failed to Reinstall, so Uninstall it instead.
+        if(!file.Uninstall()) FatalError("Catastrophical failure at Reinstall");
         return false;
     }
-    return true;
+    else // not main handler but a callme
+        return this->ReinstallFile(file);
+
+    return false;
 }
 
 /*

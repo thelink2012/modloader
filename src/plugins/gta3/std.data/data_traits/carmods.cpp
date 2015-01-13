@@ -20,7 +20,8 @@ struct carmods_traits : public data_traits
     // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
-        static const char* what() { return "vehicle upgrades"; }
+        static const char* what()       { return "vehicle upgrades"; }
+        static const char* datafile()   { return "carmods.dat"; }
     };
     
     // Detouring type
@@ -126,6 +127,8 @@ using carmods_store = gta3::data_store<carmods_traits, std::map<
                         carmods_traits::key_type, carmods_traits::value_type
                         >>;
 
+REGISTER_RTTI_FOR_ANY(carmods_store);
+
 
 // sections function specialization
 namespace datalib {
@@ -159,5 +162,32 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
         injector::cstd<void()>::call<0x5B65A0>();
     };
 
+    // Data File merger
     plugin_ptr->AddMerger<carmods_store>("carmods.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadUpgrades));
+
+    // Readme reader
+    plugin_ptr->AddReader<carmods_store>([](const std::string& line) -> maybe_readable<carmods_store>
+    {
+        // Matches an upgrade (except for wheels)
+        static auto regex_mods = make_regex(R"___(^(\w+)(?:\s+(?:hydralics|stereo|nto_\w+|bnt_\w+|chss_\w+|exh_\w+|bntl_\w+|bntr_\w+|spl_\w+|wg_l_\w+|wg_r_\w+|fbb_\w+|bbb_\w+|lgt_\w+|rf_\w+|fbmp_\w+|rbmp_\w+|misc_a_\w+|misc_b_\w+|misc_c_\w+))+\s*$)___");
+
+        smatch match;
+        if(regex_match(line, match, regex_mods))
+        {
+            // Oh, the pattern matches with this line!
+            if(HasModelInfo())
+            {
+                if(match.size() == 2 && MatchModelString(match[1])) // matches vehicle model?
+                {
+                    carmods_store store;
+                    store.insert<carmods_traits::mods_type>(line);
+                    return store;
+                }
+            }
+            else
+                return maybe<carmods_store>();
+        }
+
+        return nothing;
+    });
 });

@@ -233,6 +233,7 @@ solution "modloader"
         files { "doc/**" }
         dependson { "modloader" }
         addinstall { source = "LICENSE",                        destination = "modloader/.data"         }
+        addinstall { source = "doc/licenses",                   destination = "modloader/.data/licenses"}
         addinstall { source = "doc/text",                       destination = "modloader/.data/text"    }
         addinstall { source = "doc/readme",                     destination = "modloader/.data"         }
         addinstall { source = "doc/plugins",                    destination = "modloader/.data/plugins" }
