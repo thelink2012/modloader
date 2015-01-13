@@ -6,7 +6,6 @@
 #include <stdinc.hpp>
 #include "../data.hpp"
 using namespace modloader;
-using namespace std::placeholders;
 using std::tuple;
 using std::string;
 
@@ -304,5 +303,6 @@ namespace datalib {
 }
 
 // Scene Files Merger
+using namespace std::placeholders;
 static auto xinit = initializer(std::bind(&DataPlugin::AddMerger<ipl_store>, _1, ipl_merger_name, false, false, true, no_reinstall));
 

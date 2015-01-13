@@ -127,7 +127,8 @@ typedef struct modloader_t
     const char* gamepath;       /* game path */
     const char* _rsvc;          /* (deprecated - reserved) */
     const char* commonappdata;  /* fullpath to a "modloader/" directory in the %ProgramData% directory */
-    const char* _rsv0[3];       /* Reserved */
+    const char* localappdata;   /* fullpath to a "modloader/" directory in the "%LocalAppData% directory */
+    const char* _rsv0[2];       /* Reserved */
 
     uint32_t   _rsv1[4];        /* Reserved */
     uint8_t    has_game_started;

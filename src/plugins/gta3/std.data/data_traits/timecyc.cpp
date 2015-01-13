@@ -6,7 +6,6 @@
 #include <stdinc.hpp>
 #include "../data.hpp"
 using namespace modloader;
-using namespace std::placeholders;
 
 struct timecyc_traits
 {

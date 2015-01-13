@@ -6,7 +6,6 @@
 #include <stdinc.hpp>
 #include "../data.hpp"
 using namespace modloader;
-using namespace std::placeholders;
 using std::tuple;
 using std::string;
 using ipair = std::pair<int, int>;

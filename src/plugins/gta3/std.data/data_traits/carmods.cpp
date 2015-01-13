@@ -7,7 +7,6 @@
 #include "../data.hpp"
 using namespace modloader;
 using namespace injector;
-using namespace std::placeholders;
 
 //
 struct carmods_traits : public data_traits

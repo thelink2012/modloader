@@ -6,7 +6,6 @@
 #include <stdinc.hpp>
 #include "../data.hpp"
 using namespace modloader;
-using namespace std::placeholders;
 
 //
 struct plants_traits : public data_traits

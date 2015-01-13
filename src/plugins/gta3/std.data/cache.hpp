@@ -123,7 +123,7 @@ class data_cache : public modloader::basic_cache
         // Initializes the caching system
         bool Startup()
         {
-            if(modloader::basic_cache::Startup())
+            if(modloader::basic_cache::Startup(location::localappdata))
             {
                 if(get<0>(this->AddCacheFile("_STARTUP_", false)) != -1     // Creates /0/ directory
                 && get<0>(this->AddCacheFile("_STARTUP_", true)) != -1)     // Creates /1/ directory
@@ -272,6 +272,7 @@ class data_cache : public modloader::basic_cache
         template<class StoreType>
         bool WriteCachedStore_Listing(caching_stream<StoreType>& cs)
         {
+            using namespace std::placeholders;
             auto path = GetCachePath(cs.cache_id, cs.fsfile);
             return cereal_to_file_byfunc(path + ".l",
                 std::bind(&data_cache::SerializeListing<decltype(cs.listing), cereal::BinaryOutputArchive>, _2, std::ref(cs.listing), std::ref(cs.readme_point)));
@@ -490,6 +491,7 @@ class data_cache : public modloader::basic_cache
         {
             // TODO stop walking the tree every time, get around it (?)
             using namespace modloader;
+            using namespace std::placeholders;
             cache_file_tuple result(-1, "", "");
             modloader::FilesWalk(this->GetCacheDir(cache_id, true), "*.*", false, [&](modloader::FileWalkInfo& f)
             {

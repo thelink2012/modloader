@@ -49,24 +49,33 @@ namespace modloader
             std::string path, fullpath;     // relative and fullpath to the chosen cache name
             bool initialized = false;
 
+            enum class location
+            {
+                gamecache,          // at modloader/.data/cache (DEPRECATED, DONT USE)
+                commonappdata,      // at %ProgramData%/modloader
+                localappdata,       // at %LocalAppData%/modloader
+            };
+
         public:
 
             // Initializes the managed cache directory named 'name'
-            bool Startup(const std::string& name = plugin_ptr->data->name, bool useappdata = true)
+            bool Startup(location where, const std::string& name = plugin_ptr->data->name)
             {
-                if(useappdata)
+                std::string wherepath;
+
+                switch(where)
                 {
-                    this->path      = std::string(plugin_ptr->loader->commonappdata).append(name);
-                    MakeSureStringIsDirectory(this->path);
-                    this->fullpath  = this->path;
+                    default:
+                        return false;
+                    case location::localappdata:
+                        wherepath = plugin_ptr->loader->localappdata; break;
+                    case location::commonappdata:
+                        wherepath = plugin_ptr->loader->commonappdata; break;
                 }
-                else
-                {
-                    return false;
-                    //this->path      = std::string(plugin_ptr->loader->cachepath).append(name);
-                    //MakeSureStringIsDirectory(this->path);
-                    //this->fullpath  = std::string(plugin_ptr->loader->gamepath).append(path);
-                }
+
+                this->path      = std::string(wherepath).append(name);
+                MakeSureStringIsDirectory(this->path);
+                this->fullpath  = this->path;
 
                 if(MakeSureDirectoryExistA(fullpath.c_str()))
                 {
