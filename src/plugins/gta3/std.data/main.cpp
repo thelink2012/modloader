@@ -7,8 +7,6 @@
 #include "data.hpp"
 using namespace modloader;
 
-// TODO CACHE READMES WITH NO DATA LINES
-
 /*
  *  !!!! data_traits important implementation information !!!!
  *

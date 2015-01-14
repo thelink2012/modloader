@@ -194,6 +194,41 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B9D72] = 0x5B9D72;   // call    _ZN8CFileMgr8OpenFileEPKcS1_ ; EventVol.dat
     }
 
+    // std.data
+    if(true)    
+    {
+        map[0x5B6890] = 0x5B6890;   // _ZN17CVehicleModelInfo18LoadVehicleColoursEv
+        map[0x5B68AB] = 0x5B68AB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleColours
+        map[0x5B65A0] = 0x5B65A0;   // _ZN17CVehicleModelInfo19LoadVehicleUpgradesEv
+        map[0x5B65BE] = 0x5B65BE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleUpgrades
+        map[0xB4E6D8] = 0xB4E6D8;   // CLinkedUpgradeList CVehicleModelInfo::ms_linkedUpgradesE
+        map[0x4C6770] = 0x4C6770;   // mov     eax, gsVehicleModels.m_nCount
+        map[0x5B905E] = 0x5B905E;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadLevel
+        map[0x5BD830] = 0x5BD830;   // _ZN16cHandlingDataMgr16LoadHandlingDataEv
+        map[0x5BD850] = 0x5BD850;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @cHandlingDataMgr::LoadHandlingData
+        map[0xC2B9C8] = 0xC2B9C8;   // mod_HandlingManager CHandlingData
+        map[0x5B8428] = 0x5B8428;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
+        map[0x5B871A] = 0x5B871A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
+        map[0x5DD780] = 0x5DD780;   // _ZN9CPlantMgr12ReloadConfigEv
+        map[0x5DD3D1] = 0x5DD3D1;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPlantSurfPropMgr::LoadPlantsDat
+        map[0x5BC090] = 0x5BC090;   // _ZN9CPopCycle10InitialiseEv
+        map[0x5BC0AE] = 0x5BC0AE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopCycle::Initialise
+        map[0x5BBAC0] = 0x5BBAC0;   // _ZN10CTimeCycle10InitialiseEb 
+        map[0x5BBADE] = 0x5BBADE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTimeCycle::initialise
+        map[0x6EAE80] = 0x6EAE80;   // _ZN11CWaterLevel20WaterLevelInitialiseEv
+        map[0x6EAF4D] = 0x6EAF4D;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWaterLevel::WaterLevelInitialise
+        map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
+        map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
+        map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
+        map[0x5B906A] = 0x5B906A;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop begin
+        map[0x5B92E6] = 0x5B92E6;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop end
+        map[0x5B92F9] = 0x5B92F9;   // call    _ZN8CFileMgr9CloseFileEi                 ; @CFileLoader::LoadLevel
+        map[0x53BC95] = 0x53BC95;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- default.dat
+        map[0x53BC9B] = 0x53BC9B;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
+        map[0x4C5940] = 0x4C5940;   // _ZN10CModelInfo12GetModelInfoEPKcPi
+        map[0x5B922F] = 0x5B922F;   // call    _Z20MatchAllModelStringsv                ; @CFileLoader::LoadLevel
+    }
+
 
     // traits
     if(true)

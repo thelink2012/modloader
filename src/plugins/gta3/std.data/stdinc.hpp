@@ -6,7 +6,6 @@
 #pragma once
 #pragma warning(disable : 4503)     // 'identifier' : decorated name length exceeded, name was truncated
 #define BOOST_OPTIONAL_NO_IOFWD
-#undef INJECTOR_GVM_HAS_TRANSLATOR  // TODO make it use the translator
 #include <stdinc/gta3/stdinc.hpp>
 #include <regex/regex.hpp>          // Abstraction over boost::xpressive or std::regex
 #include <regex/fregex.hpp>

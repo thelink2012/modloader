@@ -1,6 +1,13 @@
+/*
+ * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * 
+ */
 #pragma once
 #include <stdinc.hpp>
 #include <unordered_map>
+
+// virtual filesystem
 
 template<typename UData = int>
 class vfs
@@ -8,6 +15,7 @@ class vfs
     public:
         using multimap  = std::unordered_multimap<std::string, std::pair<std::string, UData>>;
         using iterator  = typename multimap::iterator;
+        using const_iterator = typename multimap::const_iterator;
         using size_type = typename multimap::size_type;
         using value_type = typename multimap::value_type;
 
@@ -22,12 +30,25 @@ class vfs
 
     public:
 
-        // TODO ctors, moves, etc
+        // Constructors and assigment operators
+        vfs() = default;
+        vfs(const vfs&) = default;
+        vfs(vfs&& rhs) : fs(std::move(rhs.fs)) {}
+        vfs& operator=(const vfs&) = default;
+        vfs& operator=(vfs&& rhs)   { this->fs = std::move(rhs.fs); }
 
-        iterator begin() { return fs.begin(); }
-        iterator end()   { return fs.end(); }
+        // Iterators
+        iterator begin()             { return fs.begin(); }
+        const_iterator begin() const { return fs.begin(); }
+        const_iterator cbegin() const{ return fs.cbegin(); }
+        const_iterator cend() const  { return fs.cend(); }
+        iterator end()               { return fs.end(); }
+        const_iterator end() const   { return fs.end(); }
+        // moar
 
+        // Modifiers 
         iterator erase(iterator it) { return fs.erase(it); }
+        // moar
 
         // undefined behaviour if you add two files to the same vpath pointing to the same real path (see @rem_files)
         iterator add_file(std::string vpath, std::string path, UData userdata = UData())

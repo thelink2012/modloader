@@ -24,7 +24,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     auto ReloadTimeCycle = []
     {
-        injector::cstd<void()>::call<0x05BBAC0>();   // CTimeCycle::Initialise
+        injector::cstd<void()>::call<0x5BBAC0>();   // CTimeCycle::Initialise
         // there are some vars at the end of that function body which should not be reseted while the game runs...
         // doesn't cause serious issues but well... shall we take care of them?
     };
