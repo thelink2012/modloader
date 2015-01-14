@@ -3,6 +3,7 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
+#include <stdinc.hpp>
 #include "loader.hpp"
 
 // Not thread-safe

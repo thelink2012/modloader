@@ -20,10 +20,6 @@
 #   pragma warning(disable : 4180)  // qualifier applied to function type has no meaning; ignored
 #endif
 
-//Defined on CMake now
-//#define INJECTOR_GVM_PLUGIN_NAME        "Mod Loader Plugin"     // (for Mod Loader plugins, in dll)
-//#define INJECTOR_GVM_HAS_TRANSLATOR
-
 #include <modloader/modloader.hpp>
 #include <injector/injector.hpp>
 #include <injector/hooking.hpp>

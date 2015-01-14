@@ -3,11 +3,8 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-
+#include <stdinc.hpp>
 #include "loader.hpp"
-#include <modloader/util/injector.hpp>
-#include <modloader/util/path.hpp>
-#include <ini_parser/ini_parser.hpp>
 using namespace modloader;
 
 // TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
@@ -54,7 +51,7 @@ void Loader::Patch()
     {
         // Hook WinMain to run mod loader
         injector::make_static_hook<winmain_hook>([this](winmain_hook::func_type WinMain,
-                                                    HINSTANCE& hInstance, HINSTANCE& hPrevInstance, LPSTR& lpCmdLine, int& nCmdShow)
+                                                    HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
         {
             // Avoind circular looping forever
             static bool bRan = false;
@@ -83,12 +80,13 @@ void Loader::Patch()
 
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
             // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
+            {
             this->Startup();
-            WinMain = ReadRelativeOffset(winmain_hook::addr + 1).get();
+            auto WinMain = (winmain_hook::func_type_raw) ReadRelativeOffset(winmain_hook::addr + 1).get();
             auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             this->Shutdown();
-
             return result;
+            }
         });
     }
     else
@@ -105,6 +103,7 @@ void Loader::Patch()
 void Loader::Startup()
 {
     char rootPath[MAX_PATH];
+    char appDataPath[MAX_PATH];
 
     // If not running yet and 'modloader' folder exists, let's start up
     if(!this->bRunning && IsDirectoryA("modloader"))
@@ -129,9 +128,17 @@ void Loader::Startup()
         // Setup basic path variables
         this->dataPath    = "modloader/.data/";
         this->pluginPath  = "modloader/.data/plugins/";
-        this->cachePath   = "modloader/.data/cache/";
+        //this->cachePath   = "modloader/.data/cache/";
         GetCurrentDirectoryA(sizeof(rootPath), rootPath);
         MakeSureStringIsDirectory(this->gamePath = rootPath);
+
+        // Setup "%ProgramData%/modloader/" variable
+        if(SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA|CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, appDataPath)))
+            MakeSureStringIsDirectory(MakeSureStringIsDirectory(this->commonAppDataPath = appDataPath).append("modloader"));
+
+        // Setup "%LocalAppData%/modloader/" variable
+        if(SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, appDataPath)))
+            MakeSureStringIsDirectory(MakeSureStringIsDirectory(this->localAppDataPath = appDataPath).append("modloader"));
 
         // Setup config file names
         this->folderConfigFilename = "modloader.ini";
@@ -139,12 +146,15 @@ void Loader::Startup()
         this->pluginConfigFilename = "plugins.ini";
         this->folderConfigDefault  = gamePath + dataPath + "modloader.ini.0";
         this->basicConfigDefault   = gamePath + dataPath + "config.ini.0";
-        this->pluginConfigDefault  = gamePath + pluginPath + "plugins.ini.0";
+        this->pluginConfigDefault  = gamePath + dataPath + "plugins.ini.0";
 
         // Make sure the important folders exist
-        MakeSureDirectoryExistA(dataPath.c_str());
-        MakeSureDirectoryExistA(pluginPath.c_str());
-        MakeSureDirectoryExistA(cachePath.c_str());
+        if(!MakeSureDirectoryExistA(dataPath.c_str())
+        || !MakeSureDirectoryExistA(pluginPath.c_str())
+        //|| !MakeSureDirectoryExistA(cachePath.c_str())
+        || !MakeSureDirectoryExistA(commonAppDataPath.c_str())
+        || !MakeSureDirectoryExistA(localAppDataPath.c_str()))
+            Log("Warning: Mod Loader important directories could not be created.");
         
         // Before loading inis, we should update from the old ini format to the new ini format (ofc only if the ini format is old)
         this->UpdateOldConfig();
@@ -161,10 +171,12 @@ void Loader::Startup()
         }
 
         // Register exported methods and vars
-        modloader_t::has_game_started= false;   // TODO find a more realiable way to find this information
-        modloader_t::has_game_loaded = false;   // ^^                       ((see later below tho))
+        modloader_t::has_game_started= false;
+        modloader_t::has_game_loaded = false;
         modloader_t::gamepath        = this->gamePath.data();
-        modloader_t::cachepath       = this->cachePath.data();
+        //modloader_t::cachepath       = this->cachePath.data();
+        modloader_t::commonappdata   = this->commonAppDataPath.data();
+        modloader_t::localappdata    = this->localAppDataPath.data();
         modloader_t::Log             = this->Log;
         modloader_t::vLog            = this->vLog;
         modloader_t::Error           = this->Error;
@@ -178,9 +190,6 @@ void Loader::Startup()
         // Startup successfully
         this->bRunning = true;
         Log("\nMod Loader has started up!\n");
-
-        // >> HERE
-        modloader_t::has_game_started = modloader_t::has_game_loaded = true;
     }
 }
 
@@ -215,6 +224,9 @@ void Loader::Shutdown()
  */
 void Loader::Tick()
 {
+    static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
+    this->has_game_started = (gGameState >= 7);
+    this->has_game_loaded  = (gGameState >= 9);
     this->TestHotkeys();
 }
 
@@ -257,7 +269,7 @@ void Loader::ReadBasicConfig()
         {
             if(!compare(pair.first, "EnableMenu", false))
                 this->bEnableMenu = to_bool(pair.second);
-            if(!compare(pair.first, "EnablePlugins", false))
+            else if(!compare(pair.first, "EnablePlugins", false))
                 this->bEnablePlugins = to_bool(pair.second);
             else if(!compare(pair.first, "EnableLog", false))
                 this->bEnableLog = to_bool(pair.second);

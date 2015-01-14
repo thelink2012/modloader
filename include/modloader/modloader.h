@@ -32,7 +32,7 @@ extern "C" {
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         2
-#define MODLOADER_VERSION_REVISION      1
+#define MODLOADER_VERSION_REVISION      2
 #ifdef NDEBUG
 #define MODLOADER_VERSION_ISDEV         0
 #else
@@ -124,9 +124,11 @@ typedef void (*modloader_fError)(const char* errmsg, ...);
 /* ---- Interface ---- */
 typedef struct modloader_t
 {
-    const char* gamepath;   /* game path */
-    const char* cachepath;  /* cache path, normally "modloader/.data/cache" */
-    const char* _rsv0[4];   /* Reserved */
+    const char* gamepath;       /* game path */
+    const char* _rsvc;          /* (deprecated - reserved) */
+    const char* commonappdata;  /* fullpath to a "modloader/" directory in the %ProgramData% directory */
+    const char* localappdata;   /* fullpath to a "modloader/" directory in the "%LocalAppData% directory */
+    const char* _rsv0[2];       /* Reserved */
 
     uint32_t   _rsv1[4];        /* Reserved */
     uint8_t    has_game_started;

@@ -82,10 +82,10 @@ union auto_pointer
 	    explicit auto_pointer(void* x)    : p(x)       {}
 	    explicit auto_pointer(uint32_t x) : a(x)       {}
 
-        bool is_null() { return this->p != nullptr; }
+        bool is_null() const { return this->p != nullptr; }
 
     #if __cplusplus >= 201103L || _MSC_VER >= 1800
-        explicit operator bool() { return is_null(); }
+        explicit operator bool() const { return is_null(); }
     #endif
 
         auto_pointer get() const               { return *this; }
@@ -93,7 +93,7 @@ union auto_pointer
         template<class T> T* get_raw() const   { return (T*) this->p; }
 
 	    template<class T>
-	    operator T*() { return reinterpret_cast<T*>(p); }
+	    operator T*() const { return reinterpret_cast<T*>(p); }
 };
 
 /*
@@ -173,16 +173,16 @@ union basic_memory_pointer
         bool operator>=(const basic_memory_pointer& rhs) const
         { return this->a >=rhs.a; }
         
-        bool is_null()      { return this->p == nullptr; }
-        uintptr_t as_int()  { return this->a; }	// does not perform translation
+        bool is_null() const      { return this->p == nullptr; }
+        uintptr_t as_int() const  { return this->a; }	// does not perform translation
 
 
 
 #if __cplusplus >= 201103L || _MSC_VER >= 1800  // MSVC 2013
         /* Conversion to other types */
-        explicit operator uintptr_t()
+        explicit operator uintptr_t() const
         { return this->a; }	// does not perform translation
-        explicit operator bool()
+        explicit operator bool() const
         { return this->p != nullptr; }
 #else
         //operator bool() -------------- Causes casting problems because of implicitness, use !is_null()
@@ -247,11 +247,11 @@ union memory_pointer_tr
         memory_pointer_tr operator/(const uintptr_t& rhs) const
         { return memory_pointer_raw(this->a / rhs); }
 
-        bool is_null()      { return this->p == nullptr; }
-        uintptr_t as_int()  { return this->a; }
+        bool is_null() const      { return this->p == nullptr; }
+        uintptr_t as_int() const  { return this->a; }
         
 #if __cplusplus >= 201103L
-       explicit operator uintptr_t()
+       explicit operator uintptr_t() const
        { return this->a; }
 #else
 #endif
@@ -680,8 +680,10 @@ inline bool game_version_manager::Detect()
             cracker = injector::ReadMemory<uint8_t>(raw_ptr(0x406A20), true) == 0xE9? 'H' : 0;
             return true;
 
-        case 0x8245BC:  // GTA SA 1.0 EU Cracked
+        case 0x8245BC:  // GTA SA 1.0 EU Cracked (??????)
+        case 0x8245B0:  // GTA SA 1.0 EU Cracked
             game = 'S', major = 1, minor = 0, region = 'E', steam = false;
+            cracker = injector::ReadMemory<uint8_t>(raw_ptr(0x406A20), true) == 0xE9? 'H' : 0;  // just to say 'securom'
             return true;
             
         case 0x8252FC:  // GTA SA 1.1 US Cracked

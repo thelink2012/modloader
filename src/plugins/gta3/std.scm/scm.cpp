@@ -5,9 +5,7 @@
  *  std.scm -- Standard SCM Loader Plugin for Mod Loader
  *
  */
-#include <modloader/modloader.hpp>
-#include <modloader/util/hash.hpp>
-#include <modloader/gta3/gta3.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 /*
@@ -17,7 +15,7 @@ class ScmPlugin : public modloader::basic_plugin
 {
     private:
         uint32_t main_scm;
-        file_overrider<2> overrider;
+        file_overrider overrider;
 
     public:
         const info& GetInfo();
@@ -56,7 +54,7 @@ bool ScmPlugin::OnStartup()
     if(gvm.IsSA())
     {
         this->main_scm = modloader::hash("main.scm");
-        this->overrider.SetParams(file_overrider<2>::params(true, true, true, true));
+        this->overrider.SetParams(file_overrider::params(true, true, true, true));
         this->overrider.SetFileDetour(OpenFileDetour<0x468EC9>(), OpenFileDetour<0x489A4A>());
         return true;
     }

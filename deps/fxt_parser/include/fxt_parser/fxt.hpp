@@ -58,6 +58,7 @@ namespace injector
                 memory_pointer_raw GetText;         // Store the raw pointer that CText::Get is located at
                 memory_pointer_raw BefGet;          // The previous offset for CText::Get (before patching)
                 memory_pointer_raw BefSamp;         // The previous offset for the SAMP compatibility hooked func (before patching)
+                scoped_jmp         JmpHook;
             };
 
             static static_data& data()
@@ -144,12 +145,13 @@ namespace injector
             {
                 if(data().patched == false)
                 {
+                    DWORD oldprotect;
                     data().patched = true;
                     enable();
 
                     data().GetText = memory_pointer(CText_Get).get<void>();         // Save the CText::Get pointer in raw form for fast access
-                    data().BefGet = MakeJMP(data().GetText, raw_ptr(GxtHook), true);
-                    if(!data().BefGet) data().BefGet = data().GetText;
+                    UnprotectMemory(data().GetText, 5, oldprotect);    // unprotect this region forever
+                    MakeHook();
                 }
             }
 
@@ -164,7 +166,10 @@ namespace injector
                     if(const char* value = FindFromKey(key))
                         return value;
                 }
-                return ((GetType) data().BefGet.get())(self, 0, key);
+                UnHook();
+                auto result = ((GetType) data().GetText.get())(self, 0, key);
+                MakeHook();
+                return result;
             }
 
             // SAMP compatibility hook
@@ -194,6 +199,16 @@ namespace injector
                     if(it != t->second.end()) return it->second.c_str();
                 }
                 return nullptr;
+            }
+
+            static void MakeHook()
+            {
+                data().JmpHook.make_jmp(data().GetText, raw_ptr(GxtHook), false);
+            }
+
+            static void UnHook()
+            {
+                data().JmpHook.restore();
             }
             
     };

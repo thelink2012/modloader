@@ -28,6 +28,8 @@ namespace modloader
     struct tag_detour_t {};
     static const tag_detour_t tag_detour;
     
+    struct tag_nofile_t {};
+    static const tag_nofile_t tag_nofile;
 
     /*
      *  File detour
@@ -35,46 +37,163 @@ namespace modloader
      *      @addr is the address to hook 
      *      Note the object is dummy (has no content), all stored information is static
      */
-    template<class Traits, class MyBase, class Ret, class ...Args>
-    struct basic_file_detour : MyBase
+    template<class Traits, class MyHooker, class Ret, class ...Args>
+    struct basic_file_detour : public MyHooker
     {
         protected:
-            typedef MyBase                     function_hooker;
-            typedef typename MyBase::func_type func_type;
+            typedef MyHooker                     function_hooker;
+            typedef typename MyHooker::func_type func_type;
 
-            // Store for the path (relative to gamedir)
-            struct store_type {
-                std::string path;
-                std::function<std::string(std::string)> transform;
+
+            /*
+             *  Used to set up a printer on each function call that prints what is getting loaded.
+             *  Notice incref() should be called before you set up your hook over the function.
+             *  Static and reference counted hook.
+             */
+            class printer_t : public MyHooker
+            {
+                public:
+                    // Before calling the printer, those variables should be set up by the user
+                    bool print_next = false;        // Prints on the next print call
+                    bool is_custom  = false;        // Is loading a custom file
+                    bool use_lpath  = false;        // Prints lpath for the file path instead of the argument
+                    const char* lpath;              // When use_lpath=true, this gets used as the file path to print
+
+                private:
+                    MyHooker hook;
+                    uint32_t ref = 0;
+
+                    Ret print(func_type fun, Args&... args)
+                    {
+                        if(this->print_next)
+                        {
+                            static const char* what = Traits::what();
+                            static const auto  pos  = Traits::arg - 1;
+                            auto& arg = std::get<pos>(std::forward_as_tuple(args...));
+
+                            this->print_next = false;
+                            if(this->has_info_for_print())
+                                plugin_ptr->Log("Loading %s %s \"%s\"",
+                                                (is_custom? "custom" : "default"), what, (use_lpath? lpath : arg));
+                        }
+                        return fun(args...);
+                    }
+
+                public:
+                    // Constructors, move constructors, assigment operators........
+                    // nope and nope, just default construction
+                    printer_t() = default;
+                    printer_t(const printer_t&) = delete;
+                    printer_t(printer_t&& rhs) = delete;
+                    printer_t& operator=(const printer_t& rhs) = delete;
+                    printer_t& operator=(printer_t&& rhs) = delete;
+
+                    ~printer_t()
+                    {
+                        this->restore();
+                    }
+
+                    // Makes the hook of the printer
+                    // If the hook has already been installed by another function hooker of this same trait
+                    // just increase a reference counter...
+                    void incref()
+                    {
+                        if(this->ref != 0)
+                            ++this->ref;
+                        else
+                        {
+                            this->ref = 1;
+                            MyHooker::make_call([this](func_type func, Args&... args) -> Ret
+                            {
+                                return this->print(std::move(func), args...);
+                            });
+                        }
+                    }
+
+                    // Restores the call we've replaced for the printer
+                    // If the reference counter isn't unique, just decreases it
+                    void decref()
+                    {
+                        if(this->ref)   // make sure there's any reference
+                        {
+                            if(this->ref != 1)
+                                --this->ref;
+                            else
+                            {
+                                this->ref = 0;
+                                MyHooker::restore();
+                            }
+                        }
+                    }
+
+                    // Checks if we have enought information about the trait and the plugin to print anything
+                    static bool has_info_for_print()
+                    {
+                        static const char* what = Traits::what();
+                        return (what && what[0] && plugin_ptr);
+                    }
+
+                    // The instance of a printer
+                    // Uses a shared_ptr to avoid static destruction order problems
+                    static std::shared_ptr<printer_t> instance()
+                    {
+                        static auto p = std::shared_ptr<printer_t>(has_info_for_print()? new printer_t() : nullptr);
+                        return p;
+                    }
             };
 
-            static store_type& store()
-            { static store_type x; return x; }
-   
+            // Store for the path (relative to gamedir)
+            std::string path, temp;
+            std::function<std::string(std::string)> transform;
+            std::function<std::string(std::string)> postransform;
+            std::shared_ptr<printer_t> printer;
+
             // The detoured function goes to here
-            static Ret hook(func_type fun, Args&... args)
+            Ret hook(func_type fun, Args&... args)
             {
                 static const auto  pos  = Traits::arg - 1;
                 static const char* what = Traits::what();
 
                 auto& arg = std::get<pos>(std::forward_as_tuple(args...));
                 char fullpath[MAX_PATH];
+                const char* lpath = nullptr;
+                
+                auto& path = this->temp;
+                path.assign(this->path);
 
                 // If has transform functor, use it to get new path
-                if(store().transform)
-                    store().path = store().transform(arg);
+                if(this->transform)
+                    path = this->transform(arg);
 
-                if(!store().path.empty())   // Has any path to override the original with?
+                if(!path.empty())   // Has any path to override the original with?
                 {
-                    copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, store().path.c_str());
+                    if(this->postransform)
+                        path = this->postransform(std::move(path));
 
-                    // Make sure the file exists, if it does, change the parameter
-                    if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)
-                        arg = fullpath;
+                    if(!path.empty())
+                    {
+                        if(!IsAbsolutePath(path))
+                            copy_cstr(fullpath, fullpath + MAX_PATH, plugin_ptr->loader->gamepath, path.c_str());
+                        else
+                            strcpy(fullpath, path.c_str());
+
+                        // Make sure the file exists, if it does, change the parameter
+                        if(GetFileAttributesA(fullpath) != INVALID_FILE_ATTRIBUTES)
+                        {
+                            arg = fullpath;
+                            lpath = path.c_str();
+                        }
+                    }
                 }
 
-                // If the file type is known, log what we're loading
-                if(what && what[0] && plugin_ptr) plugin_ptr->Log("Loading %s \"%s\"", what, arg);
+                // Set ups the printer to print the next loading file
+                if(printer && !printer->print_next) // avoid double setuping
+                {
+                    printer->print_next = true;
+                    printer->lpath      = lpath;
+                    printer->is_custom  = (lpath != 0);
+                    printer->use_lpath  = (lpath != 0);
+                }
 
                 // Call the function with the new filepath
                 return fun(args...);
@@ -83,28 +202,69 @@ namespace modloader
         public:
 
             // Constructors, move constructors, assigment operators........
-            basic_file_detour() = default;
+            basic_file_detour() : printer(printer_t::instance()) {}
             basic_file_detour(const basic_file_detour&) = delete;
-            basic_file_detour(basic_file_detour&& rhs) : MyBase(std::move(rhs)) {}
+            basic_file_detour(basic_file_detour&& rhs)
+                : MyHooker(std::move(rhs)), path(std::move(rhs.path)),
+                transform(std::move(rhs.transform)), postransform(rhs.postransform),
+                printer(rhs.printer)    // (dont move the printer)
+            {}
             basic_file_detour& operator=(const basic_file_detour& rhs) = delete;
             basic_file_detour& operator=(basic_file_detour&& rhs)
-            { MyBase::operator=(std::move(rhs)); return *this; }
+            {
+                MyHooker::operator=(std::move(rhs));
+                this->path = std::move(rhs.path);
+                this->transform = std::move(rhs.transform);
+                this->postransform = std::move(rhs.postransform);
+                this->printer = rhs.printer; // (dont move the printer)
+                return *this;
+            }
+
+            ~basic_file_detour()
+            {
+                this->restore();
+            }
 
             // Makes the hook
             void make_call()
             {
-                MyBase::make_call(hook);
+                if(!this->has_hooked())
+                {
+                    if(printer) printer->incref();
+                    MyHooker::make_call([this](func_type func, Args&... args) -> Ret
+                    {
+                        return this->hook(std::move(func), args...);
+                    });
+                }
             }
 
+            // Restore need to also restore the printer
+            void restore()
+            {
+                if(printer && this->has_hooked()) printer->decref();
+                MyHooker::restore();
+            }
+
+            // Sets the file to override with
             void setfile(std::string path)
             {
-                make_call();
-                store().path = std::move(path);
+                this->make_call();
+                this->path = std::move(path);
             }
+
+            
+            //
+            // the following callbacks setupers follows file_overrider naming conventions not function_hookers
+            //
 
             void OnTransform(std::function<std::string(std::string)> functor)
             {
-                store().transform = std::move(functor);
+                this->transform = std::move(functor);
+            }
+
+            void OnPosTransform(std::function<std::string(std::string)> functor)
+            {
+                this->postransform = std::move(functor);
             }
     };
 
@@ -114,16 +274,13 @@ namespace modloader
             Made to easily override some game file
             Works better in conjunction with a file detour (basic_file_detour)
     */
-    template<unsigned int NumInjections = 1>
     struct file_overrider
     {
-        public:
-            typedef injector::scoped_basic<32> scoped_buffer_type;
-            static const auto num_injections = NumInjections;
-
         protected:
+            using injection_list_t = std::vector<std::unique_ptr<scoped_base>>;
+
+            injection_list_t injections;                    // List of injections attached to this overrider
             const modloader::file* file = nullptr;          // The file being used as overrider
-            scoped_buffer_type injection_buf[NumInjections];// Buffer to store scoped injection
             bool bCanReinstall = false;                     // Can this overrider get reinstalled?
             bool bCanUninstall = false;                     // Can this overrider get uninstalled?
 
@@ -141,24 +298,41 @@ namespace modloader
             file_overrider(const file_overrider&) = delete;     // cba to implement those
             file_overrider(file_overrider&&) = delete;          // ^^
 
-            // Get the injection buffer
-            injector::scoped_base& GetInjection(unsigned int i = 0)
-            {
-                return injection_buf[i];
-            }
+            // Injections accessors
+            size_t NumInjections() { return injections.size(); }
+            scoped_base& GetInjection(size_t i) { return *injections.at(i); }
             
+            // Checks if at this point of the game execution we can install stuff
+            bool CanInstall()
+            {
+                return (!plugin_ptr->loader->has_game_started || bCanReinstall);
+            }
+
+            // Checks if at this point of the game execution we can uninstall stuff
+            bool CanUninstall()
+            {
+                return (!plugin_ptr->loader->has_game_started || bCanUninstall);
+            }
+
             // Call to install/reinstall/uninstall the file (no file should be installed)
             bool InstallFile(const modloader::file& file)
             {
-                PerformInstall(&file);
-                return true;
+                if(this->CanInstall())
+                    return PerformInstall(&file);
+                return false;
+            }
+
+            //
+            bool Refresh()
+            {
+                return ReinstallFile();
             }
 
             // Reinstall the currently installed file
             bool ReinstallFile()
             {
                 // Can reinstall if the game hasn't started or if we can reinstall this kind
-                if(!plugin_ptr->loader->has_game_started || bCanReinstall)
+                if(this->CanInstall())
                     return PerformInstall(this->file);
                 return true;    // Mark as reinstalled anyway, so we won't happen to have a catastrophical failure
                                 // When both Reinstall and Uninstall fails, we have a problem.
@@ -168,7 +342,7 @@ namespace modloader
             bool UninstallFile()
             {
                 // Can uninstall if the game hasn't started or if we can uninstall this kind
-                if(!plugin_ptr->loader->has_game_started || bCanUninstall)
+                if(this->CanUninstall())
                     return PerformInstall(nullptr);
                 return false;
             }
@@ -195,15 +369,27 @@ namespace modloader
             // This overrides OnHook
             template<class ...Args> void SetFileDetour(Args&&... detourers_)
             {
-                std::reference_wrapper<scoped_base> d[] = { detourers_... };
-                for(int i = 0; i < sizeof...(Args); ++i)
-                    GetInjection(i) = std::move(d[i].get().template cast<scoped_buffer_type>());
+                this->injections.resize(sizeof...(detourers_));
+                HlpSetFileDetour<0>(std::forward<Args>(detourers_)...);
 
                 OnHook([this](const modloader::file* f)
                 {
                     Hlp_SetFile<sizeof...(Args), Args..., std::nullptr_t>(f);
                 });
             }
+
+        private:
+            template<size_t I>
+            void HlpSetFileDetour()
+            {}
+
+            template<size_t I, class Arg, class ...Args>
+            void HlpSetFileDetour(Arg&& detour, Args&&... detours)
+            {
+                injections.at(I).reset(new std::decay_t<Arg>(std::forward<Arg>(detour)));
+                return HlpSetFileDetour<I+1>(std::forward<Args>(detours)...);
+            }
+
 
         public: // Helpers for construction
             // Pack of basic boolean states to help the initialization of this object
@@ -250,6 +436,14 @@ namespace modloader
                 this->SetFileDetour(std::move(detour));
             }
 
+            // Installs the necessary hooking to load the specified file
+            // (done automatically but you can call it manually if you want to always have the hook in place)
+            void InstallHook()
+            {
+                if(mInstallHook) mInstallHook(this->file);
+            }
+
+        protected:
             // Perform a install for the specified file, if null, it will uninstall the currently installed file
             bool PerformInstall(const modloader::file* file)
             {
@@ -257,13 +451,6 @@ namespace modloader
                 if(mOnChange) mOnChange(this->file);
                 InstallHook(); TryReload();
                 return true;
-            }
-
-        protected:
-            // Installs the necessary hooking to load the specified file
-            void InstallHook()
-            {
-                if(mInstallHook) mInstallHook(this->file);
             }
 
             // Tries to reload (if necessary) the current file
@@ -285,19 +472,45 @@ namespace modloader
                 }
             }
 
-        protected:  // OMG, so much tricks, thank you MSVC for your poor variadic template implementation
+        protected: // Because we don't have expression SFINAE on MSVC 2013 we need to do this kind of trick: ( :/ )
+                   // Eh, we could actually use integral_constant...
 
             template<size_t i, class T, class ...Args>
             typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
             {
-                T& detourer = GetInjection(i-1).template cast<T>();      // Get this type
-                detourer.setfile(f? f->filepath() : "");      // Set file
-                return Hlp_SetFile<i-1, Args...>(f);            // Continue to the next type
+                T& detourer = static_cast<T&>(GetInjection(i-1));
+                detourer.setfile(f? f->filepath() : "");
+                return Hlp_SetFile<i-1, Args...>(f); 
             }
 
             template<size_t i, class T, class ...Args>
             typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
             {}  // The end of the args is represented with a nullptr_t
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
+            {
+                T& detourer = static_cast<T&>(GetInjection(i-1));
+                detourer.OnTransform(fn);
+                return Hlp_OnTransform<i-1, Args...>(fn);
+            }
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
+            {}  // The end of the args is represented with a nullptr_t
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
+            {
+                T& detourer = static_cast<T&>(GetInjection(i-1));
+                detourer.make_call();
+                return Hlp_MakeCall<i-1, Args...>(fn);
+            }
+
+            template<size_t i, class T, class ...Args>
+            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
+            {}  // The end of the args is represented with a nullptr_t
+
     };
 
 }

@@ -14,7 +14,6 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
  * 
  */
-
 #ifndef MODLOADER_HPP
 #define	MODLOADER_HPP
 #pragma once
@@ -265,7 +264,7 @@ namespace modloader
         this->fullpath(out);
         return out;
     }
-    
+
 
     // You need to use those to register the existence of your plugin
     #define REGISTER_ML_PLUGIN(plugin)  REGISTER_ML_PLUGIN_PTR(&plugin);

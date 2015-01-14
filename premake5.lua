@@ -106,7 +106,7 @@ end
 --[[
     Solution Setup Utilities
 --]]
-asm_extension = (_ACTION == "gmake" and "s" or "c")
+asm_extension = (_ACTION == "gmake" and "s" or "cc")    -- (note: dont use .c as the extension for msvc, breaks pch)
 
 function binarydir(dir)
     targetdir("bin/" .. dir)
@@ -122,12 +122,23 @@ function setupfiles(dir)
     }
 end
 
+function pchsetup(pchdir)
+    pchheader "stdinc.hpp"
+    pchsource "src/shared/stdinc/stdinc.cpp"
+    files { "src/shared/stdinc/stdinc.cpp" }
+    includedirs { pchdir }
+end
+
 function addplugin(name)
+
+    local directory = ("src/plugins/gta3/" .. name .. "/")
+    local has_pch   = os.isfile(directory .. "/stdinc.hpp")
+    local pch_dir   = has_pch and directory or "src/shared/stdinc/gta3/"
 
     project(name)
         language "C++"
         kind "SharedLib"
-
+        
         binarydir "plugins/gta3"
         addinstall({
             isdir = false,
@@ -136,21 +147,27 @@ function addplugin(name)
         })
 
         includedirs {
-            "src/structs/gta3"
+            "src/shared/game/gta3"
         }
 
         links { "addr" }
         dependson { "modloader" }
-        setupfiles("src/plugins/gta3/" .. name)
+        setupfiles(directory)
+        pchsetup(pch_dir)
     
 end
 
 function dummyproject()
+
+    kind "Makefile"
+    language "C++"
+    flags { "NoPCH" }
+
     -- Dummy cpp file for Premake's generated none  project (bug workaround)
     configuration "gmake"
-        language "C++"
         kind "StaticLib"
         files { "deps/dummy.cpp" }
+        
     configuration {}
 end
 
@@ -172,9 +189,8 @@ solution "modloader"
         "StaticRuntime",
         "Symbols",          -- Produce symbols whenever possible for logging purposes
         "NoImportLib",      -- Mod Loader itself and it's plugins are dlls which exports some funcs but a implib isn't required
-        "NoRTTI",
-        "NoBufferSecurityCheck",
-        "NoPCH"
+        --"NoRTTI", (std.data uses it now on handling.cpp)
+        "NoBufferSecurityCheck"
     }
 
     defines {
@@ -190,11 +206,15 @@ solution "modloader"
 
     includedirs {
         "include",
+        "deps/cereal/include",
         "deps/injector/include",
         "deps/ini_parser/include",
         "deps/fxt_parser/include",
-        "src/util",
-        "src/traits"
+        "deps/datalib/include",
+        "deps/type_wrapper/include",
+        "deps/boost",
+        "deps/tinympl",
+        "src/shared",
     }
 
     configuration "Debug*"
@@ -208,17 +228,12 @@ solution "modloader"
         buildoptions { "-std=gnu++11" }
 
 
-    project "addr"
-        language "C++"
-        kind "StaticLib"
-        setupfiles "src/address_translator"
-
     project "docs"
-        kind "Makefile"
         dummyproject()
         files { "doc/**" }
         dependson { "modloader" }
         addinstall { source = "LICENSE",                        destination = "modloader/.data"         }
+        addinstall { source = "doc/licenses",                   destination = "modloader/.data/licenses"}
         addinstall { source = "doc/text",                       destination = "modloader/.data/text"    }
         addinstall { source = "doc/readme",                     destination = "modloader/.data"         }
         addinstall { source = "doc/plugins",                    destination = "modloader/.data/plugins" }
@@ -227,7 +242,12 @@ solution "modloader"
         addinstall { source = "doc/config/plugins.ini.0",       destination = "modloader/.data"         }
         addinstall { source = "doc/CHANGELOG.md",               destination = "modloader/.data"         }
         addinstall { source = "doc/Command Line Arguments.md",  destination = "modloader/.data"         }
-        
+
+    project "addr"
+        language "C++"
+        kind "StaticLib"
+        flags { "NoPCH" }
+        setupfiles "src/translator"
 
     project "modloader"
         language "C++"
@@ -239,6 +259,11 @@ solution "modloader"
         links { "addr", "shlwapi", "dbghelp" }
         setupfiles "include"
         setupfiles "src/core"
+        pchsetup "src/core"
+
+    project "shared"
+        dummyproject()
+        setupfiles "src/shared"
 
 
     local gta3_plugins = {  -- ordered by time taken to compile
@@ -249,12 +274,13 @@ solution "modloader"
         "std.text",
         "std.bank",
         "std.stream",
-        "std.asi"
+        "std.asi",
+        "std.data"
     }
 
     project "build_gta3"
-        kind "Makefile"
         dummyproject()
+        dependson("modloader")
         dependson(gta3_plugins)
 
         for i, name in ipairs(gta3_plugins) do

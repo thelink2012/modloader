@@ -5,9 +5,7 @@
  *  std.movies -- Standard Movies Plugin for Mod Loader
  *
  */
-#include <modloader/modloader.hpp>
-#include <modloader/util/hash.hpp>
-#include <modloader/gta3/gta3.hpp>
+#include <stdinc.hpp>
 using namespace modloader;
 
 /*
@@ -20,8 +18,8 @@ class MediaPlugin : public modloader::basic_plugin
         uint32_t GTAtitles;         // Hash for GTAtitles.mpg
         uint32_t GTAtitlesGER;      // Hash for GTAtitlesGER.mpg
 
-        file_overrider<> logo_detour;
-        file_overrider<> titles_detour;
+        file_overrider logo_detour;
+        file_overrider titles_detour;
 
     public:
         const info& GetInfo();
@@ -63,7 +61,7 @@ bool MediaPlugin::OnStartup()
         this->GTAtitles     = modloader::hash("gtatitles.mpg");
         this->GTAtitlesGER  = modloader::hash("gtatitlesger.mpg");
 
-        auto params = file_overrider<>::params(true, true, false, false);
+        auto params = file_overrider::params(true, true, false, false);
         logo_detour.SetParams(params).SetFileDetour(CreateVideoPlayerDetour<0x748B00>());
         titles_detour.SetParams(params).SetFileDetour(CreateVideoPlayerDetour<0x748BF9>());
         return true;

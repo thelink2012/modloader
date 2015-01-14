@@ -38,7 +38,7 @@ If you just want to disable the mod for a while, go to the in-game menu and disa
 
 - Do not replace **ANY** original file, never, really.
 - Let Mod Loader take care of everything
-    + Data files mixing.
+    + Data files merging.
         * Therefore you can for example have 70 handling.cfg files at modloader and they'll all work perfectly fine.
     + Readme files reading
         * No need to care about taking the data line from the readme file and placing in the data file, Mod Loader does that for you too!
@@ -73,7 +73,8 @@ When reporting a bug **PLEASE, FOR GOD'S SAKE** provide the *modloader/modloader
 
 Not all executables are supported at the moment, the supported ones are:
 
- + 1.0 US *(Original, HOODLUM, Listener's Compact)*
+ + 1.0 US *(all versions)*
+ + 1.0 EU *(all versions)
 
 ## Download
 

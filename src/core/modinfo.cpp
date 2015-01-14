@@ -3,8 +3,8 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
+#include <stdinc.hpp>
 #include "loader.hpp"
-#include <modloader/util/hash.hpp>
 using namespace modloader;
 
 /*
@@ -39,7 +39,7 @@ struct FileInstallLog
  */
 void Loader::ModInformation::Scan()
 {
-    scoped_gdir xdir(this->path.c_str());
+    ::scoped_gdir xdir(this->path.c_str());
     Log("\nScanning files at \"%s\"...", this->path.c_str());
     
     static auto modloader_subfolder = NormalizePath("modloader");

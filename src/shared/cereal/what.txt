@@ -1,0 +1,1 @@
+Some types cereal library doesn't yet support

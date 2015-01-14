@@ -1,3 +1,19 @@
+v0.2.2 (Jan 13 2014)
+------------------------
+ * The game version *GTA San Andreas 1.0 EU* is now supported.
+ * The data merger and overriden plugin *std.data* is back up and running but even better.
+ * Just like before, *gta.dat, .ipl, .ide, handling.cfg, carmods.dat plants.dat, water.dat* mergers and *timecyc.dat & popcycle.dat* overriders are supported...
+ * Just like before, again, reading data lines from readme files are suppported *(gta.dat, handling.cfg, carmods.dat, carcols.dat, veh_mods.ide, vehicles.ide, peds.ide)*.
+ * Seeking our current goals, all those data files and readmes are refreshable in game except for *gta.dat* and it's friends *.ipl and .ide*.
+ * Implemented *carcols.dat* merger and readme reader.
+ * Implemented caching for mergeable data files so it does not need to merge every time the game loads.
+ * Any custom timecyc is now loaded properly on SAMP.
+ * Lazy loading of *default.dat* & *gta.dat* which allows a dynamic loading screen progress, fixing it flickering when there's few entries in gta.dat.
+ * IPL and IDE files given to modloader don't need to be registered in *gta.dat* to work nor they need to be in the *correct path*.
+ * Fixed the loader not creating the default *plugin.ini* file.
+ * Fixed Mod Loader FXT hooks mistakenly relying on CLEO hooks.
+ * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.
+
 v0.2.1 (Nov 23 2014)
 ------------------------
  * The COLFILE command for gta.dat works completly fine now *(SA bug fix)*
@@ -28,7 +44,7 @@ v0.2.0 (Aug 02 2014)
  * __Hotfix 1 (Aug 03 2014)__:
     + Fixed streamed ifp files not being handled
     + Fixed streamed col/rrr/scm files not being re-registered properly
-
+ 
 v0.1.15 (Mar 05 2014)
 ------------------------
  * CLEO scripts injection works with CLEO 4.1 and below
@@ -93,7 +109,7 @@ v0.1.5 (Jan 11 2014)
  * Collision files now works properly
  * Other minor fixes
 
-v0.1 (Dec 30 2013)
+v0.1.0 (Dec 30 2013)
 ------------------------
  * First public release
 

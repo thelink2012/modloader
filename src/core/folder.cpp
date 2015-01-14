@@ -3,9 +3,8 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
+#include <stdinc.hpp>
 #include "loader.hpp"
-#include <shlwapi.h>
-#include <ini_parser/ini_parser.hpp>
 using namespace modloader;
 
 // TODO priority set at runtime
@@ -253,7 +252,7 @@ auto Loader::FolderInformation::GetModsByName() -> ref_list<ModInformation>
  */
 void Loader::FolderInformation::Scan()
 {
-    scoped_gdir xdir(this->path.c_str());
+    ::scoped_gdir xdir(this->path.c_str());
     Log("\n\nScanning mods at \"%s\"...", this->path.c_str());
 
     bool fine = true;

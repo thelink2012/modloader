@@ -1,6 +1,5 @@
 gta3.std.text
 =========================================================================
- + __Version__:  Reloaded 0.1
  + __Author__:   LINK/2012 (<dma_2012@hotmail.com>)
  + __Priority__: 50
 
@@ -11,3 +10,4 @@ __Description__:
   
   * GTA Text Files  (gxt)
   * Fake Text Files (fxt)
+

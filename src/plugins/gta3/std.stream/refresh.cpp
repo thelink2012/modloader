@@ -4,10 +4,8 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
+#include <stdinc.hpp>
 #include "streaming.hpp"
-#include <set>
-#include <CPool.h>
-#include <traits/gta3/sa.hpp>
 using namespace modloader;
 
 class CAnimBlendAssociation;

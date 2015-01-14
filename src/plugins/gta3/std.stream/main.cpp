@@ -4,12 +4,9 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
+#include <stdinc.hpp>
 #include "streaming.hpp"
-#include <modloader/util/file.hpp>
-#include <modloader/util/path.hpp>
-#include <modloader/util/injector.hpp>
-#include <modloader/gta3/gta3.hpp>
-using namespace modloader;
+//using namespace modloader;
 
 
 /*
@@ -18,7 +15,7 @@ using namespace modloader;
 class ThePlugin : public modloader::basic_plugin
 {
     private:
-        file_overrider<> ov_ped_ifp;
+        file_overrider ov_ped_ifp;
 
     public:
         const info& GetInfo();
@@ -61,7 +58,7 @@ bool ThePlugin::OnStartup()
         streaming.Patch();
 
         // Setup ped.ifp overrider
-        ov_ped_ifp.SetParams(file_overrider<>::params(nullptr));
+        ov_ped_ifp.SetParams(file_overrider::params(nullptr));
         ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());
 
         return true;
@@ -130,8 +127,16 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                 case ResType::StreamedScene:
                 {
                     // Make sure this is a binary IPL by reading the file magic
-                    if(IsFileMagic(file.fullpath().c_str(), "bnry"))
-                        break;
+                    char buf[4];
+                    if(FILE* f = fopen(file.fullpath().c_str(), "rb"))
+                    {
+                        if(fread(buf, 4, 1, f) && !memcmp(buf, "bnry", 4))
+                        {
+                            fclose(f);
+                            break;
+                        }
+                        fclose(f);
+                    }
                     return MODLOADER_BEHAVIOUR_NO;
                 }
 

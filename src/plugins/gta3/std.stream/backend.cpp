@@ -4,11 +4,8 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
+#include <stdinc.hpp>
 #include "streaming.hpp"
-#include "CdStreamInfo.h"
-#include "CDirectory.h"
-#include <modloader/util/injector.hpp>
-#include <modloader/util/path.hpp>
 using namespace modloader;
 
 extern "C"
@@ -36,7 +33,11 @@ extern "C"
     void RegisterNextModelRead(int id)
     {
         iNextModelBeingLoaded = id;
-        streaming.MakeSureModelIsOnDisk(id);
+        if(streaming.DoesModelNeedsFallback(id))    // <- make sure the resource hasn't been deleted from disk
+        {
+            plugin_ptr->Log("Resource id %d has been deleted from disk, falling back to stock model.", id);
+            streaming.FallbackResource(id, true);   // forceful but safe since we are before info setup in RequestModelStream
+        }
     }
 
     static HANDLE __stdcall CreateFileForCdStream(
@@ -256,27 +257,24 @@ void CAbstractStreaming::CloseModel(AbctFileHandle* file)
 }
 
 /*
- *  CAbstractStreaming::MakeSureModelIsOnDisk
+ *  CAbstractStreaming::DoesModelNeedsFallback
  *      If the specified model id is under our control, make entirely sure it's present on disk.
- *      If it isn't, we'll fallback to the original mode on img files.
+ *      If it isn't, return false for fallback.
  */
-void CAbstractStreaming::MakeSureModelIsOnDisk(id_t index)
+bool CAbstractStreaming::DoesModelNeedsFallback(id_t index)
 {
     auto it = imports.find(index);
     if(it != imports.end())
     {
         auto& m = it->second;
-        if(m.isFallingBack == false)    // If already falling back, don't check again
+        if(m.isFallingBack == false)    // If already falling back, don't check for file existence again
         {
             // If file isn't on disk we should fall back to the stock model
             if(!IsPath(m.file->fullpath(fbuffer).c_str()))
-            {
-                plugin_ptr->Log("Model file \"%s\" has been deleted, falling back to stock model.", m.file->filepath());
-                this->RestoreInfoForModel(index);
-                m.isFallingBack = true;
-            }
+                return true;
         }
     }
+    return false;
 }
 
 
@@ -496,10 +494,21 @@ void CAbstractStreaming::Patch()
 
         // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
         static void* pCreateFileForCdStream = (void*) &CreateFileForCdStream;
-        static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);  // Used on the obfuscated executable
 
         if(gvm.IsSA() && gvm.IsHoodlum())
-            injector::WriteMemory(raw_ptr(0x01564B56 + 1), &SRXorCreateFileForCdStream, true);
+        {
+            static uintptr_t SRXorCreateFileForCdStream = 0x214D4C48 ^ (uintptr_t)(&pCreateFileForCdStream);
+            memory_pointer_raw p;
+
+            if(gvm.IsUS())
+                p = raw_ptr(0x01564B56 + 1);
+            else if(gvm.IsEU())
+                p = raw_ptr(0x01564AED + 1);
+            else
+                plugin_ptr->Error("SRXorCreateFileForCdStream patch failed");
+
+            injector::WriteMemory(p, &SRXorCreateFileForCdStream, true);
+        }
         else
             injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
     }

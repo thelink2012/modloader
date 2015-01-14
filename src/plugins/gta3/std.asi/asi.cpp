@@ -6,10 +6,8 @@
  *      Loads ASI files as libraries and CLEO scripts
  * 
  */
-#include <map>
+#include <stdinc.hpp>
 #include "asi.h"
-#include <modloader/util/detour.hpp>
-#include <modloader/util/path.hpp>
 using namespace modloader;
 
 // TODO THIS PLUGIN NEEDS REVISION -- AFTER THE CORE CHANGE MOST OF THE CODE HERE IS LEGACY

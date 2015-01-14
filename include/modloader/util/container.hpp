@@ -77,12 +77,16 @@ namespace modloader
     
     inline int compare(const std::string& str1, const std::string& str2, bool case_sensitive)
     {
-        return strcmp(str1.c_str(), str2.c_str(), case_sensitive);
+        if(str1.length() == str2.length())
+            return strcmp(str1.c_str(), str2.c_str(), case_sensitive);
+        return (str1.length() < str2.length()? -1 : 1);
     }
     
     inline int compare(const std::string& str1, const std::string& str2, size_t num, bool case_sensitive)
     {
-        return strcmp(str1.c_str(), str2.c_str(), num, case_sensitive);
+        if(str1.length() == str2.length())
+            return strcmp(str1.c_str(), str2.c_str(), num, case_sensitive);
+        return (str1.length() < str2.length()? -1 : 1);
     }
     
     inline int compare(const char* str1, const char* str2, bool case_sensitive)
@@ -103,7 +107,7 @@ namespace modloader
             if(case_sensitive)
                 equal = (*str++ == *prefix++);
             else
-                equal = (tolower(*str++) == tolower(*prefix++));
+                equal = (::tolower(*str++) == ::tolower(*prefix++));
             
             if(!equal) return false;
         }
@@ -250,7 +254,7 @@ namespace modloader
 
 
     template<class MapT>
-    inline void EraseFromMap(MapT& map, const typename MapT::mapped_type& value)
+    inline void erase_from_map(MapT& map, const typename MapT::mapped_type& value)
     {
         for(auto it = map.begin(); it != map.end(); ++it)
         {

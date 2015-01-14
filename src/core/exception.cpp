@@ -11,12 +11,8 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * 
  */
-#include <windows.h>
-#include <dbghelp.h>
-#include <cstdio>
-#include <cstdarg>
-#include <cstdint>
-#include <cassert>
+#include <stdinc.hpp>
+#include "loader.hpp"
 
 /*
     Special Note:

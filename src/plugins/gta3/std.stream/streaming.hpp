@@ -232,6 +232,7 @@ class CAbstractStreaming
         void LoadAllRequestedModels();
         void RemoveUnusedResources();
         bool IsModelOnStreaming(id_t id);
+        bool IsModelAvailable(id_t id);
         CStreamingInfo* InfoForModel(id_t id = 0);
 
         // Checks if file is clothing item
@@ -265,13 +266,13 @@ class CAbstractStreaming
 
         // Misc (used by hooks)
         const char* GetCdStreamPath(const char* filepath);
-        void MakeSureModelIsOnDisk(id_t id);
+        bool DoesModelNeedsFallback(id_t id);
         static HANDLE TryOpenAbstractHandle(int index, HANDLE hFile);
 
     private:
         // Fetching and loading of cd directories
         void FetchCdDirectory(TempCdDir_t& cd_dir, const char*& filename, int id);
-        void FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)());
+        void FetchCdDirectories(TempCdDir_t& cd_dir, std::function<void()> LoadCdDirectories);
         void LoadCdDirectories(TempCdDir_t& cd_dir);
         void LoadAbstractCdDirectory(ref_list<const modloader::file*> files);
         void BuildPrevOnCdMap();
@@ -336,6 +337,33 @@ class CAbstractStreaming
         {
             auto prev_pair = prev_on_cd.find(id);
             if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->nextOnCd = id;
+        }
+
+    public://protected:
+
+        // Makes a previosly imported file use the stock resource info instead the one on disk.
+        // The force parameter may only be true from an call before info setup in CStreaming::RequestModelStream, otherwise it's undefined behaviour.
+        // Notice: This doesn't remove the file from the imported resource list and needs the resource to not be on the streaming
+        // The user cases for this function are recuperation from failures. Don't do anything fancy here, critical call! Use with care!
+        bool FallbackResource(id_t index, bool force = false)
+        {
+            auto imp = this->imports.find(index);
+            if(imp != imports.end() && imp->second.isFallingBack == false)
+            {
+                if(force == false && this->IsModelOnStreaming(index))
+                {
+                    plugin_ptr->Log("Failed to fallback resource id %d because it's loaded", index);
+                    return false;
+                }
+                else
+                {
+                    plugin_ptr->Log("Falling back resource id %d to stock resource", index);
+                    this->RestoreInfoForModel(imp->first);
+                    imp->second.isFallingBack = true;
+                    return true;
+                }
+            }
+            return false;
         }
 
 

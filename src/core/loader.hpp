@@ -369,7 +369,9 @@ class Loader : public modloader_t
         // Directories
         std::string     gamePath;               // Full game path
         std::string     dataPath;               // .data path
-        std::string     cachePath;              // Cache path (relative to game path)
+        //std::string     cachePath;              // Cache path (relative to game path) (deprecated for globalAppDataPath)
+        std::string     commonAppDataPath;      // for all users AppData path
+        std::string     localAppDataPath;       // for the current user AppData path
         std::string     pluginPath;             // Plugins path (relative to game path)
         
         std::string     basicConfig;
@@ -542,9 +544,6 @@ struct scoped_gdir : public modloader::scoped_chdir
     scoped_gdir(const char* newdir) : scoped_chdir((!newdir[0]? loader.gamePath : loader.gamePath + newdir).data())
     { }
 };
-
-
-
 
 
 #endif

@@ -4,9 +4,8 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
+#include <stdinc.hpp>
 #include "streaming.hpp"
-#include <modloader/util/injector.hpp>
-#include <modloader/util/container.hpp>
 using namespace modloader;
 
 CAbstractStreaming streaming;
@@ -44,6 +43,15 @@ CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
 bool CAbstractStreaming::IsModelOnStreaming(id_t id)
 {
     return InfoForModel(id)->load_status != 0;
+}
+
+/*
+ *  CAbstractStreaming::IsModelAvailable
+ *      Checks if the specified model is available to use (i.e. already loaded).
+ */
+bool CAbstractStreaming::IsModelAvailable(id_t id)
+{
+    return InfoForModel(id)->load_status == 1;
 }
 
 /*
@@ -196,7 +204,7 @@ bool CAbstractStreaming::UninstallFile(const modloader::file& file)
         if(!IsClothes(&file))
         {
             // Remove special model (if it is a special model)
-            EraseFromMap(special, &file);     
+            erase_from_map(special, &file);     
 
             // Mark the specified file [hash] to be vanished
             this->to_import[file.hash] = nullptr;
@@ -259,7 +267,7 @@ void CAbstractStreaming::UnimportModel(id_t index)
 {
     // Remove special model related to this index if possible
     auto it = imports.find(index);
-    if(it != imports.end()) EraseFromMap(special, it->second.file);
+    if(it != imports.end()) erase_from_map(special, it->second.file);
 
     // Restore model information to stock and erase it from the import list
     this->RestoreInfoForModel(index);

@@ -4,10 +4,8 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
-#include <windows.h>
+#include <stdinc.hpp>
 #include "streaming.hpp"
-#include "CDirectory.h"
-#include <modloader/util/path.hpp>
 using namespace modloader;
 
 // Hooks and other util stuff
@@ -106,7 +104,7 @@ static void PerformDirectoryRead(size_t size,
  *  CAbstractStreaming::FetchCdDirectories
  *      Fetches (but do not load) the cd directories into @cd_dir
  */
-void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, void(*LoadCdDirectories)())
+void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, std::function<void()> LoadCdDirectories)
 {
     using namespace std::placeholders;
     typedef function_hooker<0x5B8310, void(const char*, int)> fetchcd_hook;

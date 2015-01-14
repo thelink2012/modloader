@@ -73,7 +73,8 @@ Quando tiver reportando o bug, **POR FAVOR, PELO AMOR DE DEUS**, forneça o arqu
 
 Nem todos os executaveis são suportados no momento, os suportados são:
 
- + 1.0 US *(Original, HOODLUM, Listener's Compact)*
+ + 1.0 US *(todas as versões)*
+ + 1.0 EU *(todas as versões)*
 
 ## Download
 

@@ -6,9 +6,8 @@
  *  std.text -- Standard GTA Text Loader Plugin for Mod Loader
  *
  */
-#include <modloader/modloader.hpp>
-#include <modloader/gta3/gta3.hpp>
-#include <modloader/util/fxt.hpp>
+#include <stdinc.hpp>
+#include <modloader/gta3/fxt.hpp>
 using namespace modloader;
 
 static const uint64_t hash_mask   = 0x00000000FFFFFFFF;     // Mask for the hash on the behaviour

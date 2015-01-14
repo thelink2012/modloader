@@ -6,9 +6,9 @@
  *      Loads ASI files as libraries
  * 
  */
+#include <stdinc.hpp>
 #include "asi.h"
 #include "args_translator/translator.hpp"
-#include <map>
 #include <tlhelp32.h>
 
 using namespace modloader;
