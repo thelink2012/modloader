@@ -1,4 +1,4 @@
-v0.2.2 (In Dev)
+v0.2.2 (Jan 13 2014)
 ------------------------
  * The game version *GTA San Andreas 1.0 EU* is now supported.
  * The data merger and overriden plugin *std.data* is back up and running but even better.
