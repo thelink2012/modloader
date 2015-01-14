@@ -8,6 +8,7 @@
  *
  */
 #include <stdinc.hpp>
+#include <regex/regex.hpp>
 using namespace modloader;
 
 
@@ -93,7 +94,9 @@ bool ScriptSpritesPlugin::OnShutdown()
  */
 int ScriptSpritesPlugin::GetBehaviour(modloader::file& file)
 {
-    if(!file.is_dir() && file.is_ext("txd") && IsFileInsideFolder(file.filedir(), true, "txd"))
+    static auto sprite_regex = make_regex(R"___(^.*models[\\/]txd/\w{1,8}\.txd$)___",
+                                          sregex::ECMAScript|sregex::optimize|sregex::icase);
+    if(!file.is_dir() && file.is_ext("txd") && regex_match(std::string(file.filedir()), sprite_regex))
     {
         file.behaviour = file.hash;
         return MODLOADER_BEHAVIOUR_YES;

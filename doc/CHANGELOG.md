@@ -1,4 +1,4 @@
-v0.2.2 (Jan 13 2014)
+v0.2.2 (Jan 13 2015)
 ------------------------
  * The game version *GTA San Andreas 1.0 EU* is now supported.
  * The data merger and overriden plugin *std.data* is back up and running but even better.
@@ -13,6 +13,9 @@ v0.2.2 (Jan 13 2014)
  * Fixed the loader not creating the default *plugin.ini* file.
  * Fixed Mod Loader FXT hooks mistakenly relying on CLEO hooks.
  * Fixed the fixed COLFILE command which fixes the game's COLFILE gta.dat command being problematic with zero-sized collision files.
+
+ * __Hotfix 1 (Jan 14 2014)__:
+    + Fixed some textures being detected as sprites because of it's path.
 
 v0.2.1 (Nov 23 2014)
 ------------------------
