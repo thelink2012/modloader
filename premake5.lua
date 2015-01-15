@@ -138,6 +138,10 @@ function addplugin(name)
     project(name)
         language "C++"
         kind "SharedLib"
+
+configuration "vs*"
+buildoptions { "/arch:IA32" }   -- disable the use of SSE/SSE2 instructions (old game, old computers)
+configuration {}
         
         binarydir "plugins/gta3"
         addinstall({
@@ -226,7 +230,8 @@ solution "modloader"
 
     configuration "gmake"
         buildoptions { "-std=gnu++11" }
-
+    configuration "vs*"
+        buildoptions { "/arch:IA32" }   -- disable the use of SSE/SSE2 instructions (old game, old computers)
 
     project "docs"
         dummyproject()

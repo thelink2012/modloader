@@ -94,7 +94,7 @@ bool ScriptSpritesPlugin::OnShutdown()
  */
 int ScriptSpritesPlugin::GetBehaviour(modloader::file& file)
 {
-    static auto sprite_regex = make_regex(R"___(^.*models[\\/]txd/\w{1,8}\.txd$)___",
+    static auto sprite_regex = make_regex(R"___(^.*models[\\/]txd[\\/]\w{1,8}\.txd$)___",
                                           sregex::ECMAScript|sregex::optimize|sregex::icase);
     if(!file.is_dir() && file.is_ext("txd") && regex_match(std::string(file.filedir()), sprite_regex))
     {
