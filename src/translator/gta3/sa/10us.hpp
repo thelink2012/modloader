@@ -107,6 +107,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x8E4CAC] = 0x8E4CAC;   // void* CStreaming::ms_pStreamingBuffer[2]
         map[0x8E4CA8] = 0x8E4CA8;   // unsigned int CStreaming::ms_streamingBufferSize
 
+        map[0x72F420] = 0x72F420;   // _ZN10CMemoryMgr6MallocEj
         map[0x72F4C0] = 0x72F4C0;   // _ZN10CMemoryMgr11MallocAlignEjj
         map[0x72F4F0] = 0x72F4F0;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x532310;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
@@ -171,6 +172,9 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B4FB5] = 0x5B4FB5;   // call    _ZN11CFileLoader18LoadCollisionModelEPhR9CColModelPKc
         map[0x5B4F83] = 0x5B4F83;   // call    _ZN11CFileLoader22LoadCollisionModelVer3EPhjR9CColModelPKc
         map[0x5B92F9] = 0x5B92F9;   // call    _ZN8CFileMgr9CloseFileEi
+
+        // Other SA fixes
+        map[0x6B89CE] = 0x6B89CE;   // mov     eax, [edi+10h]
     }
 
     // std.bank

@@ -20,6 +20,7 @@ REGISTER_ML_NULL();
 // Mod Loader object
 Loader loader;
 
+void TestWatcher();//TODO REMOVE
 
 /*
  * DllMain
@@ -186,7 +187,8 @@ void Loader::Startup()
         this->StartupMenu();
         this->LoadPlugins();        // Load plugins at /modloader/.data/plugins
         this->ScanAndUpdate();      // Search and install mods at /modloader
- 
+        this->StartupWatcher();     // Startups the automatic refresher
+
         // Startup successfully
         this->bRunning = true;
         Log("\nMod Loader has started up!\n");
@@ -203,11 +205,12 @@ void Loader::Shutdown()
     {
         // Unload the plugins
         Log("\nShutting down Mod Loader...");
+        this->ShutdownWatcher();
+        this->ShutdownMenu();
         this->UnloadPlugins();
         Log("Mod Loader has been shutdown.");
         
         // Finish containers
-        this->ShutdownMenu();
         this->plugins_priority.clear();
         this->extMap.clear();
         this->mods.Clear();
@@ -227,6 +230,7 @@ void Loader::Tick()
     static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
     this->has_game_started = (gGameState >= 7);
     this->has_game_loaded  = (gGameState >= 9);
+    this->CheckWatcher();   // updates from changes in the filesystem
     this->TestHotkeys();
 }
 
@@ -390,6 +394,17 @@ void Loader::ScanAndUpdate()
 {
     Updating xup;
     mods.Scan();
+    mods.Update();
+}
+
+/*
+ *  Loader::UpdateFromJournal
+ *       Updates mods that changed in the last few seconds specified in the journal
+ */
+void Loader::UpdateFromJournal(const Journal& journal)
+{
+    Updating xup;
+    mods.Scan(journal);
     mods.Update();
 }
 

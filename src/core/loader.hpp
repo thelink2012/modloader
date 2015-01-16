@@ -61,13 +61,7 @@ class Loader : public modloader_t
         static const int default_priority = 50;         // Default priority for mods
         static const int default_cmd_priority = 20;     // Default priority for mods sent by command line
 
-        // Forwarding declarations
-        class ModInformation;
-        class FileInformation;
-        class PluginInformation;
-        class FolderInformation;
-        typedef std::map<std::string, ref_list<PluginInformation>> ExtMap;
-        
+
         // File flags
         enum class FileFlags : decltype(modloader::file::flags)
         {
@@ -93,7 +87,13 @@ class Loader : public modloader_t
         };
         
         
-        
+        // Forwarding declarations
+        class ModInformation;
+        class FileInformation;
+        class PluginInformation;
+        class FolderInformation;
+        using ExtMap = std::map<std::string, ref_list<PluginInformation>>;
+        using Journal = std::map<std::string, Loader::Status>;  // [{".", Status::Updated}] means refresh all
         
         
         // Information about a Mod Loader plugin
@@ -301,6 +301,7 @@ class Loader : public modloader_t
                 
                 // Scanning and Updating
                 void Scan();
+                void Scan(const Journal&);
                 void Update();  // After this call some ModInformation may have been deleted
                 static void Update(ModInformation& mod);    // ^
                 
@@ -413,10 +414,13 @@ class Loader : public modloader_t
     private:
         void StartupMenu();
         void ShutdownMenu();
+        void StartupWatcher();
+        void ShutdownWatcher();
+        void CheckWatcher();
         void TestHotkeys();
         void ParseCommandLine();
         void Tick();
-        
+
     public:
         
         // Constructor
@@ -444,6 +448,7 @@ class Loader : public modloader_t
         
         // Scan and update (install) the mods
         void ScanAndUpdate();
+        void UpdateFromJournal(const Journal& journal);
         
         // Finds the plugin that'll handle the file @m, or that needs to get called (@out_callme)
         PluginInformation* FindHandlerForFile(modloader::file& m, ref_list<PluginInformation>& out_callme);

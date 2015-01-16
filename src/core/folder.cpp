@@ -269,7 +269,7 @@ void Loader::FolderInformation::Scan()
     MarkStatus(this->mods, Status::Removed);
 
     // Walk on this folder to find mods
-    if (this->IsIgnoring() == false)
+    if(this->IsIgnoring() == false)
     {
         fine = FilesWalk("", "*.*", false, [this](FileWalkInfo & file)
         {
@@ -299,6 +299,36 @@ void Loader::FolderInformation::Scan()
                 this->status = Status::Updated;
         }
     }
+}
+
+/*
+ *  FolderInformation::Scan (from Journal)
+ *      Rescans mods at this folder that are present in the change journal
+ *      This method only scans, to update using the scanned information, call Update()
+ */
+void Loader::FolderInformation::Scan(const Journal& journal)
+{
+    ::scoped_gdir xdir(this->path.c_str());
+
+    if(this->IsIgnoring() == false)
+    {
+        for(auto& change : journal)
+        {
+            if(change.second == Status::Removed)
+            {
+                auto it = this->mods.find(change.first);
+                if(it != this->mods.end()) it->second.status = Status::Removed;
+            }
+            else if(change.second == Status::Added
+                 || change.second == Status::Updated)
+            {
+                if(IsIgnored(change.first) == false)
+                    this->AddMod(change.first).Scan();
+            }
+        }
+    }
+
+    UpdateStatus(*this, this->mods, true);
 }
 
 /*
