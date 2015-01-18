@@ -18,7 +18,8 @@ ML_F0EL Enable Logging
 ML_F0LF Log Immediate Flush
 ML_F0LS Log Maximum Size
 ML_F0MM Modifications
-ML_F0RR Rescan Modifications
+ML_F0RR Refresh Modifications
+ML_F0RA Automatic Refresh
 
 # Modifications Page (Dynamic)
 ML_FMHH Modifications
@@ -53,6 +54,7 @@ ML_H0EL ON/OFF the log file.~n~OFF Increases performance.
 ML_H0LF ON/OFF flushing log to disk.~n~OFF Increases performance.
 ML_H0LS Maximum size of the log file on disk.
 ML_H0RR Rescan and reinstall mods
+ML_H0RA ON/OFF the automatic detection of changes.
 ML_HMHH Type some keywords to find a mod.~n~Use ~<~~>~ to switch pages.
 
 

@@ -6,7 +6,6 @@
 #include <stdinc.hpp>
 #include "loader.hpp"
 #include <regex/regex.hpp>
-#include <chrono>
 using namespace modloader;
 using time_point = std::chrono::steady_clock::time_point;
 
@@ -16,10 +15,10 @@ using time_point = std::chrono::steady_clock::time_point;
  */
 
 // How much time between filesystem changes to execute a reupdate?
-static auto refresh_delay = std::chrono::seconds(3);
+static auto refresh_delay = std::chrono::milliseconds(1000);
 
 // Threading variables
-static HANDLE hThread;          // I/O thread used to watch over the file system
+static HANDLE hThread = NULL;   // I/O thread used to watch over the file system
 static HANDLE hDirectory;       // Handle to modloader/ directory, which we'll be watching
 static OVERLAPPED overlapped;   // Watches using async I/O    
 static CRITICAL_SECTION mutex;  // Used to avoid data races to 'last_change' and 'journal' variables
@@ -39,35 +38,38 @@ static Loader::Journal CheckoutJournal();       // Called by the main thread to 
  */
 void Loader::StartupWatcher()
 {
-    this->Log("Starting up filesystem watcher...");
-
-    // Clear common variables
-    journal.clear();
-    kill_watcher = FALSE;
-    has_changes = FALSE;
-    
-    // Startups the I/O watcher thread....
-    hThread = CreateThread(NULL, 0, &WatcherThread, NULL, CREATE_SUSPENDED, NULL);
-    if(hThread)
+    if(this->bAutoRefresh && hThread == NULL)
     {
-        // Takes up the directory handle for modloader...
-        hDirectory = CreateFileA((this->gamePath + "modloader/").c_str(),
-                                FILE_LIST_DIRECTORY, (FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
-                                NULL, OPEN_EXISTING, (FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED), NULL);
-        if(hDirectory != INVALID_HANDLE_VALUE)
+        this->Log("Starting up filesystem watcher...");
+
+        // Clear common variables
+        journal.clear();
+        kill_watcher = FALSE;
+        has_changes = FALSE;
+    
+        // Startups the I/O watcher thread....
+        hThread = CreateThread(NULL, 0, &WatcherThread, NULL, CREATE_SUSPENDED, NULL);
+        if(hThread)
         {
-            InitializeCriticalSection(&mutex);
-            ResumeThread(hThread);
-            return;
+            // Takes up the directory handle for modloader...
+            hDirectory = CreateFileA((this->gamePath + "modloader/").c_str(),
+                                    FILE_LIST_DIRECTORY, (FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
+                                    NULL, OPEN_EXISTING, (FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED), NULL);
+            if(hDirectory != INVALID_HANDLE_VALUE)
+            {
+                InitializeCriticalSection(&mutex);
+                ResumeThread(hThread);
+                return;
+            }
+            else
+                hDirectory = NULL;
+
+            CloseHandle(hThread);
+            hThread = NULL;
         }
-        else
-            hDirectory = NULL;
 
-        CloseHandle(hThread);
-        hThread = NULL;
+        this->Log("Failed to startup watcher, automatic refreshing won't work.");
     }
-
-    this->Log("Failed to startup watcher, automatic refreshing won't work.");
 }
 
 /*
@@ -85,6 +87,8 @@ void Loader::ShutdownWatcher()
         CloseHandle(hDirectory);
         CloseHandle(hThread);
         DeleteCriticalSection(&mutex);
+        journal.clear();
+        has_changes = FALSE;
         hThread = NULL;
     }
 }

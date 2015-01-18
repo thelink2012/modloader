@@ -94,7 +94,8 @@ class Loader : public modloader_t
         class FolderInformation;
         using ExtMap = std::map<std::string, ref_list<PluginInformation>>;
         using Journal = std::map<std::string, Loader::Status>;  // [{".", Status::Updated}] means refresh all
-        
+        using BehvSet = std::set<std::pair<PluginInformation*, uint64_t>>;  // .first=handler, .second=behaviour; list of behaviours
+
         
         // Information about a Mod Loader plugin
         class PluginInformation : public modloader::plugin 
@@ -232,8 +233,8 @@ class Loader : public modloader_t
                 void Scan();
                 
                 // Uninstall / Install files after scanning and finding out the status of mods
-                void ExtinguishNecessaryFiles();
-                void InstallNecessaryFiles();
+                BehvSet ExtinguishNecessaryFiles();
+                void InstallNecessaryFiles(const BehvSet& uninstalled);
                 
                 const std::string& GetPath() const { return this->path; }
                 const std::string& GetName() const { return this->name; }
@@ -361,7 +362,7 @@ class Loader : public modloader_t
         bool            bImmediateFlush;        // Enable immediately flushing the log file
         bool            bEnablePlugins;         // Enable the loading of ML plugins
         bool            bEnableMenu;            // Enable the menu system
-        
+        bool            bAutoRefresh;           // Enables automatic refreshing of mods
         
         // Unique ids
         uint64_t        currentModId;           // Current id for the unique mod id
@@ -456,6 +457,14 @@ class Loader : public modloader_t
         void ReadBasicConfig();
         void SaveBasicConfig();
         void UpdateOldConfig();
+
+        // Startups or shutdowns the watcher depending on the auto refresh boolean
+        void RestartWatcher()
+        {
+            if(this->bAutoRefresh) this->StartupWatcher();
+            else this->ShutdownWatcher();
+        }
+
         
         // Marks all status at the specified @map to @status
         template<class M>
@@ -511,7 +520,7 @@ class Loader : public modloader_t
                 }
                 else
                 {
-                    if(NeedsCollect(item)) Log("Cannot collect \"%s\" because of remaining files!", path);
+                    if(NeedsCollect(item)) Log("Warning: Cannot collect \"%s\" because of remaining files!", path);
                     ++it;
                 }
             }

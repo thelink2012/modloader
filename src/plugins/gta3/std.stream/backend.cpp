@@ -242,7 +242,7 @@ auto CAbstractStreaming::OpenModel(ModelInfo& file, int index) -> AbctFileHandle
     
     if(hFile == INVALID_HANDLE_VALUE)
     {
-        plugin_ptr->Log("Failed to open file \"%s\" for abstract streaming; error code: 0x%X",
+        plugin_ptr->Log("Warning: Failed to open file \"%s\" for abstract streaming; error code: 0x%X",
                        file.file->filepath(), GetLastError());
         return nullptr;
     }

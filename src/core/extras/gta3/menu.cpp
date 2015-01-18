@@ -25,6 +25,7 @@ static CMenuItem StaticPages[] =
             MENU_ACTION_DUMMY,      "ML_F0LF",      MENU_ENTRY_OPTION,    -1,   0,   0,  1,
             MENU_ACTION_DUMMY,      "ML_F0LS",      MENU_ENTRY_OPTION,    -1,   0,   0,  1,
             MENU_ACTION_DUMMY,      "ML_F0RR",      MENU_ENTRY_BUTTON,    -1,   0,   0,  1,
+            MENU_ACTION_DUMMY,      "ML_F0RA",      MENU_ENTRY_OPTION,    -1,   0,   0,  1,
             MENU_ACTION_SWITCH,     "ML_F0MM",      MENU_ENTRY_BUTTON,     1,   0,   0,  1,
             
             MENU_ACTION_BACK,       "ML_FTB",       MENU_ENTRY_BUTTON,    -1, 490, 380,  1,
@@ -462,11 +463,23 @@ void TheMenu::MainPageEvents()
         entry->SetHelper(HelpLabel("ML_F0RR"));
     }
 
+    // When getting out of the menu we have to do some changes to the modloader state
+    OnUserInput(this->mPageMain, [this](UserInputInfo& info)
+    {
+        if(info.exit)
+        {
+            // Reset the filesystem watcher so it reflects the new bAutoRefresh state
+            loader.RestartWatcher();
+        }
+        return true;
+    });
+
     // Enought of functional, let's do a bit of procedural now
     SetupBooleanEntry("ML_F0E0", loader.bEnableMenu);
     SetupBooleanEntry("ML_F0EP", loader.bEnablePlugins);
     SetupBooleanEntry("ML_F0EL", loader.bEnableLog);
     SetupBooleanEntry("ML_F0LF", loader.bImmediateFlush);
+    SetupBooleanEntry("ML_F0RA", loader.bAutoRefresh);
     SetupMegaByteEntry("ML_F0LS", loader.maxBytesInLog);
 }
 
@@ -536,6 +549,17 @@ void TheMenu::ModPageEvents()
     {
         OnAction(this->mPageMods, *entry, [this, i](ActionInfo& info)
         {
+            static const size_t max_title_size = 17;
+
+            std::string title = modloader::toupper(std::string(fxt.get(info.entry->m_szName)));
+            if(title.size() >= max_title_size)
+            {
+                title.resize(max_title_size - 1);
+                title.append("...");
+            }
+
+            fxt.set("ML_FYHH", title.data());
+
             // TODO BuildModPage()
             return true;
         });

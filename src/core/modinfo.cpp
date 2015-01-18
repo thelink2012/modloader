@@ -136,13 +136,15 @@ void Loader::ModInformation::Scan()
  *  ModInformation::ExtinguishingNecessaryFiles
  *      Uninstall anything that has the status Removed
  *      This is usually called after a Scan
+ *      Returns the behaviours successfully UNINSTALLED by this call
  */
-void Loader::ModInformation::ExtinguishNecessaryFiles()
+Loader::BehvSet Loader::ModInformation::ExtinguishNecessaryFiles()
 {
     if(this->status != Status::Unchanged)
     {
         Updating xup;
         Log("Extinguishing some files from \"%s\"...", this->path.c_str());
+        Loader::BehvSet uset;
 
         // Remove all files if this mod has been removed
         bool bRemoveAll = (this->status == Status::Removed);
@@ -151,17 +153,28 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
         for (auto it = this->files.begin(); it != this->files.end(); )
         {
             FileInformation& file = it->second;
-            if (bRemoveAll || file.status == Status::Removed)
+            BehvSet::value_type file_behv = { file.handler, file.behaviour };
+            bool was_installed = file.IsInstalled();
+
+            if(bRemoveAll || file.status == Status::Removed)
             {
                 // File was removed from the filesystem, uninstall and erase from our internal list
                 Log("Extinguishing file \"%s\"", file.filepath());
-                if(file.Uninstall()) it = this->files.erase(it);
-                else                 ++it;
+                if(file.Uninstall())
+                {
+                    if(was_installed) uset.emplace(file_behv);
+                    it = this->files.erase(it);
+                }
+                else
+                    ++it;
             }
             else
                 ++it;
         }
+
+        return uset;
     }
+    return Loader::BehvSet();
 }
 
 /*
@@ -169,25 +182,47 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
  *      Installs / Reinstalls anything that has the status Added or Updated
  *      This is usually called after a Scan and an UninstallNecessaryFiles
  */
-void Loader::ModInformation::InstallNecessaryFiles()
+void Loader::ModInformation::InstallNecessaryFiles(const Loader::BehvSet& uset)
 {
-    if(this->status != Status::Unchanged)
+    if(this->status != Status::Unchanged || uset.size())    // maybe we'll need to check behaviours with uset
     {
         Updating xup;
         Log("Installing some files for \"%s\"...", this->path.c_str());
         
+        // Helper closure... Installs taking care of other installed priorities.
+        auto TryInstall = [](FileInformation& file)
+        {
+            FileInformation* installed;
+            if(file.handler
+            && (installed = file.handler->FindFileWithBehaviour(file.behaviour))
+            && (SimplePriorityPred<ModInformation>()(file.parent, installed->parent) == true))
+            {
+                // Don't install, the currently installed file has priority over this one
+            }
+            else
+            {
+                // Install, either there's no file installed with this behaviour or this file has
+                // priority over the installed one
+                file.Install();
+            }
+        };
+
         for (auto it = this->files.begin(); it != this->files.end(); ++it)
         {
             FileInformation& file = it->second;
-            switch (file.status)
-            {
-                case Status::Added: // File has been added since the last update
-                    file.Install(); // TODO think about added here at runtime (>>> priorities)
-                    break;
 
-                case Status::Updated: // File has been updated since the last update
+            if(file.status == Status::Added || file.status == Status::Updated)
+            {
+                if(file.installed)
                     file.Reinstall();
-                    break;
+                else
+                    TryInstall(file);
+            }
+            else if(file.status == Status::Unchanged)
+            {
+                // Install files preceding the uninstalled file in the same behaviour
+                if(file.handler && !file.installed && uset.count({file.handler, file.behaviour}))
+                    TryInstall(file);
             }
         }
     }

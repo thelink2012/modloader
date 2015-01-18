@@ -1,3 +1,8 @@
+v0.2.3 (In Dev)
+------------------------
+ * Automatic refreshing implemented, meaning changes on 'modloader/' directory are detected automatically while you play. 
+ * Other minor fixes
+
 v0.2.2 (Jan 13 2015)
 ------------------------
  * The game version *GTA San Andreas 1.0 EU* is now supported.

@@ -185,7 +185,7 @@ static int LogException(char* buffer, size_t max, LPEXCEPTION_POINTERS pExceptio
     trace.EnterScope();
     if(bLogRegisters) trace.PrintRegisters();
     if(bLogStack) trace.PrintStackdump();
-    if(bLogBacktrace) trace.PrintBacktrace();
+    //if(bLogBacktrace) trace.PrintBacktrace(); -- too inacurate on gta_sa.exe
     trace.LeaveScope();
     return 1;
 }

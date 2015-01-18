@@ -342,19 +342,21 @@ void Loader::FolderInformation::Update()
     {
         Updating xup;
         Log("\nUpdating mods for \"%s\"...", this->path.c_str());
+        Loader::BehvSet uset; // uninstalled behaviours set
 
         auto mods = this->GetModsByPriority();
 
         // Uninstall all removed files since the last update...
         for(auto& mod : mods)
         {
-            mod.get().ExtinguishNecessaryFiles();
+            auto uset_this = mod.get().ExtinguishNecessaryFiles();
+            uset.insert(uset_this.begin(), uset_this.end());
         }
 
         // Install all updated and added files since the last update...
         for(auto& mod : mods)
         {
-            mod.get().InstallNecessaryFiles();
+            mod.get().InstallNecessaryFiles(uset);
             mod.get().SetUnchanged();
         }
 

@@ -20,8 +20,6 @@ REGISTER_ML_NULL();
 // Mod Loader object
 Loader loader;
 
-void TestWatcher();//TODO REMOVE
-
 /*
  * DllMain
  *      Entry-point
@@ -115,6 +113,7 @@ void Loader::Startup()
         // Initialise configs and counters
         this->vkRefresh      = VK_F4;
         this->bRunning       = false;
+        this->bAutoRefresh   = true;
         this->bEnableMenu    = true;
         this->bEnableLog     = true;
         this->bEnablePlugins = true;
@@ -283,6 +282,8 @@ void Loader::ReadBasicConfig()
                 this->maxBytesInLog = std::strtoul(pair.second.data(), 0, 0);
             else if(!compare(pair.first, "RefreshKey", false))
                 this->vkRefresh = std::stoi(pair.second.data(), 0, 0);
+            else if(!compare(pair.first, "AutoRefresh", false))
+                this->bAutoRefresh = to_bool(pair.second);
         }
     }
     else
@@ -304,6 +305,7 @@ void Loader::ReadBasicConfig()
      config["ImmediateFlushLog"]    = modloader::to_string(bImmediateFlush);
      config["MaxLogSize"]           = std::to_string(maxBytesInLog);
      config["RefreshKey"]           = std::to_string(vkRefresh);
+     config["AutoRefresh"]          = modloader::to_string(bAutoRefresh);
 
      // Log only about failure since we'll be saving every time a entry on the menu changes
      if(!ini.write_file(gamePath + basicConfig))

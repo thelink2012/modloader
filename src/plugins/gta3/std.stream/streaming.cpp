@@ -350,8 +350,9 @@ bool CAbstractStreaming::IsClothes(const modloader::file* file)
                 fclose(f);
 
                 // If more than one clump in the RwStream, it's a clothing item
-                if(nclumps > 1)
-                    return true;
+                bool is_cloth = (nclumps > 1);
+                if(is_cloth) plugin_ptr->Log("Warning: Clothing coach item outside a player.img directory: %s", file->filepath());
+                return is_cloth;
             }
         }
     }

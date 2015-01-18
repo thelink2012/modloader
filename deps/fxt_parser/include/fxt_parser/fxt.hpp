@@ -102,6 +102,21 @@ namespace injector
                 return ((GetType) data().GetText.get())(ctext, 0, key);
             }
 
+            /*
+             *  Returns the value from @key in the current fxt container
+             */
+            static const char* get(const char* key, hash_type table = 0)
+            {
+                auto it_table = data().tmap.find(table);
+                if(it_table != data().tmap.end())
+                {
+                    auto it_key = it_table->second.find(GetHash(key));
+                    if(it_key != it_table->second.end())
+                        return it_key->second.c_str();
+                }
+                return "";
+            }
+
 
             
 
