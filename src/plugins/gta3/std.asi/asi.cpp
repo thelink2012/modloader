@@ -170,7 +170,7 @@ bool ThePlugin::InstallFile(const modloader::file& file)
 bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
     if(file.behaviour & is_cs_mask) return true;
-    return true; // Avoid catastrophical failure
+    return false;
 }
 
 /*

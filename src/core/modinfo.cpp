@@ -90,7 +90,7 @@ void Loader::ModInformation::Scan()
             m.time    = file.time;
 
             // Find a handler for this file
-            handler = loader.FindHandlerForFile(m, callme); // TODO REMOVE THIS ON SECOND SCAN?
+            handler = loader.FindHandlerForFile(m, callme);
             if(handler || !callme.empty())
             {
                 file.recursive = false;     // Avoid FilesWalk recursion
@@ -233,6 +233,33 @@ void Loader::ModInformation::InstallNecessaryFiles()
         }
     }
 }
+
+/*
+ *  ModInformation::UpdateIgnoreStatus
+ *      Updates the state of 'this->ignore' depending upon the parent folder ignore list.
+ */
+Loader::ModInformation& Loader::ModInformation::UpdateIgnoreStatus()
+{
+    this->ignored = parent.IsIgnored(this->GetName());
+    return *this;
+}
+
+/*
+ *  ModInformation::UpdatePriority
+ *      Updates the state of 'this->priority' depending upon the parent folder priority list.
+ *      Returns true if the priority changed or false otherwise.
+ */
+bool Loader::ModInformation::UpdatePriority()
+{
+    auto priority = parent.GetPriority(this->name);
+    if(this->priority != priority)
+    {
+        this->priority = priority;
+        return true;
+    }
+    return false;
+}
+
 
 
 

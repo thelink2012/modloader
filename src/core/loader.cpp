@@ -7,11 +7,6 @@
 #include "loader.hpp"
 using namespace modloader;
 
-// TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
-// TODO take care of configs on rescan
-// TODO ReinstallFile shouldn't Uninstall on failure?
-// TODO ^ think about uninstalling in-game to the next run, what if couldn't uninstall a specific file
-
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
 #define USE_TEST 0
@@ -239,20 +234,23 @@ void Loader::Tick()
  */
 void Loader::TestHotkeys()
 {
-    static bool prevF4 = false; 
-    static bool currF4 = false; 
-
-    // Get current hotkey states
-    currF4 = (GetKeyState(vkRefresh) & 0x8000) != 0;
-
-    // Check hotkey states
-    if(currF4 && !prevF4)
+    if(false)   // Unecessary, we got a menu and we got a automatic refresher
     {
-        this->ScanAndUpdate();
-    }
+        static bool prevF4 = false; 
+        static bool currF4 = false; 
 
-    // Save previous states
-    prevF4 = currF4;
+        // Get current hotkey states
+        currF4 = (GetKeyState(vkRefresh) & 0x8000) != 0;
+
+        // Check hotkey states
+        if(currF4 && !prevF4)
+        {
+            this->ScanAndUpdate();
+        }
+
+        // Save previous states
+        prevF4 = currF4;
+    }
 }
 
 

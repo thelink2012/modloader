@@ -7,8 +7,6 @@
 #include "loader.hpp"
 using namespace modloader;
 
-// TODO don't call OnShutdown if OnStartup wasn't successful
-
 /*
  * Loader::LoadPlugins
  *      Loads all plugins at plugins directory
@@ -321,6 +319,7 @@ bool Loader::PluginInformation::Uninstall(FileInformation& file)
             behv.erase(file.behaviour);
             return true;
         }
+        return false;
     }
     else // not main handler but a callme
         return this->UninstallFile(file);
@@ -340,8 +339,10 @@ bool Loader::PluginInformation::Reinstall(FileInformation& file)
             return true;
 
         // Somehow we failed to Reinstall, so Uninstall it instead.
-        if(!file.Uninstall()) FatalError("Catastrophical failure at Reinstall");
-        return false;
+        ::loader.Log("Failed to reinstall file '%s', uninstalling it instead...", file.filepath());
+        if(file.Uninstall())
+            return false;   // not installed anymore
+        return true;    // still installed
     }
     else // not main handler but a callme
         return this->ReinstallFile(file);

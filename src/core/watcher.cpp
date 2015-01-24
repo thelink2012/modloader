@@ -102,24 +102,18 @@ void Loader::CheckWatcher()
     auto journal = CheckoutJournal();
     if(journal.size())
     {
-        if(std::any_of(journal.begin(), journal.end(), [](const Journal::value_type& pair) {
+        bool changed_modloader_ini = std::any_of(journal.begin(), journal.end(), [this](const Journal::value_type& pair) 
+                                                                                 { return pair.first == folderConfigFilename; });
+
+        if(changed_modloader_ini) this->LoadFolderConfig();
+
+        if(changed_modloader_ini ||
+           std::any_of(journal.begin(), journal.end(), [](const Journal::value_type& pair) {
             return pair.first == ".";
         }))
             this->ScanAndUpdate();  // Complete refresh
         else
-        {
-            // TODO is it necessary to do this filtering?
-            for(auto it = journal.begin(); it != journal.end(); )
-            {
-                if(it->second != Status::Removed    // (when the state was removed ofc the directory doesn't exist)
-                && !IsDirectoryA(std::string(loader.gamePath).append("modloader/").append(it->first).c_str()))
-                    it = journal.erase(it);
-                else
-                    ++it;
-            }
-
             this->UpdateFromJournal(journal);
-        }
     }
 }
 
@@ -130,6 +124,7 @@ static void RegisterNotification(FILE_NOTIFY_INFORMATION* notify);
 static void RegisterError();
 static void NotifyCompleteRefresh();
 static void NotifyJournal(std::string modname, int action, bool is_root);
+static void NotifyJournalChange();
 
 
 /*
@@ -221,7 +216,12 @@ static void RegisterNotification(FILE_NOTIFY_INFORMATION* notify)
         auto filepath = NormalizePath(std::string(buffer, size));
 
         smatch match;
-        if(regex_match(filepath, match, regex))
+        if(filepath == "modloader.ini")
+        {
+            journal.emplace(filepath, Loader::Status::Updated);
+            NotifyJournalChange();
+        }
+        else if(regex_match(filepath, match, regex))
         {
             if(match.size() == 3)
             {

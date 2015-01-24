@@ -51,5 +51,5 @@ ML_H0LS Maximum size of the log file on disk.
 ML_H0RR Rescan and reinstall mods (be careful)
 ML_H0RA ON/OFF the automatic detection of changes.
 ML_HMHH Type some keywords to find a mod.~n~Use ~<~~>~ to switch pages.
-ML_HYE0 ON/OFF the mod from the game (be careful).
+ML_HYE0 ON/OFF the mod from the game.~n~Be careful. May need restart for some files.
 ML_HYPR Changes the priority of this mod over others.

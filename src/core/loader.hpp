@@ -246,25 +246,8 @@ class Loader : public modloader_t
                 const decltype(files)& InfoContainer() const { return files; }
                 void SetUnchanged() { if(status != Status::Removed) status = Status::Unchanged; }
 
-                // TODO MOVE TO CPP?
-                ModInformation& UpdateIgnoreStatus()
-                {
-                    this->ignored = parent.IsIgnored(this->GetName());
-                    return *this;
-                }
-
-                bool UpdatePriority()
-                {
-                    auto priority = parent.GetPriority(this->name);
-                    if(this->priority != priority)
-                    {
-                        this->priority = priority;
-                        return true;
-                    }
-                    return false;
-                }
-
-                
+                ModInformation& UpdateIgnoreStatus();
+                bool UpdatePriority();
         };
         
         
@@ -285,6 +268,7 @@ class Loader : public modloader_t
                 void LoadConfigFromINI(const std::string& inifile);
                 void SaveConfigForINI(const std::string& inifile);
                 void SaveConfigForINI();
+                void LoadConfigFromINI();
 
                 // Ignore checking
                 bool IsIgnored(const std::string& name);
@@ -392,7 +376,7 @@ class Loader : public modloader_t
         bool            bEnablePlugins;         // Enable the loading of ML plugins
         bool            bEnableMenu;            // Enable the menu system
         bool            bAutoRefresh;           // Enables automatic refreshing of mods
-        
+
         // Unique ids
         uint64_t        currentModId;           // Current id for the unique mod id
         uint64_t        currentFileId;          // Current id for the unique file id (hibit is set)
@@ -486,6 +470,7 @@ class Loader : public modloader_t
         void ReadBasicConfig();
         void SaveBasicConfig();
         void UpdateOldConfig();
+        void LoadFolderConfig() { mods.LoadConfigFromINI(); }
         void SaveFolderConfig() { mods.SaveConfigForINI(); }
 
         // Startups or shutdowns the watcher depending on the auto refresh boolean

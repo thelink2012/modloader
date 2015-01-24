@@ -213,7 +213,7 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
             return this->ReinstallFile(file, file.hash);
         }
     }
-    return true; // Avoid catastrophical failure
+    return false;
 }
 
 /*
@@ -330,9 +330,7 @@ bool DataPlugin::InstallFile(const modloader::file& file, size_t merger_hash, st
 bool DataPlugin::ReinstallFile(const modloader::file& file, size_t merger_hash)
 {
     // Just forward the call to InstallFile. It does not need the fspath and fullpath parameter on reinstall.
-    if(!this->InstallFile(file, merger_hash, "", "", true))
-        return true;    // Avoid catastrophical failure
-    return true;
+    return this->InstallFile(file, merger_hash, "", "", true);
 }
 
 /*

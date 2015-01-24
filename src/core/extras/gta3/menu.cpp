@@ -333,6 +333,7 @@ bool TheMenu::BuildCurrentModsPage(int inc)
         {
             auto& entry = mPageMods.GetEntry(i)->pEntry;
             auto  skip  = (i >= numInPage);                 // Should skip this entry? (i.e. no more mods for another entry)
+            //entry->m_nType       = skip? MENU_ENTRY_NONE  : MENU_ENTRY_BUTTON;
             entry->m_nActionType = skip? MENU_ACTION_SKIP : MENU_ACTION_SWITCH;
 
             if(!skip)
@@ -669,8 +670,13 @@ void TheMenu::ModPageEvents()
     {
         OnAction(this->mPageMods, *entry, [=](ActionInfo& info)
         {
-            BuildModPage(info, this->mCurrentPageMods[i-1]);
-            return true;
+            auto index = size_t(i-1);
+            if(this->mCurrentPageMods.size() > index)
+            {
+                BuildModPage(info, this->mCurrentPageMods[index]);
+                return true;
+            }
+            return false;
         });
     }
 }

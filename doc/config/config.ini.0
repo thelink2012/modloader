@@ -8,4 +8,3 @@ EnableLog         = true        ; Enables/disables logging. Logging is useful to
 ImmediateFlushLog = true        ; Enables/disables immediate flushing to the disk from the log file. Disabling this increases performance when logging is enabled but decreases logging usefulness
 MaxLogSize        = 5242880     ; Maximum size of the modloader.log file in bytes, if this size is reached the file is truncated.
 AutoRefresh       = true        ; Mod Loader detects changes in modloader/ directory automatically and refreshes the mods
-RefreshKey        = 0x73        ; Key used to refresh mods manually (virtual key code, see http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731%28v=vs.85%29.aspx)

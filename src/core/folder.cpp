@@ -7,7 +7,6 @@
 #include "loader.hpp"
 using namespace modloader;
 
-// TODO priority set at runtime
 
 template<class L>
 static void BuildGlobString(const L& list, std::string& glob)
@@ -282,7 +281,7 @@ void Loader::FolderInformation::Scan()
     if(!this->gotConfig)
     {
         this->gotConfig = true;
-        this->LoadConfigFromINI(loader.folderConfigFilename);
+        this->LoadConfigFromINI();
     }
 
     // > Status here is Status::Unchanged
@@ -337,7 +336,8 @@ void Loader::FolderInformation::Scan(const Journal& journal)
             else if(change.second == Status::Added
                  || change.second == Status::Updated)
             {
-                this->AddMod(change.first).Scan();
+                if(IsDirectoryA(change.first.c_str()))  // the journal might contain unrelated files...
+                    this->AddMod(change.first).Scan();
             }
         }
     }
@@ -420,24 +420,28 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
     // Reads the [Priority] section
     auto ReadPriorities = [this](const linb::ini::key_container& kv)
     {
+        this->mods_priority.clear();
         for(auto& pair : kv) this->SetPriority(NormalizePath(pair.first), std::strtol(pair.second.c_str(), 0, 0));
     };
 
     // Reads the [IgnoreMods] section
     auto ReadIgnoreMods = [this](const linb::ini::key_container& kv)
     {
+        this->ignore_mods.clear();
         for(auto& pair : kv) this->IgnoreMod(NormalizePath(pair.first));
     };
 
     // Reads the [IgnoreFiles] section
     auto ReadIgnoreFiles = [this](const linb::ini::key_container& kv)
     {
+        this->ignore_files.clear();
         for(auto& pair : kv) this->IgnoreFileGlob(NormalizePath(pair.first));
     };
 
-    // Reads the [IncludeFiles] section
+    // Reads the [IncludeMods] section
     auto ReadIncludeMods = [this](const linb::ini::key_container& kv)
     {
+        this->include_mods.clear();
         for(auto& pair : kv) this->Include(NormalizePath(pair.first));
     };
 
@@ -492,4 +496,10 @@ void Loader::FolderInformation::SaveConfigForINI()
 {
     ::scoped_gdir xdir(this->path.c_str());
     return this->SaveConfigForINI(loader.folderConfigFilename);
+}
+
+void Loader::FolderInformation::LoadConfigFromINI()
+{
+    ::scoped_gdir xdir(this->path.c_str());
+    return this->LoadConfigFromINI(loader.folderConfigFilename);
 }

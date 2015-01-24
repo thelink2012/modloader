@@ -1,6 +1,8 @@
 v0.2.3 (In Dev)
 ------------------------
- * Automatic refreshing implemented, meaning changes on 'modloader/' directory are detected automatically while you play. 
+ * The In-Game menu is ready to be used _(go into Options > Mod Loader Setup)_. _(make sure it's enabled from *modloader/.data/config.ini*, EnableMenu=true)_
+ * Automatic refreshing implemented, meaning changes on *modloader/* directory are detected automatically while you play.
+ * The refresh key _(by default F4)_ has been removed in consequence of the addition of the menu and automatic refreshing.
  * Other minor fixes
 
 v0.2.2 (Jan 13 2015)

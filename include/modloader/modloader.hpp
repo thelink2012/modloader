@@ -1,8 +1,6 @@
 /* 
- * Mod Loader Plugin Base Header
- * Created by LINK/2012 <dma_2012@hotmail.com>
- * 
- *  Mod Loader plugin interface for C++  -- Binding on the C interface
+ * Mod Loader C++ Plugin Interface
+ *
  *  Take a look at "doc/Creating Your Own Plugin.txt"
  * 
  *  This source code is offered for use in the public domain. You may

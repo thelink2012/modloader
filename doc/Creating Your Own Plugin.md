@@ -79,8 +79,8 @@ Now it's time to implement the events, they are virtual methods from the `modloa
  An example is, *a.model* has the same behaviour as another *a.model* but not the same as *b.model*.
  Two files with the same behaviour will never be installed at the same time.
  
- _Special Note_: Since the object is non-const, it's important to note that you shall not write to any field of `file` other than `behaviour` during this event.
-
+ _Special Note 1_: The highest bit of the `behaviour` is reserved and shouldn't be touched.
+ _Special Note 2_: Since the object is non-const, it's important to note that you shall not write to any field of `file` other than `behaviour` during this event.
 
 #### InstallFile -- `bool   InstallFile(const modloader::file& file)`
  
@@ -96,8 +96,7 @@ Now it's time to implement the events, they are virtual methods from the `modloa
  This event is called to reinstall a file previosly installed meaning the file has changed in some way. The file behaviour is guaranted to not have changed during the file change.
 
  The method should return **true** if the reinstall was successful and **false** otherwise.
- If the install wasn't successful, the file will get uninstalled, essentially by calling `UninstallFile`.
- Please note if both `ReinstallFile` and `UninstallFile` fails, an fatal error will happen!
+ If the reinstall wasn't successful, the file will get uninstalled, essentially by calling `UninstallFile`.
  The return value is ignored for *CALLME* handlers.
 
 #### UninstallFile -- `bool   UninstallFile(const modloader::file& file)`
@@ -105,6 +104,7 @@ Now it's time to implement the events, they are virtual methods from the `modloa
  This event is called to uninstall a file that was previosly installed.
 
  The method should return **true** if the uninstall was successful and **false** otherwise.
+ If the uninstall wasn't successful the file will still be in 'installed' state.
  The return value is ignored for *CALLME* handlers.
 
 #### Update -- [optional] `void Update()`
