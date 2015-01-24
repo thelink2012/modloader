@@ -15,7 +15,7 @@ The following data files are currently supported:
 |----------------|--------- |-------|--------|
 | gta.dat        |    X     |   X   |   X    |
 | .ide files     |    X     |   X   |   ¹    |
-| .ipl files     |    X     |   X   |        |
+| .ipl files     |    X     |       |        |
 | carmods.dat    |    X     |   X   |   X    |
 | carcols.dat    |    X     |   X   |   X    |
 | handling.cfg   |    X     |   X   |   X    |

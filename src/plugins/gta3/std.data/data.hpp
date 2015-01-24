@@ -323,6 +323,37 @@ class DataPlugin : public modloader::basic_plugin
             return ov;
         }
 
+        template<class detour_type>
+        modloader::file_overrider& AddIplOverrider(std::string fsfile, bool unique, bool samefile, bool complete_path,
+                                              const modloader::file_overrider::params& params)
+        {
+            fsfile = modloader::NormalizePath(std::move(fsfile));
+            auto hash = modloader::hash(fsfile);
+
+            auto& ov = ovmap.emplace(std::piecewise_construct,
+                std::forward_as_tuple(hash),
+                std::forward_as_tuple(tag_detour, params, detour_type())
+                ).first->second;
+
+            for(size_t i = 0; i < ov.NumInjections(); ++i)
+            {
+                // Merges data whenever necessary to open this file. Caching can happen.
+                auto& d = static_cast<detour_type&>(ov.GetInjection(i));
+                d.OnTransform(std::bind(&DataPlugin::GetIplFile, this, _1, fsfile, unique, samefile, complete_path));
+            }
+
+            // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
+            // This gets called during InstallFile/ReinstallFile/UninstallFile
+            ov.OnHook([&ov](const modloader::file*)
+            {
+                for(size_t i = 0; i < ov.NumInjections(); ++i)
+                    static_cast<detour_type&>(ov.GetInjection(i)).make_call();
+            });
+
+            AddBehv(hash, true);
+            return ov;
+        }
+
         // Adds a detour for the file with the specified file to the overrider system
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
         template<class ...Args>
@@ -522,7 +553,7 @@ class DataPlugin : public modloader::basic_plugin
         // For a explanation of the 'unique' parameter see AddMerger function
         // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         //
-        template<class StoreType>  
+        template<class StoreType>
         std::string GetMergedData(std::string file, std::string fsfile, bool unique, bool samefile, bool complete_path)
         {
             using namespace modloader;
@@ -612,6 +643,31 @@ class DataPlugin : public modloader::basic_plugin
                 {
                     plugin_ptr->Log("Warning: Failed to merge (%s) data files into \"%s\"", what, cs.Path().c_str());
                 }
+            }
+
+            return std::string();  // use default file
+        }
+        
+        // Used for IPL merger to not merge IPLs, hax
+        std::string GetIplFile(std::string file, std::string fsfile, bool unique, bool samefile, bool complete_path)
+        {
+            using namespace modloader;
+            auto filename     = modloader::NormalizePath(GetPathComponentBack(file));
+
+            // Make sure filename matches if samefile has been specified
+            if(samefile && filename != fsfile)
+                return std::string(); // use default file
+
+            auto range    = this->fs.files_at(complete_path? file : fsfile);
+            auto count    = std::distance(range.first, range.second);
+
+            if(count > 0)
+            {
+                if(count > 1)
+                    plugin_ptr->Log("Warning: More than one file attached to '%s', using the one with higher priority.", (complete_path? file : fsfile).c_str());
+                auto it = range.first;
+                std::advance(it, count - 1);
+                return it->second.first;
             }
 
             return std::string();  // use default file
@@ -711,6 +767,8 @@ class initializer
  */
 struct data_traits : public gta3::data_traits
 {
+    static const bool is_ipl_merger = false;
+
     template<class Archive, class FuncT>
     static void static_serialize(Archive& archive, bool saving, FuncT serialize_store)
     {

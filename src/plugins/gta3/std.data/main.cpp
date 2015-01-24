@@ -606,6 +606,7 @@ void DataPlugin::WriteReadmeCache()
 
         // magics
         {
+            // TODO readme magics is wrong
             block_writer magics_block(ss);
             archive(this->readme_magics);
         }
