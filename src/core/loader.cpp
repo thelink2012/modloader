@@ -361,7 +361,7 @@ void Loader::ParseCommandLine()
                 }
                 else
                 {
-                    if(toASCII(arg, buf, sizeof(buf)))
+                    if(toASCII(arg, buf, sizeof(buf)))  // FIXME bugs with the menu because of Include and SetPriority
                     {
                         // Force exclusion and include the specified mod
                         mods.SetForceExclude(true);

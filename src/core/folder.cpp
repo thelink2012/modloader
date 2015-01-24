@@ -38,7 +38,6 @@ void Loader::FolderInformation::Clear()
     RebuildIncludeModsGlob();
 }
 
-
 /*
  *  FolderInformation::IsIgnored
  *      Checks if the specified mod @name (normalized) should be ignored
@@ -51,7 +50,7 @@ bool Loader::FolderInformation::IsIgnored(const std::string& name)
         return (MatchGlob(name, include_mods_glob) == false);
     else
     {
-        if(ignore_mods.find(name) == ignore_mods.end()) // Check if not on ignore mods list
+        if(this->IsOnIgnoringList(name) == false) // Check if not on ignore mods list
         {
             auto it = mods_priority.find(name);
             return (it != mods_priority.end() && it->second == 0);  // If priority is 0 ignore this mod
@@ -104,7 +103,10 @@ auto Loader::FolderInformation::AddMod(const std::string& name) -> ModInformatio
  */
 void Loader::FolderInformation::SetPriority(std::string name, int priority)
 {
-    mods_priority.emplace(std::move(name), priority);
+    if(priority == default_priority)
+        mods_priority.erase(name);
+    else
+        mods_priority[name] = priority;
 }
 
 
@@ -129,6 +131,16 @@ void Loader::FolderInformation::Include(std::string name)
 }
 
 /*
+ *  FolderInformation::Uninclude
+ *      Removes the file @name (normalized) from the inclusion list
+ */
+void Loader::FolderInformation::Uninclude(const std::string& name)
+{
+    include_mods.erase(name);
+    RebuildIncludeModsGlob();
+}
+
+/*
  *  FolderInformation::IgnoreFileGlob
  *      Adds a file @glob (normalized) to be ignored
  */
@@ -145,6 +157,15 @@ void Loader::FolderInformation::IgnoreFileGlob(std::string glob)
 void Loader::FolderInformation::IgnoreMod(std::string mod)
 {
     ignore_mods.emplace(std::move(mod));
+}
+
+/*
+ *  FolderInformation::UnignoreMod
+ *      Removes the mod @mod (normalized) from the ignored list
+ */
+void Loader::FolderInformation::UnignoreMod(const std::string& mod)
+{
+    ignore_mods.erase(mod);
 }
 
 
@@ -273,13 +294,7 @@ void Loader::FolderInformation::Scan()
     {
         fine = FilesWalk("", "*.*", false, [this](FileWalkInfo & file)
         {
-            if(file.is_dir)
-            {
-                if (IsIgnored(NormalizePath(file.filename)))
-                    Log("Ignoring mod at \"%s\"", file.filepath);
-                else
-                    this->AddMod(file.filename).Scan();
-            }
+            if(file.is_dir) this->AddMod(file.filename).Scan();
             return true;
         });
     }
@@ -322,8 +337,7 @@ void Loader::FolderInformation::Scan(const Journal& journal)
             else if(change.second == Status::Added
                  || change.second == Status::Updated)
             {
-                if(IsIgnored(change.first) == false)
-                    this->AddMod(change.first).Scan();
+                this->AddMod(change.first).Scan();
             }
         }
     }
@@ -342,22 +356,20 @@ void Loader::FolderInformation::Update()
     {
         Updating xup;
         Log("\nUpdating mods for \"%s\"...", this->path.c_str());
-        Loader::BehvSet uset; // uninstalled behaviours set
 
         auto mods = this->GetModsByPriority();
 
         // Uninstall all removed files since the last update...
-        for(auto& mod : mods)
+        for(ModInformation& mod : mods)
         {
-            auto uset_this = mod.get().ExtinguishNecessaryFiles();
-            uset.insert(uset_this.begin(), uset_this.end());
+            mod.ExtinguishNecessaryFiles();
         }
 
         // Install all updated and added files since the last update...
-        for(auto& mod : mods)
+        for(ModInformation& mod : mods)
         {
-            mod.get().InstallNecessaryFiles(uset);
-            mod.get().SetUnchanged();
+            mod.InstallNecessaryFiles();
+            mod.SetUnchanged();
         }
 
         // Update my childs
@@ -442,4 +454,42 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
     else
         Log("Failed to load folder config file");
 
+}
+
+/*
+ *  FolderInformation::SaveConfigForINI
+ *      Saves configuration specific to this folder to the specified ini file
+ */
+void Loader::FolderInformation::SaveConfigForINI(const std::string& inifile)
+{
+    linb::ini ini;
+    auto& config      = ini["Config"];
+    auto& priority    = ini["Priority"];
+    auto& ignoremods  = ini["IgnoreMods"];
+    auto& ignorefiles = ini["IgnoreFiles"];
+    auto& includemods = ini["IncludeMods"];
+    
+    config["IgnoreAllFiles"] = modloader::to_string(this->IsIgnoringAll());
+    config["ExcludeAllMods"] = modloader::to_string(this->IsExcludingAll());
+
+    for(auto& pair : this->mods_priority)
+        priority[pair.first] = std::to_string(pair.second);
+
+    for(auto& mod : this->ignore_mods)
+        ignoremods[mod];
+
+    for(auto& file : this->ignore_files)
+        ignorefiles[file];
+
+    for(auto& mod : this->include_mods)
+        includemods[mod];
+
+    if(!ini.write_file(inifile))
+        Log("Failed to save folder config file");
+}
+
+void Loader::FolderInformation::SaveConfigForINI()
+{
+    ::scoped_gdir xdir(this->path.c_str());
+    return this->SaveConfigForINI(loader.folderConfigFilename);
 }

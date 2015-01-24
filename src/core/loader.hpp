@@ -218,14 +218,15 @@ class Loader : public modloader_t
                 std::string                 name;           // Name for this mod, this is the filename in path (normalized)
                 std::map<std::string, FileInformation>  files; // Files inside this mod
                 Status                      status;         // Mod status
+                bool                        ignored;
 
             public:
                 // Initializer
                 ModInformation(std::string name, FolderInformation& parent, uint64_t id)
-                    : name(NormalizePath(std::move(name))), parent(parent), status(Status::Unchanged)
+                    : name(NormalizePath(std::move(name))), parent(parent), status(Status::Unchanged), ignored(false)
                 {
                     this->id = id;
-                    this->priority = parent.GetPriority(this->name);
+                    this->priority = default_priority;
                     modloader::MakeSureStringIsDirectory(this->path = parent.GetPath() + this->name);
                 }
                 
@@ -233,17 +234,37 @@ class Loader : public modloader_t
                 void Scan();
                 
                 // Uninstall / Install files after scanning and finding out the status of mods
-                BehvSet ExtinguishNecessaryFiles();
-                void InstallNecessaryFiles(const BehvSet& uninstalled);
+                void ExtinguishNecessaryFiles();
+                void InstallNecessaryFiles();
                 
+                FolderInformation& Parent()  { return this->parent; }
                 const std::string& GetPath() const { return this->path; }
                 const std::string& GetName() const { return this->name; }
+                bool IsIgnored() const { return this->ignored; }
 
             protected:
                 const decltype(files)& InfoContainer() const { return files; }
                 void SetUnchanged() { if(status != Status::Removed) status = Status::Unchanged; }
-                //bool NeedsToBeCollected() const { return this->status == Status::Removed; }
-                //bool CannotCollectBecauseOfFiles() const { return this->status == Status::Removed && !files.empty(); }
+
+                // TODO MOVE TO CPP?
+                ModInformation& UpdateIgnoreStatus()
+                {
+                    this->ignored = parent.IsIgnored(this->GetName());
+                    return *this;
+                }
+
+                bool UpdatePriority()
+                {
+                    auto priority = parent.GetPriority(this->name);
+                    if(this->priority != priority)
+                    {
+                        this->priority = priority;
+                        return true;
+                    }
+                    return false;
+                }
+
+                
         };
         
         
@@ -262,6 +283,8 @@ class Loader : public modloader_t
                 
                 // Config
                 void LoadConfigFromINI(const std::string& inifile);
+                void SaveConfigForINI(const std::string& inifile);
+                void SaveConfigForINI();
 
                 // Ignore checking
                 bool IsIgnored(const std::string& name);
@@ -272,21 +295,29 @@ class Loader : public modloader_t
                 ModInformation& AddMod(const std::string& name);
                 
                 // Priority, inclusion and ignores
+                void IgnoreFileGlob(std::string glob);
                 void SetPriority(std::string name, int priority);
                 int GetPriority(const std::string& name);
                 void Include(std::string name);
-                void IgnoreFileGlob(std::string glob);
-                void IgnoreMod(std::string md);
+                void Uninclude(const std::string& name);
+                void IgnoreMod(std::string mod);
+                void UnignoreMod(const std::string& mod);
                 
                 // Sets flags
                 void SetIgnoreAll(bool bSet);
                 void SetForceIgnore(bool bSet);
                 void SetExcludeAll(bool bSet);
                 void SetForceExclude(bool bSet);
+                bool IsIgnoringAll() { return bIgnoreAll; }
+                bool IsExcludingAll(){ return bExcludeAll; }
 
                 // Get flags
                 bool IsIgnoring()  { return bIgnoreAll || bForceIgnore; }
                 bool IsExcluding() { return bExcludeAll || bForceExclude; }
+                bool IsOnIgnoringList(const std::string& name)
+                { return (ignore_mods.find(name) != ignore_mods.end()); }
+                bool IsOnIncludingList(const std::string& name)
+                { return (include_mods.find(name) != include_mods.end()); }
 
                 // Gets me, my childs, my child-childs....
                 ref_list<FolderInformation> GetAll();
@@ -341,8 +372,6 @@ class Loader : public modloader_t
             protected:
                 const decltype(childs)& InfoContainer() const { return childs; }
                 void SetUnchanged() { if(status != Status::Removed) status = Status::Unchanged; }
-                //bool NeedsToBeCollected() const { return this->status == Status::Removed; }
-                //bool CannotCollectBecauseOfFiles() const { return this->status == Status::Removed && !mods.empty(); }
         };
 
         
@@ -457,6 +486,7 @@ class Loader : public modloader_t
         void ReadBasicConfig();
         void SaveBasicConfig();
         void UpdateOldConfig();
+        void SaveFolderConfig() { mods.SaveConfigForINI(); }
 
         // Startups or shutdowns the watcher depending on the auto refresh boolean
         void RestartWatcher()
@@ -465,6 +495,10 @@ class Loader : public modloader_t
             else this->ShutdownWatcher();
         }
 
+        void PauseWatcher()
+        {
+            this->ShutdownWatcher();
+        }
         
         // Marks all status at the specified @map to @status
         template<class M>
@@ -490,7 +524,7 @@ class Loader : public modloader_t
                 
                 for(auto& pair : map)
                 {
-                    if(pair.second.status != Status::Unchanged)   // status is Updated?
+                    if(pair.second.status != Status::Unchanged)   // status is Updated, Removed or so?
                     {
                         // Something changed here on this scan
                         info.status = Status::Updated;

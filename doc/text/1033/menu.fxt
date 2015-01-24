@@ -39,12 +39,7 @@ ML_FMYC DYNAMIC
 # Selected Modification (Dynamic)
 ML_FYHH DYNAMIC
 ML_FYE0 Enabled
-ML_FYIC Include
 ML_FYPR Priority
-ML_FYIX DYNAMIC INSTALL UNINSTALL
-ML_FYI0 Install
-ML_FYI1 Uninstall
-ML_FYSS Rescan Files
 
 # Helper texts
 ML_H0NM No mods installed
@@ -53,12 +48,8 @@ ML_H0EP ON/OFF the loader plugins.~n~Needs restart.
 ML_H0EL ON/OFF the log file.~n~OFF Increases performance.
 ML_H0LF ON/OFF flushing log to disk.~n~OFF Increases performance.
 ML_H0LS Maximum size of the log file on disk.
-ML_H0RR Rescan and reinstall mods
+ML_H0RR Rescan and reinstall mods (be careful)
 ML_H0RA ON/OFF the automatic detection of changes.
 ML_HMHH Type some keywords to find a mod.~n~Use ~<~~>~ to switch pages.
-
-
-# Internals (DO NOT CHANGE)
-ML__SM   > Mods Page Search Text
-ML__FR   > Used by freeze
-
+ML_HYE0 ON/OFF the mod from the game (be careful).
+ML_HYPR Changes the priority of this mod over others.
