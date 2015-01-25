@@ -278,6 +278,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x57B9FD] = 0x57B9FD;   // call    _ZN9CSprite2d4DrawERK5CRectRK5CRGBA
         map[0x58061B] = 0x58061B;   // call    _ZN12CMenuManager16ProcessUserInputEhhhha
         map[0x57BA58] = 0x57BA58;   // call    _ZN12CMenuManager17DrawStandardMenusEh
+        map[0x618D00] = 0x618D00;   // _Z23GetSavedGameDateAndTimei
         map[0x579D9D] = 0x579D9D;   // ja      loc_57A168      ; jumptable 00579DAA default case
         map[0x579DEE] = 0x579DEE;   // loc_579DEE:             ; jumptable 00579DAA case 12
         map[0x6A0050] = 0x6A0050;   // _ZN5CText3GetEPKc

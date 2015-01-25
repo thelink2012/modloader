@@ -538,10 +538,14 @@ bool DataPlugin::VerifyCachedReadme(std::ifstream& ss, cereal::BinaryInputArchiv
     archive(magic); // magic for this translation unit in specific
     if(magic == build_identifier())
     {
-        block_reader magics_block(ss);
-        archive(magics);                    // magic for the other translation units related to the readmes
-        if(magics == this->readme_magics)   // notice order matters
-            return true;
+        try {
+            block_reader magics_block(ss);
+            archive(magics);                    // magic for the other translation units related to the readmes
+            if(magics == this->readme_magics)   // notice order matters
+                return true;
+        } catch(const cereal::Exception&) {
+            // Invalid typeid serialized, so the cache is incompatible
+        };
     }
 
     this->Log("Warning: Incompatible readme cache version, a new cache will be generated.");
@@ -606,7 +610,6 @@ void DataPlugin::WriteReadmeCache()
 
         // magics
         {
-            // TODO readme magics is wrong
             block_writer magics_block(ss);
             archive(this->readme_magics);
         }
