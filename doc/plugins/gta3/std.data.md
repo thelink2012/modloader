@@ -23,6 +23,8 @@ The following data files are currently supported:
 | water.dat      |    X     |   X   |        |
 | timecyc.dat    |    X     |       |        |
 | popcycle.dat   |    X     |       |        |
+| cargrp.dat     |    X     |   X   |        |
+| pedgrp.dat     |    X     |   X   |        |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     

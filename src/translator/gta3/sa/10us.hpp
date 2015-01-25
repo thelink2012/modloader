@@ -221,6 +221,10 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5BBADE] = 0x5BBADE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTimeCycle::initialise
         map[0x6EAE80] = 0x6EAE80;   // _ZN11CWaterLevel20WaterLevelInitialiseEv
         map[0x6EAF4D] = 0x6EAF4D;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWaterLevel::WaterLevelInitialise
+        map[0x5BD1A0] = 0x5BD1A0;   // _ZN11CPopulation13LoadCarGroupsEv
+        map[0x5BD1BB] = 0x5BD1BB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadCarGroups
+        map[0x5BCFE0] = 0x5BCFE0;   // _ZN11CPopulation13LoadPedGroupsEv
+        map[0x5BCFFB] = 0x5BCFFB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
         map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
         map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress

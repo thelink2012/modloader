@@ -46,8 +46,6 @@ namespace gta3 {
  *
  *          Inherithing from gta3::data_traits makes those optional:
  *
- *              static const bool do_stlist -> Whether this trait has the process_stlist method
- *
  *              SectionInfo* section_by_line(SectionInfo*, String)
  *                                              -> Gets the current section object from the specified line
  *
@@ -67,16 +65,12 @@ namespace gta3 {
  *              bool premerge(Store)            -> Called before starting the merge process (comparisions and all that).
  *                                              -> Returns false on failure.
  *
- *
- *              static process_stlist(begin, end)  (!!!!NOTICE!!!, only needed if do_stlist=true)
- *                                              -> Processes a list of data stores outputing another list of data stores to be used instead
- *                                                 to build the merged list.
- *
  *              static bool prewrite(MergedList, FuncDoWrite)
  *                                              -> Before writing to the file the merged list (of dominant data) you can take a chance
  *                                                 to post-process the merged list.
  *                                                 This function should forward the call to FuncDoWrite and (probably) return it's result boolean.
  *                                                 The FuncDoWrite takes a MergedList as parameter and returns a boolean of success or failure.
+ *                                                  The MergedList is a vector<pair<ref<key>, ref<value>>>
  *
  *
  *              bool posmerge(Store)            -> Called after the merge process; Returns false on failure.
