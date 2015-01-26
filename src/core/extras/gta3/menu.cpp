@@ -333,7 +333,6 @@ bool TheMenu::BuildCurrentModsPage(int inc)
         {
             auto& entry = mPageMods.GetEntry(i)->pEntry;
             auto  skip  = (i >= numInPage);                 // Should skip this entry? (i.e. no more mods for another entry)
-            //entry->m_nType       = skip? MENU_ENTRY_NONE  : MENU_ENTRY_BUTTON;
             entry->m_nActionType = skip? MENU_ACTION_SKIP : MENU_ACTION_SWITCH;
 
             if(!skip)
@@ -348,10 +347,19 @@ bool TheMenu::BuildCurrentModsPage(int inc)
         }
         return true;
     }
+    else
+    {
+        this->mCurrentModsPage = 0;
 
-    // No mods, no pages at all
-    this->mCurrentModsPage = 0;
-    return false;
+        for(int i = 0; i < NumModsPerPage; ++i)
+        {
+            auto& entry = mPageMods.GetEntry(i)->pEntry;
+            entry->m_nActionType = MENU_ACTION_SKIP;
+            fxt.set(entry->m_szName, "");
+        }
+
+        return false;
+    }
 }
 
 /*

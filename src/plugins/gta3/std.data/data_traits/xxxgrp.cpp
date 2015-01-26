@@ -6,10 +6,20 @@
 #include <stdinc.hpp>
 #include "../data.hpp"
 using namespace modloader;
-using std::vector;
+using std::set;
+using std::string;
 
-// TODO make it merge in the same group
+namespace datalib
+{
+    template<>
+    struct data_info<udata<std::string>> : data_info<std::string>
+    {
+        static const bool ignore = true;
+    };
+}
 
+
+// Traits for pedgrp.dat and cargrp.dat
 struct xxxgrp_traits : public data_traits
 {
     static const bool can_cache         = true;     // Can this store get cached?
@@ -21,12 +31,64 @@ struct xxxgrp_traits : public data_traits
     using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
                       
     //
-    using key_type   = int;
-    using value_type = data_slice<vector<std::string>>;
+    using key_type   = std::pair<int, size_t>; // grpindex, model_hash
+    using value_type = data_slice<either<set<string>, udata<string>>>;
 
     key_type key_from_value(const value_type&)
     {
-        return grpindex++;
+        return std::make_pair(grpindex++, 0);
+    }
+
+
+    // Before the merging process transform the set of models into individual models in each key of the container
+    // This allows merging of individual entries in a group not just the entire group container itself
+    template<class StoreType>
+    static bool premerge(StoreType& store)
+    {
+        StoreType::container_type newcontainer;
+
+        // Builds the new container, which contains a single model instead of the set of models
+        std::for_each(store.container().begin(), store.container().end(), [&](StoreType::pair_type& pair)
+        {
+            auto& set = *get<std::set<std::string>>(&pair.second.get<0>());
+            for(auto& model : set)
+            {
+                newcontainer.emplace(
+                    key_type(pair.first.first, hash_model(model)),
+                    value_type(make_udata<std::string>(model)));
+            }
+        });
+
+        store.container() = std::move(newcontainer);
+        return true;
+    }
+
+    // Now, before writing the content to the merged file we should reverse the transformation we did in premerge.
+    // So this time we should take each model with the same group in the key and put in a set
+    template<class StoreType, class MergedList, class FuncDoWrite>
+    static bool prewrite(MergedList list, FuncDoWrite dowrite)
+    {
+        std::map<key_type, value_type> grp_content;
+
+        std::for_each(list.begin(), list.end(), [&](MergedList::value_type& pair)
+        {
+            auto& model = get(*get<udata<std::string>>(&pair.second.get().get<0>()));
+            auto key = key_type(pair.first.get().first, 0);
+
+            // If the key still doesn't exist, make it to be have it's mapped type to be a set of strings
+            if(grp_content.count(key) == 0)
+            {
+                grp_content.emplace(key, value_type(set<string>()));
+            }
+
+            get<set<string>>(&grp_content[key].get<0>())->emplace(model);
+        });
+
+        list.clear();
+        for(auto& x : grp_content)
+           list.emplace_back(std::cref(x.first), std::ref(x.second));
+
+        return dowrite(list);
     }
 
     public: // traits data

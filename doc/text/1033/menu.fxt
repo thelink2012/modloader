@@ -3,7 +3,7 @@
 #
 
 # Common
-ML_FEO Mod Loader Setup
+ML_FEO Mod Configuration
 ML_ONN ON
 ML_OFF OFF
 ML_FTN Next
@@ -11,7 +11,7 @@ ML_FTP Prev
 ML_FTB Back
 
 # Main Page
-ML_F0HH Mod Loader
+ML_F0HH Mod Configuration
 ML_F0E0 Enable Menu
 ML_F0EP Enable Plugins
 ML_F0EL Enable Logging

@@ -61,7 +61,7 @@ std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>&
         {
             auto tell = is.tellg();
             if(is >> value)
-                cont.emplace(cont.end(), std::move(value));
+                cont.insert(cont.end(), std::move(value));
             
             good = !!is;
             if(!good) { is.clear(); is.seekg(tell); }   // seekg fails when flag's failed

@@ -81,6 +81,18 @@ class data_slice : public data_slice_base
             rhs.used_count = 0;
         }
 
+        template<class Arg1, class... Args>
+        explicit data_slice(Arg1&& arg1, Args&&... args) :
+            tuple(std::forward<Arg1>(arg1), std::forward<Args>(args)...)
+        {
+            for(size_t i = 0; i < tuple_size; ++i)
+            {
+                this->used.set(i);
+                ++this->used_count;
+            }
+        }
+
+
         //
         //  Assignment Operators
         //
