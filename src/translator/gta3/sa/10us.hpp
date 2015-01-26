@@ -226,6 +226,8 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5BCFE0] = 0x5BCFE0;   // _ZN11CPopulation13LoadPedGroupsEv
         map[0x5BCFFB] = 0x5BCFFB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
         map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
+        map[0x5B5360] = 0x5B5360;   // _ZN11CObjectData10InitialiseEPcb
+        map[0x5B5444] = 0x5B5444;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise
         map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x5B906A] = 0x5B906A;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop begin

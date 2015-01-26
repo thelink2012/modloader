@@ -12,7 +12,7 @@ using std::string;
 namespace datalib
 {
     template<>
-    struct data_info<udata<std::string>> : data_info<std::string>
+    struct data_info<udata<modelname>> : data_info<modelname>
     {
         static const bool ignore = true;
     };
@@ -32,7 +32,7 @@ struct xxxgrp_traits : public data_traits
                       
     //
     using key_type   = std::pair<int, size_t>; // grpindex, model_hash
-    using value_type = data_slice<either<set<string>, udata<string>>>;
+    using value_type = data_slice<either<set<modelname>, udata<modelname>>>;
 
     key_type key_from_value(const value_type&)
     {
@@ -50,12 +50,12 @@ struct xxxgrp_traits : public data_traits
         // Builds the new container, which contains a single model instead of the set of models
         std::for_each(store.container().begin(), store.container().end(), [&](StoreType::pair_type& pair)
         {
-            auto& set = *get<std::set<std::string>>(&pair.second.get<0>());
+            auto& set = *get<std::set<modelname>>(&pair.second.get<0>());
             for(auto& model : set)
             {
                 newcontainer.emplace(
                     key_type(pair.first.first, hash_model(model)),
-                    value_type(make_udata<std::string>(model)));
+                    value_type(make_udata<modelname>(model)));
             }
         });
 
@@ -72,16 +72,16 @@ struct xxxgrp_traits : public data_traits
 
         std::for_each(list.begin(), list.end(), [&](MergedList::value_type& pair)
         {
-            auto& model = get(*get<udata<std::string>>(&pair.second.get().get<0>()));
+            auto& model = get(*get<udata<modelname>>(&pair.second.get().get<0>()));
             auto key = key_type(pair.first.get().first, 0);
 
-            // If the key still doesn't exist, make it to be have it's mapped type to be a set of strings
+            // If the key still doesn't exist, make it to be have it's mapped type to be a set of models
             if(grp_content.count(key) == 0)
             {
-                grp_content.emplace(key, value_type(set<string>()));
+                grp_content.emplace(key, value_type(set<modelname>()));
             }
 
-            get<set<string>>(&grp_content[key].get<0>())->emplace(model);
+            get<set<modelname>>(&grp_content[key].get<0>())->emplace(model);
         });
 
         list.clear();

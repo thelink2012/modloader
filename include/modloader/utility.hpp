@@ -32,7 +32,7 @@ namespace modloader
     template<class FuncT>
     std::function<void()> gdir_refresh(FuncT func)
     {
-        return [func]
+        return [func]() mutable
         {
             scoped_gdir xdir("");
             return func();

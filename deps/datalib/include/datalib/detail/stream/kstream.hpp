@@ -430,7 +430,9 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
                         if(c == '.')
                         {
                             skipc(c);
-                            return !this->match_integer().fail();
+                            if(isdigit(sgetc()))
+                                return !this->match_integer().fail();
+                            return true;
                         }
                     }
                     return false;

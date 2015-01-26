@@ -792,6 +792,22 @@ struct data_traits : public gta3::data_traits
         }
         return true;
     }
+
+protected:
+
+    template<class StoreType, typename TData>
+    static bool setbyline_check_eof(StoreType& store, TData& data, const gta3::section_info* section, const std::string& line, bool allowlog = true)
+    {
+        auto& traits = store.traits();
+        static std::string eof_string = StoreType::traits_type::eof_string();
+
+        // The lines after a '*' should be ignored
+        if(!traits.eof && !line.compare(0, eof_string.length(), eof_string))
+            traits.eof = true;
+
+        return traits.eof? false : setbyline(store, data, section, line, allowlog);
+    }
+
 };
 
 

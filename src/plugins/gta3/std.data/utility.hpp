@@ -22,7 +22,7 @@ bool operator==(const insen<T>& a, const insen<T>& b)
 
 template<class T>
 bool operator<(const insen<T>& a, const insen<T>& b)
-{ return (modloader::compare(get(a), get(b), false)); }
+{ return (modloader::compare(get(a), get(b), false)) < 0; }
 
 template<class... Args>
 inline insen<std::string> make_insen_string(Args&&... args)
