@@ -98,7 +98,7 @@ void __declspec(naked) HOOK_FixBikeSuspLines()
         test eax, eax
         jz _BikeSuspFix
         mov edx, [eax+0x28]  /* Original Code */
-        retn
+        ret
 
     _BikeSuspFix:
         pushad

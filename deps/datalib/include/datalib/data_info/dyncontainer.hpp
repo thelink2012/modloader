@@ -22,7 +22,7 @@ struct data_info_dyncontainer : data_info_base
 {
     using container_type = ContainerType;
     static const int estimated_elements = EstimatedSize;
-    static const int complexity = estimated_elements * data_info<container_type::value_type>::complexity;
+    static const int complexity = estimated_elements * data_info<typename container_type::value_type>::complexity;
 
     // Performs precomparision (that's beforing comparing anything else, perform this cheap comparision)
     struct precompare

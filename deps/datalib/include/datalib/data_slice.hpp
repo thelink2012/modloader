@@ -423,7 +423,7 @@ class data_slice : public data_slice_base
             bool compare()
             {
                 static const bool has_precompare =
-                    detail::data_info_precomparer<>::precompare<std::decay<decltype(std::get<N>(lhs.tuple))>::type>::has_precompare;
+                    detail::data_info_precomparer<>::precompare<std::decay_t<decltype(std::get<N>(lhs.tuple))>>::has_precompare;
 
                 // If is pre comparing, check if this type can perform precomparision
                 // If not pre comparing, just ignore this check
@@ -476,7 +476,7 @@ class data_slice : public data_slice_base
             template<class Index, class TypeW>
             bool operator()(Index, TypeW)
             {
-                using Type = TypeW::type;
+                using Type = typename TypeW::type;
                 if(!data_info<Type>::ignore)
                     ++counter;
                 else if(std::is_same<Type, Until>::value)
@@ -490,13 +490,13 @@ class data_slice : public data_slice_base
 
 // CXX14 HELP-ME
 
-template<int I, class ...Types> inline
+template<size_t I, class ...Types> inline
 auto get(data_slice<Types...>& data) -> decltype(std::declval<data_slice<Types...>>().get<I>())
 {
     return data.get<I>();
 }
 
-template<int I, class ...Types> inline
+template<size_t I, class ...Types> inline
 auto get(const data_slice<Types...>& data) -> std::add_const_t<decltype(get<I>(std::declval<data_slice<Types...>>()))>
 {
     return get<I>(const_cast<data_slice<Types...>&>(data));

@@ -6,6 +6,7 @@
 #include <stdinc.hpp>
 #include "loader.hpp"
 #include <regex/regex.hpp>
+#include <intrin.h>
 using namespace modloader;
 using time_point = std::chrono::steady_clock::time_point;
 
@@ -20,10 +21,12 @@ static auto refresh_delay = std::chrono::milliseconds(1000);
 // Threading variables
 static HANDLE hThread = NULL;   // I/O thread used to watch over the file system
 static HANDLE hDirectory;       // Handle to modloader/ directory, which we'll be watching
-static OVERLAPPED overlapped;   // Watches using async I/O    
+static OVERLAPPED overlapped;   // Watches using async I/O  
+static HANDLE hCancelEvent;     // Cancels the I/O operation
 static CRITICAL_SECTION mutex;  // Used to avoid data races to 'last_change' and 'journal' variables
-static LONG has_changes = FALSE;// Used to determine if anything changed in the journal (and last_change) (should use atomic operations to set)
-static LONG kill_watcher;       // Should the watcher thread be killed? (should use atomic operations to set)
+static ULONGLONG has_changes = FALSE;// Used to determine if anything changed in the journal (and last_change) (should use atomic operations to set)
+static ULONGLONG kill_watcher;       // Should the watcher thread be killed? (should use atomic operations to set)
+// ^ use ULONGLONG instead of LONG or something else because of compatibility with mingw-w64
 
 // Journaling changes
 static time_point last_change;  // Last time something changed in the filesystem
@@ -51,18 +54,24 @@ void Loader::StartupWatcher()
         hThread = CreateThread(NULL, 0, &WatcherThread, NULL, CREATE_SUSPENDED, NULL);
         if(hThread)
         {
-            // Takes up the directory handle for modloader...
-            hDirectory = CreateFileA((this->gamePath + "modloader/").c_str(),
-                                    FILE_LIST_DIRECTORY, (FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
-                                    NULL, OPEN_EXISTING, (FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED), NULL);
-            if(hDirectory != INVALID_HANDLE_VALUE)
+            hCancelEvent = CreateEventA(NULL, FALSE, FALSE, NULL);
+            if(hCancelEvent)
             {
-                InitializeCriticalSection(&mutex);
-                ResumeThread(hThread);
-                return;
+                // Takes up the directory handle for modloader...
+                hDirectory = CreateFileA((this->gamePath + "modloader/").c_str(),
+                                        FILE_LIST_DIRECTORY, (FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
+                                        NULL, OPEN_EXISTING, (FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED), NULL);
+                if(hDirectory != INVALID_HANDLE_VALUE)
+                {
+                    InitializeCriticalSection(&mutex);
+                    ResumeThread(hThread);
+                    return;
+                }
+                else
+                    hDirectory = NULL;
+
+                CloseHandle(hCancelEvent);
             }
-            else
-                hDirectory = NULL;
 
             CloseHandle(hThread);
             hThread = NULL;
@@ -81,11 +90,11 @@ void Loader::ShutdownWatcher()
     if(hThread)
     {
         this->Log("Shutting down filesystem watcher...");
-        InterlockedOr(&kill_watcher, TRUE);     // shall set this before cancelling the watcher IO request
-        CancelIoEx(hDirectory, &overlapped);
+        SetEvent(hCancelEvent);
         WaitForSingleObject(hThread, INFINITE); // waits for the thread to finish up after the IO cancellation
         CloseHandle(hDirectory);
         CloseHandle(hThread);
+        CloseHandle(hCancelEvent);
         DeleteCriticalSection(&mutex);
         journal.clear();
         has_changes = FALSE;
@@ -150,22 +159,36 @@ static DWORD __stdcall WatcherThread(void*)
             &bytes, &overlapped, NULL))
         {
             // Wait for the changes to come up or the request to be cancelled by the main thread
-            if(WaitForSingleObject(overlapped.hEvent, INFINITE) == WAIT_OBJECT_0)
+            HANDLE pHandles[] = { hCancelEvent, overlapped.hEvent  };   // cancel should be the first event
+            switch(WaitForMultipleObjects(2, pHandles, FALSE, INFINITE))
             {
-                if(GetOverlappedResult(hDirectory, &overlapped, &bytes, FALSE))
+                case (WAIT_OBJECT_0 + 0):   // hCancelEvent
                 {
-                    if(bytes)
-                    {
-                        // Pass notifications forward
-                        for(auto notify = notifies; notify;  notify = (FILE_NOTIFY_INFORMATION*)(notify->NextEntryOffset? ((char*)notify + notify->NextEntryOffset) : nullptr))
-                            RegisterNotification(notify);
-                    }
+                    CancelIo(hDirectory);
+                    InterlockedOr(&kill_watcher, TRUE);
+                    break;
                 }
-                else
-                    RegisterError();
+
+                case (WAIT_OBJECT_0 + 1):   // hDirectory (overlapped.hEvent)
+                {
+                    if(GetOverlappedResult(hDirectory, &overlapped, &bytes, FALSE))
+                    {
+                        if(bytes)
+                        {
+                            // Pass notifications forward
+                            for(auto notify = notifies; notify;  notify = (FILE_NOTIFY_INFORMATION*)(notify->NextEntryOffset? ((char*)notify + notify->NextEntryOffset) : nullptr))
+                                RegisterNotification(notify);
+                        }
+                    }
+                    else
+                        RegisterError();
+                    break;
+                }
+
+                default: // this should never happen
+                    loader.Log("Warning: Failed to wait for the directory watcher, something is really wrong");
+                    break;
             }
-            else  // this should never happen
-                loader.Log("Warning: Failed to wait for the directory watcher, something is really wrong");
         }
         else
             RegisterError();

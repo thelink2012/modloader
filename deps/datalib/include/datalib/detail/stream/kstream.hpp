@@ -29,7 +29,12 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
     protected:
         using streambuf_iterator    = std::istreambuf_iterator<CharT, Traits>;
         using base                  = std::basic_ios<CharT, Traits>;
-        using icheckstream          = basic_icheckstream;
+        using ios_base              = base;
+        using typename base::pos_type;
+        using typename base::off_type;
+        using typename base::char_type;
+        using typename base::int_type;
+        using typename base::traits_type;
         
         std::streamsize m_gcount;       // Number of characters extracted from the last operation
         memorybuf       m_rdbuf;        // Buffering object
@@ -76,7 +81,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         { return &m_rdbuf; }
 	
         // Sets the input position indicator to absolute (relative to the beginning of the file) value pos
-        icheckstream& seekg(pos_type pos)
+        basic_icheckstream& seekg(pos_type pos)
         {
             this->clear(this->rdstate() & ~std::ios::eofbit);
             sentry xsentry(*this, true);
@@ -89,7 +94,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         }
 
         // Sets the input position indicator to position off, relative to position, defined by dir. Specifically, executes 
-        icheckstream& seekg(off_type off, std::ios::seekdir dir)
+        basic_icheckstream& seekg(off_type off, std::ios::seekdir dir)
         {
             this->clear(this->rdstate() & ~std::ios::eofbit);
             sentry xsentry(*this, true);
@@ -113,44 +118,44 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
 
 
         // Integer Checkers
-        icheckstream& operator>>(const short& value)
+        basic_icheckstream& operator>>(const short& value)
         { return this->check_integer(); }
-        icheckstream& operator>>(const unsigned short& value)
+        basic_icheckstream& operator>>(const unsigned short& value)
         { return this->check_integer(); }
-        icheckstream& operator>>(const int& value)
+        basic_icheckstream& operator>>(const int& value)
         { return this->check_integer(); }
-        icheckstream& operator>>(const unsigned int& value)
+        basic_icheckstream& operator>>(const unsigned int& value)
         { return this->check_integer(); }
-        icheckstream& operator>>(const long& value)
+        basic_icheckstream& operator>>(const long& value)
         { return this->check_integer(); }
-        icheckstream& operator>>(const unsigned long& value)
+        basic_icheckstream& operator>>(const unsigned long& value)
         { return this->check_integer(); }
-        icheckstream& operator>>(const long long& value)
+        basic_icheckstream& operator>>(const long long& value)
         { return this->check_integer(); }
-        icheckstream& operator>>(const unsigned long long& value)
+        basic_icheckstream& operator>>(const unsigned long long& value)
         { return this->check_integer(); }
 
         // Floating Point Checkers
-        icheckstream& operator>>(const float& value)
+        basic_icheckstream& operator>>(const float& value)
         { return this->check_real(); }
-        icheckstream& operator>>(const double& value)
+        basic_icheckstream& operator>>(const double& value)
         { return this->check_real(); }
-        icheckstream& operator>>(const long double& value)
+        basic_icheckstream& operator>>(const long double& value)
         { return this->check_real(); }
 
         // Boolean Checkers
-        icheckstream& operator>>(const bool& value)
+        basic_icheckstream& operator>>(const bool& value)
         { return this->check_bool(); }
  	
         // Manipulators, functions which get called to modify the state of the stream
-        icheckstream& operator>>(std::ios_base& (*func)(std::ios_base&))
+        basic_icheckstream& operator>>(std::ios_base& (*func)(std::ios_base&))
         {
             func(*this);
             return *this;
         }
 
         // Manipulators, functions which get called to modify the state of the stream
-        icheckstream& operator>>(std::basic_ios<char_type>& (*func)(std::basic_ios<char_type>&))
+        basic_icheckstream& operator>>(std::basic_ios<char_type>& (*func)(std::basic_ios<char_type>&))
         {
             func(*this);
             return *this;
@@ -172,7 +177,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         {
             public:
                 // The constructor just calls the private perform_sentry
-                sentry(icheckstream& is, bool noskipws = false)
+                sentry(basic_icheckstream& is, bool noskipws = false)
                 {
                     this->result = is.perform_sentry(noskipws);
                 }
@@ -203,7 +208,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
             public:
                 // Constructs gets currect stream position
                 // A dummy reposer does nothing
-                reposer(icheckstream& is, bool dummy = false) : is(is), dorepos(true), dummy(dummy)
+                reposer(basic_icheckstream& is, bool dummy = false) : is(is), dorepos(true), dummy(dummy)
                 {
                     this->pos = is.rdbuf()->pubseekoff(0, std::ios::cur, std::ios::in);
                 }
@@ -219,27 +224,27 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
                 }
 
                 // Reposition to the position of construction time
-                icheckstream& repos()
+                basic_icheckstream& repos()
                 {
                     if(!dummy) is.rdbuf()->pubseekpos(this->pos, std::ios::in);
                     return is;
                 }
 
                 // Avoid reposition during destruction
-                icheckstream& norepos(bool noreposx = true)
+                basic_icheckstream& norepos(bool noreposx = true)
                 {
                     this->dorepos = !noreposx;
                     return is;
                 }
 
                 // Same as calling 'norepos(noreposx)'
-                icheckstream& operator()(bool noreposx)
+                basic_icheckstream& operator()(bool noreposx)
                 {
                     return norepos(noreposx);
                 }
 
             private:
-                icheckstream& is;
+                basic_icheckstream& is;
                 std::streampos pos;
                 bool dorepos, dummy;
         };
@@ -248,7 +253,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
     private: // Forwarders from operator>>
 
         // Forwarded from operators>> with integer values
-        icheckstream& check_integer()
+        basic_icheckstream& check_integer()
         {
             reposer xrepos(*this, true);
             sentry  xsentry(*this);
@@ -260,7 +265,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         }
 
         /// Forwarded from operators>> with floating point values
-        icheckstream& check_real()
+        basic_icheckstream& check_real()
         {
             reposer xrepos(*this, true);
             sentry  xsentry(*this);
@@ -272,7 +277,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         }
 
         // Forwarded from operator>> with boolean values
-        icheckstream& check_bool()
+        basic_icheckstream& check_bool()
         {
             reposer xrepos(*this, true);
             sentry  xsentry(*this);
@@ -304,14 +309,14 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         }
 
         // Tries to match either a '+' or '-' sign
-        icheckstream& may_match_sign()
+        basic_icheckstream& may_match_sign()
         {
             this->try_match_sign();
             return *this;
         }
 
         // Could match a base (0x, 0, none) depending on the base showbase format flags
-        icheckstream& could_match_base()
+        basic_icheckstream& could_match_base()
         {
             int_type c;
             if(*this)
@@ -334,7 +339,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
 
 
         // Finishes a match by checking if the current character is a blank space
-        icheckstream& match_end()
+        basic_icheckstream& match_end()
         {
             if(*this)
             {
@@ -348,7 +353,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
 
 
         // Matches a boolean 'true'/'false' or '1'/'0', depending on the boolalpha format flag.
-        icheckstream& match_bool()
+        basic_icheckstream& match_bool()
         {
             if(*this)
             {
@@ -383,7 +388,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         }
 
         // Matches a integer using the base set in the showbase format flags
-        icheckstream& match_integer_by_base()
+        basic_icheckstream& match_integer_by_base()
         {
             return match_integer([this](int c) {
                     return (this->flags() & std::ios_base::hex? isxdigit :
@@ -400,7 +405,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
 
         // Matches a integer assuming the digits characters for this integer return true when passed to (isdigit)
         template<class IsDigitFunctor>
-        icheckstream& match_integer(IsDigitFunctor isdigit)
+        basic_icheckstream& match_integer(IsDigitFunctor isdigit)
         {
             if(*this)
             {
@@ -415,7 +420,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         }
 
         // Matches a real number (supports exponents)
-        icheckstream& match_float()
+        basic_icheckstream& match_float()
         {
             if(*this)
             {
@@ -509,7 +514,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         }
 
         // Called whenever a conversion couldn't be performed. Sets the failure bits and returns itself.
-        icheckstream& failed()
+        basic_icheckstream& failed()
         {
             this->setstate(std::ios_base::failbit);
             return *this;
@@ -544,7 +549,7 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
 
         // Skips the current character assuming it's the same as c
         // Causes failure bits to be set if the current character is not c
-        icheckstream& skipc(int_type c)
+        basic_icheckstream& skipc(int_type c)
         {
             if(!traits_type::eq_int_type(sbumpc(), c)) return this->failed();
             return *this;
@@ -620,8 +625,8 @@ basic_icheckstream<CharT, Traits>& operator>>(basic_icheckstream<CharT, Traits>&
 {
     using icheckstream = basic_icheckstream<CharT, Traits>;
 
-    icheckstream::reposer xrepos(is);
-    icheckstream::sentry  xsentry(is);
+    typename icheckstream::reposer xrepos(is);
+    typename icheckstream::sentry  xsentry(is);
     if(xsentry)
     {
         auto x = is.rdbuf()->sbumpc();
@@ -645,8 +650,8 @@ basic_icheckstream<CharT, Traits>& operator>>(basic_icheckstream<CharT, Traits>&
     auto count = is.width();
     bool changed = false;
 
-    icheckstream::reposer xrepos(is);
-    icheckstream::sentry  xsentry(is);
+    typename icheckstream::reposer xrepos(is);
+    typename icheckstream::sentry  xsentry(is);
     if(xsentry)
     {
         std::ios_base::iostate state = 0;               // State of the stream after the operation
@@ -687,8 +692,8 @@ basic_icheckstream<CharT, Traits>& operator>>(basic_icheckstream<CharT, Traits>&
     auto count = is.width() > 0 && is.width() < str.max_size()? is.width() : str.max_size();
     bool changed = false;
 
-    icheckstream::reposer xrepos(is);
-    icheckstream::sentry  xsentry(is);
+    typename icheckstream::reposer xrepos(is);
+    typename icheckstream::sentry  xsentry(is);
     if(xsentry)
     {
         std::ios_base::iostate state = 0;               // State of the stream after the operation

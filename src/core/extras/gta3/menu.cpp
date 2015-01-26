@@ -664,13 +664,13 @@ void TheMenu::ModPageEvents()
         vPriorityUpdate(info);  // Updates the state text for the entry
 
         // The title
-        std::string title = modloader::toupper(std::string(this->mWorkingMod->GetName()));
+        std::string title = this->mWorkingMod->GetName();
         if(title.size() >= max_title_size)
         {
             title.resize(max_title_size - 3);
             title.append("...");
         }
-        fxt.set("ML_FYHH", title.data());
+        fxt.set("ML_FYHH", modloader::toupper(title).data());
     };
 
     // Mod page builder for each entry in the Mods page

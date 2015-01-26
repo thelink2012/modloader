@@ -517,14 +517,14 @@ void Loader::UpdateOldConfig()
     };
 
     // Takes the key from the old ini and puts in the new ini with new formating
-    auto UpdateKey = [&](const keydata& oldkey, keydata& newkey)
+    auto UpdateKey = [&](const keydata& oldkey, const keydata& newkey)
     {
         if(old[oldkey.section].count(oldkey.key))
             newer[newkey.section].emplace(newkey.key, old[oldkey.section][oldkey.key]);
     };
 
     // Takes a section from the old ini and puts in the new ini with new formating
-    auto UpdateSection = [&](const keydata& oldsec, keydata& newsec)
+    auto UpdateSection = [&](const keydata& oldsec, const keydata& newsec)
     {
         if(old.count(oldsec.section))
             newer[newsec.section] = old[oldsec.section];

@@ -12,6 +12,7 @@
 .globl  _HOOK_RegisterNextModelRead
 .globl  _HOOK_NewFile
 .globl  _HOOK_LoadColFileFix
+.globl _HOOK_FixBikeSuspLines
 .globl  _CallGetAbstractHandle
 
 /* vars */
@@ -21,6 +22,7 @@
 /* funcs */
 .globl _AllocBufferForString
 .globl _RegisterNextModelRead
+.globl _FixBikeSuspPtr
 
 .text
 
@@ -53,9 +55,9 @@ _HOOK_RegisterNextModelRead:
         add esp, 4
         popad
 
-        # Run replaced code:
+        /* Run replaced code: */
         mov edx,  dword ptr [_ms_aInfoForModel]
-        mov edx, [edx+0xC+eax*4]    # edx = ms_aInfoForModel[iLoadingModelIndex].iBlockCount
+        mov edx, [edx+0xC+eax*4]    /* edx = ms_aInfoForModel[iLoadingModelIndex].iBlockCount */
         ret
 
 /*
@@ -64,10 +66,32 @@ _HOOK_RegisterNextModelRead:
         Normally it will return it's original handle, but if a custom file (put in a modloader folder) it will return a new unique handle
 */
 _HOOK_NewFile:
-        and esi, 0x00FFFFFF     # Original code
+        and esi, 0x00FFFFFF     /* Original code */
         push eax
         call _CallGetAbstractHandle
         add esp, 4
         ret
+
+
+/*
+    void _nakedcall HOOK_FixBikeSuspLines(edi = v2->clump.base.m_pColModel->m_pColData, ...)
+        Fixes broken pointer on CBike::SetupSuspensionLine after a refresh
+*/
+_HOOK_FixBikeSuspLines:
+    _BikeSuspTry:
+        mov eax, [edi+0x10]  /* Original Code */
+        test eax, eax
+        jz _BikeSuspFix
+        mov edx, [eax+0x28]  /* Original Code */
+        ret
+
+    _BikeSuspFix:
+        pushad
+        push edi
+        call _FixBikeSuspPtr
+        add esp, 4
+        popad
+        jmp _BikeSuspTry
+
 
 .att_syntax prefix

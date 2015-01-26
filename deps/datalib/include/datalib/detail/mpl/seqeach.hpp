@@ -37,6 +37,7 @@ namespace detail
     template<int N, class Functor, class Tuple, typename Type, typename... Types>
     inline void foreach_in_tuple(Tuple& tuple, Functor& functor)
     {
+        using std::get;
         if(functor(std::integral_constant<int, N>(), type_wrapper<Type>(), get<N>(tuple)))
             return foreach_in_tuple<N+1, Functor, Tuple, Types...>(tuple, functor);
     }

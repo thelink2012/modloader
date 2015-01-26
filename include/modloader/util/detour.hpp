@@ -498,18 +498,6 @@ namespace modloader
             typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
             {}  // The end of the args is represented with a nullptr_t
 
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
-            {
-                T& detourer = static_cast<T&>(GetInjection(i-1));
-                detourer.make_call();
-                return Hlp_MakeCall<i-1, Args...>(fn);
-            }
-
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
-            {}  // The end of the args is represented with a nullptr_t
-
     };
 
 }

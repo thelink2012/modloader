@@ -225,7 +225,7 @@ solution "modloader"
         optimize "Speed"
 
     configuration "gmake"
-        buildoptions { "-std=gnu++11" }
+        buildoptions { "-std=gnu++14", "-Wno-deprecated" }
     configuration "vs*"
         buildoptions { "/arch:IA32" }   -- disable the use of SSE/SSE2 instructions (old game, old computers)
 
@@ -265,6 +265,8 @@ solution "modloader"
     project "shared"
         dummyproject()
         setupfiles "src/shared"
+        configuration { "gmake" }
+            includedirs { "src/shared/stdinc" } -- gmake compatibility since it'll compile the dummyproject
 
 
     local gta3_plugins = {  -- ordered by time taken to compile

@@ -20,6 +20,7 @@ class basic_imemstream : public std::basic_istream<CharT, Traits>
 {
     private:
         using base = std::basic_istream<CharT, Traits>;
+        using typename base::char_type;
 
         memorybuf m_rdbuf;
 
@@ -68,9 +69,9 @@ class basic_imemstream : public std::basic_istream<CharT, Traits>
         basic_imemstream& operator>>(bool& value)
         { return base::operator>>(value), *this; }
         basic_imemstream& operator>>(std::ios_base& (*func)(std::ios_base&))
-        { return base::operator>>(value), *this; }
+        { return base::operator>>(func), *this; }
         basic_imemstream& operator>>(std::basic_ios<char_type>& (*func)(std::basic_ios<char_type>&))
-        { return base::operator>>(value), *this; }
+        { return base::operator>>(func), *this; }
 };
 
 
