@@ -230,6 +230,13 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B5444] = 0x5B5444;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise
         map[0x7187C0] = 0x7187C0;   // _ZN5CFont14LoadFontValuesEv
         map[0x7187DB] = 0x7187DB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFont::LoadFontValues
+        map[0x461100] = 0x461100;   // _ZN11CRoadBlocks4InitEv
+        map[0x461125] = 0x461125;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CRoadBlocks::Init
+        map[0x6F7440] = 0x6F7440;   // _ZN6CTrain10InitTrainsEv
+        map[0x6F7470] = 0x6F7470;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks.dat"
+        map[0x6F74BC] = 0x6F74BC;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
+        map[0x6F7496] = 0x6F7496;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks3.dat"
+        map[0x6F74E2] = 0x6F74E2;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks4.dat"
         map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x5B906A] = 0x5B906A;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop begin

@@ -27,6 +27,11 @@ The following data files are currently supported:
 | pedgrp.dat     |    X     |   X   |        |
 | object.dat     |    X     |   X   |        |
 | fonts.dat      |    X     |       |        |
+| roadblox.dat   |    X     |       |        |
+| tracks.dat     |    X     |       |        |
+| tracks2.dat    |    X     |       |        |
+| tracks3.dat    |    X     |       |        |
+| tracks4.dat    |    X     |       |        |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     

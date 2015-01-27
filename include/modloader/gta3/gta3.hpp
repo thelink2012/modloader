@@ -37,6 +37,7 @@ namespace modloader
         using OpenFile = base<1>;
         using RwStreamOpen = base<3>;
         using CreateVideoPlayer = base<2>;
+        using ReadAndInterpretTrackFile = base<1>;
     };
 
     template<uintptr_t addr, class Traits = dtraits::LoadTxd>
@@ -58,6 +59,11 @@ namespace modloader
     using CreateVideoPlayerDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, void*(int, const char*)>,
                                                                             void*, int, const char*>; 
+
+    template<uintptr_t addr, class Traits = dtraits::ReadAndInterpretTrackFile>
+    using ReadAndInterpretTrackFileDetour = modloader::basic_file_detour<Traits,
+                                                injector::function_hooker<addr, int(const char*, void**, int*, float*, int)>,
+                                                                                int, const char*, void**, int*, float*, int>; 
 }
 
 
