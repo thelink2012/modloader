@@ -232,6 +232,11 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x7187DB] = 0x7187DB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFont::LoadFontValues
         map[0x461100] = 0x461100;   // _ZN11CRoadBlocks4InitEv
         map[0x461125] = 0x461125;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CRoadBlocks::Init
+        map[0x55F420] = 0x55F420;   // _ZN14SurfaceInfos_c4InitEv
+        map[0xB79538] = 0xB79538;   // SurfaceInfos_c g_surfaceInfos
+        map[0x55D100] = 0x55D100;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadAdhesiveLimits
+        map[0x55EBA4] = 0x55EBA4;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceInfos
+        map[0x55F2C1] = 0x55F2C1;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceAudioInfos
         map[0x6F7440] = 0x6F7440;   // _ZN6CTrain10InitTrainsEv
         map[0x6F7470] = 0x6F7470;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks.dat"
         map[0x6F74BC] = 0x6F74BC;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"

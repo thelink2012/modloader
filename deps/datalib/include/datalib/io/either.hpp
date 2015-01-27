@@ -181,19 +181,25 @@ basic_imemstream<CharT, Traits>& operator>>(basic_imemstream<CharT, Traits>& is,
     return is;
 }
 
+}
+
+namespace std {
+
 /*
  *  Input
  */
 template<class CharT, class Traits, class ...Args> inline
-std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is_, either<Args...>& either)
+std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is_, datalib::either<Args...>& either)
 {
-    auto& is = static_cast<imemstream&>(is_);   // unsafe
+    auto& is = static_cast<datalib::imemstream&>(is_);   // unsafe
     is >> either;
     return is;
 }
+
+} // namespace datalib
+
 
 /*
  *  Output is implemented by the either class itself
  */
 
-} // namespace datalib

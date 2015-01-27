@@ -32,6 +32,9 @@ The following data files are currently supported:
 | tracks2.dat    |    X     |       |        |
 | tracks3.dat    |    X     |       |        |
 | tracks4.dat    |    X     |       |        |
+| surface.dat    |    X     |   X   |        |
+| surfinfo.dat   |    X     |   X   |        |
+| surfaud.dat    |    X     |   X   |        |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     

@@ -185,7 +185,7 @@ static int LogException(char* buffer, size_t max, LPEXCEPTION_POINTERS pExceptio
     trace.EnterScope();
     if(bLogRegisters) trace.PrintRegisters();
     if(bLogStack) trace.PrintStackdump();
-    //if(bLogBacktrace) trace.PrintBacktrace(); -- too inacurate on gta_sa.exe
+    if(bLogBacktrace) trace.PrintBacktrace();
     trace.LeaveScope();
     return 1;
 }
@@ -450,7 +450,7 @@ void ExceptionTracer::PrintBacktrace()
         old_options = SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_NO_PROMPTS | SYMOPT_FAIL_CRITICAL_ERRORS);
     }
 
-    Print("Backtrace:");
+    Print("Backtrace (may be wrong):");
     EnterScope();
     {
         // Walks on the stack until there's no frame to trace or we traced 'max_backtrace' frames

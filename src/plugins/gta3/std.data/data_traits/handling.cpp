@@ -339,11 +339,7 @@ namespace datalib {
 // Handling Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadHandling = []
-    {
-        void* handling_data = memory_pointer(0xC2B9C8).get();
-        injector::thiscall<void(void*)>::call<0x5BD830>(handling_data);
-    };
+    auto ReloadHandling = std::bind(injector::thiscall<void(void*)>::call<0x5BD830>, mem_ptr(0xC2B9C8).get<void>());
 
     // Handling Merger
     plugin_ptr->AddMerger<handling_store>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));

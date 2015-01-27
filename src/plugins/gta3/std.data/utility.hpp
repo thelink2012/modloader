@@ -50,6 +50,10 @@ using animname = insen<std::string>;
 using texname = insen<std::string>;
 using labelname = insen<std::string>;
 
+struct dummy_string_traits
+{ static std::string output() { return "_";  } };
+using dummy_string = datalib::ignore<std::string, dummy_string_traits>;
+
 
 // Hashes a string in a case insensitive manner
 inline size_t hash_model(const char* model)
