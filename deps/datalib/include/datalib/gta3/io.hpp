@@ -33,7 +33,7 @@ inline std::string& trim_config_line(std::string& line, bool remove_separators =
 
     for(std::size_t pos = 0; pos < line.length(); ++pos)
     {
-        char c = line[pos];
+        unsigned char c = line[pos];    // (uchar for unsigned less than)
         if(c <= ' ' || c == ',')
         {
             if(c != ',' || remove_separators)

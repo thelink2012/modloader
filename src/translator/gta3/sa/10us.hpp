@@ -215,6 +215,8 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B871A] = 0x5B871A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
         map[0x5DD780] = 0x5DD780;   // _ZN9CPlantMgr12ReloadConfigEv
         map[0x5DD3D1] = 0x5DD3D1;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPlantSurfPropMgr::LoadPlantsDat
+        map[0x5BF750] = 0x5BF750;   // _ZN11CWeaponInfo10InitialiseEv
+        map[0x5BE68A] = 0x5BE68A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWeaponInfo::Initialise
         map[0x5BC090] = 0x5BC090;   // _ZN9CPopCycle10InitialiseEv
         map[0x5BC0AE] = 0x5BC0AE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopCycle::Initialise
         map[0x5BBAC0] = 0x5BBAC0;   // _ZN10CTimeCycle10InitialiseEb 

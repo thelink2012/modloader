@@ -754,6 +754,11 @@ class initializer
  *          static const bool has_sections      -> Does this data file contains sections?
  *          static const bool per_line_section  -> Does the sections of this data file different on each line?
  *
+ *          [optional] has_eof_string           -> When set to true, whenever the eof_string() is found the following content is ignored.
+ *                                                 Note when this is set to true you need to add a this->eof and serializer for the derived class.
+ *          [optional] eof_string()             -> Returns a string (const char*) which contains the eof string.
+ *                                                 When the eof string is found at the beggining of the line, all the content after this line is ignored.
+ *
  *          [optional] void static_serialize(Archive, IsSaving, Functor)
  *                                              -> Serializes the static data of a data_traits.
  *                                                 The Archive argument is a reference to the serializer (call it's operator()() to serialize something)
@@ -768,6 +773,8 @@ class initializer
 struct data_traits : public gta3::data_traits
 {
     static const bool is_ipl_merger = false;
+    static const bool has_eof_string = false;
+    static const char* eof_string() { return "\n" /* dummy */; };    
 
     template<class Archive, class FuncT>
     static void static_serialize(Archive& archive, bool saving, FuncT serialize_store)
@@ -781,10 +788,13 @@ struct data_traits : public gta3::data_traits
         return plugin_ptr->cast<DataPlugin>().QueryReadmeData<StoreType>();
     }
 
-    // make setbyline output a error on failure
+    // make setbyline output a error on failure and take care of eof strings
     template<class StoreType, typename TData>
     static bool setbyline(StoreType& store, TData& data, const gta3::section_info* section, const std::string& line, bool allowlog = true)
     {
+        if(has_reached_eof(store.traits(), line))
+            return false;
+
         if(!gta3::data_traits::setbyline(store, data, section, line))
         {
             if(allowlog) plugin_ptr->Log("Warning: Failed to parse data line: %s", line.c_str());
@@ -793,21 +803,27 @@ struct data_traits : public gta3::data_traits
         return true;
     }
 
-protected:
+private:
 
-    template<class StoreType, typename TData>
-    static bool setbyline_check_eof(StoreType& store, TData& data, const gta3::section_info* section, const std::string& line, bool allowlog = true)
+    template<class traits_type>
+    typename std::enable_if<traits_type::has_eof_string, bool>::type
+    static /* bool */ has_reached_eof(traits_type& traits, const std::string& line)
     {
-        auto& traits = store.traits();
-        static std::string eof_string = StoreType::traits_type::eof_string();
-
-        // The lines after a '*' should be ignored
-        if(!traits.eof && !line.compare(0, eof_string.length(), eof_string))
+        static std::string eof_string = traits_type::eof_string();
+        if(traits.eof || !line.compare(0, eof_string.length(), eof_string))
+        {
             traits.eof = true;
-
-        return traits.eof? false : setbyline(store, data, section, line, allowlog);
+            return true;
+        }
+        return false;
     }
 
+    template<class traits_type>
+    typename std::enable_if<!traits_type::has_eof_string, bool>::type
+    static /* bool */ has_reached_eof(traits_type& traits, const std::string& line)
+    {
+        return false;
+    }
 };
 
 

@@ -16,6 +16,10 @@ struct object_traits : public data_traits
     static const bool has_sections      = false;    // Does this data file contains sections?
     static const bool per_line_section  = false;    // Is the sections of this data file different on each line?
 
+    // End of file string
+    static const bool has_eof_string = true;
+    static const char* eof_string() { return "*"; }
+
     // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
@@ -40,23 +44,12 @@ struct object_traits : public data_traits
         return hash_model(get<0>(value));
     }
 
-
-public:
+public: // eof_string related
     bool eof = false;
-    static const char* eof_string() { return "*"; }
-
-    // Whenever a '*' appears in the front of the line, all the following lines should be ignored.
-    template<class StoreType>
-    static bool setbyline(StoreType& store, value_type& data, const gta3::section_info* section, const std::string& line)
-    {
-        return setbyline_check_eof(store, data, section, line);
-    }
 
     template<class Archive>
     void serialize(Archive& archive)
-    {
-        archive(this->eof);
-    }
+    { archive(this->eof); }
 };
 
 //

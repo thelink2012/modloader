@@ -101,10 +101,8 @@ struct carcols_traits : public data_traits
         int colindex = 0;   // Line index we are going tho for 'col' section
 
         template<class Archive>
-        void serialize(Archive& ar)
-        {
-            ar(this->colindex);
-        }
+        void serialize(Archive& archive)
+        { archive(this->colindex); }
 };
 
 //

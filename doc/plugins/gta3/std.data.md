@@ -35,6 +35,7 @@ The following data files are currently supported:
 | surface.dat    |    X     |   X   |        |
 | surfinfo.dat   |    X     |   X   |        |
 | surfaud.dat    |    X     |   X   |        |
+| weapon.dat     |    X     |   X   |   X    |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     

@@ -42,9 +42,7 @@ public:
 
     template<class Archive>
     void serialize(Archive& archive)
-    {
-        archive(this->adhesion_line);
-    }
+    { archive(this->adhesion_line); }
 };
 
 //

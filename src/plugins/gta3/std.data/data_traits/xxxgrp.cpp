@@ -96,10 +96,8 @@ struct xxxgrp_traits : public data_traits
         int grpindex = 0;   // Line index we are going tho for groups
 
         template<class Archive>
-        void serialize(Archive& ar)
-        {
-            ar(this->grpindex);
-        }
+        void serialize(Archive& archive)
+        { archive(this->grpindex); }
 };
 
 struct cargrp_traits : public xxxgrp_traits

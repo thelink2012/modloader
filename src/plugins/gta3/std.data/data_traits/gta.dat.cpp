@@ -171,9 +171,7 @@ struct gtadat_traits : public data_traits
 
         template<class Archive>
         void serialize(Archive& archive)
-        {
-            archive(index);
-        }
+        { archive(this->index); }
 
         friend class cereal::access;
 

@@ -124,6 +124,8 @@ struct fregex_compiler
                             add_string(); continue;
                         case 'c':
                             add_char(); continue;
+                        case '%':
+                            str.push_back('%'); continue;
                         case '{':
                             it = compile_regexy(it, end, false); continue;
                         case '$':
