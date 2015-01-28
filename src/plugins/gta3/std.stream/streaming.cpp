@@ -168,7 +168,9 @@ bool CAbstractStreaming::InstallFile(const modloader::file& file)
         // so we'll delay the actual install to the next frame, put everything on an import list
         this->BeginUpdate();
 
-        if(!IsClothes(&file))
+        if(IsNonStreamed(&file))
+            return false;
+        else if(!IsClothes(&file))
         {
             this->to_import[file.hash] = &file;
             return true;
@@ -201,7 +203,9 @@ bool CAbstractStreaming::UninstallFile(const modloader::file& file)
     {
         this->BeginUpdate();
 
-        if(!IsClothes(&file))
+        if(IsNonStreamed(&file))
+            return false;
+        else if(!IsClothes(&file))
         {
             // Remove special model (if it is a special model)
             erase_from_map(special, &file);     

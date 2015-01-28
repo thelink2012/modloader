@@ -163,6 +163,12 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5A82C0] = 0x5A82C0;   // _ZN8CClothes13RebuildPlayerEP10CPlayerPedb
         map[0x5A8346] = 0x5A8346;   // push    offset _PlayerClothes                    ; @CClothes::RebuildPlayer
 
+        // Non streamed resources
+        map[0x5B9188] = 0x5B9188;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
+        map[0x5B91B0] = 0x5B91B0;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc
+        map[0x5B91DB] = 0x5B91DB;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
+        map[0x5B910A] = 0x5B910A;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc
+
         // COLFILE fix, SA-only
         map[0x5B4F2E] = 0x5B4F2E;   // call    _ZN9CColModelnwEj
         map[0x5B4EF4] = 0x5B4EF4;   // call    _ZN8CFileMgr4ReadEiPci ; with the buffer, reading the header
