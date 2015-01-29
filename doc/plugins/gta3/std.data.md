@@ -27,7 +27,9 @@ The following data files are currently supported:
 | popcycle.dat   |    X     |       |        |
 | cargrp.dat     |    X     |   X   |        |
 | pedgrp.dat     |    X     |   X   |        |
+| ped.dat        |    X     |   X   |        |
 | pedstats.dat   |    X     |   X   |        |
+| statdisp.dat   |    X     |   X   |        |
 | object.dat     |    X     |   X   |        |
 | surface.dat    |    X     |   X   |        |
 | surfinfo.dat   |    X     |   X   |        |

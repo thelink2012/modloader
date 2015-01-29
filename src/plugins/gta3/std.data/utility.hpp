@@ -221,3 +221,35 @@ private:
         return clear_uniques(std::integral_constant<size_t, N+1>());
     }
 };
+
+//
+// Enum to string and vice-versa using a mapper
+//
+template<typename T>
+struct enum_map
+{ /* specialize a [static map<string, T>& map() {}] method */ };
+
+namespace datalib
+{
+    template<class T> inline
+    typename std::enable_if<std::is_enum<T>::value, T&>::type
+    /* T& */ from_string(const std::string& str, T& value)
+    {
+        auto& map = enum_map<T>::map();
+        auto it = map.find(str);
+        if(it != map.end()) return (value = it->second);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    template<class T> inline
+    typename std::enable_if<std::is_enum<T>::value, const std::string&>::type
+    /* const std::string& */ to_string(T value)
+    {
+        for(auto& x : enum_map<T>::map())
+        {
+            if(x.second == value)
+                return x.first;
+        }
+        throw std::invalid_argument("Invalid conversion from enum to string");
+    }
+}

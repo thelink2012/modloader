@@ -20,6 +20,7 @@
 #include <type_wrapper/datalib/io/floating_point.hpp>
 
 // datalib I/O with common types
+#include <datalib/io/enum.hpp>
 #include <datalib/io/either.hpp>
 #include <datalib/io/optional.hpp>
 #include <datalib/io/tuple.hpp>
