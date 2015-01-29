@@ -12,10 +12,8 @@ using std::vector;
 //
 struct carcols_traits : public data_traits
 {
-    static const bool can_cache         = true;     // Can this store get cached?
-    static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?
     static const bool has_sections      = true;     // Does this data file contains sections?
-    static const bool per_line_section  = false;    // Is the sections of this data file different on each line?
+    static const bool per_line_section  = false;
 
     // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
@@ -26,9 +24,6 @@ struct carcols_traits : public data_traits
     
     // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5B68AB, dtraits>;
-
-    // Dominance Flags
-    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
 
     // Section slices
     using col_type  = data_slice<rgb, optional<udata<int>>>;
@@ -133,7 +128,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
     plugin_ptr->AddReader<carcols_store>([](const std::string& line) -> maybe_readable<carcols_store>
     {
         // A pattern for a carcols line is very specific and needs special spacing, it is exactly:
-        // <VEHMODEL>$REPEAT(  <c1> <c2> [<c3> <c4>])
+        // <VEHMODEL>REPEAT(  <c1> <c2> [<c3> <c4>])
         static auto regex = make_regex(R"___(^(\w+)\s*(?:((?: (?: \d+){2}){2,})|((?: (?: \d+){4}){2,}))\s*$)___");
 
         smatch match;

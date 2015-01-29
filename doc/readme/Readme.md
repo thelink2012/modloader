@@ -53,13 +53,7 @@ If you just want to disable the mod for a while, go to the in-game menu and disa
 \* Currently you need to press F4 to refresh the mods, also not all kinds of files can be refreshed but most of them can.
 
 
-
-## Under Progress
-
-Mod Loader is still under progress, thus not everything is loadable yet.
-That is, some *.dat* files are not loadable for now, but we're working on it.
-
-### You have found a bug?
+### Have you found a bug?
 
 It's essential to report bugs, so the loader gets improved, to report a bug go to any of the following channels:
 
@@ -67,7 +61,7 @@ It's essential to report bugs, so the loader gets improved, to report a bug go t
  * English support on [GTA Forums](http://gtaforums.com/topic/669520-sarel-mod-loader/)
  * Portuguese support on [Brazilian Modding Studio Forums](http://brmodstudio.forumeiros.com/t3591-mod-loader-topico-oficial)
 
-When reporting a bug **PLEASE, FOR GOD'S SAKE** provide the *modloader/modloader.log* file created just after the crash and give some detailed information on how to reproduce the bug.
+When reporting a bug **PLEASE** provide the *modloader/modloader.log* file created just after the crash and give some detailed information on how to reproduce the bug.
 
 ### Supported Executables
 

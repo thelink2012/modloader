@@ -22,14 +22,9 @@ namespace datalib
 // Traits for pedgrp.dat and cargrp.dat
 struct xxxgrp_traits : public data_traits
 {
-    static const bool can_cache         = true;     // Can this store get cached?
-    static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?
-    static const bool has_sections      = false;    // Does this data file contains sections?
-    static const bool per_line_section  = false;    // Is the sections of this data file different on each line?
-
-    // Dominance Flags
-    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
-                      
+    static const bool has_sections      = false;
+    static const bool per_line_section  = false;
+           
     //
     using key_type   = std::pair<int, size_t>; // grpindex, model_hash
     using value_type = data_slice<either<set<modelname>, udata<modelname>>>;
@@ -102,27 +97,23 @@ struct xxxgrp_traits : public data_traits
 
 struct cargrp_traits : public xxxgrp_traits
 {
-    // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
         static const char* what()       { return "car groups"; }
         static const char* datafile()   { return "cargrp.dat"; }
     };
     
-    // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5BD1BB, dtraits>;
 };
 
 struct pedgrp_traits : public xxxgrp_traits
 {
-    // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
         static const char* what()       { return "ped groups"; }
         static const char* datafile()   { return "pedgrp.dat"; }
     };
     
-    // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5BCFFB, dtraits>;
 };
 
@@ -131,10 +122,6 @@ template<class Traits>
 using xxxgrp_store = gta3::data_store<Traits, std::map<
                         typename Traits::key_type, typename Traits::value_type
                         >>;
-
-
-
-
 
 
 template<class Traits>

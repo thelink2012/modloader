@@ -749,10 +749,10 @@ class initializer
  *      
  *      Additional stuff:
  *
- *          static const bool can_cache         -> Can this store get cached?
- *          static const bool is_reversed_kv    -> Does the key contains the data instead of the value in the key-value pair?
- *          static const bool has_sections      -> Does this data file contains sections?
- *          static const bool per_line_section  -> Does the sections of this data file different on each line?
+ *          [optional] static const bool can_cache        -> Can this store get cached?
+ *          [optional] static const bool is_reversed_kv    -> Does the key contains the data instead of the value in the key-value pair?
+ *                     static const bool has_sections      -> Does this data file contains sections?
+ *                     static const bool per_line_section  -> Does the sections of this data file different on each line?
  *
  *          [optional] has_eof_string           -> When set to true, whenever the eof_string() is found the following content is ignored.
  *                                                 Note when this is set to true you need to add a this->eof and serializer for the derived class.
@@ -772,9 +772,16 @@ class initializer
  */
 struct data_traits : public gta3::data_traits
 {
-    static const bool is_ipl_merger = false;
-    static const bool has_eof_string = false;
+    static const bool is_ipl_merger     = false;
+
+    static const bool can_cache         = true;
+    static const bool is_reversed_kv    = false;
+
+    static const bool has_eof_string    = false;
     static const char* eof_string() { return "\n" /* dummy */; };    
+
+    
+    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
 
     template<class Archive, class FuncT>
     static void static_serialize(Archive& archive, bool saving, FuncT serialize_store)

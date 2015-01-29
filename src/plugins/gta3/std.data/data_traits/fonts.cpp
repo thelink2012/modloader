@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2015  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
@@ -9,7 +9,6 @@ using namespace modloader;
 
 struct fonts_traits
 {
-    // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
         static const char* what() { return "font values"; }
@@ -18,8 +17,6 @@ struct fonts_traits
 
 using OpenFontsDetour = modloader::OpenFileDetour<0x7187DB, fonts_traits::dtraits>;
 
-
-// Population Cycle Properties Detour
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     auto ReloadFonts = injector::cstd<void()>::call<0x7187C0>;

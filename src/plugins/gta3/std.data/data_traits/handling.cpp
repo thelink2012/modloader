@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2015  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
@@ -23,8 +23,6 @@ static bool reading_from_readme = false;
 //
 struct handling_traits : public data_traits
 {
-    static const bool can_cache         = true;     // Can this store get cached?
-    static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?
     static const bool has_sections      = true;     // Does this data file contains sections?
     static const bool per_line_section  = true;     // Is the sections of this data file different on each line?
 
@@ -37,9 +35,6 @@ struct handling_traits : public data_traits
     
     // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5BD850, dtraits>;
-
-    // Dominance Flags
-    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
 
 
     // Section slices

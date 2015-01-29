@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2015  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
@@ -50,24 +50,16 @@ static std::array<xyz, N> make_xyz_array(const value_type& data)
 //
 struct water_traits : public data_traits
 {
-    static const bool can_cache         = true;     // Can this store get cached?
-    static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?
-    static const bool has_sections      = false;    // Does this data file contains sections?
-    static const bool per_line_section  = false;    // Is the sections of this data file different on each line?
+    static const bool has_sections      = false;
+    static const bool per_line_section  = false;
 
-    // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
         static const char* what() { return "water level"; }
     };
     
-    // Detouring type
     using detour_type = modloader::OpenFileDetour<0x6EAF4D, dtraits>;
 
-    // Dominance Flags
-    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
-
-    // water data
     using key_type      = either<std::array<xyz, 3>, std::array<xyz, 4>>;
     using value_type    = data_slice<water_point, water_point, water_point, optional<water_point>, delimopt, int>;
 
@@ -88,17 +80,13 @@ struct water_traits : public data_traits
     }
 };
 
-//
 using water_store = gta3::data_store<water_traits, std::map<
                         water_traits::key_type, water_traits::value_type
                         >>;
 
-
-// Water Level Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     auto ReloadWater = injector::cstd<void()>::call<0x6EAE80>;
     plugin_ptr->AddMerger<water_store>("water.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadWater));
 });
-
 

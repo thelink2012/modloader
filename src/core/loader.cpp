@@ -349,8 +349,8 @@ void Loader::ParseCommandLine()
                 mods.SetForceIgnore(true);
                 Log("Command line ignore received (-nomods)");
             }
-            else if(!_wcsicmp(argname, L"mod"))
-            {
+            else if(false && !_wcsicmp(argname, L"mod"))    // conflicts with the folder ini priority/excludes thing
+            {                                               // anyway, come up with profiles later, better than this
                 // Is argument after mod argument valid?
                 if(arg == nullptr)
                 {

@@ -6,6 +6,7 @@ v0.2.3 (In Dev)
  * Implemented *weapon.dat* merger and readme reader.
  * Implemented *ar_stats.dat, pedstats.dat, surface.dat, surfinfo.dat, surfaud.dat, object.dat, procobj.dat, pedgrp.dat and cargrp.dat* merger.
  * Implemented *clothes.dat, furnitur.dat, fonts.dat, roadblox.dat, tracks.dat, tracks2.dat, tracks3.dat and tracks4.dat* overrider.
+ * Removed the *-mod* command-line, something better than that will come up later.
  * Fixed no date-time in the load game menu screen.
  * Other minor fixes
 

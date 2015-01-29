@@ -13,11 +13,13 @@ The following data files are currently supported:
 
 | Data File Name | Override | Merge | Readme |
 |----------------|--------- |-------|--------|
+| ar_stats.dat   |    X     |   X   |        |
 | gta.dat        |    X     |   X   |   X    |
 | .ide files     |    X     |   X   |   ¹    |
 | .ipl files     |    X     |       |        |
-| carmods.dat    |    X     |   X   |   X    |
+| clothes.dat    |    X     |       |        |
 | carcols.dat    |    X     |   X   |   X    |
+| carmods.dat    |    X     |   X   |   X    |
 | handling.cfg   |    X     |   X   |   X    |
 | plants.dat     |    X     |   X   |        |
 | water.dat      |    X     |   X   |        |
@@ -25,22 +27,20 @@ The following data files are currently supported:
 | popcycle.dat   |    X     |       |        |
 | cargrp.dat     |    X     |   X   |        |
 | pedgrp.dat     |    X     |   X   |        |
+| pedstats.dat   |    X     |   X   |        |
 | object.dat     |    X     |   X   |        |
+| surface.dat    |    X     |   X   |        |
+| surfinfo.dat   |    X     |   X   |        |
+| surfaud.dat    |    X     |   X   |        |
+| furnitur.dat   |    X     |       |        |
 | fonts.dat      |    X     |       |        |
 | roadblox.dat   |    X     |       |        |
 | tracks.dat     |    X     |       |        |
 | tracks2.dat    |    X     |       |        |
 | tracks3.dat    |    X     |       |        |
 | tracks4.dat    |    X     |       |        |
-| surface.dat    |    X     |   X   |        |
-| surfinfo.dat   |    X     |   X   |        |
-| surfaud.dat    |    X     |   X   |        |
 | weapon.dat     |    X     |   X   |   X    |
-| ar_stats.dat   |    X     |   X   |        |
 | procobj.dat    |    X     |   X   |        |
-| clothes.dat    |    X     |       |        |
-| furnitur.dat   |    X     |       |        |
-| pedstats.dat   |    X     |   X   |        |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     
@@ -54,6 +54,3 @@ __Additional Notes__:
    * This makes the loading screen dynamic, removing the flickering when there are too few gta.dat entries (usually on TCs)
    * This performs caching of the data files and readmes in the modloader directory, giving a better performance in
      not needing to merge data every time you load the game.
-
-
-
