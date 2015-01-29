@@ -228,12 +228,16 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5BBAC0] = 0x5BBAC0;   // _ZN10CTimeCycle10InitialiseEb 
         map[0x5BBADE] = 0x5BBADE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTimeCycle::initialise
         map[0x6EAE80] = 0x6EAE80;   // _ZN11CWaterLevel20WaterLevelInitialiseEv
+        map[0x5A7B30] = 0x5A7B30;   // _ZN8CClothes15LoadClothesFileEv
+        map[0x5A7B54] = 0x5A7B54;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CClothes::LoadClothesFile
+        map[0x5C0297] = 0x5C0297;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @FurnitureManager_c::LoadFurniture
         map[0x6EAF4D] = 0x6EAF4D;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWaterLevel::WaterLevelInitialise
         map[0x5BD1A0] = 0x5BD1A0;   // _ZN11CPopulation13LoadCarGroupsEv
         map[0x5BD1BB] = 0x5BD1BB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadCarGroups
         map[0x5BCFE0] = 0x5BCFE0;   // _ZN11CPopulation13LoadPedGroupsEv
         map[0x5BCFFB] = 0x5BCFFB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
-        map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
+        map[0x5BB890] = 0x5BB890;   // _ZN9CPedStats12LoadPedStatsEv
+        map[0x5BB89F] = 0x5BB89F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedStats::LoadPedStats
         map[0x5B5360] = 0x5B5360;   // _ZN11CObjectData10InitialiseEPcb
         map[0x5B5444] = 0x5B5444;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise
         map[0x7187C0] = 0x7187C0;   // _ZN5CFont14LoadFontValuesEv
@@ -255,6 +259,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x6F74BC] = 0x6F74BC;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
         map[0x6F7496] = 0x6F7496;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks3.dat"
         map[0x6F74E2] = 0x6F74E2;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks4.dat"
+        map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
         map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x5B906A] = 0x5B906A;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop begin

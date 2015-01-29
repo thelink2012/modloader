@@ -4,8 +4,8 @@ v0.2.3 (In Dev)
  * Automatic refreshing implemented, meaning changes on *modloader/* directory are detected automatically while you play.
  * The refresh key _(by default F4)_ has been removed in consequence of the addition of the menu and automatic refreshing.
  * Implemented *weapon.dat* merger and readme reader.
- * Implemented *ar_stats.dat, surface.dat, surfinfo.dat, surfaud.dat, object.dat, procobj.dat, pedgrp.dat and cargrp.dat* merger.
- * Implemented *fonts.dat, roadblox.dat, tracks.dat, tracks2.dat, tracks3.dat and tracks4.dat* overrider.
+ * Implemented *ar_stats.dat, pedstats.dat, surface.dat, surfinfo.dat, surfaud.dat, object.dat, procobj.dat, pedgrp.dat and cargrp.dat* merger.
+ * Implemented *clothes.dat, furnitur.dat, fonts.dat, roadblox.dat, tracks.dat, tracks2.dat, tracks3.dat and tracks4.dat* overrider.
  * Fixed no date-time in the load game menu screen.
  * Other minor fixes
 

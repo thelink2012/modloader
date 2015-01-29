@@ -38,6 +38,9 @@ The following data files are currently supported:
 | weapon.dat     |    X     |   X   |   X    |
 | ar_stats.dat   |    X     |   X   |        |
 | procobj.dat    |    X     |   X   |        |
+| clothes.dat    |    X     |       |        |
+| furnitur.dat   |    X     |       |        |
+| pedstats.dat   |    X     |   X   |        |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     
