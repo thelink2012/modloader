@@ -240,6 +240,11 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x7187DB] = 0x7187DB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFont::LoadFontValues
         map[0x461100] = 0x461100;   // _ZN11CRoadBlocks4InitEv
         map[0x461125] = 0x461125;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CRoadBlocks::Init
+        map[0x5599B0] = 0x5599B0;   // _ZN6CStats23LoadActionReactionStatsEv
+        map[0x5599D8] = 0x5599D8;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadActionReactionStats
+        map[0x5A3EA0] = 0x5A3EA0;   // _ZN15ProcObjectMan_c4InitEv
+        map[0xBB7CB0] = 0xBB7CB0;   // ProcObjectMan g_procObjMan
+        map[0x5A3154] = 0x5A3154;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @ProcObjectMan_c::LoadDataFile
         map[0x55F420] = 0x55F420;   // _ZN14SurfaceInfos_c4InitEv
         map[0xB79538] = 0xB79538;   // SurfaceInfos_c g_surfaceInfos
         map[0x55D100] = 0x55D100;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadAdhesiveLimits
@@ -275,7 +280,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x408897] = 0x408897;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
 
         /*
-        TODO VTBL
+        TODO VTBL (>> MORE, SEARCH AGAIN)
 
         Find all "::vtbl", Subfolders, Find Results 1, "Entire Solution ( Including External Items )", ""
           C:\Projects\modloader\src\traits\gta3\sa.hpp(84):        return ModelType(injector::thiscall<uint8_t(void*)>::vtbl<4>(m));

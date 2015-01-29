@@ -430,10 +430,6 @@ static bool ModulesWalk(uint32_t pid, F functor)
 /* ----------------------------------------------------------------------------------------------------------------------- */
 
 /*
- *  TODO more symbols & wchar version of everything below 
- */
-
-/*
  *  Kernel32 
  *      http://msdn.microsoft.com/en-us/library/windows/desktop/ms724875(v=vs.85).aspx 
  *      http://msdn.microsoft.com/en-us/library/windows/desktop/aa364232(v=vs.85).aspx

@@ -23,9 +23,9 @@ using OpenTracksDetour = modloader::ReadAndInterpretTrackFileDetour<addr, tracks
 // Population Cycle Properties Detour
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadTracks = injector::cstd<void()>::call<0x6F7440>;
-    plugin_ptr->AddDetour("tracks.dat", reinstall_since_load, OpenTracksDetour<0x6F7470>(), gdir_refresh(ReloadTracks));
-    plugin_ptr->AddDetour("tracks2.dat", reinstall_since_load, OpenTracksDetour<0x6F74BC>(), gdir_refresh(ReloadTracks));
-    plugin_ptr->AddDetour("tracks3.dat", reinstall_since_load, OpenTracksDetour<0x6F7496>(), gdir_refresh(ReloadTracks));
-    plugin_ptr->AddDetour("tracks4.dat", reinstall_since_load, OpenTracksDetour<0x6F74E2>(), gdir_refresh(ReloadTracks));
+    auto ReloadTracks = injector::cstd<void()>::call<0x6F7440>; // reinstalling this is kinda of dangerous I guess
+    plugin_ptr->AddDetour("tracks.dat", no_reinstall, OpenTracksDetour<0x6F7470>());
+    plugin_ptr->AddDetour("tracks2.dat", no_reinstall, OpenTracksDetour<0x6F74BC>());
+    plugin_ptr->AddDetour("tracks3.dat", no_reinstall, OpenTracksDetour<0x6F7496>());
+    plugin_ptr->AddDetour("tracks4.dat", no_reinstall, OpenTracksDetour<0x6F74E2>());
 });

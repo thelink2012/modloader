@@ -13,8 +13,6 @@ using namespace modloader;
 static const uint64_t hash_mask   = 0x00000000FFFFFFFF;     // Mask for the hash on the behaviour
 static const uint64_t is_fxt_mask = 0x0000000100000000;     // Mask for is_fxt on the behaviour
 
-// TODO clear text if it's being printed during a update
-
 /*
  *  The plugin object
  */

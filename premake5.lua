@@ -166,7 +166,7 @@ function dummyproject()
     -- Dummy cpp file for Premake's generated none  project (bug workaround)
     configuration "gmake"
         kind "StaticLib"
-        files { "deps/dummy.cpp" }
+        files { "src/shared/dummy.cpp" }
         
     configuration {}
 end
@@ -276,6 +276,7 @@ solution "modloader"
         "std.fx",
         "std.text",
         "std.bank",
+
         "std.stream",
         "std.asi",
         "std.data"
