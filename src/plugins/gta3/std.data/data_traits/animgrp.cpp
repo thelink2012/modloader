@@ -22,7 +22,7 @@ static bool operator==(const animgrp_ptr& a, const animgrp_ptr& b)
 
 namespace datalib
 {
-    template<>  // The animgrp_ptr should be ignored during the data_slice scan/print
+    template<>  // The udata<animgrp_ptr> should be ignored during the data_slice scan/print
     struct data_info<udata<animgrp_ptr>> : data_info_base
     {
         static const bool ignore = true;
@@ -108,7 +108,7 @@ struct animgrp_traits : public data_traits
             if(data_traits::setbyline(store, data, section, line))
             {
                 data.set<1>(make_udata<animgrp_ptr>(traits.current_grp));
-                if(get<EndString>(&data.get<0>()))
+                if(is_typed_as<EndString>(data.get<0>()))
                     traits.current_grp = nullptr;
                 return true;
             }

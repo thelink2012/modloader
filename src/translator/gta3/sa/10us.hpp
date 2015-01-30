@@ -248,7 +248,9 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5599D8] = 0x5599D8;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadActionReactionStats
         map[0x55988F] = 0x55988F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadStatUpdateConditions
         map[0x608B45] = 0x608B45;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedType::LoadPedData
+        map[0x5BEDC0] = 0x5BEDC0;   // _ZN16CTaskSimpleFight13LoadMeleeDataEv
         map[0x5BC92B] = 0x5BC92B;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CAnimManager::ReadAnimAssociationDefinitions
+        map[0x5BEF47] = 0x5BEF47;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTaskSimpleFight::LoadMeleeData
         map[0x5A3EA0] = 0x5A3EA0;   // _ZN15ProcObjectMan_c4InitEv
         map[0xBB7CB0] = 0xBB7CB0;   // ProcObjectMan g_procObjMan
         map[0x5A3154] = 0x5A3154;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @ProcObjectMan_c::LoadDataFile

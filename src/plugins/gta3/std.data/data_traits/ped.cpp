@@ -9,7 +9,7 @@ using namespace modloader;
 using std::set;
 using std::string;
 
-enum class PedRelationship
+enum class PedRelationship : uint8_t
 {
     None, Hate, Dislike, Like, Respect
 };

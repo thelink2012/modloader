@@ -325,16 +325,22 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
             int_type c;
             if(*this)
             {
-                if(this->flags() & std::ios_base::showbase) // Any base flag set?
+                if(true)
                 {
                     if(this->flags() & std::ios_base::hex)
                     {
-                        if(!(sbumpc() == '0' && (c = sbumpc(), c == 'x' || c == 'X')))
-                            return failed();
+                        if(sbumpc() == '0')
+                        {
+                            if((c = sbumpc(), c == 'x' || c == 'X'))
+                                return *this;
+                            sungetc();
+                        }
+                        sungetc();
                     }
                     else if(this->flags() & std::ios_base::oct)
                     {
-                        if(sbumpc() != '0') return failed();
+                        if(sbumpc() == '0') return *this;
+                        sungetc();
                     }
                 }
             }

@@ -39,6 +39,12 @@ inline void clear(either<Types...>& e)
     e = either_blank();
 }
 
+template<typename T, typename... Types>
+inline bool is_typed_as(const either<Types...>& e)
+{
+    return get<T>(&e) != nullptr;
+}
+
 using boost::apply_visitor;
 
 

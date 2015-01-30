@@ -816,7 +816,7 @@ struct data_traits : public gta3::data_traits
         return false;
     }
 
-private:
+protected:
 
     template<class traits_type>
     typename std::enable_if<traits_type::has_eof_string, bool>::type

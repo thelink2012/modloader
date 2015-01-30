@@ -23,6 +23,7 @@ The following data files are currently supported:
 | carmods.dat    |    X     |   X   |   X    |
 | handling.cfg   |    X     |   X   |   X    |
 | plants.dat     |    X     |   X   |        |
+| melee.dat      |    X     |   X   |        |
 | water.dat      |    X     |   X   |        |
 | timecyc.dat    |    X     |       |        |
 | popcycle.dat   |    X     |       |        |
