@@ -28,9 +28,9 @@ typename std::enable_if<std::is_enum<T>::value, basic_icheckstream<CharT, Traits
     using namespace datalib;
     try {
         std::string str; T value;
-        if(is >> str) from_string<T>(str, value);
+        if(is.read_string(str)) from_string(str, value);
     } catch(const std::invalid_argument&) {
-        // ignore this exception
+        is.setstate(std::ios::failbit);
     }
     return is;
 }
@@ -50,9 +50,9 @@ typename std::enable_if<std::is_enum<T>::value, std::basic_istream<CharT, Traits
     using namespace datalib;
     try {
         std::string str;
-        if(is >> str) from_string<T>(str, value);
+        if(is >> str) from_string(str, value);
     } catch(const std::invalid_argument&) {
-        // ignore this exception
+        is.setstate(std::ios::failbit);
     }
     return is;
 }

@@ -165,6 +165,10 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
         char_type widen(char x) const
         {  return x; }
 
+        // Reads the next piece of string in the stream and puts it in 'out' if 'sideeffect=true'
+        //template<class Allocator>
+        basic_icheckstream& read_string(std::string& out, bool sideeffect = true);
+
     public:
 
         /*
@@ -619,6 +623,47 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
  *  String Input Operators
  */
 
+
+// Reads string with optional side effects
+template<class CharT, class Traits/*, class Allocator*/> inline
+basic_icheckstream<CharT, Traits>& basic_icheckstream<CharT, Traits>::read_string(std::string& str, bool sideff)
+{
+    using icheckstream = basic_icheckstream<CharT, Traits>;
+
+    auto& is = *this;
+    auto count = is.width() > 0 && is.width() < str.max_size()? is.width() : str.max_size();
+    bool changed = false;
+
+    typename icheckstream::reposer xrepos(is);
+    typename icheckstream::sentry  xsentry(is);
+    if(xsentry)
+    {
+        std::ios_base::iostate state = 0;               // State of the stream after the operation
+        auto n = count; // no need to (count-1) because std::string does not need a null terminator
+        if(sideff) str.erase(); // optional side effect
+
+        // The delimiter character shouldn't get extracted
+        auto x = is.rdbuf()->sgetc();
+        for(std::streamsize i = 0; i < n; ++i)
+        {
+            // Check eof first, just in case delim is also eof.
+            if(Traits::eq_int_type(x, Traits::eof())) { state |= std::ios_base::eofbit; break; }
+            if(icheckstream::is_separator(x)) break;
+
+            // Put this character on 's', add to gcount() and read next char
+            if(sideff) str.append(1, Traits::to_char_type(x)); // optional side effect
+            changed = true;
+            x = is.rdbuf()->snextc();
+        }
+
+        if(!changed) state |= std::ios_base::failbit;   // If no character has been extracted, set failbit
+        if(state) is.setstate(state);                   // If any bit has been set during this operation, set it
+    }
+
+    is.width(0);                    // Clear width field
+    return xrepos(!!is);
+}
+
 // Reads one char
 template<class CharT, class Traits> inline
 basic_icheckstream<CharT, Traits>& operator>>(basic_icheckstream<CharT, Traits>& is, const CharT& ch)
@@ -687,39 +732,7 @@ basic_icheckstream<CharT, Traits>& operator>>(basic_icheckstream<CharT, Traits>&
 template<class CharT, class Traits, class Allocator> inline
 basic_icheckstream<CharT, Traits>& operator>>(basic_icheckstream<CharT, Traits>& is, const std::basic_string<CharT, Traits, Allocator>& str)
 {
-    using icheckstream = basic_icheckstream<CharT, Traits>;
-
-    auto count = is.width() > 0 && is.width() < str.max_size()? is.width() : str.max_size();
-    bool changed = false;
-
-    typename icheckstream::reposer xrepos(is);
-    typename icheckstream::sentry  xsentry(is);
-    if(xsentry)
-    {
-        std::ios_base::iostate state = 0;               // State of the stream after the operation
-        auto n = count; // no need to (count-1) because std::string does not need a null terminator
-        //str.erase(); -- (stream just checks)
-
-        // The delimiter character shouldn't get extracted
-        auto x = is.rdbuf()->sgetc();
-        for(std::streamsize i = 0; i < n; ++i)
-        {
-            // Check eof first, just in case delim is also eof.
-            if(Traits::eq_int_type(x, Traits::eof())) { state |= std::ios_base::eofbit; break; }
-            if(icheckstream::is_separator(x)) break;
-
-            // Put this character on 's', add to gcount() and read next char
-            //str.append(1, Traits::to_char_type(x)); -- should not touch the string object (stream just checks)
-            changed = true;
-            x = is.rdbuf()->snextc();
-        }
-
-        if(!changed) state |= std::ios_base::failbit;   // If no character has been extracted, set failbit
-        if(state) is.setstate(state);                   // If any bit has been set during this operation, set it
-    }
-
-    is.width(0);                    // Clear width field
-    return xrepos(!!is);
+    return is.read_string(const_cast<std::string&>(str), false);
 }
 
 template<class Traits> inline

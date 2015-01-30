@@ -225,14 +225,16 @@ private:
 //
 // Enum to string and vice-versa using a mapper
 //
+struct invalid_enum_map_t {};
+
 template<typename T>
-struct enum_map
+struct enum_map : invalid_enum_map_t
 { /* specialize a [static map<string, T>& map() {}] method */ };
 
 namespace datalib
 {
     template<class T> inline
-    typename std::enable_if<std::is_enum<T>::value, T&>::type
+    typename std::enable_if<std::is_enum<T>::value && !std::is_base_of<invalid_enum_map_t, enum_map<T>>::value, T&>::type
     /* T& */ from_string(const std::string& str, T& value)
     {
         auto& map = enum_map<T>::map();
@@ -242,7 +244,7 @@ namespace datalib
     }
 
     template<class T> inline
-    typename std::enable_if<std::is_enum<T>::value, const std::string&>::type
+    typename std::enable_if<std::is_enum<T>::value && !std::is_base_of<invalid_enum_map_t, enum_map<T>>::value, const std::string&>::type
     /* const std::string& */ to_string(T value)
     {
         for(auto& x : enum_map<T>::map())
@@ -253,3 +255,26 @@ namespace datalib
         throw std::invalid_argument("Invalid conversion from enum to string");
     }
 }
+
+//
+// Some Enumerations
+//
+
+enum class EndString : uint8_t {    // "end" value
+    End
+};
+
+namespace datalib
+{
+    inline EndString& from_string(const std::string& str, EndString& value)
+    {
+        if(str == "end") return (value = EndString::End);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    inline const std::string& to_string(EndString value)
+    {
+        static std::string endstr = "end";
+        return endstr;
+    }
+};

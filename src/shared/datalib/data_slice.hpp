@@ -82,14 +82,9 @@ class data_slice : public data_slice_base
         }
 
         template<class Arg1, class... Args>
-        explicit data_slice(Arg1&& arg1, Args&&... args) :
-            tuple(std::forward<Arg1>(arg1), std::forward<Args>(args)...)
+        explicit data_slice(Arg1&& arg1, Args&&... args)
         {
-            for(size_t i = 0; i < tuple_size; ++i)
-            {
-                this->used.set(i);
-                ++this->used_count;
-            }
+            this->private_set(std::integral_constant<size_t, 0>(), std::forward<Arg1>(arg1), std::forward<Args>(args)...);
         }
 
 
@@ -165,8 +160,11 @@ class data_slice : public data_slice_base
             std::get<I>(this->tuple) = std::forward<T>(obj);
             if(this->used.test(I) == false)
             {
-                this->used.set(I);
-                ++this->used_count;
+                if(!ignores<I>())
+                {
+                    this->used.set(I);
+                    ++this->used_count;
+                }
             }
             using result_type = decltype(std::get<I>(std::declval<tuple_type>()));
             return std::forward<result_type>(this->get<I>());
@@ -241,6 +239,23 @@ class data_slice : public data_slice_base
                     return compare_data/*<std::equal_to>*/(*this, rhs);
             }
             return false;
+        }
+
+        template<size_t I>
+        static bool ignores()
+        {
+            return data_info<std::tuple_element<I, tuple_type>::type>::ignore;
+        }
+
+        void private_set(std::integral_constant<size_t, tuple_size>)
+        {
+        }
+
+        template<size_t I, class Arg, class... Args>
+        void private_set(std::integral_constant<size_t, I>, Arg&& arg, Args&&... args)
+        {
+            set<I>(std::forward<Arg>(arg));
+            return private_set(std::integral_constant<size_t, I+1>(), std::forward<Args>(args)...);
         }
 
 

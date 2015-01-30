@@ -792,7 +792,7 @@ struct data_traits : public gta3::data_traits
     template<class StoreType>
     static DataPlugin::readme_data_list<StoreType> query_readme_data(const std::string& filename)
     {
-        return plugin_ptr->cast<DataPlugin>().QueryReadmeData<StoreType>();
+        return modloader::plugin_ptr->cast<DataPlugin>().QueryReadmeData<StoreType>();
     }
 
     // make setbyline output a error on failure and take care of eof strings
@@ -804,10 +804,16 @@ struct data_traits : public gta3::data_traits
 
         if(!gta3::data_traits::setbyline(store, data, section, line))
         {
-            if(allowlog) plugin_ptr->Log("Warning: Failed to parse data line: %s", line.c_str());
+            if(allowlog) fail(line);
             return false;
         }
         return true;
+    }
+
+    static bool fail(const std::string& line)
+    {
+        modloader::plugin_ptr->Log("Warning: Failed to parse data line: %s", line.c_str());
+        return false;
     }
 
 private:

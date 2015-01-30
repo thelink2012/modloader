@@ -14,6 +14,7 @@ The following data files are currently supported:
 | Data File Name | Override | Merge | Readme |
 |----------------|--------- |-------|--------|
 | ar_stats.dat   |    X     |   X   |        |
+| animgrp.dat    |    X     |   X   |        |
 | gta.dat        |    X     |   X   |   X    |
 | .ide files     |    X     |   X   |   ¹    |
 | .ipl files     |    X     |       |        |
