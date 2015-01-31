@@ -36,7 +36,7 @@ CEREAL_REGISTER_RTTI(void); // for DataPlugin::line_data_base
  */
 const DataPlugin::info& DataPlugin::GetInfo()
 {
-    static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "txt", 0 };
+    static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "ped", "grp", "txt", 0 };
     static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", 54, extable };
     return xinfo;
 }
@@ -117,6 +117,7 @@ int DataPlugin::GetBehaviour(modloader::file& file)
 {
     static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
     static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+    static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
     // Setups the behaviour of a file based on the specified behv object (which can be null for none)
     // Each specific behv should have a unique identifier, for mergable files the filepath is used to identify
@@ -147,6 +148,18 @@ int DataPlugin::GetBehaviour(modloader::file& file)
         if(setup_behaviour(file, ipl_behv))
             return MODLOADER_BEHAVIOUR_YES;
     }
+    else if(file.is_ext("ped") || file.is_ext("grp"))
+    {
+        // must be in a decision/allowed/ directory
+        static auto regex = make_regex(R"___(^(?:.*[\\/])?decision[\\/]allowed[\\/]\w+\.(?:ped|grp)$)___", 
+                                        sregex::ECMAScript|sregex::optimize|sregex::icase);
+
+        if(regex_match(std::string(file.filedir()), regex))
+        {
+            if(setup_behaviour(file, decision_behv))
+                return MODLOADER_BEHAVIOUR_YES;
+        }
+    }
     else if(setup_behaviour(file, FindBehv(file)))
         return MODLOADER_BEHAVIOUR_YES;
 
@@ -169,12 +182,17 @@ bool DataPlugin::InstallFile(const modloader::file& file)
     {
         static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
         static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+        static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
         auto type = GetType(file.behaviour);
         if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
         {
             auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
             return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
+        }
+        else if(decision_behv && type == decision_behv->index)
+        {
+            return this->InstallFile(file, decision_merger_hash, file.filename(), file.filepath());
         }
         else
         {
@@ -201,12 +219,17 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
     {
         static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
         static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+        static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
         auto type = GetType(file.behaviour);
         if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
         {
             auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
             return this->ReinstallFile(file, hash);
+        }
+        else if(decision_behv && type == decision_behv->index)
+        {
+            return this->ReinstallFile(file, decision_merger_hash);
         }
         else
         {
@@ -232,12 +255,17 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
     {
         static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
         static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+        static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
         auto type = GetType(file.behaviour);
         if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
         {
             auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
             return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
+        }
+        else if(decision_behv && type == decision_behv->index)
+        {
+            return this->UninstallFile(file, decision_merger_hash, file.filename());
         }
         else
         {

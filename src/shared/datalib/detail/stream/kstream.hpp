@@ -319,13 +319,13 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
             return *this;
         }
 
-        // Could match a base (0x, 0, none) depending on the base showbase format flags
+        // Could match a base (0x, 0, none) depending on the format flags
         basic_icheckstream& could_match_base()
         {
             int_type c;
             if(*this)
             {
-                if(true)
+                if(!traits_type::eq_int_type(sgetc(), traits_type::eof()))
                 {
                     if(this->flags() & std::ios_base::hex)
                     {
@@ -333,7 +333,8 @@ class basic_icheckstream : public virtual std::basic_ios<CharT, Traits>
                         {
                             if((c = sbumpc(), c == 'x' || c == 'X'))
                                 return *this;
-                            sungetc();
+                            if(!traits_type::eq_int_type(c, traits_type::eof()))
+                                sungetc();
                         }
                         sungetc();
                     }

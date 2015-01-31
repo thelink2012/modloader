@@ -20,10 +20,12 @@ static const uint32_t type_mask_shf   = 32;                   // Takes 8 bits, s
 
 // Non unique files merger fs names
 // Since ipls and ides do not have a single file name to be merged (i.e. there are many ides and ipls files to merge) we use the followin'
-static const char* ipl_merger_name = "**.ipl";
-static const char* ide_merger_name = "**.ide";
+static const char* ipl_merger_name = "**.ipl";      // ipl or zon
+static const char* ide_merger_name = "**.ide";      // ide
+static const char* decision_merger_name = "**.ped"; // ped or grp
 static const size_t ipl_merger_hash = modloader::hash(ipl_merger_name);
 static const size_t ide_merger_hash = modloader::hash(ide_merger_name);
+static const size_t decision_merger_hash = modloader::hash(decision_merger_name);
 
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)

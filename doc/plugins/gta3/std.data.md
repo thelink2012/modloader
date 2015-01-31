@@ -16,8 +16,9 @@ The following data files are currently supported:
 | ar_stats.dat   |    X     |   X   |        |
 | animgrp.dat    |    X     |   X   |        |
 | gta.dat        |    X     |   X   |   X    |
-| .ide files     |    X     |   X   |   ¹    |
-| .ipl files     |    X     |       |        |
+| *.ide          |    X     |   X   |   ¹    |
+| *.ipl/*.zon    |    X     |       |        |
+| *.ped/*.grp    |    X     |   X   |        |
 | clothes.dat    |    X     |       |        |
 | carcols.dat    |    X     |   X   |   X    |
 | carmods.dat    |    X     |   X   |   X    |
