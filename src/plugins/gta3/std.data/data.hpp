@@ -278,50 +278,58 @@ class DataPlugin : public modloader::basic_plugin
             return FindBehv(modloader::hash(fname));
         }
 
-
         // Registers a merger to work during the file verification and installation/uninstallation process
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
         // The boolean parameter 'unique' especifies whether the specified file can have only one instance
         //      (i.e. plants.dat have only one instance at data/ but vegass.ipl could have two at e.g. data/maps/vegas1 and data/maps/vegas2)
         // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         // The other parameters are familiar enought
-        template<class StoreType, class... Args>
+        template<class StoreType, class... Detours>
         modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, bool complete_path,
-                                              const modloader::file_overrider::params& params, Args&&... xargs)
+                                              modloader::tag_detour_t,
+                                              const modloader::file_overrider::params& params,
+                                              const std::tuple<Detours...>& ddtuple,
+                                              std::function<void()> reload = nullptr)
         {
             using namespace modloader;
             using namespace std::placeholders;
             using store_type  = StoreType;
             using traits_type = typename store_type::traits_type;
-            using detour_type = typename traits_type::detour_type;
 
             fsfile = modloader::NormalizePath(std::move(fsfile));
-
             auto hash = modloader::hash(fsfile);
 
             auto& ov = ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
-                std::forward_as_tuple(tag_detour, params, detour_type(), std::forward<Args>(xargs)...)
+                std::forward_as_tuple(tag_detour, params, ddtuple, std::move(reload))
                 ).first->second;
-
-            for(size_t i = 0; i < ov.NumInjections(); ++i)
-            {
-                // Merges data whenever necessary to open this file. Caching can happen.
-                auto& d = static_cast<detour_type&>(ov.GetInjection(i));
-                d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique, samefile, complete_path));
-            }
 
             // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
             // This gets called during InstallFile/ReinstallFile/UninstallFile
-            ov.OnHook([&ov](const modloader::file*)
-            {
-                for(size_t i = 0; i < ov.NumInjections(); ++i)
-                    static_cast<detour_type&>(ov.GetInjection(i)).make_call();
-            });
+            ov.MakeCallForAllDetours();
 
             AddBehv(hash, true);
             return ov;
         }
+
+        template<class StoreType>
+        modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, bool complete_path,
+                                              const modloader::file_overrider::params& params, std::function<void()> reload = nullptr)
+        {
+            using detour_type = typename StoreType::traits_type::detour_type;
+            auto GetMergedData = BindGetMergedData<StoreType>(fsfile, unique, samefile, complete_path);
+            return AddMerger<StoreType>(std::move(fsfile), unique, samefile, complete_path,
+                modloader::tag_detour, params, std::forward_as_tuple(detour_type(GetMergedData)), std::move(reload));
+        }
+
+        template<class StoreType>
+        std::function<std::string(std::string)> BindGetMergedData(std::string fsfile, bool unique, bool samefile, bool complete_path)
+        {
+            using namespace std::placeholders;
+            return std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique, samefile, complete_path);
+        }
+
+        
 
         template<class detour_type>
         modloader::file_overrider& AddIplOverrider(std::string fsfile, bool unique, bool samefile, bool complete_path,

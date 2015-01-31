@@ -80,7 +80,7 @@ struct melee_traits : public data_traits
 
     // Key & Value
     using key_type      = std::pair<int, int>;  // .first = related section id (-1=levels), .second = line in the section (min=begin, max=end)
-    using value_type    = data_slice<either<EndComboString, data_type, MeleeSection>, udata<MeleeSection>>;
+    using value_type    = data_slice<either<EndComboString, data_type, MeleeSection>>;
 
     // key_from_value id (.second)
     struct key_from_value_visitor : gta3::data_section_visitor<int>
@@ -132,7 +132,7 @@ struct melee_traits : public data_traits
                 traits.current_section = sectype;
                 traits.current_section_id = (sectype == MeleeSection::Levels? -1 : ++traits.current_section_id);
                 traits.current_section_line = 0;
-                data = value_type(sectype, make_udata<MeleeSection>(sectype));
+                data = value_type(sectype);
                 return true;
             }
         }
@@ -140,7 +140,6 @@ struct melee_traits : public data_traits
         {
             if(data_traits::setbyline(store, data, section, line))
             {
-                data.set<1>(make_udata<MeleeSection>(traits.current_section));
                 if(is_typed_as<EndComboString>(data.get<0>()))
                     traits.current_section = MeleeSection::None;
                 return true;

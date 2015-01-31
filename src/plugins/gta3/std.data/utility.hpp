@@ -264,6 +264,10 @@ enum class EndString : uint8_t {    // "end" value
     End
 };
 
+enum class SectionString : uint8_t { // "section" value
+    Section
+};
+
 namespace datalib
 {
     inline EndString& from_string(const std::string& str, EndString& value)
@@ -274,7 +278,19 @@ namespace datalib
 
     inline const std::string& to_string(EndString value)
     {
-        static std::string endstr = "end";
-        return endstr;
+        static std::string str = "end";
+        return str;
+    }
+
+    inline SectionString& from_string(const std::string& str, SectionString& value)
+    {
+        if(str == "section") return (value = SectionString::Section);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    inline const std::string& to_string(SectionString value)
+    {
+        static std::string str = "section";
+        return str;
     }
 };

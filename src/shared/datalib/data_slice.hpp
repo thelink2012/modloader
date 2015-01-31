@@ -149,6 +149,7 @@ class data_slice : public data_slice_base
         template<size_t I>
         auto get() -> decltype(std::get<I>(std::declval<tuple_type>()))
         {
+            static_assert(I < tuple_size, "Invalid slice element index");
             using result_type = decltype(std::get<I>(std::declval<tuple_type>()));
             return std::forward<result_type>(std::get<I>(this->tuple));
         }
@@ -157,6 +158,7 @@ class data_slice : public data_slice_base
         template<size_t I, class T>
         auto set(T&& obj) -> decltype(std::get<I>(std::declval<tuple_type>()))
         {
+            static_assert(I < tuple_size, "Invalid slice element index");
             std::get<I>(this->tuple) = std::forward<T>(obj);
             if(this->used.test(I) == false)
             {
@@ -244,6 +246,7 @@ class data_slice : public data_slice_base
         template<size_t I>
         static bool ignores()
         {
+            static_assert(I < tuple_size, "Invalid slice element index");
             return data_info<std::tuple_element<I, tuple_type>::type>::ignore;
         }
 
@@ -254,6 +257,7 @@ class data_slice : public data_slice_base
         template<size_t I, class Arg, class... Args>
         void private_set(std::integral_constant<size_t, I>, Arg&& arg, Args&&... args)
         {
+            static_assert(I < tuple_size, "Invalid slice element index during data_slice(...) construction");
             set<I>(std::forward<Arg>(arg));
             return private_set(std::integral_constant<size_t, I+1>(), std::forward<Args>(args)...);
         }
