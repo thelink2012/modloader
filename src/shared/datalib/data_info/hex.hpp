@@ -24,6 +24,11 @@ using hex = type_wrapper<T, tag_hex_t<T>>;
 template<typename T>
 struct data_info<hex<T>> : data_info<T>
 {
+    // Performs cheap precomparision
+    static bool precompare(const hex<T>& a, const hex<T>& b)
+    {
+        return datalib::precompare(a.get_(), b.get_());
+    }
 };
 
 

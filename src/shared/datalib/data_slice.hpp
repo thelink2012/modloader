@@ -17,6 +17,12 @@
 
 namespace datalib {
 
+#ifdef DATALIB_FAST_COMPILATION
+#   ifndef DATALIB_DATASLICE_NOSORT
+#       define DATALIB_DATASLICE_NOSORT
+#   endif
+#endif
+
 /*
  *  data_slice_base
  *      Allows polymorphic behaviour on a data_slice object
@@ -51,11 +57,11 @@ class data_slice : public data_slice_base
         // The bitset type used to determine whether a certain type has been fetched
         using bitset_type               = std::bitset<tuple_size>;              
 
-#if 1
+#if !defined(DATALIB_DATASLICE_NOSORT)
         // 'sorted_type_indices' is a integer_sequence with the tuple indices sorted by complexity (less complexies first)
         using sorted_type_indices       = typename type_complexity_sort<tuple_type>::type;
 #else
-        using sorted_type_indices       = typename make_index_sequence<tuple_size>::type;
+        using sorted_type_indices       = void;
 #endif
 
     protected:
@@ -300,16 +306,26 @@ class data_slice : public data_slice_base
         static bool compare_data(const data_slice& lhs, const data_slice& rhs)
         {
             data_comparer</*Pred*/> comp(lhs, rhs);
-            foreach_type<sorted_type_indices>()(comp);
-            return comp.result;
+            return do_comp(comp);
         }
 
         // Precompares the data between the data storer 'lhs' and 'rhs'
         // Precomparing is cheap and should come BEFORE an compare_data<std::equal_to>(lhs, rhs)
         static bool precompare_data(const data_slice& lhs, const data_slice& rhs)
         {
-            data_comparer</*data_info_precomparer, */true> comp(lhs, rhs);
+            data_comparer<true> comp(lhs, rhs);
+            return do_comp(comp);
+        }
+
+        // Wrapper to deal with DATALIB_DATASLICE_NOSORT
+        template<class DataComparer>
+        static bool do_comp(DataComparer& comp)
+        {
+        #if !defined(DATALIB_DATASLICE_NOSORT)
             foreach_type<sorted_type_indices>()(comp);
+        #else
+            foreach_index<tuple_size>(comp);
+        #endif
             return comp.result;
         }
 
@@ -438,51 +454,51 @@ class data_slice : public data_slice_base
             }
 
 
-            template<int N> // compares element N of the tuple
+            template<size_t N> // compares element N of the tuple
             bool compare()
             {
-                static const bool has_precompare =
-                    detail::data_info_precomparer<>::precompare<std::decay_t<decltype(std::get<N>(lhs.tuple))>>::has_precompare;
+                using Type = typename std::tuple_element<N, tuple_type>::type;
+                bool lhs_used = lhs.used.at(N);
+                bool rhs_used = rhs.used.at(N);
 
-                // If is pre comparing, check if this type can perform precomparision
-                // If not pre comparing, just ignore this check
-                if(!IsPreComparer || has_precompare)
+                if(lhs_used == rhs_used)    // it should have the same state at both sides for it to be equal
                 {
-                    bool lhs_used = lhs.used.at(N);
-                    bool rhs_used = rhs.used.at(N);
-
-                    if(lhs_used == rhs_used)    // it should have the same state at both sides for it to be equal
+                    if(lhs_used)    // being actually used?
                     {
-                        if(lhs_used)    // being actually used?
+                        auto& lhs_value = std::get<N>(lhs.tuple);
+                        auto& rhs_value = std::get<N>(rhs.tuple);
+
+                        if(IsPreComparer?
+                            datalib::precompare(lhs_value, rhs_value) :
+                            std::equal_to<Type>()(lhs_value, rhs_value))
                         {
-                            if(std::equal_to<void>()(std::get<N>(lhs.tuple), std::get<N>(rhs.tuple)))
+                            if(++counter >= max_counter)
                             {
-                                if(++counter >= max_counter)
-                                {
-                                    this->result = true;
-                                    return false;   // stop iteration
-                                }
+                                this->result = true;
+                                return false;   // stop iteration
                             }
                             else
-                            {
-                                this->result = false;
-                                return false; // stop iteration
-                            }
+                                return true;    // continue iteration
                         }
                     }
                     else
-                    {
-                        this->result = false;
-                        return false; // stop iteration
-                    }
+                        return true;    // continue iteration
                 }
-                return true;
+
+                this->result = false;
+                return false; // stop iteration
             }
 
             template<class Index, class Integral>
             bool operator()(Index, Integral)
             {
                 return compare<Integral::type::value>();
+            }
+
+            template<size_t I>
+            bool operator()(std::integral_constant<size_t, I>)
+            {
+                return compare<I>();
             }
         };
 

@@ -15,7 +15,7 @@ struct is_dyncontainer<std::deque<Args...>> : std::true_type
 
 template<typename... Args>
 struct data_info<std::deque<Args...>> :
-    data_info_dyncontainer<std::deque<Args...>>
+    data_info_dyncontainer<std::deque<Args...>, true>
 {};
 
 } // namespace datalib

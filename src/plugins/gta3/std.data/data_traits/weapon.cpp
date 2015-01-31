@@ -4,7 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
 
@@ -30,7 +30,7 @@ struct weapon_traits : public data_traits
 
     // Section slices
     using melee_type = data_slice<char, insen<string>, string, real_t, real_t, int, int, int, string, int, hex<int>, string>;
-    using gun_type   = data_slice<char, insen<string>, string, real_t, real_t, int, int, int, string, int, int, real_t, real_t, real_t, int, int, real_t, real_t, int, int, int, int, int, int, int, hex<int>, delimopt, real_t, real_t, real_t, real_t>;
+    using gun_type   = data_slice<char, insen<string>, string, real_t, real_t, int, int, int, string, int, int, vec3, int, int, real_t, real_t, int, int, int, int, int, int, int, hex<int>, delimopt, real_t, real_t, real_t, real_t>;
     using aim_type   = data_slice<char, string, real_t, real_t, real_t, real_t, int, int, int, int>;
 
     // Data
@@ -54,7 +54,7 @@ struct weapon_traits : public data_traits
         { return key_type(false, hash_model(get<1>(slice)), -1); }
 
         key_type operator()(const gun_type& slice) const
-        { return key_type(false, hash_model(get<1>(slice)), get<14>(slice)); }
+        { return key_type(false, hash_model(get<1>(slice)), get<12>(slice)); }
 
         key_type operator()(const aim_type& slice) const
         { return key_type(true, modloader::hash(get<1>(slice)), -1); }

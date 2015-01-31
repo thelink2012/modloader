@@ -16,6 +16,16 @@ template<typename T, std::size_t N>
 struct data_info<std::array<T, N>> : data_info_base
 {
     static const int complexity = N * data_info<T>::complexity; // N times the complexity of T
+
+    static bool precompare(const std::array<T, N>& a, const std::array<T, N>& b)
+    {
+        for(size_t i = 0; i < N; ++i)
+        {
+            if(!datalib::precompare(a[i], b[i]))
+                return false;
+        }
+        return true;
+    }
 };
 
 

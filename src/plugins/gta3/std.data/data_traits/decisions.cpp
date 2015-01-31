@@ -4,8 +4,9 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
+using std::array;
 
 struct decision_traits : public data_traits
 {
@@ -21,14 +22,13 @@ struct decision_traits : public data_traits
     using detour_type = modloader::OpenFileDetour<0x6076CE, dtraits>;
 
     //
+    using decision_type   = std::tuple<int, array<real_t, 4>, array<int, 2>, array<real_t, 6>>;
     using first_line_type = std::pair<std::string, std::string>;    // there's a "data values2:" string on the top of every decision file
-    using decision_type   = std::tuple<int, int, int, real_t, real_t, real_t, real_t, int, int, real_t, real_t, real_t, real_t, real_t, real_t, int, real_t,
-                                     real_t, real_t, real_t, int, int, real_t, real_t, real_t, real_t, real_t, real_t, int, real_t, real_t, real_t, real_t, int, int, real_t,
-                                     real_t, real_t, real_t, real_t, real_t, int, real_t, real_t, real_t, real_t, int, int, real_t, real_t, real_t, real_t, real_t, real_t, int, real_t, real_t,
-                                     real_t, real_t, int, int, real_t, real_t, real_t, real_t, real_t, real_t, int, real_t, real_t, real_t, real_t, int, int, real_t, real_t, real_t, real_t, real_t, real_t>;
-
+    using data_type       = std::tuple<int, int, decision_type, pack<ignore<decision_type>, 5>>;
+    
+    //
     using key_type   = int;
-    using value_type = data_slice<either<decision_type, first_line_type>>;
+    using value_type = data_slice<either<data_type, first_line_type>>;
 
     key_type key_from_value(const value_type& value)
     {
@@ -36,7 +36,7 @@ struct decision_traits : public data_traits
         if(is_typed_as<first_line_type>(either))
             return std::numeric_limits<int>::min();     // should come before anything at the first line!!11!!
         else
-            return get<0>(get<decision_type>(either));  // event type
+            return get<0>(get<data_type>(either));      // event type
     }
 };
 

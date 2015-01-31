@@ -11,8 +11,9 @@
 #include <tuple>
 #include <string>
 #include <vector>
-#include "vfs.hpp"
 #include <file_block.hpp>
+#include "vfs.hpp"
+#include "datalib.hpp"
 
 // Serialization
 #include <cereal/archives/binary.hpp>
@@ -49,11 +50,8 @@
 // Whenever a serialized data format changes, this identifier should change so the serialized file gets incompatible
 // So, let's use the compilation time of each compilation unit to represent this identifier
 // NOTICE, this function should be static so it gets one instantiation on each translation unit!!!
-static /* <--- YES STATIC */ uint32_t build_identifier()
-{
-    static const uint32_t version = modloader::hash(__DATE__ " " __TIME__);
-    return version;
-}
+static /* <--- YES STATIC */ uint32_t build_identifier();   // see data_traits.hpp for implementation
+
 
 // Maximum number of /0/, /1/, and so on cache directories
 // Higher decreases performance since it needs to loop/trytoprocess more

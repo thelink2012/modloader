@@ -46,6 +46,18 @@ namespace detail
     inline void foreach_in_tuple(Tuple& tuple, Functor& functor)
     {
     }
+
+    template<size_t Max, class Functor, size_t N>
+    inline void foreach_index(std::integral_constant<size_t, Max>, std::integral_constant<size_t, N>, Functor& functor)
+    {
+        if(functor(std::integral_constant<size_t, N>()))
+            return foreach_index<Max, Functor>(std::integral_constant<size_t, Max>(), std::integral_constant<size_t, N+1>(), functor);
+    }
+
+    template<size_t Max, class Functor>
+    inline void foreach_index(std::integral_constant<size_t, Max>, std::integral_constant<size_t, Max>, Functor& functor)
+    {
+    }
 }
 
 
@@ -65,6 +77,14 @@ template<class Functor, typename... Types>
 inline void foreach_in_tuple(std::tuple<Types...>& tuple, Functor& functor)
 {
     return detail::foreach_in_tuple<0, Functor, std::tuple<Types...>, Types...>(tuple, functor);
+}
+
+// Calls the 'functor' N times
+// The functor must have the prototype [(std::integral_constant<>)]
+template<size_t N, class Functor>
+inline void foreach_index(Functor& functor)
+{
+    return detail::foreach_index<N, Functor>(std::integral_constant<size_t, N>(), std::integral_constant<size_t, 0>(), functor);
 }
 
 /*

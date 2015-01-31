@@ -15,7 +15,7 @@ struct is_dyncontainer<std::set<Args...>> : std::true_type
 
 template<typename... Args>
 struct data_info<std::set<Args...>> :
-    data_info_dyncontainer<std::set<Args...>>
+    data_info_dyncontainer<std::set<Args...>, true>
 {};
 
 } // namespace datalib

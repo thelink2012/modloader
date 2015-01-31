@@ -4,9 +4,10 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using namespace injector;
+using std::vector;
 
 //
 struct carmods_traits : public data_traits
@@ -25,16 +26,10 @@ struct carmods_traits : public data_traits
     using detour_type = modloader::OpenFileDetour<0x5B65BE, dtraits>;
 
     // Wheel Section Slice
-    using wheel_type = data_slice<int, delimopt,
-                                       modelname, modelname, modelname, modelname, modelname,
-                                       modelname, modelname, modelname, modelname, modelname, 
-                                       modelname, modelname, modelname, modelname, modelname>;
+    using wheel_type = data_slice<int, vector<modelname>>;
 
     // Mods Section Slice
-    using mods_type = data_slice<modelname, delimopt,
-                                       modelname, modelname, modelname, modelname, modelname, modelname,
-                                       modelname, modelname, modelname, modelname, modelname, modelname,
-                                       modelname, modelname, modelname, modelname, modelname, modelname>;
+    using mods_type = data_slice<modelname, vector<modelname>>;
 
     // Link Section Slice
     using link_type = data_slice<modelname, modelname>;

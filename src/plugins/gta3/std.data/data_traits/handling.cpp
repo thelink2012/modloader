@@ -4,7 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
 using std::tuple;
@@ -41,11 +41,11 @@ struct handling_traits : public data_traits
     //      Notice:
     //          + main_type uses hex<uint64_t> due to R* using a higher than 32 bit value in their handling (their sscanf could handle it properly)
     //          + notice fixtok<real_t> on plane_type, it's due to '$ RCRAIDER' broken float, having a 's' suffix
-    using anim_type  = data_slice<char, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int>;
-    using main_type  = data_slice<string, real_t, real_t, real_t, real_t, real_t, real_t, int, real_t, real_t, real_t, int, real_t, real_t, real_t, char, char, real_t, real_t, char, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, hex<uint64_t>, hex<uint32_t>, char, char, int>;
-    using boat_type  = data_slice<char, string, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
-    using bike_type  = data_slice<char, string, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
-    using plane_type = data_slice<char, string, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, fixtok<real_t>, real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
+    using anim_type  = data_slice<char, int, int, int, pack<bool, 18>, pack<real_t, 13>, int>;
+    using main_type  = data_slice<string, real_t, real_t, real_t, vec3, int, real_t, real_t, real_t, int, real_t, real_t, real_t, char, char, real_t, real_t, char, pack<real_t, 7>, real_t, real_t, real_t, int, hex<uint64_t>, hex<uint32_t>, char, char, int>;
+    using boat_type  = data_slice<char, string, vec2, real_t, real_t, real_t, real_t, real_t, vec3, vec3, real_t>;
+    using bike_type  = data_slice<char, string, pack<real_t, 15>>;
+    using plane_type = data_slice<char, string, pack<real_t, 13>, fixtok<real_t>, real_t, vec3, vec3>;
 
     // Aliases and constants related to section slices
     static const size_t main_anim_id = (std::tuple_size<main_type::tuple_type>::value - 1);  // index of either<int, anim_ptr> at main_type

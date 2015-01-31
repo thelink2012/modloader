@@ -15,6 +15,12 @@
 
 namespace datalib {
 
+#ifdef DATALIB_FAST_COMPILATION
+#   ifndef DATALIB_DATAINFO_NOPRECOMP
+#       define DATALIB_DATAINFO_NOPRECOMP
+#   endif
+#endif
+
 /*
  *  delimopt
  *      Any type coming after this type is optional
@@ -43,12 +49,15 @@ struct data_info_base
     // The complexity to compare two objects of this type. Notice this is the complexity AFTER 'precompare' happened.
     // (0 means no complexity (no operation); 1 means fundamental complexity; Negative numbers are undefined behaviour)
     static const int  complexity = 1;
-                                        
-    // precompare should be a class/struct containing a [static equal_to(const T&, const T&)] method
-    // This method should do very cheap comparision which will run before comparing any other type, it's used to avoid going further in comparisions
+
+    // This should do a very cheap comparision which will run before comparing any other type, it's used to avoid going further in comparisions
     // when a cheaper comparision is available before.
-    // In this base data_info it is defined as a non-class type (void) so it doesn't perform any pre-comparision 
-    using precompare = void;
+    // NOTE: NO ONE (not even datalib) should call data_info<T>::precompare directly, use datalib::precompare instead!!!!!!
+    template<class T>
+    static bool precompare(const T& a, const T& b)
+    {
+        return true;
+    }
 };
 
 /*
@@ -86,54 +95,14 @@ struct data_info<delimopt> : data_info_base
 };
 
 
-
-
-namespace detail
+template<class T>
+inline bool precompare(const T& a, const T& b)
 {
-    /*
-     *  data_info_precomparer
-     *      Helper to work with precomparision (data_info::precompare object)
-     *      By using this you can detect if precompare is defined (i.e. is a class type not a fundamental type) and execute it
-     *      This is a functor too by the way, which executes the pre-comparision (note: it returns true if precompare is not defined)
-     */
-    template<typename TVoid = void>
-    struct data_info_precomparer
-    {
-        public:
-            template<class T>
-            struct precompare
-            {
-                using has_precompare_t = std::is_class<typename data_info<T>::precompare>;  // Has T::precompare as a class/struct object?
-                static const bool has_precompare = has_precompare_t::value;                 // boolean constant for integral_constant above
-
-                // Runs when has_precompare is true
-                static bool exec(std::true_type, const T& a, const T& b)
-                {
-                    return data_info<T>::precompare::equal_to(a, b);
-                }
-    
-                // Runs when has_precompare is false
-                static bool exec(std::false_type, const T&, const T&)
-                {
-                    return true;
-                }
-    
-                // Forwards the call to the exec(true, ...) or exec(false, ...) depending on wether T::precompare is defined properly
-                static bool exec(const T& a, const T& b)
-                {
-                    return exec(has_precompare_t(), a, b);
-                }
-            };
-
-        public:
-            // Executes the precomparision, returns true if T::precompare is not defined as a class type
-            template<class T>
-            bool operator()(const T& a, const T& b) const
-            {
-                return precompare<T>::exec(a, b);
-            }
-    };
+#if !defined(DATALIB_DATAINFO_NOPRECOMP)
+    return data_info<T>::precompare(a, b);
+#else
+    return true;
+#endif
 }
-
 
 } // namespace datalib

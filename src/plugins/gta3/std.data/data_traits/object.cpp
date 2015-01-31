@@ -4,7 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
 
@@ -26,8 +26,8 @@ struct object_traits : public data_traits
 
     using key_type      = std::size_t;
     using value_type    = data_slice<modelname,
-                                real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, int, int, int, int, delimopt,
-                                real_t, real_t, real_t, insen<string>, real_t, real_t, real_t, real_t, real_t, int, int>;
+                                real_t, real_t, real_t, real_t, real_t, real_t, real_t, int16_t, int16_t, char, char, char, delimopt,
+                                vec3, insen<string>, real_t, vec3, real_t, char, char>;
 
     key_type key_from_value(const value_type& value)
     {

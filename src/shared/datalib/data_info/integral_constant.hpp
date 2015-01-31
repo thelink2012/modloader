@@ -21,7 +21,7 @@ struct data_info<std::integral_constant<T, Value>> : data_info<T>
 } // namespace datalib
 
 
-namespace std {
+namespace std { // is this legal?
 
     /*
      *  Integral constants are always equivalent to each other

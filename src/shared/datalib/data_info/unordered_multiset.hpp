@@ -15,7 +15,7 @@ struct is_dyncontainer<std::unordered_multiset<Args...>> : std::true_type
 
 template<typename... Args>
 struct data_info<std::unordered_multiset<Args...>> :
-    data_info_dyncontainer<std::unordered_multiset<Args...>>
+    data_info_dyncontainer<std::unordered_multiset<Args...>, false>
 {};
 
 

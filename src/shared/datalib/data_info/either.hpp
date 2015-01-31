@@ -52,15 +52,11 @@ struct data_info<either<Types...>> : data_info_base
         static const int complexity = (average::value <= 1? 1 : 
                                         average::value - 1);
 
-        // Performs precomparision (that's beforing comparing anything else, perform this cheap comparision)
-        struct precompare
+        // Performs cheap precomparision
+        static bool precompare(const either_type& a, const either_type& b)
         {
-            // Checks if both either objects store the same kind of type
-            static bool equal_to(const either_type& var1, const either_type& var2)
-            {
-                return var1.which() == var2.which();
-            }
-        };
+            return a.which() == b.which();
+        }
 };
 
 

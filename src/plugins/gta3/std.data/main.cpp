@@ -4,23 +4,8 @@
  * 
  */
 #include <stdinc.hpp>
-#include "data.hpp"
+#include "data_traits.hpp"
 using namespace modloader;
-
-/*
- *  !!!! data_traits important implementation information !!!!
- *
- *   [*] It's better that each data trait (i.e. for each file type) be contained in it's own cpp, see next * for a reason
- *   [*] Note data.hpp / cache.hpp should not be included in a PCH but in the data traits cpp, that because the magic for each cache
- *       is the hash of the compilation time of the trait translation unit, that means it is a static (by unit) function in cache.hpp
- *       meaning including it by PCH (stdinc.hpp) would defeat it purposes of one hash for each translation unit for each time it compiles.
- *
- *   [*] Remember the order of stuff in the either<> object matters, it'll try to match the first type, then the second, and so on.
- *       So be warned because e.g. either<string, float> will always match the string, use either<float, string> instead!
- *
- *       
- *   [*] Remember not to use int8, uint8 and so in the data_slice<> thinking it is a integer type, instead it will be readen as a character
- */
 
 void LazyGtaDatPatch();
 

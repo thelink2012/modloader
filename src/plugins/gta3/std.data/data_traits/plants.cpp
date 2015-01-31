@@ -4,7 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 
 struct plants_traits : public data_traits
@@ -21,8 +21,8 @@ struct plants_traits : public data_traits
 
     using key_type      = std::pair<std::size_t, int>;
     using value_type    = data_slice<std::string,
-                            int, int, int, int, int, int, int, int, int, int,
-                            real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
+                            int, int, int, int, rgb, pack<color, 3>,
+                            vec3, vec3, real_t>;
 
     key_type key_from_value(const value_type& value)
     {

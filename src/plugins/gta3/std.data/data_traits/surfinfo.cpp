@@ -4,7 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
 
@@ -21,9 +21,7 @@ struct surfinfo_traits : public data_traits
     using detour_type = modloader::OpenFileDetour<0x55EBA4, dtraits>;
 
     using key_type      = size_t;
-    using value_type    = data_slice<string, string, real_t, real_t, string, string, char, char, char, char,
-                                     char, char, char, char, char, char, char, char, char, char, char, char, char, char,
-                                     char, char, char, char, char, char, char, char, char, char, char, string>;
+    using value_type    = data_slice<string, string, real_t, real_t, string, string, pack<char, 29>, string>;
 
     key_type key_from_value(const value_type& value)
     {

@@ -17,6 +17,12 @@ struct data_info<std::pair<T1, T2>> : data_info_base
 {
     // The complexity of such a tuple is the sum of the complexity of all it's types
     static const int complexity = (data_info<T1>::complexity + data_info<T2>::complexity);
+
+    // Performs cheap precomparision
+    static bool precompare(const std::pair<T1, T2>& a, const std::pair<T1, T2>& b)
+    {
+        return (datalib::precompare(a.first, b.first) && datalib::precompare(a.second, b.second));
+    }
 };
 
 } // namespace datalib

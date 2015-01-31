@@ -23,17 +23,11 @@ struct data_info<optional<T>> : data_info<T>
     static const char separator = '\0';
     static const char base_separator = data_info<T>::separator;
 
-    // Performs precomparision (that's beforing comparing anything else, perform this cheap comparision)
-    struct precompare
+    // Performs cheap precomparision
+    static bool precompare(const optional<T>& a, const optional<T>& b)
     {
-        // Checks if both optional objects have a equivalent state
-        static bool equal_to(const optional<T>& opt1, const optional<T>& opt2)
-        {
-            if((bool)(opt1) == (bool)(opt2))
-                return true;
-            return false;
-        }
-    };
+        return ((bool)(a) == (bool)(b));
+    }
 };
 
 

@@ -4,9 +4,10 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
+using std::array;
 
 struct surfaud_traits : public data_traits
 {
@@ -21,7 +22,7 @@ struct surfaud_traits : public data_traits
     using detour_type = modloader::OpenFileDetour<0x55F2C1, dtraits>;
 
     using key_type      = size_t;
-    using value_type    = data_slice<string, bool, bool, bool, bool, bool, bool, bool, bool, bool>;
+    using value_type    = data_slice<string, array<bool, 9>>;
 
     key_type key_from_value(const value_type& value)
     {

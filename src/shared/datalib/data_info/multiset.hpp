@@ -15,7 +15,7 @@ struct is_dyncontainer<std::multiset<Args...>> : std::true_type
 
 template<typename... Args>
 struct data_info<std::multiset<Args...>> :
-    data_info_dyncontainer<std::multiset<Args...>>
+    data_info_dyncontainer<std::multiset<Args...>, false>
 {};
 
 } // namespace datalib

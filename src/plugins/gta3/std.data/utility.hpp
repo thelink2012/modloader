@@ -35,6 +35,8 @@ inline insen<std::string> make_insen_string(Args&&... args)
 //
 using dummy_value = datalib::delimopt;
 using real_t = basic_floating_point<float, floating_point_comparer::relative_epsilon<float>>;
+template<class T, std::size_t N>
+using pack = std::array<T, N>;
 template<std::size_t N>
 using vecn = std::array<real_t, N>;
 using vec2 = vecn<2>;
@@ -43,8 +45,9 @@ using vec4 = vecn<4>;
 using quat = vec4;
 using bbox = std::array<vec3, 2>;
 using bsphere = std::tuple<vec3, real_t>;
-using rgb  = std::array<uint16_t, 3>;   // cannot be uint8 because it is actually char
-using rgba = std::array<uint16_t, 4>;   // 
+using color = int16_t;
+using rgb  = std::array<color, 3>;   // cannot be uint8 because it is actually char
+using rgba = std::array<color, 4>;   // 
 using modelname = insen<std::string>;
 using animname = insen<std::string>;
 using texname = insen<std::string>;

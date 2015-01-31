@@ -4,7 +4,7 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
 using std::tuple;
@@ -75,7 +75,7 @@ struct melee_traits : public data_traits
     using combo_37_type = tuple<dummy_string, real_t, real_t, real_t, string, int, int, int, optional<real_t>>;
     using combo_8_type  = tuple<dummy_string, real_t, real_t>;
     using combo_9_type  = tuple<dummy_string, hex<int>>;
-    using level_type    = tuple<dummy_string, real_t, real_t, real_t>;
+    using level_type    = tuple<dummy_string, vec3>;
     using data_type     = either<combo_37_type, level_type, combo_8_type, combo_2_type, combo_9_type, combo_1_type>;
 
     // Key & Value
