@@ -22,9 +22,9 @@ struct decision_traits : public data_traits
     using detour_type = modloader::OpenFileDetour<0x6076CE, dtraits>;
 
     //
-    using decision_type   = std::tuple<int, array<real_t, 4>, array<int, 2>, array<real_t, 6>>;
+    using decision_type   = std::tuple<int, array<real_t, 4>, array<bool, 2>, array<real_t, 6>>;
     using first_line_type = std::pair<std::string, std::string>;    // there's a "data values2:" string on the top of every decision file
-    using data_type       = std::tuple<int, int, decision_type, pack<ignore<decision_type>, 5>>;
+    using data_type       = std::tuple<int, int, array<decision_type, 6>>;
     
     //
     using key_type   = int;
