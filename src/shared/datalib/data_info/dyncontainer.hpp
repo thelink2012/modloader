@@ -25,6 +25,7 @@ struct data_info_dyncontainer : data_info_base
     using container_type = ContainerType;
     static const int estimated_elements = EstimatedSize;
     static const int complexity = estimated_elements * data_info<typename container_type::value_type>::complexity;
+    static const char separator = 0; // manual separator
 
     static bool precompare(const ContainerType& a, const ContainerType& b)
     {

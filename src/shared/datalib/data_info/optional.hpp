@@ -21,7 +21,6 @@ template<typename T>
 struct data_info<optional<T>> : data_info<T>
 {
     static const char separator = '\0';
-    static const char base_separator = data_info<T>::separator;
 
     // Performs cheap precomparision
     static bool precompare(const optional<T>& a, const optional<T>& b)

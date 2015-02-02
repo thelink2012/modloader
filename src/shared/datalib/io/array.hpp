@@ -58,11 +58,8 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
         {
             if(os << array[i])
             {
-                if(i+1 != N)    // all but the last element should have a ' ' after them
-                {
-                    if((os << ' ').fail())
-                        break;
-                }
+                if(print_separator<T>(os).fail())
+                    break;
             }
             else break;
         }

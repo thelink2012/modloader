@@ -186,7 +186,6 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // std.bank
     if(true)
     {
-        //0x4EFC60
         map[0x4D99B3] = 0x4D99B3;   // call    _ZN13CAEBankLoader10InitialiseEv
         map[0x4D9800] = 0x4D9800;   // call    _ZN13CAEBankLoaderD2Ev
         map[0x4DFE30] = 0x4DFE30;   // call    _ZN13CAEBankLoaderD2Ev
@@ -205,8 +204,9 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     }
 
     // std.data
-    if(true)    
+    if(true)
     {
+        map[0x464D50] = 0x464D50;   // _ZN11CTheScripts18IsPlayerOnAMissionEv
         map[0x5B6890] = 0x5B6890;   // _ZN17CVehicleModelInfo18LoadVehicleColoursEv
         map[0x5B68AB] = 0x5B68AB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleColours
         map[0x5B65A0] = 0x5B65A0;   // _ZN17CVehicleModelInfo19LoadVehicleUpgradesEv
@@ -251,6 +251,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5BEDC0] = 0x5BEDC0;   // _ZN16CTaskSimpleFight13LoadMeleeDataEv
         map[0x5BEF47] = 0x5BEF47;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTaskSimpleFight::LoadMeleeData
         map[0x5BC92B] = 0x5BC92B;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CAnimManager::ReadAnimAssociationDefinitions
+        map[0x5BF400] = 0x5BF400;   //  _ZN29CDecisionMakerTypesFileLoader24LoadDefaultDecisionMakerEv
         map[0x6076CE] = 0x6076CE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDecisionMakerTypesFileLoader::LoadDecisionMaker
         map[0x5A3EA0] = 0x5A3EA0;   // _ZN15ProcObjectMan_c4InitEv
         map[0xBB7CB0] = 0xBB7CB0;   // ProcObjectMan g_procObjMan

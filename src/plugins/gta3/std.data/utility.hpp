@@ -6,7 +6,18 @@
 #include "datalib.hpp"
 #include <modloader/util/hash.hpp>
 #include <modloader/util/container.hpp>
-// shall not include data.hpp or cache.hpp because we are included from stdinc
+
+//
+//  Additional Serializers
+//
+
+// Serializer for type_wrapper<> i.e. real_t
+template<class Archive, class T, class Base>
+inline void serialize(Archive& ar, type_wrapper<T, Base>& tw)
+{
+    ar(tw.get_());
+}
+
 
 //
 //  Case insensitive string type
@@ -57,6 +68,9 @@ struct dummy_string_traits
 { static std::string output() { return "_";  } };
 using dummy_string = datalib::ignore<std::string, dummy_string_traits>;
 
+//
+//  Case Insensitive Hashes
+//
 
 // Hashes a string in a case insensitive manner
 inline size_t hash_model(const char* model)
@@ -77,9 +91,11 @@ size_t hash_model(const insen<T>& model)
     return hash_model(get(model));
 }
 
+
 //
 //  UData of shared pointers
 //
+
 namespace datalib
 {
     template<typename T>
@@ -90,9 +106,6 @@ namespace datalib
 }
 namespace std
 {
-    /*
-     *  shared_ptr should fail to be readen by datalib
-     */
     template<class CharT, class Traits, class T> inline
     datalib::basic_icheckstream<CharT, Traits>& operator>>(datalib::basic_icheckstream<CharT, Traits>& is, const std::shared_ptr<T>& ptr)
     {
@@ -107,8 +120,9 @@ namespace std
     }
 }
 
-
-// Other udata specializations
+//
+// Other UData specializations
+//
 namespace datalib
 {
     template<>
@@ -116,20 +130,28 @@ namespace datalib
     {};
 }
 
-
 //
-//  Additional Serializers
+// Custom separators
 //
+template<char Sep>
+struct tag_custom_sep {};
 
-// Serializer for type_wrapper<> i.e. real_t
-template<class Archive, class T, class Base>
-inline void serialize(Archive& ar, type_wrapper<T, Base>& tw)
+template<class T, char Sep>
+using custom_sep = tagged_type<T, tag_custom_sep<Sep>>;
+
+namespace datalib
 {
-    ar(tw.get_());
+    template<class T, char Sep>
+    struct data_info<custom_sep<T, Sep>> : data_info_tagged<custom_sep<T, Sep>>
+    {
+        static const char separator = Sep;
+    };
 }
 
 
-
+//
+// data_list<...>
+//
 template<size_t N, class T, class... Types>
 struct find_that_type;
 
@@ -224,6 +246,7 @@ private:
         return clear_uniques(std::integral_constant<size_t, N+1>());
     }
 };
+
 
 //
 // Enum to string and vice-versa using a mapper

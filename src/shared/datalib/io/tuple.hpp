@@ -35,9 +35,7 @@ namespace detail
         {
             if(stream << item)
             {
-                // All but the last element should have a ' ' after them
-                if(Integral::value + 1 != std::tuple_size<Tuple>::value)
-                    stream << ' ';
+                print_separator<typename TypeWr::type>(stream);
             }
             return !!stream;
         }

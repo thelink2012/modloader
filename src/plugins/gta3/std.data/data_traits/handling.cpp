@@ -283,7 +283,7 @@ namespace std
      *  Output for final type slice at handling_traits
      */
     template<class CharT, class Traits> inline
-    std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const handling_traits::data_tuple& data_tuple)
+    static std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const handling_traits::data_tuple& data_tuple)
     {
         std::string text, tmp;
         text.reserve(256); tmp.reserve(256);

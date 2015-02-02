@@ -32,8 +32,8 @@ namespace datalib
 namespace std
 {
     // Output for a animgrp section base pointer
-    template<class CharT, class Traits> inline
-    std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const animgrp_ptr& ptr)
+    template<class CharT, class Traits>
+    static std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const animgrp_ptr& ptr)
     {
         return (os << *ptr);
     }

@@ -85,7 +85,8 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
         {
             if(os << *it)
             {
-                if((os << ' ').fail())
+                using value_type = typename ContainerType::value_type;
+                if(print_separator<value_type>(os).fail())
                     break;
             }
             else break;

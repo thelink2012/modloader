@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <type_traits>
+#include <iosfwd>
 
 //
 //  This header contains:
@@ -103,6 +104,14 @@ inline bool precompare(const T& a, const T& b)
 #else
     return true;
 #endif
+}
+
+template<class T, class CharT, class Traits>
+inline std::basic_ostream<CharT, Traits>& print_separator(std::basic_ostream<CharT, Traits>& os)
+{
+    auto separator = data_info<T>::separator;
+    if(separator) os << separator;
+    return os;
 }
 
 } // namespace datalib

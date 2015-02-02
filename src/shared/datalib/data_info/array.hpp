@@ -15,6 +15,7 @@ namespace datalib {
 template<typename T, std::size_t N>
 struct data_info<std::array<T, N>> : data_info_base
 {
+    static const char separator = 0; // manual separator
     static const int complexity = N * data_info<T>::complexity; // N times the complexity of T
 
     static bool precompare(const std::array<T, N>& a, const std::array<T, N>& b)

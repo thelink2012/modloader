@@ -18,6 +18,8 @@ namespace datalib {
 template<typename ...Types>
 struct data_info<std::tuple<Types...>> : data_info_base
 {
+    static const char separator = 0; // manual separator
+
     // The complexity of such a tuple is the sum of the complexity of all it's types
     static const int complexity = tinympl::accumulate<
                                         integer_sequence<int, data_info<Types>::complexity...>,

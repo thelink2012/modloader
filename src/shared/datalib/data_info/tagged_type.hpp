@@ -52,14 +52,23 @@ inline const TaggedType make_tagged_type(Args&&... args)
 /*
  *  data_info<> specialization for 'tagged_type<T, Tag>'
  */
+
+template<class TaggedType>
+struct data_info_tagged;
+
 template<typename T, class Tag>
-struct data_info<tagged_type<T, Tag>> : data_info<T>
+struct data_info_tagged<tagged_type<T, Tag>> : data_info<T>
 {
     // Performs cheap precomparision
     static bool precompare(const tagged_type<T, Tag>& a, const tagged_type<T, Tag>& b)
     {
         return datalib::precompare(get(a), get(b));
     }
+};
+
+template<typename T, class Tag>
+struct data_info<tagged_type<T, Tag>> : data_info_tagged<tagged_type<T, Tag>>
+{
 };
 
 }

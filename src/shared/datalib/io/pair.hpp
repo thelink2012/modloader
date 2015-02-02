@@ -52,7 +52,7 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
     std::basic_ostream<CharT, Traits>::sentry xsentry(os);
     if(xsentry)
     {
-        ((os << pair.first) && (os << ' ') && (os << pair.second));
+        ((os << pair.first) && (print_separator<T1>(os)) && (os << pair.second) && (print_separator<T2>(os)));
     }
     return os;
 }

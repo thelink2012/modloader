@@ -429,10 +429,8 @@ class data_slice : public data_slice_base
             template<int N, class Type>
             void perform_print(const typename std::enable_if<!data_info<Type>::ignore, Type>::type& value)
             {
-                auto separator = data_info<Type>::separator;
-                stream << value;
-                if(stream)    ++counter;
-                if(separator) stream << separator;
+                if(stream << value) ++counter;
+                print_separator<Type>(stream);
             }
         };
 

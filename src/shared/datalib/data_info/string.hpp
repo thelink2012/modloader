@@ -16,6 +16,8 @@ struct is_dyncontainer<std::basic_string<CharT, Traits, Allocator>> : std::true_
 template<typename CharT, typename Traits, typename Allocator>
 struct data_info<std::basic_string<CharT, Traits, Allocator>>
     : data_info_dyncontainer<std::basic_string<CharT, Traits, Allocator>>
-{};
+{
+    static const char separator = data_info_base::separator;
+};
 
 } // namespace datalib
