@@ -284,8 +284,7 @@ class data_slice : public data_slice_base
         // Prints the content of 'this->tuple' to the 'line' and returns the amount of types successfully printed
         int print_from_tuple(std::string& line) const
         {
-            // TODO make a output stream which returns the output string as reference (will we?)
-            std::stringstream stream(std::ios::out);
+            std::ostringstream stream(std::ios::out);
             printy_from_tuple printer(*this, stream);       // Priter functor
             foreach_in_tuple(const_cast<tuple_type&>(tuple), printer);
             line = stream.str();
@@ -401,10 +400,10 @@ class data_slice : public data_slice_base
         struct printy_from_tuple
         {
             const data_slice&    self;
-            std::stringstream&  stream;
-            int                 counter;
+            std::ostringstream&  stream;
+            int                  counter;
             
-            printy_from_tuple(const data_slice& self, std::stringstream& stream)
+            printy_from_tuple(const data_slice& self, std::ostringstream& stream)
                 : self(self), stream(stream), counter(0)
             {}
 

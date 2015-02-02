@@ -287,7 +287,7 @@ class DataPlugin : public modloader::basic_plugin
         // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         // The other parameters are familiar enought
         template<class StoreType, class... Detours>
-        modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, bool complete_path,
+        modloader::file_overrider& AddMerger(std::string fsfile,
                                               modloader::tag_detour_t,
                                               const modloader::file_overrider::params& params,
                                               const std::tuple<Detours...>& ddtuple,
@@ -320,7 +320,7 @@ class DataPlugin : public modloader::basic_plugin
         {
             using detour_type = typename StoreType::traits_type::detour_type;
             auto GetMergedData = BindGetMergedData<StoreType>(fsfile, unique, samefile, complete_path);
-            return AddMerger<StoreType>(std::move(fsfile), unique, samefile, complete_path,
+            return AddMerger<StoreType>(std::move(fsfile),
                 modloader::tag_detour, params, std::forward_as_tuple(detour_type(GetMergedData)), std::move(reload));
         }
 

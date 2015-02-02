@@ -33,6 +33,7 @@ The following data files are currently supported:
 | ped.dat        |    X     |   X   |        |
 | pedstats.dat   |    X     |   X   |        |
 | statdisp.dat   |    X     |   X   |        |
+| shopping.dat   |    X     |   X   |        |
 | object.dat     |    X     |   X   |        |
 | surface.dat    |    X     |   X   |        |
 | surfinfo.dat   |    X     |   X   |        |

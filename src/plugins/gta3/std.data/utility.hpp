@@ -294,6 +294,10 @@ enum class SectionString : uint8_t { // "section" value
     Section
 };
 
+enum class DashValue : uint8_t { // "-" value
+    Dash
+};
+
 namespace datalib
 {
     inline EndString& from_string(const std::string& str, EndString& value)
@@ -317,6 +321,18 @@ namespace datalib
     inline const std::string& to_string(SectionString value)
     {
         static std::string str = "section";
+        return str;
+    }
+
+    inline DashValue& from_string(const std::string& str, DashValue& value)
+    {
+        if(str.size() && str[0] == '-') return (value = DashValue::Dash);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    inline const std::string& to_string(DashValue value)
+    {
+        static std::string str = "-";
         return str;
     }
 };

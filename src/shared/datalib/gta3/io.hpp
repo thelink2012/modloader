@@ -398,8 +398,8 @@ struct store_merger
 
             using keylist_type =
                 std::conditional < store_type::is_sorted,
-                std::set<std::reference_wrapper<const key_type>, std::less<key_type>>,
-                std::vector < std::reference_wrapper<const key_type> >
+                keylist_sorted_type<key_type>,
+                keylist_ordered_type<key_type>
                 > ::type;
 
             // Actual code is here lol

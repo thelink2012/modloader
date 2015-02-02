@@ -261,6 +261,12 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x55D100] = 0x55D100;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadAdhesiveLimits
         map[0x55EBA4] = 0x55EBA4;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceInfos
         map[0x55F2C1] = 0x55F2C1;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceAudioInfos
+        map[0x49AE30] = 0x49AE30;   // _ZN9CShopping16RemoveLoadedShopEv
+        map[0x49BBE0] = 0x49BBE0;   // _ZN9CShopping8LoadShopEPKc
+        map[0xA9A7D8] = 0xA9A7D8;   // char _ZN9CShopping13ms_shopLoadedE[24]
+        map[0x49B6AF] = 0x49B6AF;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadStats
+        map[0x49B93F] = 0x49B93F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadPrices
+        map[0x49BC98] = 0x49BC98;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadShop
         map[0x6F7440] = 0x6F7440;   // _ZN6CTrain10InitTrainsEv
         map[0x6F7470] = 0x6F7470;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks.dat"
         map[0x6F74BC] = 0x6F74BC;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
