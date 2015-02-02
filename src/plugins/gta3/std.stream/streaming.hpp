@@ -36,6 +36,15 @@ enum class ResType : uint8_t // max 4 bits (value 15)
     Max             = 16        // Max 4 bits
 };
 
+// Type of non streamed resource
+enum class NonStreamedType : uint8_t
+{
+    TexDictionary,
+    ColFile,
+    AtomicFile,
+    ClumpFile,
+};
+
 // Behaviour maskes
 static const uint64_t hash_mask         = 0x00000000FFFFFFFF;   // Mask for the hash on the behaviour
 static const uint64_t is_img_file_mask  = 0x0000000100000000;   // Is .img file
@@ -129,6 +138,9 @@ class CAbstractStreaming
         using id_t      = uint32_t;     // should have sizeof(int) to allow -1 comparision
         using hash_t    = uint32_t;
 
+        //
+        using NonStreamedInfo_t = std::pair<const modloader::file*, NonStreamedType>;
+
         // Temporary cd directory for basic information extracting, used during initialization
         using TempCdDir_t = std::list<std::pair<int, std::deque<DirectoryInfo>>>;
         
@@ -210,6 +222,7 @@ class CAbstractStreaming
         std::map<id_t, ModelInfo>                       imports;    // Imported abstract models
         std::map<hash_t, const modloader::file*>        special;    // Abstract special models ---- (imported by me) (hashed filename has no extension)
         std::map<uint32_t, const modloader::file*>      clothes;    // Imported abstract clothes --- (key is offset)
+        std::map<hash_t, NonStreamedInfo_t>             non_stream; // Non streamed resources (requested by default.dat/gta.dat) (.second.first may be nullptr)
 
         // Information for refreshing
         std::map<hash_t, const modloader::file*>        to_import;  // Files to be imported by the refresher --- (null pointer on mapped piece means uninstall)
@@ -340,6 +353,10 @@ class CAbstractStreaming
         }
 
     public://protected:
+
+        std::string TryLoadNonStreamedResource(std::string filepath, NonStreamedType type);
+        bool IsNonStreamed(const modloader::file* file)
+        { return (this->non_stream.count(file->hash) > 0); }
 
         // Makes a previosly imported file use the stock resource info instead the one on disk.
         // The force parameter may only be true from an call before info setup in CStreaming::RequestModelStream, otherwise it's undefined behaviour.

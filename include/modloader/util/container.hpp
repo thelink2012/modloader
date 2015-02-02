@@ -215,6 +215,14 @@ namespace modloader
      *  Copies all the Args cstrings into the dest cstring (where destmax determines the range of dest)
      *  Always inserts a null terminator (except when dest==destmax)
      */
+
+    template<class OutputIterator, class... Args>
+    inline OutputIterator copy_cstr(OutputIterator dest, OutputIterator destmax)
+    {
+        if(dest != destmax) *dest = 0;
+        return dest;
+    }
+
     template<class InputIterator, class OutputIterator, class... Args>
     inline OutputIterator copy_cstr(OutputIterator dest, OutputIterator destmax, InputIterator arg, Args&&... args)
     {
@@ -227,12 +235,6 @@ namespace modloader
         return copy_cstr(newdest, destmax, std::forward<Args>(args)...);
     }
 
-    template<class OutputIterator, class... Args>
-    inline OutputIterator copy_cstr(OutputIterator dest, OutputIterator destmax)
-    {
-        if(dest != destmax) *dest = 0;
-        return dest;
-    }
 
 
 

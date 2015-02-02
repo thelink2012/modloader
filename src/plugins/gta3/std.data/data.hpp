@@ -20,10 +20,12 @@ static const uint32_t type_mask_shf   = 32;                   // Takes 8 bits, s
 
 // Non unique files merger fs names
 // Since ipls and ides do not have a single file name to be merged (i.e. there are many ides and ipls files to merge) we use the followin'
-static const char* ipl_merger_name = "**.ipl";
-static const char* ide_merger_name = "**.ide";
+static const char* ipl_merger_name = "**.ipl";      // ipl or zon
+static const char* ide_merger_name = "**.ide";      // ide
+static const char* decision_merger_name = "**.ped"; // ped or grp
 static const size_t ipl_merger_hash = modloader::hash(ipl_merger_name);
 static const size_t ide_merger_hash = modloader::hash(ide_merger_name);
+static const size_t decision_merger_hash = modloader::hash(decision_merger_name);
 
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)
@@ -278,37 +280,76 @@ class DataPlugin : public modloader::basic_plugin
             return FindBehv(modloader::hash(fname));
         }
 
-
         // Registers a merger to work during the file verification and installation/uninstallation process
         // The parameter 'fsfile' especifies how is this file identified in the 'DataPlugin::fs' virtual filesystem
         // The boolean parameter 'unique' especifies whether the specified file can have only one instance
         //      (i.e. plants.dat have only one instance at data/ but vegass.ipl could have two at e.g. data/maps/vegas1 and data/maps/vegas2)
         // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         // The other parameters are familiar enought
-        template<class StoreType, class... Args>
-        modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, bool complete_path,
-                                              const modloader::file_overrider::params& params, Args&&... xargs)
+        template<class StoreType, class... Detours>
+        modloader::file_overrider& AddMerger(std::string fsfile,
+                                              modloader::tag_detour_t,
+                                              const modloader::file_overrider::params& params,
+                                              const std::tuple<Detours...>& ddtuple,
+                                              std::function<void()> reload = nullptr)
         {
             using namespace modloader;
             using namespace std::placeholders;
             using store_type  = StoreType;
             using traits_type = typename store_type::traits_type;
-            using detour_type = typename traits_type::detour_type;
 
             fsfile = modloader::NormalizePath(std::move(fsfile));
-
             auto hash = modloader::hash(fsfile);
 
             auto& ov = ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
-                std::forward_as_tuple(tag_detour, params, detour_type(), std::forward<Args>(xargs)...)
+                std::forward_as_tuple(tag_detour, params, ddtuple, std::move(reload))
+                ).first->second;
+
+            // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
+            // This gets called during InstallFile/ReinstallFile/UninstallFile
+            ov.MakeCallForAllDetours();
+
+            AddBehv(hash, true);
+            return ov;
+        }
+
+        template<class StoreType>
+        modloader::file_overrider& AddMerger(std::string fsfile, bool unique, bool samefile, bool complete_path,
+                                              const modloader::file_overrider::params& params, std::function<void()> reload = nullptr)
+        {
+            using detour_type = typename StoreType::traits_type::detour_type;
+            auto GetMergedData = BindGetMergedData<StoreType>(fsfile, unique, samefile, complete_path);
+            return AddMerger<StoreType>(std::move(fsfile),
+                modloader::tag_detour, params, std::forward_as_tuple(detour_type(GetMergedData)), std::move(reload));
+        }
+
+        template<class StoreType>
+        std::function<std::string(std::string)> BindGetMergedData(std::string fsfile, bool unique, bool samefile, bool complete_path)
+        {
+            using namespace std::placeholders;
+            return std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique, samefile, complete_path);
+        }
+
+        
+
+        template<class detour_type>
+        modloader::file_overrider& AddIplOverrider(std::string fsfile, bool unique, bool samefile, bool complete_path,
+                                              const modloader::file_overrider::params& params)
+        {
+            fsfile = modloader::NormalizePath(std::move(fsfile));
+            auto hash = modloader::hash(fsfile);
+
+            auto& ov = ovmap.emplace(std::piecewise_construct,
+                std::forward_as_tuple(hash),
+                std::forward_as_tuple(tag_detour, params, detour_type())
                 ).first->second;
 
             for(size_t i = 0; i < ov.NumInjections(); ++i)
             {
                 // Merges data whenever necessary to open this file. Caching can happen.
                 auto& d = static_cast<detour_type&>(ov.GetInjection(i));
-                d.OnTransform(std::bind(&DataPlugin::GetMergedData<StoreType>, this, _1, fsfile, unique, samefile, complete_path));
+                d.OnTransform(std::bind(&DataPlugin::GetIplFile, this, _1, fsfile, unique, samefile, complete_path));
             }
 
             // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
@@ -522,7 +563,7 @@ class DataPlugin : public modloader::basic_plugin
         // For a explanation of the 'unique' parameter see AddMerger function
         // The boolean parameter 'samefile' specifies whether the filename received should match fsfile
         //
-        template<class StoreType>  
+        template<class StoreType>
         std::string GetMergedData(std::string file, std::string fsfile, bool unique, bool samefile, bool complete_path)
         {
             using namespace modloader;
@@ -616,6 +657,31 @@ class DataPlugin : public modloader::basic_plugin
 
             return std::string();  // use default file
         }
+        
+        // Used for IPL merger to not merge IPLs, hax
+        std::string GetIplFile(std::string file, std::string fsfile, bool unique, bool samefile, bool complete_path)
+        {
+            using namespace modloader;
+            auto filename     = modloader::NormalizePath(GetPathComponentBack(file));
+
+            // Make sure filename matches if samefile has been specified
+            if(samefile && filename != fsfile)
+                return std::string(); // use default file
+
+            auto range    = this->fs.files_at(complete_path? file : fsfile);
+            auto count    = std::distance(range.first, range.second);
+
+            if(count > 0)
+            {
+                if(count > 1)
+                    plugin_ptr->Log("Warning: More than one file attached to '%s', using the one with higher priority.", (complete_path? file : fsfile).c_str());
+                auto it = range.first;
+                std::advance(it, count - 1);
+                return it->second.first;
+            }
+
+            return std::string();  // use default file
+        }
 
 
         // Queries a reference to the data in a either<string, any> object if it matches the type StoreType
@@ -693,10 +759,15 @@ class initializer
  *      
  *      Additional stuff:
  *
- *          static const bool can_cache         -> Can this store get cached?
- *          static const bool is_reversed_kv    -> Does the key contains the data instead of the value in the key-value pair?
- *          static const bool has_sections      -> Does this data file contains sections?
- *          static const bool per_line_section  -> Does the sections of this data file different on each line?
+ *          [optional] static const bool can_cache        -> Can this store get cached?
+ *          [optional] static const bool is_reversed_kv    -> Does the key contains the data instead of the value in the key-value pair?
+ *                     static const bool has_sections      -> Does this data file contains sections?
+ *                     static const bool per_line_section  -> Does the sections of this data file different on each line?
+ *
+ *          [optional] has_eof_string           -> When set to true, whenever the eof_string() is found the following content is ignored.
+ *                                                 Note when this is set to true you need to add a this->eof and serializer for the derived class.
+ *          [optional] eof_string()             -> Returns a string (const char*) which contains the eof string.
+ *                                                 When the eof string is found at the beggining of the line, all the content after this line is ignored.
  *
  *          [optional] void static_serialize(Archive, IsSaving, Functor)
  *                                              -> Serializes the static data of a data_traits.
@@ -711,6 +782,17 @@ class initializer
  */
 struct data_traits : public gta3::data_traits
 {
+    static const bool is_ipl_merger     = false;
+
+    static const bool can_cache         = true;
+    static const bool is_reversed_kv    = false;
+
+    static const bool has_eof_string    = false;
+    static const char* eof_string() { return "\n" /* dummy */; };    
+
+    
+    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
+
     template<class Archive, class FuncT>
     static void static_serialize(Archive& archive, bool saving, FuncT serialize_store)
     {
@@ -720,19 +802,50 @@ struct data_traits : public gta3::data_traits
     template<class StoreType>
     static DataPlugin::readme_data_list<StoreType> query_readme_data(const std::string& filename)
     {
-        return plugin_ptr->cast<DataPlugin>().QueryReadmeData<StoreType>();
+        return modloader::plugin_ptr->cast<DataPlugin>().QueryReadmeData<StoreType>();
     }
 
-    // make setbyline output a error on failure
+    // make setbyline output a error on failure and take care of eof strings
     template<class StoreType, typename TData>
     static bool setbyline(StoreType& store, TData& data, const gta3::section_info* section, const std::string& line, bool allowlog = true)
     {
+        if(has_reached_eof(store.traits(), line))
+            return false;
+
         if(!gta3::data_traits::setbyline(store, data, section, line))
         {
-            if(allowlog) plugin_ptr->Log("Warning: Failed to parse data line: %s", line.c_str());
+            if(allowlog) fail(line);
             return false;
         }
         return true;
+    }
+
+    static bool fail(const std::string& line)
+    {
+        modloader::plugin_ptr->Log("Warning: Failed to parse data line: %s", line.c_str());
+        return false;
+    }
+
+protected:
+
+    template<class traits_type>
+    typename std::enable_if<traits_type::has_eof_string, bool>::type
+    static /* bool */ has_reached_eof(traits_type& traits, const std::string& line)
+    {
+        static std::string eof_string = traits_type::eof_string();
+        if(traits.eof || !line.compare(0, eof_string.length(), eof_string))
+        {
+            traits.eof = true;
+            return true;
+        }
+        return false;
+    }
+
+    template<class traits_type>
+    typename std::enable_if<!traits_type::has_eof_string, bool>::type
+    static /* bool */ has_reached_eof(traits_type& traits, const std::string& line)
+    {
+        return false;
     }
 };
 

@@ -25,7 +25,7 @@ If you are building from the source code, it is very simple to compile. You'll n
 + [Premake](http://industriousone.com/premake/download) 5 *(pre-built executable available in this repository root)*
 + An C++11 compiler, tested under:
     - [Visual Studio](http://www.visualstudio.com/downloads) 2013 or greater
-    - [MinGW](http://mingw-w64.sourceforge.net/download.php) 4.8.2 or greater
+    - [MinGW](http://mingw-w64.sourceforge.net/download.php) 4.9.0 or greater _(currently have build errors with gta3.std.data)_
 
 
 Then, in a command-line shell go into the repository root directory and run the commands:

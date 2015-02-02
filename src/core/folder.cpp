@@ -7,7 +7,6 @@
 #include "loader.hpp"
 using namespace modloader;
 
-// TODO priority set at runtime
 
 template<class L>
 static void BuildGlobString(const L& list, std::string& glob)
@@ -38,7 +37,6 @@ void Loader::FolderInformation::Clear()
     RebuildIncludeModsGlob();
 }
 
-
 /*
  *  FolderInformation::IsIgnored
  *      Checks if the specified mod @name (normalized) should be ignored
@@ -51,7 +49,7 @@ bool Loader::FolderInformation::IsIgnored(const std::string& name)
         return (MatchGlob(name, include_mods_glob) == false);
     else
     {
-        if(ignore_mods.find(name) == ignore_mods.end()) // Check if not on ignore mods list
+        if(this->IsOnIgnoringList(name) == false) // Check if not on ignore mods list
         {
             auto it = mods_priority.find(name);
             return (it != mods_priority.end() && it->second == 0);  // If priority is 0 ignore this mod
@@ -104,7 +102,10 @@ auto Loader::FolderInformation::AddMod(const std::string& name) -> ModInformatio
  */
 void Loader::FolderInformation::SetPriority(std::string name, int priority)
 {
-    mods_priority.emplace(std::move(name), priority);
+    if(priority == default_priority)
+        mods_priority.erase(name);
+    else
+        mods_priority[name] = priority;
 }
 
 
@@ -129,6 +130,16 @@ void Loader::FolderInformation::Include(std::string name)
 }
 
 /*
+ *  FolderInformation::Uninclude
+ *      Removes the file @name (normalized) from the inclusion list
+ */
+void Loader::FolderInformation::Uninclude(const std::string& name)
+{
+    include_mods.erase(name);
+    RebuildIncludeModsGlob();
+}
+
+/*
  *  FolderInformation::IgnoreFileGlob
  *      Adds a file @glob (normalized) to be ignored
  */
@@ -145,6 +156,15 @@ void Loader::FolderInformation::IgnoreFileGlob(std::string glob)
 void Loader::FolderInformation::IgnoreMod(std::string mod)
 {
     ignore_mods.emplace(std::move(mod));
+}
+
+/*
+ *  FolderInformation::UnignoreMod
+ *      Removes the mod @mod (normalized) from the ignored list
+ */
+void Loader::FolderInformation::UnignoreMod(const std::string& mod)
+{
+    ignore_mods.erase(mod);
 }
 
 
@@ -261,7 +281,7 @@ void Loader::FolderInformation::Scan()
     if(!this->gotConfig)
     {
         this->gotConfig = true;
-        this->LoadConfigFromINI(loader.folderConfigFilename);
+        this->LoadConfigFromINI();
     }
 
     // > Status here is Status::Unchanged
@@ -269,17 +289,11 @@ void Loader::FolderInformation::Scan()
     MarkStatus(this->mods, Status::Removed);
 
     // Walk on this folder to find mods
-    if (this->IsIgnoring() == false)
+    if(this->IsIgnoring() == false)
     {
         fine = FilesWalk("", "*.*", false, [this](FileWalkInfo & file)
         {
-            if(file.is_dir)
-            {
-                if (IsIgnored(NormalizePath(file.filename)))
-                    Log("Ignoring mod at \"%s\"", file.filepath);
-                else
-                    this->AddMod(file.filename).Scan();
-            }
+            if(file.is_dir) this->AddMod(file.filename).Scan();
             return true;
         });
     }
@@ -302,6 +316,36 @@ void Loader::FolderInformation::Scan()
 }
 
 /*
+ *  FolderInformation::Scan (from Journal)
+ *      Rescans mods at this folder that are present in the change journal
+ *      This method only scans, to update using the scanned information, call Update()
+ */
+void Loader::FolderInformation::Scan(const Journal& journal)
+{
+    ::scoped_gdir xdir(this->path.c_str());
+
+    if(this->IsIgnoring() == false)
+    {
+        for(auto& change : journal)
+        {
+            if(change.second == Status::Removed)
+            {
+                auto it = this->mods.find(change.first);
+                if(it != this->mods.end()) it->second.status = Status::Removed;
+            }
+            else if(change.second == Status::Added
+                 || change.second == Status::Updated)
+            {
+                if(IsDirectoryA(change.first.c_str()))  // the journal might contain unrelated files...
+                    this->AddMod(change.first).Scan();
+            }
+        }
+    }
+
+    UpdateStatus(*this, this->mods, true);
+}
+
+/*
  *  FolderInformation::Update
  *      Updates the state of all mods.
  *      This is normally called after Scan()
@@ -316,16 +360,16 @@ void Loader::FolderInformation::Update()
         auto mods = this->GetModsByPriority();
 
         // Uninstall all removed files since the last update...
-        for(auto& mod : mods)
+        for(ModInformation& mod : mods)
         {
-            mod.get().ExtinguishNecessaryFiles();
+            mod.ExtinguishNecessaryFiles();
         }
 
         // Install all updated and added files since the last update...
-        for(auto& mod : mods)
+        for(ModInformation& mod : mods)
         {
-            mod.get().InstallNecessaryFiles();
-            mod.get().SetUnchanged();
+            mod.InstallNecessaryFiles();
+            mod.SetUnchanged();
         }
 
         // Update my childs
@@ -376,24 +420,28 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
     // Reads the [Priority] section
     auto ReadPriorities = [this](const linb::ini::key_container& kv)
     {
+        this->mods_priority.clear();
         for(auto& pair : kv) this->SetPriority(NormalizePath(pair.first), std::strtol(pair.second.c_str(), 0, 0));
     };
 
     // Reads the [IgnoreMods] section
     auto ReadIgnoreMods = [this](const linb::ini::key_container& kv)
     {
+        this->ignore_mods.clear();
         for(auto& pair : kv) this->IgnoreMod(NormalizePath(pair.first));
     };
 
     // Reads the [IgnoreFiles] section
     auto ReadIgnoreFiles = [this](const linb::ini::key_container& kv)
     {
+        this->ignore_files.clear();
         for(auto& pair : kv) this->IgnoreFileGlob(NormalizePath(pair.first));
     };
 
-    // Reads the [IncludeFiles] section
+    // Reads the [IncludeMods] section
     auto ReadIncludeMods = [this](const linb::ini::key_container& kv)
     {
+        this->include_mods.clear();
         for(auto& pair : kv) this->Include(NormalizePath(pair.first));
     };
 
@@ -410,4 +458,48 @@ void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
     else
         Log("Failed to load folder config file");
 
+}
+
+/*
+ *  FolderInformation::SaveConfigForINI
+ *      Saves configuration specific to this folder to the specified ini file
+ */
+void Loader::FolderInformation::SaveConfigForINI(const std::string& inifile)
+{
+    linb::ini ini;
+    auto& config      = ini["Config"];
+    auto& priority    = ini["Priority"];
+    auto& ignoremods  = ini["IgnoreMods"];
+    auto& ignorefiles = ini["IgnoreFiles"];
+    auto& includemods = ini["IncludeMods"];
+    
+    config["IgnoreAllFiles"] = modloader::to_string(this->IsIgnoringAll());
+    config["ExcludeAllMods"] = modloader::to_string(this->IsExcludingAll());
+
+    for(auto& pair : this->mods_priority)
+        priority[pair.first] = std::to_string(pair.second);
+
+    for(auto& mod : this->ignore_mods)
+        ignoremods[mod];
+
+    for(auto& file : this->ignore_files)
+        ignorefiles[file];
+
+    for(auto& mod : this->include_mods)
+        includemods[mod];
+
+    if(!ini.write_file(inifile))
+        Log("Failed to save folder config file");
+}
+
+void Loader::FolderInformation::SaveConfigForINI()
+{
+    ::scoped_gdir xdir(this->path.c_str());
+    return this->SaveConfigForINI(loader.folderConfigFilename);
+}
+
+void Loader::FolderInformation::LoadConfigFromINI()
+{
+    ::scoped_gdir xdir(this->path.c_str());
+    return this->LoadConfigFromINI(loader.folderConfigFilename);
 }

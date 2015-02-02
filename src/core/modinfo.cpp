@@ -39,17 +39,20 @@ struct FileInstallLog
  */
 void Loader::ModInformation::Scan()
 {
-    ::scoped_gdir xdir(this->path.c_str());
-    Log("\nScanning files at \"%s\"...", this->path.c_str());
-    
     static auto modloader_subfolder = NormalizePath("modloader");
+    ::scoped_gdir xdir(this->path.c_str());
     
+    if(this->UpdateIgnoreStatus().IsIgnored())
+        Log("\nIgnoring mod at \"%s\"", this->path.c_str());
+    else
+        Log("\nScanning files at \"%s\"...", this->path.c_str());
+
     // > Status here is Unchanged
     // Mark all current files as removed
     MarkStatus(this->files, Status::Removed);
 
     // Scan the directory checking out all files
-    bool fine = FilesWalk("", "*.*", true, [this](FileWalkInfo& file)
+    bool fine = this->IsIgnored()? true : FilesWalk("", "*.*", true, [this](FileWalkInfo& file)
     {
         auto filename = NormalizePath(file.filename);
         auto filepath = this->path + NormalizePath(file.filebuf);
@@ -87,7 +90,7 @@ void Loader::ModInformation::Scan()
             m.time    = file.time;
 
             // Find a handler for this file
-            handler = loader.FindHandlerForFile(m, callme); // TODO REMOVE THIS ON SECOND SCAN?
+            handler = loader.FindHandlerForFile(m, callme);
             if(handler || !callme.empty())
             {
                 file.recursive = false;     // Avoid FilesWalk recursion
@@ -129,6 +132,8 @@ void Loader::ModInformation::Scan()
     
     // Find the underlying status of this mod
     UpdateStatus(*this, this->files, fine);
+    if(this->UpdatePriority() && this->status == Status::Unchanged)
+        this->status = Status::Updated;
 }
 
 
@@ -136,13 +141,21 @@ void Loader::ModInformation::Scan()
  *  ModInformation::ExtinguishingNecessaryFiles
  *      Uninstall anything that has the status Removed
  *      This is usually called after a Scan
+ *      Returns the behaviours successfully UNINSTALLED by this call
  */
 void Loader::ModInformation::ExtinguishNecessaryFiles()
 {
     if(this->status != Status::Unchanged)
     {
         Updating xup;
-        Log("Extinguishing some files from \"%s\"...", this->path.c_str());
+        bool logged_ex = false;
+
+        auto LogExtinguishing = [&](const char* filepath)
+        {
+            if(!logged_ex) Log("Extinguishing some files from \"%s\"...", this->path.c_str());
+            Log("Extinguishing file \"%s\"", filepath);
+            logged_ex = true;
+        };
 
         // Remove all files if this mod has been removed
         bool bRemoveAll = (this->status == Status::Removed);
@@ -151,12 +164,19 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
         for (auto it = this->files.begin(); it != this->files.end(); )
         {
             FileInformation& file = it->second;
-            if (bRemoveAll || file.status == Status::Removed)
+            BehvSet::value_type file_behv = { file.handler, file.behaviour };
+            bool was_installed = file.IsInstalled();
+
+            if(bRemoveAll || file.status == Status::Removed)
             {
                 // File was removed from the filesystem, uninstall and erase from our internal list
-                Log("Extinguishing file \"%s\"", file.filepath());
-                if(file.Uninstall()) it = this->files.erase(it);
-                else                 ++it;
+                LogExtinguishing(file.filepath());
+                if(file.Uninstall())
+                {
+                    it = this->files.erase(it);
+                }
+                else
+                    ++it;
             }
             else
                 ++it;
@@ -171,27 +191,75 @@ void Loader::ModInformation::ExtinguishNecessaryFiles()
  */
 void Loader::ModInformation::InstallNecessaryFiles()
 {
-    if(this->status != Status::Unchanged)
+    if(this->IsIgnored() == false)
     {
         Updating xup;
-        Log("Installing some files for \"%s\"...", this->path.c_str());
-        
+        Log(this->files.size()? "Updating state for \"%s\"..." : "No files in \"%s\"...", this->path.c_str());
+
+        // Helper closure... Installs taking care of other installed priorities.
+        auto TryInstall = [](FileInformation& file)
+        {
+            FileInformation* installed;
+            if(file.handler
+            && (installed = file.handler->FindFileWithBehaviour(file.behaviour))
+            && (SimplePriorityPred<ModInformation>()(file.parent, installed->parent) == true))
+            {
+                // Don't install, the currently installed file has priority over this one
+            }
+            else
+            {
+                // Install, either there's no file installed with this behaviour or this file has
+                // priority over the installed one
+                file.Install();
+            }
+        };
+
         for (auto it = this->files.begin(); it != this->files.end(); ++it)
         {
             FileInformation& file = it->second;
-            switch (file.status)
-            {
-                case Status::Added: // File has been added since the last update
-                    file.Install(); // TODO think about added here at runtime (>>> priorities)
-                    break;
 
-                case Status::Updated: // File has been updated since the last update
+            if(file.status == Status::Added || file.status == Status::Updated)
+            {
+                if(file.installed)
                     file.Reinstall();
-                    break;
+                else
+                    TryInstall(file);
+            }
+            else if(file.status == Status::Unchanged)
+            {
+                if(file.handler && !file.installed)
+                    TryInstall(file);
             }
         }
     }
 }
+
+/*
+ *  ModInformation::UpdateIgnoreStatus
+ *      Updates the state of 'this->ignore' depending upon the parent folder ignore list.
+ */
+Loader::ModInformation& Loader::ModInformation::UpdateIgnoreStatus()
+{
+    this->ignored = parent.IsIgnored(this->GetName());
+    return *this;
+}
+
+/*
+ *  ModInformation::UpdatePriority
+ *      Updates the state of 'this->priority' depending upon the parent folder priority list.
+ *      Returns true if the priority changed or false otherwise.
+ */
+bool Loader::ModInformation::UpdatePriority()
+{
+    auto priority = parent.GetPriority(this->name);
+    if(this->priority != priority)
+    {
+        this->priority = priority;
+        return true;
+    }
+    return false;
+}
+
 
 
 

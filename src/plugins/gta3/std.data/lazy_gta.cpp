@@ -4,7 +4,6 @@
  * 
  */
 #include <stdinc.hpp>
-#include "data.hpp"
 using namespace modloader;
 using namespace injector;
 using namespace std::placeholders;

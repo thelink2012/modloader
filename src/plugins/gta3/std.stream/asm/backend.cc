@@ -21,6 +21,7 @@ extern void* (*ColModelPool_new)(int);
 /* funcs */
 extern char* AllocBufferForString(const char*);
 extern void RegisterNextModelRead(int id);
+extern void FixBikeSuspPtr(char* m_pColData);
 
 /*
     void* _nakedcall _cdecl HOOK_LoadColFileFix(arg0 = size)
@@ -83,6 +84,31 @@ void __declspec(naked) HOOK_NewFile()
     }
 }
 
+
+/*
+    void _nakedcall HOOK_FixBikeSuspLines(edi = v2->clump.base.m_pColModel->m_pColData, ...)
+        Fixes broken pointer on CBike::SetupSuspensionLine after a refresh
+*/
+void __declspec(naked) HOOK_FixBikeSuspLines()
+{
+    _asm
+    {
+    _BikeSuspTry:
+        mov eax, [edi+0x10]  /* Original Code */
+        test eax, eax
+        jz _BikeSuspFix
+        mov edx, [eax+0x28]  /* Original Code */
+        ret
+
+    _BikeSuspFix:
+        pushad
+        push edi
+        call FixBikeSuspPtr
+        add esp, 4
+        popad
+        jmp _BikeSuspTry
+    }
+}
 
 
 }   // extern "C"

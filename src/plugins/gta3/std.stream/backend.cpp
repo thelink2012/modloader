@@ -13,6 +13,7 @@ extern "C"
     // Assembly hooks at "asm/" folder
     extern void HOOK_RegisterNextModelRead();
     extern void HOOK_NewFile();
+    extern void HOOK_FixBikeSuspLines();
 
     // Next model read registers. It's important to have those two vars! Don't leave only one!
     int  iNextModelBeingLoaded = -1;            // Set by RegisterNextModelRead, will then be sent to iModelBeingLoaded
@@ -50,6 +51,17 @@ extern "C"
         return CreateFileA(
             lpActualFileName, dwDesiredAccess, dwShareMode,
             lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
+
+    
+    // Reproduces the code @6BF741
+    void FixBikeSuspPtr(char* m_pColData)
+    {
+        *(char*)(m_pColData + 6) = 4;
+        char* ptr = injector::cstd<char*(size_t)>::call<0x72F420>(128); // CMemoryMgr::Malloc
+        *(char**)(m_pColData + 16) = ptr;
+        *(uint32_t*)(ptr + 10) = 0x47C34FFFu;   // a float actually
+        *(uint32_t*)(ptr + 8)  = 0x47C34FFFu;   // a float actually
     }
 };
 
@@ -230,7 +242,7 @@ auto CAbstractStreaming::OpenModel(ModelInfo& file, int index) -> AbctFileHandle
     
     if(hFile == INVALID_HANDLE_VALUE)
     {
-        plugin_ptr->Log("Failed to open file \"%s\" for abstract streaming; error code: 0x%X",
+        plugin_ptr->Log("Warning: Failed to open file \"%s\" for abstract streaming; error code: 0x%X",
                        file.file->filepath(), GetLastError());
         return nullptr;
     }
@@ -466,8 +478,6 @@ void CAbstractStreaming::Patch()
     // CdStream path overiding
     if(true)
     {
-        // Do not use function_hooker here in this context, it would break many scoped hooks in this plugin.
-        
         static void*(*OpenFile)(const char*, const char*);
         static void*(*RwStreamOpen)(int, int, const char*);
 
@@ -511,6 +521,15 @@ void CAbstractStreaming::Patch()
         }
         else
             injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
+    }
+
+    // Some fixes to allow the refreshing process to happen
+    if(gvm.IsSA())
+    {
+        // Fix issue with CBike having some additional fields on SetupSuspensionLines that gets deallocated when
+        // we destroy it's model or something. Do just like CQuad and other does, checks if the pointer is null and then allocate it.
+        MakeNOP(0x6B89CE, 6);
+        MakeCALL(0x6B89CE, HOOK_FixBikeSuspLines);
     }
 }
 

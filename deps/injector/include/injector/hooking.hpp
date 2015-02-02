@@ -477,7 +477,7 @@ namespace injector
 
         protected: // Forwarders to the function hooker manager
 
-            void make_call(typename functor_type functor, memory_pointer_raw ptr)
+            void make_call(functor_type functor, memory_pointer_raw ptr)
             {
                 this->has_call = true;
                 manager->make_call(*this, std::move(functor), ptr);
@@ -656,16 +656,6 @@ namespace injector
     }
 
     /*
-     *  Makes a hook which is alive for the entire lifetime of this program
-     *  'T' must be any function_hooker object
-     */
-    template<class T, class F> inline
-    T& make_static_hook(F functor)
-    {
-        return add_static_hook(make_function_hook<T>(std::move(functor)));
-    }
-
-    /*
      *  Makes a hook which is alive until it gets out of scope
      *  'T' must be any function_hooker object
      */
@@ -676,6 +666,17 @@ namespace injector
         a.make_call(std::move(functor));
         return a;
     }
+
+    /*
+     *  Makes a hook which is alive for the entire lifetime of this program
+     *  'T' must be any function_hooker object
+     */
+    template<class T, class F> inline
+    T& make_static_hook(F functor)
+    {
+        return add_static_hook(make_function_hook<T>(std::move(functor)));
+    }
+
 
     // TODO when we have access to C++14 add a make_function_hook, make_stdcall_function_hook, and so on
     // the problem behind implement it with C++11 is that lambdas cannot be generic and the first param of a hook is a functor pointing

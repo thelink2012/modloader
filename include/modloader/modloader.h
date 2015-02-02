@@ -1,11 +1,8 @@
 /* 
- * Mod Loader
- * Created by LINK/2012 <dma_2012@hotmail.com>
- * 
- *  Mod Loader plugin interface
- *      The interface is extremly simple, you don't even have to link with modloader.
+ *  Mod Loader C Plugin Interface
+ *      The interface is extremly simple and you don't have to link with modloader.
  *      The only thing you are requiered to do is export a 'GetPluginData' function (see below for the prototype).
- *      Put your plugin at '/modloader/.data/plugins' folder
+ *      Put your plugin at '/modloader/.data/plugins' folder.
  * 
  * 
  *  This source code is offered for use in the public domain. You may
@@ -32,7 +29,7 @@ extern "C" {
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         2
-#define MODLOADER_VERSION_REVISION      2
+#define MODLOADER_VERSION_REVISION      3
 #ifdef NDEBUG
 #define MODLOADER_VERSION_ISDEV         0
 #else
@@ -203,10 +200,10 @@ typedef int (*modloader_fOnShutdown)(modloader_plugin_t* data);
 /*
  * GetBehaviour
  *      Gets the behaviour of this plugin in relation to the specified file
- *      @data: The plugin data   
- *      @return MODLOADER_RELATIONSHIP_NONE    for no relationship
- *              MODLOADER_RELATIONSHIP_STRONG  for strong relationship, this plugin will handle the file installation
- *              MODLOADER_RELATIONSHIP_WEAK    for weak relationship, this plugin won't handle the file installation but will receive it at Install, Uninstall and so on.
+ *      @data: The plugin data
+ *      @return MODLOADER_BEHAVIOUR_NO      for no relationship
+ *              MODLOADER_BEHAVIOUR_YES     for strong relationship, this plugin will handle the file installation. Should set file->behaviour to a file-unique id.
+ *              MODLOADER_BEHAVIOUR_CALLME  for weak relationship, this plugin won't handle the file installation but will receive it at Install, Uninstall and so on.
  *              
  * 
  */
@@ -214,7 +211,7 @@ typedef int (*modloader_fGetBehaviour)(modloader_plugin_t* data, modloader_file_
 
 /*
  * InstallFile
- *      Called to install a file previosly checked as 'yes'
+ *      Called to install a file previosly checked as MODLOADER_BEHAVIOUR_YES or MODLOADER_BEHAVIOUR_CALLME
  *      @data: The plugin data
  *      @return 0 on success and 1 on failure;
  */

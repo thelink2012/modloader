@@ -9,6 +9,8 @@
 #   pragma warning(disable : 4018)  // @deps\tinympl\tinympl\variadic\at.hpp(33): warning C4018: '<' : signed/unsigned mismatch
 #endif
 
+// You may define DATALIB_FAST_COMPILATION on the compiler defines to increase compilation time for the project (!?)
+
 // datalib fundamentals
 #include <datalib/data_slice.hpp>
 #include <datalib/dominance.hpp>
@@ -20,6 +22,7 @@
 #include <type_wrapper/datalib/io/floating_point.hpp>
 
 // datalib I/O with common types
+#include <datalib/io/enum.hpp>
 #include <datalib/io/either.hpp>
 #include <datalib/io/optional.hpp>
 #include <datalib/io/tuple.hpp>

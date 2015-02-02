@@ -6,8 +6,7 @@
  */
 #include <stdinc.hpp>
 #include "streaming.hpp"
-
-// TODO for MODELFILE, TEXDICTION and other entries related to the files the streaming handles
+using namespace std::placeholders;
 
 extern "C"
 {
@@ -16,11 +15,72 @@ extern "C"
 };
 
 static void FixColFile();
+static void* LoadNonStreamedRes(std::function<void*(const char*)> load, const char* filepath, NonStreamedType type);
 
-
+/*
+ *  gta.dat / default.dat related stuff
+ */
 void CAbstractStreaming::DataPatch()
 {
-    if(gvm.IsSA()) FixColFile(); // Fix broken COLFILE in GTA SA
+    if(gvm.IsSA())
+        FixColFile(); // Fix broken COLFILE in GTA SA
+
+
+    // Detouring of non streamed resources loaded by gta.dat/default.dat
+    if(true)
+    {
+        using hcolfile  = function_hooker<0x5B9188, void*(const char*, int)>;
+        using hatomic   = function_hooker<0x5B91B0, void*(const char*)>;
+        using hclump    = function_hooker<0x5B91DB, void*(const char*)>;
+        using htexdict  = function_hooker<0x5B910A, void*(const char*)>;
+
+        make_static_hook<hatomic>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::AtomicFile));
+        make_static_hook<hclump>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::ClumpFile));
+        make_static_hook<htexdict>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::TexDictionary));
+        make_static_hook<hcolfile>([](hcolfile::func_type load, const char* filepath, int id)
+        {
+            return LoadNonStreamedRes(std::bind(load, _1, id), filepath, NonStreamedType::ColFile);
+        });
+    }
+}
+
+
+/*
+ *  CAbstractStreaming::TryLoadNonStreamedResource
+ *      Checks if the file 'filepath' is under our ownership, and if it is register as non-streamed.
+ */
+std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath, NonStreamedType type)
+{
+    if(!this->bHasInitializedStreaming)
+    {
+        auto filename = NormalizePath(filepath.substr(GetLastPathComponent(filepath)));
+
+        auto it = this->raw_models.find(filename);
+        if(it != this->raw_models.end())
+        {
+            // Log about non streamed resource and make sure it's unique
+            plugin_ptr->Log("Using non-streamed resource \"%s\"", it->second->filepath());
+            if(this->non_stream.count(it->second->hash))
+                throw std::runtime_error("std.stream: TryLoadNonStreamedResource: Repeated resource!");
+
+            // Register into non_stream and unregister from raw_models
+            this->non_stream.emplace(it->second->hash, std::make_pair(it->second, type));
+            std::string fullpath = it->second->fullpath();
+            this->raw_models.erase(it);
+            return fullpath;
+        }
+    }
+    return std::string();
+}
+
+/*
+ *  LoadNonStreamedRes
+ *      Direct wrapper between the game calls and CAbstractStreaming::TryLoadNonStreamedResource 
+ */
+void* LoadNonStreamedRes(std::function<void*(const char*)> load, const char* filepath, NonStreamedType type)
+{
+    auto newfilepath = streaming.TryLoadNonStreamedResource(filepath, type);
+    return load(newfilepath.size()? newfilepath.data() : filepath);
 }
 
 

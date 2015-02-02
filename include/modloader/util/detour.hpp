@@ -28,8 +28,9 @@ namespace modloader
     struct tag_detour_t {};
     static const tag_detour_t tag_detour;
     
-    struct tag_nofile_t {};
-    static const tag_nofile_t tag_nofile;
+    struct tag_many_detour_t {};
+    static const tag_many_detour_t tag_many_detour;
+
 
     /*
      *  File detour
@@ -220,6 +221,12 @@ namespace modloader
                 return *this;
             }
 
+            explicit basic_file_detour(std::function<std::string(std::string)> on_transform)
+                : basic_file_detour()
+            {
+                this->OnTransform(std::move(on_transform));
+            }
+
             ~basic_file_detour()
             {
                 this->restore();
@@ -334,8 +341,7 @@ namespace modloader
                 // Can reinstall if the game hasn't started or if we can reinstall this kind
                 if(this->CanInstall())
                     return PerformInstall(this->file);
-                return true;    // Mark as reinstalled anyway, so we won't happen to have a catastrophical failure
-                                // When both Reinstall and Uninstall fails, we have a problem.
+                return false;
             }
 
             // Uninstall the currently installed file
@@ -367,29 +373,32 @@ namespace modloader
 
             // Set the file detourer (important to call, otherwise no effect will happen)
             // This overrides OnHook
-            template<class ...Args> void SetFileDetour(Args&&... detourers_)
+            template<class ...Args> void SetFileDetourTuple(const std::tuple<Args...>& ddtuple)
             {
-                this->injections.resize(sizeof...(detourers_));
-                HlpSetFileDetour<0>(std::forward<Args>(detourers_)...);
+                using tuple_type = std::tuple<Args...>;
+                static const size_t tuple_size = std::tuple_size<tuple_type>::value;
+
+                this->injections.resize(tuple_size);
+                HlpSetFileDetour<tuple_type>(std::integral_constant<size_t, 0>(), ddtuple);
 
                 OnHook([this](const modloader::file* f)
                 {
-                    Hlp_SetFile<sizeof...(Args), Args..., std::nullptr_t>(f);
+                    Hlp_SetFile<tuple_type>(std::integral_constant<size_t, 0>(), f);
                 });
             }
 
-        private:
-            template<size_t I>
-            void HlpSetFileDetour()
-            {}
-
-            template<size_t I, class Arg, class ...Args>
-            void HlpSetFileDetour(Arg&& detour, Args&&... detours)
+            template<class ...Args> void SetFileDetour(Args&&... args)
             {
-                injections.at(I).reset(new std::decay_t<Arg>(std::forward<Arg>(detour)));
-                return HlpSetFileDetour<I+1>(std::forward<Args>(detours)...);
+                return SetFileDetourTuple(std::forward_as_tuple(std::forward<Args>(args)...));
             }
 
+            // Optionally set up the calls for all detours even if no file has been received to override
+            template<class... Detours>
+            void MakeCallForAllDetours()
+            {
+                using tuple_type = std::tuple<Detours...>;
+                Hlp_MakeCall<tuple_type>(std::integral_constant<size_t, 0>());
+            }
 
         public: // Helpers for construction
             // Pack of basic boolean states to help the initialization of this object
@@ -421,9 +430,17 @@ namespace modloader
             {}
 
             // Constructor - Quickly setup the entire file overrider based on a detourer
-            template<class DetourType, class ReloadType>
-            file_overrider(tag_detour_t, const params& p, DetourType detour, ReloadType reload) :
+            template<class DetourType>
+            file_overrider(tag_detour_t, const params& p, DetourType detour, std::function<void()> reload) :
                 file_overrider(tag_detour, p, std::move(detour))
+            {
+                this->OnReload(std::move(reload));
+            }
+
+            // Constructor - Quickly setup the entire file overrider based on many detourers
+            template<class... Detours>
+            file_overrider(tag_detour_t, const params& p, const std::tuple<Detours...>& detours,  std::function<void()> reload) :
+                file_overrider(tag_detour, p, detours)
             {
                 this->OnReload(std::move(reload));
             }
@@ -434,6 +451,14 @@ namespace modloader
                 file_overrider(p)
             {
                 this->SetFileDetour(std::move(detour));
+            }
+
+            // Constructor - Quickly setup the entire file overrider based on many detourers
+            template<class... Detours>
+            file_overrider(tag_detour_t, const params& p, const std::tuple<Detours...>& detours) :
+                file_overrider(p)
+            {
+                this->SetFileDetourTuple(detours);
             }
 
             // Installs the necessary hooking to load the specified file
@@ -472,44 +497,45 @@ namespace modloader
                 }
             }
 
-        protected: // Because we don't have expression SFINAE on MSVC 2013 we need to do this kind of trick: ( :/ )
-                   // Eh, we could actually use integral_constant...
+        protected:
 
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
+            template<class Tuple>
+            void Hlp_SetFile(std::integral_constant<size_t, std::tuple_size<Tuple>::value>, const modloader::file* f)
+            {}
+
+            template<class Tuple, size_t I>
+            void Hlp_SetFile(std::integral_constant<size_t, I>, const modloader::file* f)
             {
-                T& detourer = static_cast<T&>(GetInjection(i-1));
+                using T = std::decay_t<typename std::tuple_element<I, Tuple>::type>;
+                T& detourer = static_cast<T&>(GetInjection(I));
                 detourer.setfile(f? f->filepath() : "");
-                return Hlp_SetFile<i-1, Args...>(f); 
+                return Hlp_SetFile<Tuple>(std::integral_constant<size_t, I+1>(), f); 
             }
 
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_SetFile(const modloader::file* f)
-            {}  // The end of the args is represented with a nullptr_t
+            template<class Tuple>
+            void Hlp_MakeCall(std::integral_constant<size_t, std::tuple_size<Tuple>::value>)
+            {}
 
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
+            template<class Tuple, size_t I>
+            void Hlp_MakeCall(std::integral_constant<size_t, I>)
             {
-                T& detourer = static_cast<T&>(GetInjection(i-1));
-                detourer.OnTransform(fn);
-                return Hlp_OnTransform<i-1, Args...>(fn);
-            }
-
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_OnTransform(const std::function<std::string(std::string)>& fn)
-            {}  // The end of the args is represented with a nullptr_t
-
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<!std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
-            {
-                T& detourer = static_cast<T&>(GetInjection(i-1));
+                using T = std::decay_t<typename std::tuple_element<I, Tuple>::type>;
+                T& detourer = static_cast<T&>(GetInjection(I));
                 detourer.make_call();
-                return Hlp_MakeCall<i-1, Args...>(fn);
+                return Hlp_MakeCall<Tuple>(std::integral_constant<size_t, I+1>()); 
             }
 
-            template<size_t i, class T, class ...Args>
-            typename std::enable_if<std::is_same<T, std::nullptr_t>::value>::type Hlp_MakeCall()
-            {}  // The end of the args is represented with a nullptr_t
+            template<class Tuple>
+            void HlpSetFileDetour(std::integral_constant<size_t, std::tuple_size<Tuple>::value>, const Tuple& tuple)
+            {}
+
+            template<class Tuple, size_t I>
+            void HlpSetFileDetour(std::integral_constant<size_t, I>, const Tuple& tuple)
+            {
+                using Arg = typename std::tuple_element<I, Tuple>::type;
+                injections.at(I).reset(new std::decay_t<Arg>(std::forward<Arg>(std::get<I>(tuple))));
+                return HlpSetFileDetour<Tuple>(std::integral_constant<size_t, I+1>(), tuple);
+            }
 
     };
 

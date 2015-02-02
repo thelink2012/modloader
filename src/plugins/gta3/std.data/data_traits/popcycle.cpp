@@ -4,12 +4,11 @@
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 
 struct popcycle_traits
 {
-    // Detouring traits
     struct dtraits : modloader::dtraits::OpenFile
     {
         static const char* what() { return "population cycle properties"; }
@@ -18,14 +17,12 @@ struct popcycle_traits
 
 using OpenPopCycleDetour = modloader::OpenFileDetour<0x5BC0AE, popcycle_traits::dtraits>;
 
-
-// Population Cycle Properties Detour
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     auto ReloadPopCycle = []
     {
         injector::cstd<void()>::call<0x5BC090>();   // CPopCycle::Initialise
-        // there are some vars at the end of that function body which should not be reseted while the game runs...
+        // XXX there are some vars at the end of that function body which should not be reseted while the game runs...
         // doesn't cause serious issues but well... shall we take care of them?
     };
 

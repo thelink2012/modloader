@@ -10,22 +10,20 @@
 #include <regex/regex.hpp>          // Abstraction over boost::xpressive or std::regex
 #include <regex/fregex.hpp>
 #include <boost/optional.hpp>
-#include "datalib.hpp"
-#include "utility.hpp"
 
 // We are going to use lots of type erasure
 #include <typeinfo>
 #include <typeindex>
 #include <boost/any.hpp>
-
 using boost::any;
 
+//
 template<class T>
-using maybe = boost::optional<T>;                   // alias for more expressive circumstances
-static const boost::none_t nothing = boost::none;   // more haskell like none type
+using maybe = boost::optional<T>;
+static const boost::none_t nothing = boost::none;
 
-
-// data.hpp and cache.hpp should not be included over here
-// see main.cpp for details on why
-
-
+// Our stuff should come at the end (dependencies)
+#include "data.hpp"
+#include "cache.hpp"
+#include "datalib.hpp"
+#include "utility.hpp"

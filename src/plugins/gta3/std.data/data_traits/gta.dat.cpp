@@ -1,17 +1,15 @@
 /*
- * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2015  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 
 //
 struct gtadat_traits : public data_traits
 {
-    static const bool can_cache         = true;     // Can this store get cached?
-    static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?
     static const bool has_sections      = true;     // Does this data file contains sections?
     static const bool per_line_section  = true;     // Is the sections of this data file different on each line?
     
@@ -25,10 +23,7 @@ struct gtadat_traits : public data_traits
     
     // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5B905E, dtraits>;
-
-    // Dominance Flags
-    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
-                                        
+                          
     //
     using dtype      = data_slice<either<uint32_t, std::string>>;                // may be a index to the path (after premerge) or the path itself (before premerge)
     using key_type   = std::pair<uint32_t, uint32_t>;                            // .first is section, .second is either a global index (after premerge) or
@@ -171,9 +166,7 @@ struct gtadat_traits : public data_traits
 
         template<class Archive>
         void serialize(Archive& archive)
-        {
-            archive(index);
-        }
+        { archive(this->index); }
 
         friend class cereal::access;
 

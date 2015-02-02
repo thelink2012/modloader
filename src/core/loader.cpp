@@ -7,11 +7,6 @@
 #include "loader.hpp"
 using namespace modloader;
 
-// TODO WATCH THE FILESYSTEM, CHECK OUT http://msdn.microsoft.com/en-us/library/windows/desktop/aa365261%28v=vs.85%29.aspx
-// TODO take care of configs on rescan
-// TODO ReinstallFile shouldn't Uninstall on failure?
-// TODO ^ think about uninstalling in-game to the next run, what if couldn't uninstall a specific file
-
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
 #define USE_TEST 0
@@ -19,7 +14,6 @@ REGISTER_ML_NULL();
 
 // Mod Loader object
 Loader loader;
-
 
 /*
  * DllMain
@@ -114,6 +108,7 @@ void Loader::Startup()
         // Initialise configs and counters
         this->vkRefresh      = VK_F4;
         this->bRunning       = false;
+        this->bAutoRefresh   = true;
         this->bEnableMenu    = true;
         this->bEnableLog     = true;
         this->bEnablePlugins = true;
@@ -186,7 +181,8 @@ void Loader::Startup()
         this->StartupMenu();
         this->LoadPlugins();        // Load plugins at /modloader/.data/plugins
         this->ScanAndUpdate();      // Search and install mods at /modloader
- 
+        this->StartupWatcher();     // Startups the automatic refresher
+
         // Startup successfully
         this->bRunning = true;
         Log("\nMod Loader has started up!\n");
@@ -203,11 +199,12 @@ void Loader::Shutdown()
     {
         // Unload the plugins
         Log("\nShutting down Mod Loader...");
+        this->ShutdownWatcher();
+        this->ShutdownMenu();
         this->UnloadPlugins();
         Log("Mod Loader has been shutdown.");
         
         // Finish containers
-        this->ShutdownMenu();
         this->plugins_priority.clear();
         this->extMap.clear();
         this->mods.Clear();
@@ -227,6 +224,7 @@ void Loader::Tick()
     static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
     this->has_game_started = (gGameState >= 7);
     this->has_game_loaded  = (gGameState >= 9);
+    this->CheckWatcher();   // updates from changes in the filesystem
     this->TestHotkeys();
 }
 
@@ -236,20 +234,23 @@ void Loader::Tick()
  */
 void Loader::TestHotkeys()
 {
-    static bool prevF4 = false; 
-    static bool currF4 = false; 
-
-    // Get current hotkey states
-    currF4 = (GetKeyState(vkRefresh) & 0x8000) != 0;
-
-    // Check hotkey states
-    if(currF4 && !prevF4)
+    if(false)   // Unecessary, we got a menu and we got a automatic refresher
     {
-        this->ScanAndUpdate();
-    }
+        static bool prevF4 = false; 
+        static bool currF4 = false; 
 
-    // Save previous states
-    prevF4 = currF4;
+        // Get current hotkey states
+        currF4 = (GetKeyState(vkRefresh) & 0x8000) != 0;
+
+        // Check hotkey states
+        if(currF4 && !prevF4)
+        {
+            this->ScanAndUpdate();
+        }
+
+        // Save previous states
+        prevF4 = currF4;
+    }
 }
 
 
@@ -279,6 +280,8 @@ void Loader::ReadBasicConfig()
                 this->maxBytesInLog = std::strtoul(pair.second.data(), 0, 0);
             else if(!compare(pair.first, "RefreshKey", false))
                 this->vkRefresh = std::stoi(pair.second.data(), 0, 0);
+            else if(!compare(pair.first, "AutoRefresh", false))
+                this->bAutoRefresh = to_bool(pair.second);
         }
     }
     else
@@ -300,6 +303,7 @@ void Loader::ReadBasicConfig()
      config["ImmediateFlushLog"]    = modloader::to_string(bImmediateFlush);
      config["MaxLogSize"]           = std::to_string(maxBytesInLog);
      config["RefreshKey"]           = std::to_string(vkRefresh);
+     config["AutoRefresh"]          = modloader::to_string(bAutoRefresh);
 
      // Log only about failure since we'll be saving every time a entry on the menu changes
      if(!ini.write_file(gamePath + basicConfig))
@@ -345,8 +349,8 @@ void Loader::ParseCommandLine()
                 mods.SetForceIgnore(true);
                 Log("Command line ignore received (-nomods)");
             }
-            else if(!_wcsicmp(argname, L"mod"))
-            {
+            else if(false && !_wcsicmp(argname, L"mod"))    // conflicts with the folder ini priority/excludes thing
+            {                                               // anyway, come up with profiles later, better than this
                 // Is argument after mod argument valid?
                 if(arg == nullptr)
                 {
@@ -355,7 +359,7 @@ void Loader::ParseCommandLine()
                 }
                 else
                 {
-                    if(toASCII(arg, buf, sizeof(buf)))
+                    if(toASCII(arg, buf, sizeof(buf)))  // FIXME bugs with the menu because of Include and SetPriority
                     {
                         // Force exclusion and include the specified mod
                         mods.SetForceExclude(true);
@@ -390,6 +394,17 @@ void Loader::ScanAndUpdate()
 {
     Updating xup;
     mods.Scan();
+    mods.Update();
+}
+
+/*
+ *  Loader::UpdateFromJournal
+ *       Updates mods that changed in the last few seconds specified in the journal
+ */
+void Loader::UpdateFromJournal(const Journal& journal)
+{
+    Updating xup;
+    mods.Scan(journal);
     mods.Update();
 }
 
@@ -502,14 +517,14 @@ void Loader::UpdateOldConfig()
     };
 
     // Takes the key from the old ini and puts in the new ini with new formating
-    auto UpdateKey = [&](const keydata& oldkey, keydata& newkey)
+    auto UpdateKey = [&](const keydata& oldkey, const keydata& newkey)
     {
         if(old[oldkey.section].count(oldkey.key))
             newer[newkey.section].emplace(newkey.key, old[oldkey.section][oldkey.key]);
     };
 
     // Takes a section from the old ini and puts in the new ini with new formating
-    auto UpdateSection = [&](const keydata& oldsec, keydata& newsec)
+    auto UpdateSection = [&](const keydata& oldsec, const keydata& newsec)
     {
         if(old.count(oldsec.section))
             newer[newsec.section] = old[oldsec.section];

@@ -53,12 +53,6 @@ Se você só quiser desabilitar o mod por um instante, vá para o menu in-game p
 \* No momento você precisa apertar F4 para recarregar os mods, alguns arquivos não são recarregáveis, porém a maioria é.
 
 
-
-## Em Progresso
-
-Mod Loader ainda está em progresso, portanto nem tudo é carregável ainda.
-Isto é, alguns arquivos *.dat* não são carregáveis por enquanto, mas estamos trabalhando nisso.
-
 ### Encontrou uma falha?
 
 É essencial que você reporte bugs, para que o Mod Loader seja melhorado. Para reportar um bug, vá para um dos canais a seguir:

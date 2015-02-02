@@ -138,7 +138,7 @@ function addplugin(name)
     project(name)
         language "C++"
         kind "SharedLib"
-        
+
         binarydir "plugins/gta3"
         addinstall({
             isdir = false,
@@ -166,7 +166,7 @@ function dummyproject()
     -- Dummy cpp file for Premake's generated none  project (bug workaround)
     configuration "gmake"
         kind "StaticLib"
-        files { "deps/dummy.cpp" }
+        files { "src/shared/dummy.cpp" }
         
     configuration {}
 end
@@ -225,8 +225,10 @@ solution "modloader"
         optimize "Speed"
 
     configuration "gmake"
-        buildoptions { "-std=gnu++11" }
-
+        buildoptions { "-std=gnu++14", "-Wno-deprecated" }
+    configuration "vs*"
+        buildoptions { "/arch:IA32" }   -- disable the use of SSE/SSE2 instructions (old game, old computers)
+        buildoptions { "/Zm150" }       -- more precompiled header memory (for gta3.std.data)
 
     project "docs"
         dummyproject()
@@ -264,6 +266,8 @@ solution "modloader"
     project "shared"
         dummyproject()
         setupfiles "src/shared"
+        configuration { "gmake" }
+            includedirs { "src/shared/stdinc" } -- gmake compatibility since it'll compile the dummyproject
 
 
     local gta3_plugins = {  -- ordered by time taken to compile
@@ -273,6 +277,7 @@ solution "modloader"
         "std.fx",
         "std.text",
         "std.bank",
+
         "std.stream",
         "std.asi",
         "std.data"

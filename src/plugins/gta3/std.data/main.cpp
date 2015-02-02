@@ -4,23 +4,8 @@
  * 
  */
 #include <stdinc.hpp>
-#include "data.hpp"
+#include "data_traits.hpp"
 using namespace modloader;
-
-/*
- *  !!!! data_traits important implementation information !!!!
- *
- *   [*] It's better that each data trait (i.e. for each file type) be contained in it's own cpp, see next * for a reason
- *   [*] Note data.hpp / cache.hpp should not be included in a PCH but in the data traits cpp, that because the magic for each cache
- *       is the hash of the compilation time of the trait translation unit, that means it is a static (by unit) function in cache.hpp
- *       meaning including it by PCH (stdinc.hpp) would defeat it purposes of one hash for each translation unit for each time it compiles.
- *
- *   [*] Remember the order of stuff in the either<> object matters, it'll try to match the first type, then the second, and so on.
- *       So be warned because e.g. either<string, float> will always match the string, use either<float, string> instead!
- *
- *       
- *   [*] Remember not to use int8, uint8 and so in the data_slice<> thinking it is a integer type, instead it will be readen as a character
- */
 
 void LazyGtaDatPatch();
 
@@ -36,7 +21,7 @@ CEREAL_REGISTER_RTTI(void); // for DataPlugin::line_data_base
  */
 const DataPlugin::info& DataPlugin::GetInfo()
 {
-    static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "txt", 0 };
+    static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "ped", "grp", "txt", 0 };
     static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", 54, extable };
     return xinfo;
 }
@@ -117,6 +102,7 @@ int DataPlugin::GetBehaviour(modloader::file& file)
 {
     static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
     static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+    static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
     // Setups the behaviour of a file based on the specified behv object (which can be null for none)
     // Each specific behv should have a unique identifier, for mergable files the filepath is used to identify
@@ -147,6 +133,18 @@ int DataPlugin::GetBehaviour(modloader::file& file)
         if(setup_behaviour(file, ipl_behv))
             return MODLOADER_BEHAVIOUR_YES;
     }
+    else if(file.is_ext("ped") || file.is_ext("grp"))
+    {
+        // must be in a decision/allowed/ directory
+        static auto regex = make_regex(R"___(^(?:.*[\\/])?decision[\\/]allowed[\\/]\w+\.(?:ped|grp)$)___", 
+                                        sregex::ECMAScript|sregex::optimize|sregex::icase);
+
+        if(regex_match(std::string(file.filedir()), regex))
+        {
+            if(setup_behaviour(file, decision_behv))
+                return MODLOADER_BEHAVIOUR_YES;
+        }
+    }
     else if(setup_behaviour(file, FindBehv(file)))
         return MODLOADER_BEHAVIOUR_YES;
 
@@ -169,12 +167,17 @@ bool DataPlugin::InstallFile(const modloader::file& file)
     {
         static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
         static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+        static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
         auto type = GetType(file.behaviour);
         if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
         {
             auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
             return this->InstallFile(file, hash, find_gta_path(file.filedir()), file.filepath());
+        }
+        else if(decision_behv && type == decision_behv->index)
+        {
+            return this->InstallFile(file, decision_merger_hash, file.filename(), file.filepath());
         }
         else
         {
@@ -201,6 +204,7 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
     {
         static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
         static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+        static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
         auto type = GetType(file.behaviour);
         if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
@@ -208,12 +212,16 @@ bool DataPlugin::ReinstallFile(const modloader::file& file)
             auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
             return this->ReinstallFile(file, hash);
         }
+        else if(decision_behv && type == decision_behv->index)
+        {
+            return this->ReinstallFile(file, decision_merger_hash);
+        }
         else
         {
             return this->ReinstallFile(file, file.hash);
         }
     }
-    return true; // Avoid catastrophical failure
+    return false;
 }
 
 /*
@@ -232,12 +240,17 @@ bool DataPlugin::UninstallFile(const modloader::file& file)
     {
         static const files_behv_t* ipl_behv = FindBehv(ipl_merger_name);
         static const files_behv_t* ide_behv = FindBehv(ide_merger_name);
+        static const files_behv_t* decision_behv = FindBehv(decision_merger_hash);
 
         auto type = GetType(file.behaviour);
         if((ipl_behv && type == ipl_behv->index) || (ide_behv && type == ide_behv->index))
         {
             auto hash = (type == (ipl_behv? ipl_behv->index : -1)? ipl_merger_hash : ide_merger_hash);
             return this->UninstallFile(file, hash, find_gta_path(file.filedir()));
+        }
+        else if(decision_behv && type == decision_behv->index)
+        {
+            return this->UninstallFile(file, decision_merger_hash, file.filename());
         }
         else
         {
@@ -330,9 +343,7 @@ bool DataPlugin::InstallFile(const modloader::file& file, size_t merger_hash, st
 bool DataPlugin::ReinstallFile(const modloader::file& file, size_t merger_hash)
 {
     // Just forward the call to InstallFile. It does not need the fspath and fullpath parameter on reinstall.
-    if(!this->InstallFile(file, merger_hash, "", "", true))
-        return true;    // Avoid catastrophical failure
-    return true;
+    return this->InstallFile(file, merger_hash, "", "", true);
 }
 
 /*
@@ -540,10 +551,14 @@ bool DataPlugin::VerifyCachedReadme(std::ifstream& ss, cereal::BinaryInputArchiv
     archive(magic); // magic for this translation unit in specific
     if(magic == build_identifier())
     {
-        block_reader magics_block(ss);
-        archive(magics);                    // magic for the other translation units related to the readmes
-        if(magics == this->readme_magics)   // notice order matters
-            return true;
+        try {
+            block_reader magics_block(ss);
+            archive(magics);                    // magic for the other translation units related to the readmes
+            if(magics == this->readme_magics)   // notice order matters
+                return true;
+        } catch(const cereal::Exception&) {
+            // Invalid typeid serialized, so the cache is incompatible
+        };
     }
 
     this->Log("Warning: Incompatible readme cache version, a new cache will be generated.");

@@ -1,7 +1,0 @@
-For compatibility purposes (i.e. no Microsoft compiler which supports C++14) we are using C++11 features only.
-We do need some C++14 features (specially return type deduction and generic lambdas) to make the code readable,
-currently some parts of the code are horrible to read due to the lack of C++14.
-
-Wait for it, and update it.
-
-Most places in the source code with such problem are marked with the CXX14 tag (just grep for it)

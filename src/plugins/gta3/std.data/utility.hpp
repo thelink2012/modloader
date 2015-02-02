@@ -6,7 +6,18 @@
 #include "datalib.hpp"
 #include <modloader/util/hash.hpp>
 #include <modloader/util/container.hpp>
-// shall not include data.hpp or cache.hpp because we are included from stdinc
+
+//
+//  Additional Serializers
+//
+
+// Serializer for type_wrapper<> i.e. real_t
+template<class Archive, class T, class Base>
+inline void serialize(Archive& ar, type_wrapper<T, Base>& tw)
+{
+    ar(tw.get_());
+}
+
 
 //
 //  Case insensitive string type
@@ -22,7 +33,7 @@ bool operator==(const insen<T>& a, const insen<T>& b)
 
 template<class T>
 bool operator<(const insen<T>& a, const insen<T>& b)
-{ return (modloader::compare(get(a), get(b), false)); }
+{ return (modloader::compare(get(a), get(b), false)) < 0; }
 
 template<class... Args>
 inline insen<std::string> make_insen_string(Args&&... args)
@@ -35,6 +46,8 @@ inline insen<std::string> make_insen_string(Args&&... args)
 //
 using dummy_value = datalib::delimopt;
 using real_t = basic_floating_point<float, floating_point_comparer::relative_epsilon<float>>;
+template<class T, std::size_t N>
+using pack = std::array<T, N>;
 template<std::size_t N>
 using vecn = std::array<real_t, N>;
 using vec2 = vecn<2>;
@@ -43,13 +56,21 @@ using vec4 = vecn<4>;
 using quat = vec4;
 using bbox = std::array<vec3, 2>;
 using bsphere = std::tuple<vec3, real_t>;
-using rgb  = std::array<uint16_t, 3>;   // cannot be uint8 because it is actually char
-using rgba = std::array<uint16_t, 4>;   // 
+using color = int16_t;
+using rgb  = std::array<color, 3>;   // cannot be uint8 because it is actually char
+using rgba = std::array<color, 4>;   // 
 using modelname = insen<std::string>;
 using animname = insen<std::string>;
 using texname = insen<std::string>;
 using labelname = insen<std::string>;
 
+struct dummy_string_traits
+{ static std::string output() { return "_";  } };
+using dummy_string = datalib::ignore<std::string, dummy_string_traits>;
+
+//
+//  Case Insensitive Hashes
+//
 
 // Hashes a string in a case insensitive manner
 inline size_t hash_model(const char* model)
@@ -70,9 +91,11 @@ size_t hash_model(const insen<T>& model)
     return hash_model(get(model));
 }
 
+
 //
 //  UData of shared pointers
 //
+
 namespace datalib
 {
     template<typename T>
@@ -83,9 +106,6 @@ namespace datalib
 }
 namespace std
 {
-    /*
-     *  shared_ptr should fail to be readen by datalib
-     */
     template<class CharT, class Traits, class T> inline
     datalib::basic_icheckstream<CharT, Traits>& operator>>(datalib::basic_icheckstream<CharT, Traits>& is, const std::shared_ptr<T>& ptr)
     {
@@ -100,8 +120,9 @@ namespace std
     }
 }
 
-
-// Other udata specializations
+//
+// Other UData specializations
+//
 namespace datalib
 {
     template<>
@@ -109,20 +130,28 @@ namespace datalib
     {};
 }
 
-
 //
-//  Additional Serializers
+// Custom separators
 //
+template<char Sep>
+struct tag_custom_sep {};
 
-// Serializer for type_wrapper<> i.e. real_t
-template<class Archive, class T, class Base>
-inline void serialize(Archive& ar, type_wrapper<T, Base>& tw)
+template<class T, char Sep>
+using custom_sep = tagged_type<T, tag_custom_sep<Sep>>;
+
+namespace datalib
 {
-    ar(tw.get_());
+    template<class T, char Sep>
+    struct data_info<custom_sep<T, Sep>> : data_info_tagged<custom_sep<T, Sep>>
+    {
+        static const char separator = Sep;
+    };
 }
 
 
-
+//
+// data_list<...>
+//
 template<size_t N, class T, class... Types>
 struct find_that_type;
 
@@ -215,5 +244,95 @@ private:
     {
         clear_uniques(std::get<N>(data));
         return clear_uniques(std::integral_constant<size_t, N+1>());
+    }
+};
+
+
+//
+// Enum to string and vice-versa using a mapper
+//
+struct invalid_enum_map_t {};
+
+template<typename T>
+struct enum_map : invalid_enum_map_t
+{ /* specialize a [static map<string, T>& map() {}] method */ };
+
+namespace datalib
+{
+    template<class T> inline
+    typename std::enable_if<std::is_enum<T>::value && !std::is_base_of<invalid_enum_map_t, enum_map<T>>::value, T&>::type
+    /* T& */ from_string(const std::string& str, T& value)
+    {
+        auto& map = enum_map<T>::map();
+        auto it = map.find(str);
+        if(it != map.end()) return (value = it->second);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    template<class T> inline
+    typename std::enable_if<std::is_enum<T>::value && !std::is_base_of<invalid_enum_map_t, enum_map<T>>::value, const std::string&>::type
+    /* const std::string& */ to_string(T value)
+    {
+        for(auto& x : enum_map<T>::map())
+        {
+            if(x.second == value)
+                return x.first;
+        }
+        throw std::invalid_argument("Invalid conversion from enum to string");
+    }
+}
+
+//
+// Some Enumerations
+//
+
+enum class EndString : uint8_t {    // "end" value
+    End
+};
+
+enum class SectionString : uint8_t { // "section" value
+    Section
+};
+
+enum class DashValue : uint8_t { // "-" value
+    Dash
+};
+
+namespace datalib
+{
+    inline EndString& from_string(const std::string& str, EndString& value)
+    {
+        if(str == "end") return (value = EndString::End);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    inline const std::string& to_string(EndString value)
+    {
+        static std::string str = "end";
+        return str;
+    }
+
+    inline SectionString& from_string(const std::string& str, SectionString& value)
+    {
+        if(str == "section") return (value = SectionString::Section);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    inline const std::string& to_string(SectionString value)
+    {
+        static std::string str = "section";
+        return str;
+    }
+
+    inline DashValue& from_string(const std::string& str, DashValue& value)
+    {
+        if(str.size() && str[0] == '-') return (value = DashValue::Dash);
+        throw std::invalid_argument("Invalid conversion from string to enum");
+    }
+
+    inline const std::string& to_string(DashValue value)
+    {
+        static std::string str = "-";
+        return str;
     }
 };

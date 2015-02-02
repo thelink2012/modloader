@@ -1,10 +1,10 @@
 /*
- * Copyright (C) 2014-2015  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2015  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
 #include <stdinc.hpp>
-#include "../data.hpp"
+#include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
 using std::tuple;
@@ -23,8 +23,6 @@ static bool reading_from_readme = false;
 //
 struct handling_traits : public data_traits
 {
-    static const bool can_cache         = true;     // Can this store get cached?
-    static const bool is_reversed_kv    = false;    // Does the key contains the data instead of the value in the key-value pair?
     static const bool has_sections      = true;     // Does this data file contains sections?
     static const bool per_line_section  = true;     // Is the sections of this data file different on each line?
 
@@ -38,19 +36,16 @@ struct handling_traits : public data_traits
     // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5BD850, dtraits>;
 
-    // Dominance Flags
-    using domflags_fn = datalib::domflags_fn<flag_RemoveIfNotExistInOneCustomButInDefault>;
-
 
     // Section slices
     //      Notice:
     //          + main_type uses hex<uint64_t> due to R* using a higher than 32 bit value in their handling (their sscanf could handle it properly)
     //          + notice fixtok<real_t> on plane_type, it's due to '$ RCRAIDER' broken float, having a 's' suffix
-    using anim_type  = data_slice<char, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int>;
-    using main_type  = data_slice<string, real_t, real_t, real_t, real_t, real_t, real_t, int, real_t, real_t, real_t, int, real_t, real_t, real_t, char, char, real_t, real_t, char, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, hex<uint64_t>, hex<uint32_t>, char, char, int>;
-    using boat_type  = data_slice<char, string, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
-    using bike_type  = data_slice<char, string, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
-    using plane_type = data_slice<char, string, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, fixtok<real_t>, real_t, real_t, real_t, real_t, real_t, real_t, real_t>;
+    using anim_type  = data_slice<char, int, int, int, pack<bool, 18>, pack<real_t, 13>, int>;
+    using main_type  = data_slice<string, real_t, real_t, real_t, vec3, int, real_t, real_t, real_t, int, real_t, real_t, real_t, char, char, real_t, real_t, char, pack<real_t, 7>, real_t, real_t, real_t, int, hex<uint64_t>, hex<uint32_t>, char, char, int>;
+    using boat_type  = data_slice<char, string, vec2, real_t, real_t, real_t, real_t, real_t, vec3, vec3, real_t>;
+    using bike_type  = data_slice<char, string, pack<real_t, 15>>;
+    using plane_type = data_slice<char, string, pack<real_t, 13>, fixtok<real_t>, real_t, vec3, vec3>;
 
     // Aliases and constants related to section slices
     static const size_t main_anim_id = (std::tuple_size<main_type::tuple_type>::value - 1);  // index of either<int, anim_ptr> at main_type
@@ -288,7 +283,7 @@ namespace std
      *  Output for final type slice at handling_traits
      */
     template<class CharT, class Traits> inline
-    std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const handling_traits::data_tuple& data_tuple)
+    static std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const handling_traits::data_tuple& data_tuple)
     {
         std::string text, tmp;
         text.reserve(256); tmp.reserve(256);
@@ -339,11 +334,7 @@ namespace datalib {
 // Handling Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadHandling = []
-    {
-        void* handling_data = memory_pointer(0xC2B9C8).get();
-        injector::thiscall<void(void*)>::call<0x5BD830>(handling_data);
-    };
+    auto ReloadHandling = std::bind(injector::thiscall<void(void*)>::call<0x5BD830>, mem_ptr(0xC2B9C8).get<void>());
 
     // Handling Merger
     plugin_ptr->AddMerger<handling_store>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));

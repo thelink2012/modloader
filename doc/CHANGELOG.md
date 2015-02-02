@@ -1,3 +1,15 @@
+v0.2.3 (Feb 02 2015)
+------------------------
+ * The In-Game menu is ready to be used _(go into Options > Mod Loader Setup)_. _(make sure it's enabled from *modloader/.data/config.ini*, EnableMenu=true)_
+ * Automatic refreshing implemented, meaning changes on *modloader/* directory are detected automatically while you play.
+ * The refresh key _(by default F4)_ has been removed in consequence of the addition of the menu and automatic refreshing.
+ * Implemented *weapon.dat* merger and readme reader.
+ * Implemented *ar_stats.dat, animgrp.dat, ped.dat, pedstats.dat, pedgrp.dat, cargrp.dat, melee.dat, statdisp.dat, shopping.dat, surface.dat, surfinfo.dat, surfaud.dat, object.dat, procobj.dat and decision makers* merger.
+ * Implemented *clothes.dat, furnitur.dat, fonts.dat, roadblox.dat, tracks.dat, tracks2.dat, tracks3.dat and tracks4.dat* overrider.
+ * Removed the *-mod* command-line, something better than that will come up later (*-nomods* is still available!).
+ * Fixed no date-time in the load game menu screen.
+ * Other minor fixes
+
 v0.2.2 (Jan 13 2015)
 ------------------------
  * The game version *GTA San Andreas 1.0 EU* is now supported.

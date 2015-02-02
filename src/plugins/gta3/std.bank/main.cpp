@@ -201,7 +201,7 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
     switch(GetType(file.behaviour))
     {
         case Type::Wave:        return banker.ReinstallWave(file);
-        case Type::SFXPak:      return true;    // Avoid catastrophical failure
+        case Type::SFXPak:      return false;
         case Type::BankLookUp:  return ov_banklkup.ReinstallFile();
         case Type::BankSlot:    return ov_bankslot.ReinstallFile();
         case Type::PakFiles:    return ov_pakfiles.ReinstallFile();

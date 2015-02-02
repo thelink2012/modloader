@@ -450,7 +450,7 @@ void ExceptionTracer::PrintBacktrace()
         old_options = SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_NO_PROMPTS | SYMOPT_FAIL_CRITICAL_ERRORS);
     }
 
-    Print("Backtrace:");
+    Print("Backtrace (may be wrong):");
     EnterScope();
     {
         // Walks on the stack until there's no frame to trace or we traced 'max_backtrace' frames

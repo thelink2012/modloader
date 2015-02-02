@@ -11,20 +11,17 @@
 #include <modloader/gta3/fxt.hpp>
 using namespace modloader;
 
-// TODO what do to about sub mod loader folders on the menu?
-
 static CMenuItem StaticPages[] = 
 {
     // Action, Name, Type, TargetMenu, RX, RY, Align
 
     // Main Page
 	{   "ML_F0HH", -1, 0,
-      //    MENU_ACTION_DUMMY,      "ML_F0E0",      MENU_ENTRY_OPTION,    -1,  57, 100,  1, -- Users are stupid and cannot
-      //    MENU_ACTION_DUMMY,      "ML_F0EP",      MENU_ENTRY_OPTION,    -1,   0,   0,  1, -- deal correctly with those options
             MENU_ACTION_DUMMY,      "ML_F0EL",      MENU_ENTRY_OPTION,    -1,  57, 100,  1,
             MENU_ACTION_DUMMY,      "ML_F0LF",      MENU_ENTRY_OPTION,    -1,   0,   0,  1,
             MENU_ACTION_DUMMY,      "ML_F0LS",      MENU_ENTRY_OPTION,    -1,   0,   0,  1,
             MENU_ACTION_DUMMY,      "ML_F0RR",      MENU_ENTRY_BUTTON,    -1,   0,   0,  1,
+            MENU_ACTION_DUMMY,      "ML_F0RA",      MENU_ENTRY_OPTION,    -1,   0,   0,  1,
             MENU_ACTION_SWITCH,     "ML_F0MM",      MENU_ENTRY_BUTTON,     1,   0,   0,  1,
             
             MENU_ACTION_BACK,       "ML_FTB",       MENU_ENTRY_BUTTON,    -1, 490, 380,  1,
@@ -49,11 +46,8 @@ static CMenuItem StaticPages[] =
 
     // Selected Modification Page
 	{   "ML_FYHH", 1, 0,
-            MENU_ACTION_DUMMY,      "ML_FYE0",      MENU_ENTRY_DUMMY,     -1,  30,  90,  1,
-            MENU_ACTION_DUMMY,      "ML_FYIC",      MENU_ENTRY_DUMMY,     -1,   0,   0,  1,
-            MENU_ACTION_DUMMY,      "ML_FYPR",      MENU_ENTRY_DUMMY,     -1,   0,   0,  1,
-            MENU_ACTION_DUMMY,      "ML_FYIX",      MENU_ENTRY_DUMMY,     -1,   0,   0,  1,
-            MENU_ACTION_DUMMY,      "ML_FYSS",      MENU_ENTRY_DUMMY,     -1,   0,   0,  1,
+            MENU_ACTION_DUMMY,      "ML_FYE0",      MENU_ENTRY_OPTION,    -1,  60,  110,  1,
+            MENU_ACTION_DUMMY,      "ML_FYPR",      MENU_ENTRY_OPTION,    -1,   0,   0,  1,
 
             MENU_ACTION_BACK,       "ML_FTB",       MENU_ENTRY_BUTTON,    -1, 490, 380,  1,
     },
@@ -86,8 +80,14 @@ class TheMenu : public AbstractFrontend
         std::pair<std::string, delayed_message> mSearchText;    // The search text at the mods page
         ref_list<Loader::ModInformation>    mMods;              // List of mods being shown in the mods page
         int                                 mCurrentModsPage;   // 0 based index of the current page in the mods page (dynamic)
+        ref_list<Loader::ModInformation>    mCurrentPageMods;   // List of mods in the current page
+        Loader::Journal                     mChangedMods;       // Mods that have changed from the current menu usage
 
-
+        // Data related to the "The Mod Config" page
+        Loader::ModInformation*             mWorkingMod;        // The mod related to this page
+        bool                                mWorkingModEnabled; // ENABLED state
+        uint32_t                            mWorkingModPriority;// PRIORITY state
+        
     public:
         TheMenu();
 
@@ -160,8 +160,6 @@ void TheMenu::SaveBasicConfig(MenuEntry&)
 */
 bool TheMenu::RescanMods(ActionInfo&)
 {
-    // TODO MESSAGE SCREEN?
-    // OR SOMETHING THAT SHOWS THAT RESCAN HAPPEND/HAPPENING
     loader.ScanAndUpdate();
     return true;
 }
@@ -216,6 +214,8 @@ void TheMenu::LoadText()
         auto lang = loader.gamePath + loader.dataPath + "/text/" + std::to_string(locale) + "/menu.fxt";
         return ParseFXT(fxt, lang.data());
     };
+
+    this->fxt.add("ML__SM", "");    // Typed search text
 
     // Try to load a fxt with the OS locale
     auto locale = GetUserDefaultLCID();
@@ -317,6 +317,8 @@ int TheMenu::NumModsOnPage(int n)
 */
 bool TheMenu::BuildCurrentModsPage(int inc)
 {
+    this->mCurrentPageMods.clear();
+
     if(auto total = GetTotalModsPage())
     {
         // Increase the current page by inc (-1 or 1)
@@ -332,16 +334,32 @@ bool TheMenu::BuildCurrentModsPage(int inc)
             auto& entry = mPageMods.GetEntry(i)->pEntry;
             auto  skip  = (i >= numInPage);                 // Should skip this entry? (i.e. no more mods for another entry)
             entry->m_nActionType = skip? MENU_ACTION_SKIP : MENU_ACTION_SWITCH;
-            fxt.set(entry->m_szName, skip? "" :
-                                           this->mMods[mCurrentModsPage * NumModsPerPage + i].get().GetName().c_str()
-                                );
+
+            if(!skip)
+            {
+                auto& modinfo = this->mMods[mCurrentModsPage * NumModsPerPage + i].get();
+                mCurrentPageMods.emplace_back(modinfo);
+                fxt.set(entry->m_szName, modinfo.GetName().c_str());
+            }
+            else
+                fxt.set(entry->m_szName, "");
+            
         }
         return true;
     }
+    else
+    {
+        this->mCurrentModsPage = 0;
 
-    // No mods, no pages at all
-    this->mCurrentModsPage = 0;
-    return false;
+        for(int i = 0; i < NumModsPerPage; ++i)
+        {
+            auto& entry = mPageMods.GetEntry(i)->pEntry;
+            entry->m_nActionType = MENU_ACTION_SKIP;
+            fxt.set(entry->m_szName, "");
+        }
+
+        return false;
+    }
 }
 
 /*
@@ -414,16 +432,22 @@ void TheMenu::ProcessModsSearch()
 void TheMenu::MainPageEvents()
 {
     // Helper function to setup a boolean entry in the menu
-    auto SetupBooleanEntry = [this](const char* label, bool& boolean)
+    auto SetupBooleanEntry2 = [this](const char* label, bool& boolean, std::function<void(MenuEntry&)> cb)
     {
         if(auto entry = mPageMain.GetEntry(label))
         {
             entry->SetHelper(HelpLabel(label));
-            entry->OnStatefulChange(SaveBasicConfig);
+            entry->OnStateChange(cb);
             OnAction(this->pOptions, this->pEntry, entry->SetupBooleanEntry(std::ref(boolean)));
         }
     };
-    
+
+    // Helper function to setup a boolean entry in the menu
+    auto SetupBooleanEntry = [this, SetupBooleanEntry2](const char* label, bool& boolean)
+    {
+        return SetupBooleanEntry2(label, boolean, SaveBasicConfig);
+    };
+
     // Helper function to setup a integer MegaByte entry in the menu
     auto SetupMegaByteEntry = [this](const char* label, uint64_t& size)
     {
@@ -441,7 +465,7 @@ void TheMenu::MainPageEvents()
         if(auto entry = mPageMain.GetEntry(label))
         {
             entry->SetHelper(HelpLabel(label));
-            entry->OnStatefulChange(SaveBasicConfig);
+            entry->OnStateChange(SaveBasicConfig);
 
             // This one looks a bit of a complex call, but it's simple and flexible
             // (reference to the state variable, state_to_text_functor, change state from action functor)
@@ -458,15 +482,49 @@ void TheMenu::MainPageEvents()
     // Rescan modifications
     if(auto entry = this->mPageMain.GetEntry("ML_F0RR"))
     {
-        OnAction(this->mPageMain, *entry, RescanMods);
+        OnAction(this->mPageMain, *entry, [this](ActionInfo& info) {
+            this->mChangedMods.clear();
+            return this->RescanMods(info);
+        });
         entry->SetHelper(HelpLabel("ML_F0RR"));
     }
 
-    // Enought of functional, let's do a bit of procedural now
+
+    // When entering the menu pause the FS watcher so we don't come up with any surprise
+    OnAction(this->pOptions, this->pEntry, [this](ActionInfo& info)
+    {
+        if(info.enter)
+        {
+            loader.PauseWatcher();
+            this->mChangedMods.clear();
+        }
+        return true;
+    });
+
+    // When getting out of the menu we have to do some changes to the modloader state
+    OnUserInput(this->mPageMain, [this](UserInputInfo& info)
+    {
+        if(info.exit)
+        {
+            if(this->mChangedMods.size())
+            {
+                loader.UpdateFromJournal(this->mChangedMods);
+                this->mChangedMods.clear();
+            }
+
+
+            // Reset the filesystem watcher so it reflects the new bAutoRefresh state
+            loader.RestartWatcher();
+
+        }
+        return true;
+    });
+
     SetupBooleanEntry("ML_F0E0", loader.bEnableMenu);
     SetupBooleanEntry("ML_F0EP", loader.bEnablePlugins);
     SetupBooleanEntry("ML_F0EL", loader.bEnableLog);
     SetupBooleanEntry("ML_F0LF", loader.bImmediateFlush);
+    SetupBooleanEntry("ML_F0RA", loader.bAutoRefresh);
     SetupMegaByteEntry("ML_F0LS", loader.maxBytesInLog);
 }
 
@@ -527,51 +585,112 @@ void TheMenu::ModsPageEvents()
 */
 void TheMenu::ModPageEvents()
 {
+    // Gets the MenuEntry from the specified index
     auto EntryFromIndex = [this](int i)
     {
         return mPageMods.GetEntry(std::string("ML_FMY").append(std::to_string(i)).data());
     };
 
+    // Helper function to setup a boolean entry in the menu
+    auto SetupBooleanEntry = [this](const char* label, bool& boolean, std::function<void(MenuEntry&)> cb) -> std::function<bool(ActionInfo&)>
+    {
+        if(auto entry = mPageMod.GetEntry(label))
+        {
+            entry->SetHelper(HelpLabel(label));
+            entry->OnStateChange(cb);
+            return entry->SetupBooleanEntry(std::ref(boolean)); // returns a functor (UpdateState())
+        }
+        return nullptr;
+    };
+
+    // Helper function to setup a integer priority entry in the menu
+    auto SetupPriorityEntry = [this](const char* label, uint32_t& priority, std::function<void(MenuEntry&)> cb) -> std::function<bool(ActionInfo&)>
+    {
+        static const uint32_t min = 0, max = 100, step = 1;
+
+        auto PriorityLabel = [](const uint32_t& priority)
+        {
+            auto text = NumberEntry(priority);
+            text.first.push_back('_');
+            return text;
+        };
+
+        if(auto entry = mPageMod.GetEntry(label))
+        {
+            entry->SetHelper(HelpLabel(label));
+            entry->OnStateChange(cb);
+
+            auto fInitStates = entry->SetupStatefulEntry(std::ref(priority), std::ref(PriorityLabel), [](const uint32_t& value, ActionInfo& info)
+            {
+                return std::min(std::max((value + step * info.wheel), min), max);
+            });
+
+            return fInitStates;
+        }
+        return nullptr;
+    };
+
+
+
+
+    // ENABLED state
+    auto vEnabledUpdate = SetupBooleanEntry("ML_FYE0", mWorkingModEnabled, [this](MenuEntry&)
+    {
+        if(mWorkingModEnabled) mWorkingMod->Parent().UnignoreMod(mWorkingMod->GetName());
+        else mWorkingMod->Parent().IgnoreMod(mWorkingMod->GetName());
+        
+        mChangedMods.emplace(mWorkingMod->GetName(), Loader::Status::Updated);
+        loader.SaveFolderConfig();
+    });
+
+    // PRIORITY state
+    auto vPriorityUpdate = SetupPriorityEntry("ML_FYPR", mWorkingModPriority, [this](MenuEntry&)
+    {
+        mWorkingMod->Parent().SetPriority(mWorkingMod->GetName(), mWorkingModPriority);
+        mChangedMods.emplace(mWorkingMod->GetName(), Loader::Status::Updated);
+        loader.SaveFolderConfig();
+    });
+
+    // Builds the page for the specified mod
+    auto BuildModPage = [=](ActionInfo& info, Loader::ModInformation& mod)
+    {
+        static const size_t max_title_size = 17;
+
+        // Setup mod info
+        this->mWorkingMod = &mod;
+        this->mWorkingModEnabled = !(this->mWorkingMod->Parent().IsOnIgnoringList(this->mWorkingMod->GetName()));
+        this->mWorkingModPriority = this->mWorkingMod->Parent().GetPriority(this->mWorkingMod->GetName());
+        vEnabledUpdate(info);   // Updates the state text for the entry
+        vPriorityUpdate(info);  // Updates the state text for the entry
+
+        // The title
+        std::string title = this->mWorkingMod->GetName();
+        if(title.size() >= max_title_size)
+        {
+            title.resize(max_title_size - 3);
+            title.append("...");
+        }
+        fxt.set("ML_FYHH", modloader::toupper(title).data());
+    };
+
+    // Mod page builder for each entry in the Mods page
     for(int i = 1; auto entry = EntryFromIndex(i); ++i)
     {
-        OnAction(this->mPageMods, *entry, [this, i](ActionInfo& info)
+        OnAction(this->mPageMods, *entry, [=](ActionInfo& info)
         {
-            // TODO BuildModPage()
-            return true;
+            auto index = size_t(i-1);
+            if(this->mCurrentPageMods.size() > index)
+            {
+                BuildModPage(info, this->mCurrentPageMods[index]);
+                return true;
+            }
+            return false;
         });
     }
-
-
-    OnAction(this->mPageMod, *mPageMod.GetEntry("ML_FYE0"), [](ActionInfo& info)
-    {
-        // TODO
-        return true;
-    });
-
-    OnAction(this->mPageMod, *mPageMod.GetEntry("ML_FYIC"), [](ActionInfo& info)
-    {
-        // TODO
-        return true;
-    });
-
-    OnAction(this->mPageMod, *mPageMod.GetEntry("ML_FYPR"), [](ActionInfo& info)
-    {
-        // TODO
-        return true;
-    });
-
-    OnAction(this->mPageMod, *mPageMod.GetEntry("ML_FYIX"), [](ActionInfo& info)
-    {
-        // TODO Install()/Uninstall()
-        return true;
-    });
-
-    OnAction(this->mPageMod, *mPageMod.GetEntry("ML_FYSS"), [](ActionInfo& info)
-    {
-        // TODO Rescan()
-        return true;
-    });
 }
+
+
+
 
 
 
@@ -605,4 +724,3 @@ void Loader::ShutdownMenu()
     Log("Shutting down menu...");
     menu_ptr.reset();
 }
-

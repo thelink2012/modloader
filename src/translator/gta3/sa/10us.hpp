@@ -107,6 +107,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x8E4CAC] = 0x8E4CAC;   // void* CStreaming::ms_pStreamingBuffer[2]
         map[0x8E4CA8] = 0x8E4CA8;   // unsigned int CStreaming::ms_streamingBufferSize
 
+        map[0x72F420] = 0x72F420;   // _ZN10CMemoryMgr6MallocEj
         map[0x72F4C0] = 0x72F4C0;   // _ZN10CMemoryMgr11MallocAlignEjj
         map[0x72F4F0] = 0x72F4F0;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x532310;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
@@ -162,6 +163,12 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5A82C0] = 0x5A82C0;   // _ZN8CClothes13RebuildPlayerEP10CPlayerPedb
         map[0x5A8346] = 0x5A8346;   // push    offset _PlayerClothes                    ; @CClothes::RebuildPlayer
 
+        // Non streamed resources
+        map[0x5B9188] = 0x5B9188;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
+        map[0x5B91B0] = 0x5B91B0;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc
+        map[0x5B91DB] = 0x5B91DB;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
+        map[0x5B910A] = 0x5B910A;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc
+
         // COLFILE fix, SA-only
         map[0x5B4F2E] = 0x5B4F2E;   // call    _ZN9CColModelnwEj
         map[0x5B4EF4] = 0x5B4EF4;   // call    _ZN8CFileMgr4ReadEiPci ; with the buffer, reading the header
@@ -171,12 +178,14 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B4FB5] = 0x5B4FB5;   // call    _ZN11CFileLoader18LoadCollisionModelEPhR9CColModelPKc
         map[0x5B4F83] = 0x5B4F83;   // call    _ZN11CFileLoader22LoadCollisionModelVer3EPhjR9CColModelPKc
         map[0x5B92F9] = 0x5B92F9;   // call    _ZN8CFileMgr9CloseFileEi
+
+        // Other SA fixes
+        map[0x6B89CE] = 0x6B89CE;   // mov     eax, [edi+10h]
     }
 
     // std.bank
     if(true)
     {
-        //0x4EFC60
         map[0x4D99B3] = 0x4D99B3;   // call    _ZN13CAEBankLoader10InitialiseEv
         map[0x4D9800] = 0x4D9800;   // call    _ZN13CAEBankLoaderD2Ev
         map[0x4DFE30] = 0x4DFE30;   // call    _ZN13CAEBankLoaderD2Ev
@@ -195,8 +204,9 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     }
 
     // std.data
-    if(true)    
+    if(true)
     {
+        map[0x464D50] = 0x464D50;   // _ZN11CTheScripts18IsPlayerOnAMissionEv
         map[0x5B6890] = 0x5B6890;   // _ZN17CVehicleModelInfo18LoadVehicleColoursEv
         map[0x5B68AB] = 0x5B68AB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleColours
         map[0x5B65A0] = 0x5B65A0;   // _ZN17CVehicleModelInfo19LoadVehicleUpgradesEv
@@ -211,12 +221,57 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B871A] = 0x5B871A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
         map[0x5DD780] = 0x5DD780;   // _ZN9CPlantMgr12ReloadConfigEv
         map[0x5DD3D1] = 0x5DD3D1;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPlantSurfPropMgr::LoadPlantsDat
+        map[0x5BF750] = 0x5BF750;   // _ZN11CWeaponInfo10InitialiseEv
+        map[0x5BE68A] = 0x5BE68A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWeaponInfo::Initialise
         map[0x5BC090] = 0x5BC090;   // _ZN9CPopCycle10InitialiseEv
         map[0x5BC0AE] = 0x5BC0AE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopCycle::Initialise
         map[0x5BBAC0] = 0x5BBAC0;   // _ZN10CTimeCycle10InitialiseEb 
         map[0x5BBADE] = 0x5BBADE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTimeCycle::initialise
         map[0x6EAE80] = 0x6EAE80;   // _ZN11CWaterLevel20WaterLevelInitialiseEv
+        map[0x5A7B30] = 0x5A7B30;   // _ZN8CClothes15LoadClothesFileEv
+        map[0x5A7B54] = 0x5A7B54;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CClothes::LoadClothesFile
+        map[0x5C0297] = 0x5C0297;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @FurnitureManager_c::LoadFurniture
         map[0x6EAF4D] = 0x6EAF4D;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWaterLevel::WaterLevelInitialise
+        map[0x5BD1A0] = 0x5BD1A0;   // _ZN11CPopulation13LoadCarGroupsEv
+        map[0x5BD1BB] = 0x5BD1BB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadCarGroups
+        map[0x5BCFE0] = 0x5BCFE0;   // _ZN11CPopulation13LoadPedGroupsEv
+        map[0x5BCFFB] = 0x5BCFFB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
+        map[0x5BB890] = 0x5BB890;   // _ZN9CPedStats12LoadPedStatsEv
+        map[0x5BB89F] = 0x5BB89F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedStats::LoadPedStats
+        map[0x5B5360] = 0x5B5360;   // _ZN11CObjectData10InitialiseEPcb
+        map[0x5B5444] = 0x5B5444;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise
+        map[0x7187C0] = 0x7187C0;   // _ZN5CFont14LoadFontValuesEv
+        map[0x7187DB] = 0x7187DB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFont::LoadFontValues
+        map[0x461100] = 0x461100;   // _ZN11CRoadBlocks4InitEv
+        map[0x461125] = 0x461125;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CRoadBlocks::Init
+        map[0x5599B0] = 0x5599B0;   // _ZN6CStats23LoadActionReactionStatsEv
+        map[0x5599D8] = 0x5599D8;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadActionReactionStats
+        map[0x55988F] = 0x55988F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadStatUpdateConditions
+        map[0x608B45] = 0x608B45;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedType::LoadPedData
+        map[0x5BEDC0] = 0x5BEDC0;   // _ZN16CTaskSimpleFight13LoadMeleeDataEv
+        map[0x5BEF47] = 0x5BEF47;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTaskSimpleFight::LoadMeleeData
+        map[0x5BC92B] = 0x5BC92B;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CAnimManager::ReadAnimAssociationDefinitions
+        map[0x5BF400] = 0x5BF400;   //  _ZN29CDecisionMakerTypesFileLoader24LoadDefaultDecisionMakerEv
+        map[0x6076CE] = 0x6076CE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDecisionMakerTypesFileLoader::LoadDecisionMaker
+        map[0x5A3EA0] = 0x5A3EA0;   // _ZN15ProcObjectMan_c4InitEv
+        map[0xBB7CB0] = 0xBB7CB0;   // ProcObjectMan g_procObjMan
+        map[0x5A3154] = 0x5A3154;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @ProcObjectMan_c::LoadDataFile
+        map[0x55F420] = 0x55F420;   // _ZN14SurfaceInfos_c4InitEv
+        map[0xB79538] = 0xB79538;   // SurfaceInfos_c g_surfaceInfos
+        map[0x55D100] = 0x55D100;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadAdhesiveLimits
+        map[0x55EBA4] = 0x55EBA4;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceInfos
+        map[0x55F2C1] = 0x55F2C1;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceAudioInfos
+        map[0x49AE30] = 0x49AE30;   // _ZN9CShopping16RemoveLoadedShopEv
+        map[0x49BBE0] = 0x49BBE0;   // _ZN9CShopping8LoadShopEPKc
+        map[0xA9A7D8] = 0xA9A7D8;   // char _ZN9CShopping13ms_shopLoadedE[24]
+        map[0x49B6AF] = 0x49B6AF;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadStats
+        map[0x49B93F] = 0x49B93F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadPrices
+        map[0x49BC98] = 0x49BC98;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadShop
+        map[0x6F7440] = 0x6F7440;   // _ZN6CTrain10InitTrainsEv
+        map[0x6F7470] = 0x6F7470;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks.dat"
+        map[0x6F74BC] = 0x6F74BC;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
+        map[0x6F7496] = 0x6F7496;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks3.dat"
+        map[0x6F74E2] = 0x6F74E2;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks4.dat"
         map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
         map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
@@ -243,7 +298,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x408897] = 0x408897;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
 
         /*
-        TODO VTBL
+        TODO VTBL (>> MORE, SEARCH AGAIN)
 
         Find all "::vtbl", Subfolders, Find Results 1, "Entire Solution ( Including External Items )", ""
           C:\Projects\modloader\src\traits\gta3\sa.hpp(84):        return ModelType(injector::thiscall<uint8_t(void*)>::vtbl<4>(m));
@@ -274,6 +329,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x57B9FD] = 0x57B9FD;   // call    _ZN9CSprite2d4DrawERK5CRectRK5CRGBA
         map[0x58061B] = 0x58061B;   // call    _ZN12CMenuManager16ProcessUserInputEhhhha
         map[0x57BA58] = 0x57BA58;   // call    _ZN12CMenuManager17DrawStandardMenusEh
+        map[0x618D00] = 0x618D00;   // _Z23GetSavedGameDateAndTimei
         map[0x579D9D] = 0x579D9D;   // ja      loc_57A168      ; jumptable 00579DAA default case
         map[0x579DEE] = 0x579DEE;   // loc_579DEE:             ; jumptable 00579DAA case 12
         map[0x6A0050] = 0x6A0050;   // _ZN5CText3GetEPKc
