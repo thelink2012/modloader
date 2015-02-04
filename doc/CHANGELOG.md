@@ -1,6 +1,6 @@
 v0.2.3 (Feb 02 2015)
 ------------------------
- * The In-Game menu is ready to be used _(go into Options > Mod Loader Setup)_. _(make sure it's enabled from *modloader/.data/config.ini*, EnableMenu=true)_
+ * The In-Game menu is ready to be used _(go into Options > Mod Configuration)_.
  * Automatic refreshing implemented, meaning changes on *modloader/* directory are detected automatically while you play.
  * The refresh key _(by default F4)_ has been removed in consequence of the addition of the menu and automatic refreshing.
  * Implemented *weapon.dat* merger and readme reader.

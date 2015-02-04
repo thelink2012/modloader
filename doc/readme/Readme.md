@@ -43,14 +43,12 @@ If you just want to disable the mod for a while, go to the in-game menu and disa
     + Readme files reading
         * No need to care about taking the data line from the readme file and placing in the data file, Mod Loader does that for you too!
 - Refreshable mods
-    + Change or add the files while the game is running and see the results immediatelly*!!!!
+    + Change or add the files while the game is running and see the results immediatelly!!!!
 - Command line support
     + See *modloader/.data/Command Line Arguments.md*
 - In-Game menu for configurations
     + Go to *Options > Mod Loader Setup*
     + When the menu is not available, do it manually by editing *modloader/modloader.ini* and *modloader/.data/config.ini*
-
-\* Currently you need to press F4 to refresh the mods, also not all kinds of files can be refreshed but most of them can.
 
 
 ### Have you found a bug?
@@ -68,7 +66,7 @@ When reporting a bug **PLEASE** provide the *modloader/modloader.log* file creat
 Not all executables are supported at the moment, the supported ones are:
 
  + 1.0 US *(all versions)*
- + 1.0 EU *(all versions)
+ + 1.0 EU *(all versions)*
 
 ## Download
 
