@@ -18,7 +18,7 @@ struct TraitsSA : TraitsGTA
     using DummyPool_t       = CPool<typename std::aligned_storage<0x38, 1>::type>;
 
     // Indices range
-    const id_t  dff_start   = 0;
+    const id_t dff_start   = 0;
     const id_t txd_start   = injector::lazy_object<0x5B62CF, unsigned int>::get();  // uint32_t not working properly on GCC here
     const id_t col_start   = injector::lazy_object<0x5B6314, unsigned int>::get();  // Why?
     const id_t rrr_start   = injector::lazy_object<0x5B63F1, unsigned int>::get();

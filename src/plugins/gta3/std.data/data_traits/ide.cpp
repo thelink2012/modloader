@@ -5,6 +5,7 @@
  */
 #include <stdinc.hpp>
 #include "../data_traits.hpp"
+#include <traits/gta3/sa.hpp>
 using namespace modloader;
 using std::tuple;
 using std::string;
@@ -156,11 +157,62 @@ namespace datalib {
     }
 }
 
+static std::function<void()> MakeIdeReloader()
+{
+    using namespace injector;
+    static std::set<std::string> ide_files;
+    static bool has_new_sys = false;
+
+    using loadide_hook = function_hooker<0x5B9206, void(const char*)>;
+    using emptyide_hook = function_hooker<0x5B8428, void*(const char*, const char*)>;
+
+    make_static_hook<loadide_hook>([](loadide_hook::func_type LoadObjectTypes, const char* filename)
+    {
+        ide_files.emplace(filename);
+        return LoadObjectTypes(filename);
+    });
+
+
+    return []
+    {
+        auto AddOrMatchModel = [](std::function<void*(int)> Add, int id)
+        {
+            auto p = TraitsSA::GetModelInfo(id);
+            if(p != nullptr) return p;
+            return Add(id);
+        };
+
+        auto emptyide_mf = make_function_hook<emptyide_hook>([](emptyide_hook::func_type fopen, const char* filename, const char* mode) {
+            void* f = fopen(filename, mode);
+            return f? f : fopen(modloader::szNullFile, mode);
+        });
+
+        auto obj0_mf = make_function_hook<function_hooker<0x5B3D8E, void*(int id)>>(AddOrMatchModel);
+        auto obj1_mf = make_function_hook<function_hooker<0x5B3D9A, void*(int id)>>(AddOrMatchModel);
+        auto tobj_mf = make_function_hook<function_hooker<0x5B3F32, void*(int id)>>(AddOrMatchModel);
+        auto weap_mf = make_function_hook<function_hooker<0x5B3FE6, void*(int id)>>(AddOrMatchModel);
+        auto hier_mf = make_function_hook<function_hooker<0x5B407E, void*(int id)>>(AddOrMatchModel);
+        auto anim_mf = make_function_hook<function_hooker<0x5B413B, void*(int id)>>(AddOrMatchModel);
+        auto cars_mf = make_function_hook<function_hooker<0x5B6FD1, void*(int id)>>(AddOrMatchModel);
+        auto peds_mf = make_function_hook<function_hooker<0x5B74A7, void*(int id)>>(AddOrMatchModel);
+
+        scoped_nop<5> nop_ide_2dfx(0x5B86B7, 5);
+
+        void(*LoadObjectTypes)(const char*) = ReadRelativeOffset(0x5B9206 + 1).get();
+        for(auto& ide : ide_files)
+        {
+            if(ide == "data\\maps\\generic\\vegepart.ide" /*|| ide == "data\\maps\\generic\\procobj.ide"*/)
+                LoadObjectTypes(ide.c_str());
+        }
+    };
+}
+
+
 // Object Types Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     // IDE Merger
-    plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, no_reinstall);
+    plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, reinstall_since_load, MakeIdeReloader());
 
     // Readme Reader for CARS entries (vehicles.ide)
     plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>

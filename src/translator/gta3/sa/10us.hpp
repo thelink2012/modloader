@@ -282,6 +282,18 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53BC9B] = 0x53BC9B;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
         map[0x4C5940] = 0x4C5940;   // _ZN10CModelInfo12GetModelInfoEPKcPi
         map[0x5B922F] = 0x5B922F;   // call    _Z20MatchAllModelStringsv                ; @CFileLoader::LoadLevel
+
+        // Refreshing IDEs
+        map[0x5B9206] = 0x5B9206;   // call    _ZN11CFileLoader15LoadObjectTypesEPKc
+        map[0x5B86B7] = 0x5B86B7;   // call    _ZN11CFileLoader12Load2dEffectEPKc       ; for nop
+        map[0x5B3D8E] = 0x5B3D8E;   // call    _ZN10CModelInfo20AddDamageAtomicModelEi
+        map[0x5B3D9A] = 0x5B3D9A;   // call    _ZN10CModelInfo14AddAtomicModelEi
+        map[0x5B3F32] = 0x5B3F32;   // call    _ZN10CModelInfo12AddTimeModelEi
+        map[0x5B3FE6] = 0x5B3FE6;   // call    _ZN10CModelInfo14AddWeaponModelEi
+        map[0x5B407E] = 0x5B407E;   // call    _ZN10CModelInfo13AddClumpModelEi         ; @CFileLoader::LoadClumpObject
+        map[0x5B413B] = 0x5B413B;   // call    _ZN10CModelInfo13AddClumpModelEi         ; @CFileLoader::LoadAnimatedClumpObject
+        map[0x5B6FD1] = 0x5B6FD1;   // call    _ZN10CModelInfo15AddVehicleModelEi
+        map[0x5B74A7] = 0x5B74A7;   // call    _ZN10CModelInfo11AddPedModelEi
     }
 
 
