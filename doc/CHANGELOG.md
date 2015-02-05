@@ -1,3 +1,8 @@
+v0.2.4 (In Dev)
+------------------------
+* Added AUDIO/STREAMS/, TrakLkUp.dat and StrmPaks.dat overriders.
+* Fixed non-GENRL wave files not being installed properly.
+
 v0.2.3 (Feb 02 2015)
 ------------------------
  * The In-Game menu is ready to be used _(go into Options > Mod Configuration)_.

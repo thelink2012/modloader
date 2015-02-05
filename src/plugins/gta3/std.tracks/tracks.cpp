@@ -3,14 +3,14 @@
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  *
  */
-#include "stdinc.hpp"
+#include <stdinc.hpp>
 
 enum class Type
 {
     Ogg             = 0,
-    StreamPak       = 1,
-    StreamLookUp    = 2,
-    PakFiles        = 3,
+    StreamPak       = 1,    // StrmPak.dat
+    StreamLookUp    = 2,    // StrmLkUp.dat
+    PakFiles        = 3,    // ...
     Max             = 7,    // Max 3 bits
 };
 
@@ -18,11 +18,7 @@ enum class Type
 // Basical maskes
 static const uint64_t hash_mask_base  = 0xFFFFFFFF;
 static const uint64_t type_mask_base  = 0x0007;                 // Mask for type without any shifting
-static const uint64_t bank_mask_base  = 0xFFFF;                 // Mask for bank without any shifting
-static const uint64_t sound_mask_base = 0x03FF;                 // Mask for sound without any shifting
 static const uint32_t type_mask_shf  = 32;                      // Takes 3 bits, starts from 33th bit because first 32th bits is a hash
-static const uint32_t bank_mask_shf  = type_mask_shf + 3;       // Takes 16 bits
-static const uint32_t sound_mask_shf = bank_mask_shf + 16;      // Takes 10 bits
 
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)
@@ -30,51 +26,10 @@ inline uint64_t SetType(uint32_t hash, Type type)
     return modloader::file::set_mask(uint64_t(hash), type_mask_base, type_mask_shf, type);
 }
 
-// Sets the behaviour sound id bitfield 
-inline uint64_t SetSound(uint64_t mask, uint16_t sound)
-{
-    return modloader::file::set_mask(mask, sound_mask_base, sound_mask_shf, sound);
-}
-
-// Sets the behaviour bank id bitfield
-inline uint64_t SetBank(uint64_t mask, uint16_t bank)
-{
-    return modloader::file::set_mask(mask, bank_mask_base, bank_mask_shf, bank);
-}
-
-// Gets the behaviour sfx pak filename hash
-inline uint32_t GetPakHash(uint64_t mask)
-{
-    return modloader::file::get_mask<uint32_t>(mask, hash_mask_base, 0);
-}
-
 // Gets the behaviour file type
 inline Type GetType(uint64_t mask)
 {
     return modloader::file::get_mask<Type>(mask, type_mask_base, type_mask_shf);
-}
-
-// Gets the behaviour sound id
-inline uint16_t GetSound(uint64_t mask)
-{
-    return modloader::file::get_mask<uint16_t>(mask, sound_mask_base, sound_mask_shf);
-}
-
-// Gets the behaviour bank id
-inline uint16_t GetBank(uint64_t mask)
-{
-    return modloader::file::get_mask<uint16_t>(mask, bank_mask_base, bank_mask_shf);
-}
-
-
-static void RedirectToThunk(injector::memory_pointer_tr call_at, injector::memory_pointer_tr thunk_at)
-{
-    using namespace injector;
-    if(ReadMemory<uint8_t>(call_at+0, true) == 0xFF && ReadMemory<uint8_t>(call_at+1, true) == 0x15)
-    {
-        MakeNOP(call_at, 6, true);
-        MakeCALL(call_at, thunk_at.get(), true);
-    }
 }
 
 
@@ -84,8 +39,9 @@ static void RedirectToThunk(injector::memory_pointer_tr call_at, injector::memor
 class ThePlugin : public modloader::basic_plugin
 {
     private:
-        modloader::file_overrider ov_strmpaks;    // StrmPaks.dat overrider
-        modloader::file_overrider ov_traklkup;    // TrakLkUp.dat overrider
+        modloader::file_overrider ov_strmpaks;                  // StrmPaks.dat overrider
+        modloader::file_overrider ov_traklkup;                  // TrakLkUp.dat overrider
+        std::map<std::string, const modloader::file*> streams;  // Stream paks
 
     public:
         const info& GetInfo();
@@ -96,8 +52,16 @@ class ThePlugin : public modloader::basic_plugin
         bool InstallFile(const modloader::file&);
         bool ReinstallFile(const modloader::file&);
         bool UninstallFile(const modloader::file&);
-        void Update();
-        
+
+    private: // Patching stuff
+        static void RedirectToThunk(injector::memory_pointer_tr call_at, injector::memory_pointer_tr thunk_at);
+
+        template<uintptr_t CatAt>
+        static void PatchStreamCat();
+
+        template<uintptr_t NewAt>
+        static void AllocMaxPath();
+
 } plugin;
 
 REGISTER_ML_PLUGIN(::plugin);
@@ -116,8 +80,6 @@ const ThePlugin::info& ThePlugin::GetInfo()
 }
 
 
-
-
 /*
  *  ThePlugin::OnStartup
  *      Startups the plugin
@@ -127,9 +89,21 @@ bool ThePlugin::OnStartup()
     using namespace modloader;
     if(gvm.IsSA())
     {
+        // Make the CreateFileA caller call a function not a function pointer
         RedirectToThunk(0x4E0A09, raw_ptr(CreateFileA));
         RedirectToThunk(0x4E0989, raw_ptr(CreateFileA));
 
+        // Let the strcat buffer that holds the path to the stream files be large enought to hold a full path
+        AllocMaxPath<0x4E0AF2>();
+        AllocMaxPath<0x4E0C80>();
+        AllocMaxPath<0x4E0DA2>();
+
+        // Patch the lstrcatA calls to detour streams
+        PatchStreamCat<0x4E0AF9>();
+        PatchStreamCat<0x4E0C9D>();
+        PatchStreamCat<0x4E0DA9>();
+
+        // Overriders
         auto no_reinstall = file_overrider::params(nullptr);
         ov_traklkup.SetParams(no_reinstall);
         ov_strmpaks.SetParams(no_reinstall);
@@ -193,10 +167,6 @@ int ThePlugin::GetBehaviour(modloader::file& file)
 
             return MODLOADER_BEHAVIOUR_YES;
         }
-        else if(file.is_ext("ogg"))
-        {
-            // TODO
-        }
     }
     return MODLOADER_BEHAVIOUR_NO;
 }
@@ -209,8 +179,8 @@ bool ThePlugin::InstallFile(const modloader::file& file)
 {
     switch(GetType(file.behaviour))
     {
-        case Type::Ogg:             return false; // TODO
-        case Type::StreamPak:       return false; // TODO
+        case Type::Ogg:             return false;
+        case Type::StreamPak:       this->streams.emplace(file.filename(), &file); return true;
         case Type::StreamLookUp:    return ov_traklkup.InstallFile(file);
         case Type::PakFiles:        return ov_strmpaks.InstallFile(file);
     }
@@ -225,8 +195,8 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
     switch(GetType(file.behaviour))
     {
-        case Type::Ogg:             return false; // TODO
-        case Type::StreamPak:       return false; // TODO
+        case Type::Ogg:             return false;
+        case Type::StreamPak:       return false;
         case Type::StreamLookUp:    return ov_traklkup.ReinstallFile();
         case Type::PakFiles:        return ov_strmpaks.ReinstallFile();
     }
@@ -241,18 +211,57 @@ bool ThePlugin::UninstallFile(const modloader::file& file)
 {
     switch(GetType(file.behaviour))
     {
-        case Type::Ogg:             return false; // TODO
-        case Type::StreamPak:       return false; // TODO
+        case Type::Ogg:             return false;
         case Type::StreamLookUp:    return ov_traklkup.UninstallFile();
         case Type::PakFiles:        return ov_strmpaks.UninstallFile();
+        case Type::StreamPak:
+                                    if(!this->loader->has_game_started) 
+                                    {
+                                        this->streams.erase(file.filename());
+                                        return true;
+                                    }
+                                    return false;
     }
     return false;
 }
 
-/*
- *  ThePlugin::Update
- *      Updates the state of this plugin after a serie of install/uninstalls
- */
-void ThePlugin::Update()
+
+/**************************************/
+
+void ThePlugin::RedirectToThunk(injector::memory_pointer_tr call_at, injector::memory_pointer_tr thunk_at)
 {
+    using namespace injector;
+    if(ReadMemory<uint8_t>(call_at+0, true) == 0xFF && ReadMemory<uint8_t>(call_at+1, true) == 0x15)
+    {
+        MakeNOP(call_at, 6, true);
+        MakeCALL(call_at, thunk_at.get(), true);
+    }
+}
+
+template<uintptr_t NewAt>
+void ThePlugin::AllocMaxPath()
+{
+    using namespace injector;
+    make_static_hook<function_hooker<NewAt, void*(size_t)>>([](std::function<void*(size_t)> new_, size_t size)
+    {
+        return size < MAX_PATH? new_(MAX_PATH) : new_(size);
+    });
+}
+
+template<uintptr_t CatAt>
+void ThePlugin::PatchStreamCat()
+{
+    using lstrcatA_type = LPTSTR(__stdcall*)(LPTSTR, LPTSTR);
+    auto mycat = [](LPTSTR dest, LPTSTR cat) -> LPTSTR
+    {
+        auto& plugin = plugin_ptr->cast<ThePlugin>();
+        auto it = plugin.streams.find(NormalizePath(cat));
+        if(it != plugin.streams.end())
+            return strcpy(dest, it->second->fullpath().c_str());
+        else
+            return strcat(dest, cat);
+    };
+
+    static lstrcatA_type ptr = (lstrcatA_type)(mycat);
+    WriteMemory(CatAt, &ptr, true);
 }

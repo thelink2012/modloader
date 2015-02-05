@@ -284,6 +284,18 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B922F] = 0x5B922F;   // call    _Z20MatchAllModelStringsv                ; @CFileLoader::LoadLevel
     }
 
+    // std.tracks
+    if(true)
+    {
+        map[0x4E0A09] = 0x4E0A09;   // call    ds:__imp_CreateFileA     ; @CAETrackLoader::LoadTrackLookupTable
+        map[0x4E0989] = 0x4E0989;   // call    ds:__imp_CreateFileA     ; @CAETrackLoader::LoadStreamPackTable
+        map[0x4E0AF2] = 0x4E0AF2;   // call    operator new             ; @CAETrackLoader::GetBeatInfo
+        map[0x4E0C80] = 0x4E0C80;   // call    operator new             ; @CAETrackLoader::Initialise
+        map[0x4E0DA2] = 0x4E0DA2;   // call    operator new             ; @CAETrackLoader::GetDataStream
+        map[0x4E0AF9] = 0x4E0AF9;   // mov     ebp, ->ds:__imp_lstrcatA ; @CAETrackLoader::GetBeatInfo
+        map[0x4E0C9D] = 0x4E0C9D;   // mov     ebp, ->ds:__imp_lstrcatA ; @CAETrackLoader::Initialise
+        map[0x4E0DA9] = 0x4E0DA9;   // mov     ebp, ->ds:__imp_lstrcatA ; @CAETrackLoader::GetDataStream
+    }
 
     // traits
     if(true)
