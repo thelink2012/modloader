@@ -466,6 +466,7 @@ inline memory_pointer_raw GetBranchDestination(memory_pointer_tr at, bool vp = t
         case 0xFF: 
             switch(ReadMemory<uint8_t>(at + 1, vp))
             {
+                case 0x15:  // call dword ptr [addr]
                 case 0x25:  // jmp dword ptr [addr]
                     return *(ReadMemory<uintptr_t*>(at + 2, vp));
             }

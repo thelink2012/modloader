@@ -119,34 +119,37 @@ int DataPlugin::GetBehaviour(modloader::file& file)
         return false;
     };
 
-    if(file.is_ext("txt"))
+    if(!file.is_dir())
     {
-        return MODLOADER_BEHAVIOUR_CALLME;
-    }
-    else if(file.is_ext("ide"))
-    {
-        if(setup_behaviour(file, ide_behv))
-            return MODLOADER_BEHAVIOUR_YES;
-    }
-    else if(file.is_ext("ipl") || file.is_ext("zon"))
-    {
-        if(setup_behaviour(file, ipl_behv))
-            return MODLOADER_BEHAVIOUR_YES;
-    }
-    else if(file.is_ext("ped") || file.is_ext("grp"))
-    {
-        // must be in a decision/allowed/ directory
-        static auto regex = make_regex(R"___(^(?:.*[\\/])?decision[\\/]allowed[\\/]\w+\.(?:ped|grp)$)___", 
-                                        sregex::ECMAScript|sregex::optimize|sregex::icase);
-
-        if(regex_match(std::string(file.filedir()), regex))
+        if(file.is_ext("txt"))
         {
-            if(setup_behaviour(file, decision_behv))
+            return MODLOADER_BEHAVIOUR_CALLME;
+        }
+        else if(file.is_ext("ide"))
+        {
+            if(setup_behaviour(file, ide_behv))
                 return MODLOADER_BEHAVIOUR_YES;
         }
+        else if(file.is_ext("ipl") || file.is_ext("zon"))
+        {
+            if(setup_behaviour(file, ipl_behv))
+                return MODLOADER_BEHAVIOUR_YES;
+        }
+        else if(file.is_ext("ped") || file.is_ext("grp"))
+        {
+            // must be in a decision/allowed/ directory
+            static auto regex = make_regex(R"___(^(?:.*[\\/])?decision[\\/]allowed[\\/]\w+\.(?:ped|grp)$)___", 
+                                            sregex::ECMAScript|sregex::optimize|sregex::icase);
+
+            if(regex_match(std::string(file.filedir()), regex))
+            {
+                if(setup_behaviour(file, decision_behv))
+                    return MODLOADER_BEHAVIOUR_YES;
+            }
+        }
+        else if(setup_behaviour(file, FindBehv(file)))
+            return MODLOADER_BEHAVIOUR_YES;
     }
-    else if(setup_behaviour(file, FindBehv(file)))
-        return MODLOADER_BEHAVIOUR_YES;
 
     return MODLOADER_BEHAVIOUR_NO;
 }

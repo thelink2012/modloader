@@ -276,8 +276,8 @@ solution "modloader"
         "std.sprites",
         "std.fx",
         "std.text",
+        "std.tracks",
         "std.bank",
-
         "std.stream",
         "std.asi",
         "std.data"
