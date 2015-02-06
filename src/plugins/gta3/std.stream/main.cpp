@@ -55,8 +55,9 @@ bool ThePlugin::OnStartup()
     if(gvm.IsSA())
     {
         // Setup abstract streaming
-        streaming.Patch();
-        streaming.InitRefreshInterface();
+        streaming = new CAbstractStreaming();
+        streaming->Patch();
+        streaming->InitRefreshInterface(); // TODO move to ctor?
 
         // Setup ped.ifp overrider
         ov_ped_ifp.SetParams(file_overrider::params(nullptr));
@@ -73,7 +74,9 @@ bool ThePlugin::OnStartup()
  */
 bool ThePlugin::OnShutdown()
 {
-    streaming.ShutRefreshInterface();
+    streaming->ShutRefreshInterface(); // TODO move to dtor?
+    delete streaming;
+    streaming = nullptr;
     return true;
 }
 
@@ -166,9 +169,9 @@ int ThePlugin::GetBehaviour(modloader::file& file)
  */
 bool ThePlugin::InstallFile(const modloader::file& file)
 {
-    if(file.behaviour & is_item_mask) return streaming.InstallFile(file);
+    if(file.behaviour & is_item_mask) return streaming->InstallFile(file);
     if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.InstallFile(file);
-    if(file.behaviour & is_img_file_mask) return streaming.AddImgFile(file);
+    if(file.behaviour & is_img_file_mask) return streaming->AddImgFile(file);
     return false;
 }
 
@@ -178,7 +181,7 @@ bool ThePlugin::InstallFile(const modloader::file& file)
  */
 bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
-    if(file.behaviour & is_item_mask) return streaming.ReinstallFile(file);
+    if(file.behaviour & is_item_mask) return streaming->ReinstallFile(file);
     if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.ReinstallFile();
     if(file.behaviour & is_img_file_mask) return true;
     return false;
@@ -190,9 +193,9 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
  */
 bool ThePlugin::UninstallFile(const modloader::file& file)
 {
-    if(file.behaviour & is_item_mask) return streaming.UninstallFile(file);
+    if(file.behaviour & is_item_mask) return streaming->UninstallFile(file);
     if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.UninstallFile();
-    if(file.behaviour & is_img_file_mask) return streaming.RemImgFile(file);
+    if(file.behaviour & is_img_file_mask) return streaming->RemImgFile(file);
     return false;
 }
 
@@ -202,5 +205,5 @@ bool ThePlugin::UninstallFile(const modloader::file& file)
  */
 void ThePlugin::Update()
 {
-    streaming.Update();
+    streaming->Update();
 }

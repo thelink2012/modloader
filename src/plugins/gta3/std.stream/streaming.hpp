@@ -115,7 +115,7 @@ inline void FillDirectoryEntry(DirectoryInfo& entry, const char* filename, uint3
 
 /*
  *  CAbstractStreaming
- *      Abstraction around the game's streaming.
+ *      Abstraction around the game's streaming->
  *      This system is capable of loading files from disk and refreshing them.
  */
 class CAbstractStreaming
@@ -492,12 +492,14 @@ class CAbstractStreaming
 };
 
 
-extern CAbstractStreaming streaming;
+extern CAbstractStreaming* streaming;
 extern "C" int iNextModelBeingLoaded;
 extern "C" int iModelBeingLoaded;
 extern "C" struct CStreamingInfo* ms_aInfoForModel;
 extern "C" struct CDirectory* clothesDirectory;;
-
-
+extern "C" DWORD *pStreamCreateFlags;
+extern "C" void** pStreamingBuffer;
+extern "C" uint32_t* streamingBufferSize;
+extern "C" void(*LoadCdDirectory2)(const char*, int);
 
 #endif

@@ -79,7 +79,7 @@ std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath,
  */
 void* LoadNonStreamedRes(std::function<void*(const char*)> load, const char* filepath, NonStreamedType type)
 {
-    auto newfilepath = streaming.TryLoadNonStreamedResource(filepath, type);
+    auto newfilepath = streaming->TryLoadNonStreamedResource(filepath, type);
     return load(newfilepath.size()? newfilepath.data() : filepath);
 }
 

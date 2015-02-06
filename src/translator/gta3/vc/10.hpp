@@ -98,7 +98,6 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     if(true)
     {
         map[0x5B8AE8] = 0x40B6E3;   // -> offset ms_aInfoForModel //doublecheck
-        map[0x5A419B] = ;   // -> offset clothesDirectory //doesn't exist
         map[0x5B8AFC] = 0x974AFC;   // -> &ms_aInfoForModel[MAX_INFO_FOR_MODEL] //doublecheck
  
         map[0x8E3FE0] = ;   // DWORD StreamCreateFlags //not found
@@ -171,7 +170,9 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         // Other SA fixes (is it necessary in VC??????)
         map[0x6B89CE] = ;   // mov     eax, [edi+10h]
     }
- 
+#endif
+
+#if 0
     // std.data
     if(true)
     {

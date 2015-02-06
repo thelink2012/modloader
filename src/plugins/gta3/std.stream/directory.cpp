@@ -8,15 +8,6 @@
 #include "streaming.hpp"
 using namespace modloader;
 
-// Hooks and other util stuff
-extern "C"
-{
-    auto pStreamingBuffer           = memory_pointer(0x8E4CAC).get<void*>();
-    auto& streamingBufferSize       = *memory_pointer(0x8E4CA8).get<uint32_t>();
-    auto LoadCdDirectory2           = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
-    CDirectory* clothesDirectory    = ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true);
-};
-
 
 /*
  *  PerformDirectoryRead
@@ -396,7 +387,7 @@ void CAbstractStreaming::FixClothesDirectory()
 CAbstractStreaming::StreamingBufferUpdater::StreamingBufferUpdater()
 {
     // We need those temp vars, don't even dare to remove them
-    this->realStreamingBufferSize = streaming.bHasInitializedStreaming? streamingBufferSize * 2 : streamingBufferSize;
+    this->realStreamingBufferSize = streaming->bHasInitializedStreaming? (*streamingBufferSize * 2) : (*streamingBufferSize);
     this->tempStreamingBufSize    = realStreamingBufferSize;
 }
 
@@ -407,7 +398,7 @@ CAbstractStreaming::StreamingBufferUpdater::StreamingBufferUpdater()
 CAbstractStreaming::StreamingBufferUpdater::~StreamingBufferUpdater()
 {
     // Right, so, if the streaming has already initialized we may need to resize the streaming buffer because of the recently inserted entries!
-    if(streaming.bHasInitializedStreaming)
+    if(streaming->bHasInitializedStreaming)
     {
         static const uint32_t align = 2048;
 
@@ -418,7 +409,7 @@ CAbstractStreaming::StreamingBufferUpdater::~StreamingBufferUpdater()
         if(tempStreamingBufSize > realStreamingBufferSize)
         {
             // Streaming bus must be empty before reallocating
-            streaming.FlushChannels();
+            streaming->FlushChannels();
 
             plugin_ptr->Log("Reallocating streaming buffer from %u bytes to %u bytes.",
                 realStreamingBufferSize * align,
@@ -429,20 +420,20 @@ CAbstractStreaming::StreamingBufferUpdater::~StreamingBufferUpdater()
             auto* mem = injector::cstd<void*(size_t, size_t)>::call<0x72F4C0>(tempStreamingBufSize * align, align); // CMemoryMgr::MallocAlign
 
             // Reassign buffer variables
-            streamingBufferSize = tempStreamingBufSize / 2;
+            *streamingBufferSize = tempStreamingBufSize / 2;
             pStreamingBuffer[0] = mem;
-            pStreamingBuffer[1] = (raw_ptr(mem) + (align * streamingBufferSize)).get();
+            pStreamingBuffer[1] = (raw_ptr(mem) + (align * *streamingBufferSize)).get();
         }
         else
         {
             // Fix the streaming buffer size variable, it was previosly broken by the LoadCdDirectory we just used
-            streamingBufferSize = realStreamingBufferSize / 2;
+            *streamingBufferSize = realStreamingBufferSize / 2;
         }
     }
     else
     {
         // Streaming not initialized, we can just set the streamingBufferSize variable and let the game take care of the rest
-        if(tempStreamingBufSize > streamingBufferSize)
-            streamingBufferSize = tempStreamingBufSize;
+        if(tempStreamingBufSize > *streamingBufferSize)
+            *streamingBufferSize = tempStreamingBufSize;
     }
 }

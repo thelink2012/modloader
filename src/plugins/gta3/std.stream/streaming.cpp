@@ -8,7 +8,7 @@
 #include "streaming.hpp"
 using namespace modloader;
 
-CAbstractStreaming streaming;
+CAbstractStreaming* streaming;
 
 
 /*

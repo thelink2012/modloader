@@ -21,26 +21,33 @@ extern "C"
 
     // Note: Don't perform pointer arithimetic, or indexing, with this pointer! This have a sizeof = 0 (4 actually).
     // Use the InfoForModel(id) and InfoForModelIndex(info) functions!!!
-    CStreamingInfo* ms_aInfoForModel = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+    CStreamingInfo* ms_aInfoForModel;
 
-    //
-    DWORD *pStreamCreateFlags        = memory_pointer(0x8E3FE0).get();
+    DWORD *pStreamCreateFlags;
+
+    void** pStreamingBuffer;
+
+    uint32_t* streamingBufferSize;
+
+    void(*LoadCdDirectory2)(const char*, int);
+
+    CDirectory* clothesDirectory;
 
     // Returns the file handle to be used for iModelBeingLoaded (called from Assembly)
     HANDLE CallGetAbstractHandle(HANDLE hFile)
     {
         if(iModelBeingLoaded == -1) return hFile;
-        return streaming.TryOpenAbstractHandle(iModelBeingLoaded, hFile);
+        return streaming->TryOpenAbstractHandle(iModelBeingLoaded, hFile);
     }
 
     // Registers the next model to be loaded (called from Assembly)
     void RegisterNextModelRead(int id)
     {
         iNextModelBeingLoaded = id;
-        if(streaming.DoesModelNeedsFallback(id))    // <- make sure the resource hasn't been deleted from disk
+        if(streaming->DoesModelNeedsFallback(id))    // <- make sure the resource hasn't been deleted from disk
         {
             plugin_ptr->Log("Resource id %d has been deleted from disk, falling back to stock model.", id);
-            streaming.FallbackResource(id, true);   // forceful but safe since we are before info setup in RequestModelStream
+            streaming->FallbackResource(id, true);   // forceful but safe since we are before info setup in RequestModelStream
         }
     }
 
@@ -49,7 +56,7 @@ extern "C"
         LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
         DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
     {
-        LPCSTR lpActualFileName = streaming.GetCdStreamPath(lpFileName);
+        LPCSTR lpActualFileName = streaming->GetCdStreamPath(lpFileName);
         plugin_ptr->Log("Opening file for streaming \"%s\"", lpActualFileName);
         return CreateFileA(
             lpActualFileName, dwDesiredAccess, dwShareMode,
@@ -123,9 +130,9 @@ int __stdcall CdStreamThread()
             // Try to find abstract file from hFile
             if(true)
             {
-                scoped_lock xlock(streaming.cs);
-                auto it = std::find(streaming.stm_files.begin(), streaming.stm_files.end(), hFile);
-                if(it != streaming.stm_files.end())
+                scoped_lock xlock(streaming->cs);
+                auto it = std::find(streaming->stm_files.begin(), streaming->stm_files.end(), hFile);
+                if(it != streaming->stm_files.end())
                 {
                     bIsAbstract = true;
                     
@@ -177,7 +184,7 @@ int __stdcall CdStreamThread()
         RemoveFirstInQueue(pQueue);
         
         // Cleanup
-        if(bIsAbstract) streaming.CloseModel(sfile);
+        if(bIsAbstract) streaming->CloseModel(sfile);
         cd->nSectorsToRead = 0;
         if(cd->bLocked) ReleaseSemaphore(cd->semaphore, 1, 0);
         cd->bInUse = false;
@@ -235,12 +242,12 @@ HANDLE CAbstractStreaming::TryOpenAbstractHandle(int index, HANDLE hFile)
     CAbstractStreaming::AbctFileHandle* f = nullptr;
     
     // Try to find the object index in the import list
-    auto it = streaming.imports.find(index);
-    if(it != streaming.imports.end())
+    auto it = streaming->imports.find(index);
+    if(it != streaming->imports.end())
     {
          // Don't use our custom model if we're falling back to the original file because of an error
         if(it->second.isFallingBack == false)
-            f = streaming.OpenModel(it->second, it->first);
+            f = streaming->OpenModel(it->second, it->first);
     }
     
     // Returns the file from the abstract streaming if available
@@ -333,13 +340,21 @@ void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
     
+    // Pointers
+    ms_aInfoForModel    = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+    pStreamCreateFlags  = memory_pointer(0x8E3FE0).get();
+    pStreamingBuffer    = memory_pointer(0x8E4CAC).get<void*>();
+    streamingBufferSize = memory_pointer(0x8E4CA8).get<uint32_t>();
+    LoadCdDirectory2    = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
+    clothesDirectory    = ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true);
+
     // See data.cpp
     this->DataPatch();
 
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
-        plugin_ptr->Log("Initializing the streaming...");
+        plugin_ptr->Log("Initializing the streaming->..");
 
         // Load standard cd directories.....
         TempCdDir_t tmp_cd_dir;
@@ -504,12 +519,12 @@ void CAbstractStreaming::Patch()
 
         static auto OpenFileHook = [](const char* filename, const char* mode)
         {
-            return OpenFile(streaming.GetCdStreamPath(filename), mode);
+            return OpenFile(streaming->GetCdStreamPath(filename), mode);
         };
 
         static auto RwStreamOpenHook = [](int a, int b, const char* filename)
         {
-            return RwStreamOpen(a, b, streaming.GetCdStreamPath(filename));
+            return RwStreamOpen(a, b, streaming->GetCdStreamPath(filename));
         };
 
         // Resolve the cd stream filenames by ourselves on the following calls
