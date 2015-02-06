@@ -19,7 +19,9 @@ using namespace injector;
 static const size_t max_ptr_dist = 8;       // Max distance to take as a "equivalent" address for modloader
 static void init(std::map<memory_pointer_raw, memory_pointer_raw>& map);
  
- 
+// Externs
+bool trying_address = false;    // Don't warn about not found address
+
 // Translate pointer from GTA SA 10US offset to this executable offset
 void* injector::address_manager::translator(void* p_)
 {
@@ -47,15 +49,18 @@ void* injector::address_manager::translator(void* p_)
     // If we couldn't translate the address, notify
     if(!result)
     {
-        char buf[128];
-        sprintf(buf, "Warning: Could not translate address 0x%p", p.get<void>());
+        if(!trying_address)
+        {
+            char buf[128];
+            sprintf(buf, "Warning: Could not translate address 0x%p", p.get<void>());
 
-#if NDEBUG  // non intrusive, for users
-        if(modloader::plugin_ptr) modloader::plugin_ptr->Log(buf);
-#else       // intrusive, coder must see
-        if(modloader::plugin_ptr) modloader::plugin_ptr->Error(buf);
-        else if(true) MessageBoxA(0, buf, injector::game_version_manager::PluginName, 0);
-#endif
+            #if NDEBUG  // non intrusive, for users
+                if(modloader::plugin_ptr) modloader::plugin_ptr->Log(buf);
+            #else       // intrusive, coder must see
+                if(modloader::plugin_ptr) modloader::plugin_ptr->Error(buf);
+                else if(true) MessageBoxA(0, buf, injector::game_version_manager::PluginName, 0);
+            #endif
+        }
     }
    
     return result.get();

@@ -39,7 +39,7 @@ namespace injector
                 for(char* p = buf; *p; ++p)
                 {
                     // # is used as comments...
-                    if(*p == '#')
+                    if(*p == '#' || *p == '\r' || *p == '\n')
                     {
                         *p = 0;
                         break;

@@ -52,6 +52,12 @@ void Loader::Patch()
             static bool bRan = false;
             if(bRan) return WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             bRan = true;
+            
+#ifndef NDEBUG // TODO REMOVE ME!!!!
+            static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
+            gGameState = 5; // skip intro
+            MakeNOP(raw_ptr(0x601B3B), 10);
+#endif
 
             // Install exception filter to log crashes
             InstallExceptionCatcher([](const char* buffer)

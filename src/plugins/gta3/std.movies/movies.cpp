@@ -55,7 +55,7 @@ const MediaPlugin::info& MediaPlugin::GetInfo()
  */
 bool MediaPlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    if(gvm.IsVC() || gvm.IsSA())
     {
         this->logo          = modloader::hash("logo.mpg");
         this->GTAtitles     = modloader::hash("gtatitles.mpg");

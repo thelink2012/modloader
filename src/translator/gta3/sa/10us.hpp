@@ -67,6 +67,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x57326E] = 0x57326E;   // jz      loc_573313                    ; Check for some menu stuff to avoid reloading text
         map[0xBA6748] = 0xBA6748;   // CMenuManager FrontEndMenuManager
         map[0x573260] = 0x573260;   // _ZN12CMenuManager33InitialiseChangedLanguageSettingsEv
+        map[0x6A0050] = 0x6A0050;   // _ZN5CText3GetEPKc
     }
 
     // std.movies

@@ -11,6 +11,7 @@
 #include <regex/regex.hpp>
 using namespace modloader;
 
+// TODO on III/VC the sprite is in the models/ dir not models/txd/!!! WHAT DO WE DO NOW!!
 
 /*
  *  The plugin object

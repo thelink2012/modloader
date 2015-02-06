@@ -92,3 +92,4 @@ Finally, let's go to the credits.
   * ArtututuVidor$, Andryo, Junior_Djjr, JNRois12 for alpha-testing
   * Gramps and TJGM for emotional support.
   * SilentPL for additional support
+  * ThirteenAG for giving me lots of pointers (literally) for the GTA III / Vice City version.

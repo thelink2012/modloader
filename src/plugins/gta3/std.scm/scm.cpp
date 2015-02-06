@@ -14,7 +14,6 @@ using namespace modloader;
 class ScmPlugin : public modloader::basic_plugin
 {
     private:
-        uint32_t main_scm;
         file_overrider overrider;
 
     public:
@@ -51,9 +50,8 @@ const ScmPlugin::info& ScmPlugin::GetInfo()
  */
 bool ScmPlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    if(gvm.IsVC() || gvm.IsSA())
     {
-        this->main_scm = modloader::hash("main.scm");
         this->overrider.SetParams(file_overrider::params(true, true, true, true));
         this->overrider.SetFileDetour(OpenFileDetour<0x468EC9>(), OpenFileDetour<0x489A4A>());
         return true;
@@ -77,6 +75,7 @@ bool ScmPlugin::OnShutdown()
  */
 int ScmPlugin::GetBehaviour(modloader::file& file)
 {
+    static const auto main_scm = modloader::hash("main.scm");
     if(!file.is_dir() && file.hash == main_scm)
     {
         file.behaviour = file.hash;
