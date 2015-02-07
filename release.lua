@@ -45,6 +45,7 @@ function main()
         execute("premake5 install ./release/")
         os.copyfile("./release/modloader/.data/Readme.md", "./release/Readme.txt")
         os.copyfile("./release/modloader/.data/Leia-me.md", "./release/Leia-me.txt")
+        os.mkdir("./release/modloader/.profiles")
     end
 
     print "Cleaning workspace..."

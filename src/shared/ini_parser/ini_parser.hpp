@@ -1,5 +1,5 @@
 /* 
- *  Copyright (c) 2013-2014 Denilson das Mercês Amorkm <dma_2012@hotmail.com>
+ *  Copyright (c) 2013-2015 Denilson das Mercês Amorim <dma_2012@hotmail.com>
  *  
  *  This software is provided 'as-is', without any express or implied
  *  warranty. In no event will the authors be held liable for any damages
@@ -110,14 +110,14 @@ namespace linb
             { return data.crend(); }
             
             /* Acessing index methods */
-            mapped_type& operator[](const key_type& key)
-            { return data[key]; }
-            mapped_type& operator[](key_type&& key)
-            { return data[std::forward<key_type>(key)]; }
-            mapped_type& at( const key_type& key)
-            { return data.at(key); }
-            const mapped_type& at(const key_type& key) const
-            { return data.at(key); }
+            mapped_type& operator[](const string_type& sect)
+            { return data[sect]; }
+            mapped_type& operator[](string_type&& sect)
+            { return data[std::forward<string_type>(sect)]; }
+            mapped_type& at( const string_type& sect)
+            { return data.at(sect); }
+            const mapped_type& at(const string_type& sect) const
+            { return data.at(sect); }
             
             /* Capacity information */
             bool empty() const
@@ -132,13 +132,33 @@ namespace linb
             { return data.clear(); }
             
             /* Lookup */
-            size_type count(const key_type& key)
-            { return data.count(key); }
-            iterator find(const key_type& key)
-            { return data.find(key); }
+            size_type count(const string_type& sect)
+            { return data.count(sect); }
+            iterator find(const string_type& sect)
+            { return data.find(sect); }
+
+            /* Gets a value from the specified section & key, default_value is returned if the sect & key doesn't exist */
+            string_type get(const string_type& sect, const key_type& key, const string_type& default_value)
+            {
+                auto it = this->find(sect);
+                if(it != this->end())
+                {
+                    auto itv = it->second.find(key);
+                    if(itv != it->second.end())
+                        return itv->second;
+                }
+                return default_value;
+            }
+
+            /* Sets the value of a value in the ini */
+            void set(const string_type& sect, const key_type& key, const string_type& value)
+            {
+                (*this)[sect][key] = value; // no emplace since overwrite!
+            }
 
             /* Too lazy to continue this container... If you need more methods, just add it */
             
+
 #if 1
             bool read_file(const char_type* filename)
             {

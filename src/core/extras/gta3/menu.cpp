@@ -636,8 +636,8 @@ void TheMenu::ModPageEvents()
     // ENABLED state
     auto vEnabledUpdate = SetupBooleanEntry("ML_FYE0", mWorkingModEnabled, [this](MenuEntry&)
     {
-        if(mWorkingModEnabled) mWorkingMod->Parent().UnignoreMod(mWorkingMod->GetName());
-        else mWorkingMod->Parent().IgnoreMod(mWorkingMod->GetName());
+        if(mWorkingModEnabled) mWorkingMod->Parent().Profile().UnignoreMod(mWorkingMod->GetName());
+        else mWorkingMod->Parent().Profile().IgnoreMod(mWorkingMod->GetName());
         
         mChangedMods.emplace(mWorkingMod->GetName(), Loader::Status::Updated);
         loader.SaveFolderConfig();
@@ -646,7 +646,7 @@ void TheMenu::ModPageEvents()
     // PRIORITY state
     auto vPriorityUpdate = SetupPriorityEntry("ML_FYPR", mWorkingModPriority, [this](MenuEntry&)
     {
-        mWorkingMod->Parent().SetPriority(mWorkingMod->GetName(), mWorkingModPriority);
+        mWorkingMod->Parent().Profile().SetPriority(mWorkingMod->GetName(), mWorkingModPriority);
         mChangedMods.emplace(mWorkingMod->GetName(), Loader::Status::Updated);
         loader.SaveFolderConfig();
     });
@@ -658,8 +658,8 @@ void TheMenu::ModPageEvents()
 
         // Setup mod info
         this->mWorkingMod = &mod;
-        this->mWorkingModEnabled = !(this->mWorkingMod->Parent().IsOnIgnoringList(this->mWorkingMod->GetName()));
-        this->mWorkingModPriority = this->mWorkingMod->Parent().GetPriority(this->mWorkingMod->GetName());
+        this->mWorkingModEnabled = !(this->mWorkingMod->Parent().Profile().IsOnIgnoringList(this->mWorkingMod->GetName()));
+        this->mWorkingModPriority = this->mWorkingMod->Parent().Profile().GetPriority(this->mWorkingMod->GetName());
         vEnabledUpdate(info);   // Updates the state text for the entry
         vPriorityUpdate(info);  // Updates the state text for the entry
 

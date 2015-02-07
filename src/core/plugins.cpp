@@ -76,7 +76,7 @@ bool Loader::LoadPlugin(std::string filename)
         // Since 0.2.x we have GetLoaderVersion to make sure compatibility is fine
         if(GetLoaderVersion == nullptr)
         {
-            Log("Failed to load module \"%s\", missing GetLoaderVersion. Plugin possibily compiled for an older version of Mod Loader.", modulename);
+            Log("Warning: Failed to load module \"%s\", missing GetLoaderVersion. Plugin possibily compiled for an older version of Mod Loader.", modulename);
             return false;
         }
         else
@@ -87,14 +87,14 @@ bool Loader::LoadPlugin(std::string filename)
         // Check version incompatibilities
         if (minor < 2) // 0.2.x introduces a different API set
         {
-            Log("Failed to load module \"%s\", plugin was compiled for an older version of Mod Loader.", modulename);
+            Log("Warning: Failed to load module \"%s\", plugin was compiled for an older version of Mod Loader.", modulename);
             return false;
         }
         // Check if plugin was written to a (future) version of modloader, if so, we need to be updated
         else if (major > MODLOADER_VERSION_MAJOR
                  || (major == MODLOADER_VERSION_MAJOR && minor > MODLOADER_VERSION_MINOR))
         {
-            Log("Failed to load module \"%s\", it requieres a newer version of Mod Loader!\nUpdate yourself at: %s",
+            Log("Warning: Failed to load module \"%s\", it requieres a newer version of Mod Loader!\nUpdate yourself at: %s",
                 modulename, downurl);
             return false;
         }
@@ -158,7 +158,7 @@ bool Loader::LoadPlugin(std::string filename)
         FreeLibrary(module);
     }
     else
-        Log("Could not load plugin module \"%s\"", modulename);
+        Log("Warning: Could not load plugin module \"%s\"", modulename);
 
     return false;
 }
@@ -191,7 +191,7 @@ bool Loader::StartupPlugin(PluginInformation& plugin)
     Log("Starting up plugin \"%s\"", plugin.name);
     if(!plugin.Startup())
     {
-        Log("Failed to startup plugin \"%s\", unloading it.", plugin.name);
+        Log("Warning: Failed to startup plugin \"%s\", unloading it.", plugin.name);
         this->UnloadPlugin(plugin);
         return false;
     }
@@ -339,7 +339,7 @@ bool Loader::PluginInformation::Reinstall(FileInformation& file)
             return true;
 
         // Somehow we failed to Reinstall, so Uninstall it instead.
-        ::loader.Log("Failed to reinstall file '%s', uninstalling it instead...", file.filepath());
+        ::loader.Log("Warning: Failed to reinstall file '%s', uninstalling it instead...", file.filepath());
         if(file.Uninstall())
             return false;   // not installed anymore
         return true;    // still installed

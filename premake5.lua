@@ -244,6 +244,7 @@ solution "modloader"
         addinstall { source = "doc/config/plugins.ini.0",       destination = "modloader/.data"         }
         addinstall { source = "doc/CHANGELOG.md",               destination = "modloader/.data"         }
         addinstall { source = "doc/Command Line Arguments.md",  destination = "modloader/.data"         }
+        addinstall { source = "doc/Profiles.md",                destination = "modloader/.data"         }
 
     project "addr"
         language "C++"

@@ -58,15 +58,7 @@ void Loader::ModInformation::Scan()
         auto filepath = this->path + NormalizePath(file.filebuf);
 
         // Nested Mod Loader folder...
-        if(false && file.is_dir && filename == modloader_subfolder)
-        {
-            // This feature has been disabled, it adds an additional level of complexity into the loader that's not worth the effort.
-            // So the feature is marked to be completly removed or readded back soon, I'm not sure about it's future yet
-            Log("Found sub modloader at \"%s\"", filepath.c_str());
-            this->parent.AddChild(filepath);
-            file.recursive = false;
-        }
-        else if(!parent.IsFileIgnored(filename))
+        if(!parent.Profile().IsFileIgnored(filename))
         {
             uint64_t uid;
             modloader::file m;
@@ -240,7 +232,7 @@ void Loader::ModInformation::InstallNecessaryFiles()
  */
 Loader::ModInformation& Loader::ModInformation::UpdateIgnoreStatus()
 {
-    this->ignored = parent.IsIgnored(this->GetName());
+    this->ignored = parent.Profile().IsIgnored(this->GetName());
     return *this;
 }
 
@@ -251,7 +243,7 @@ Loader::ModInformation& Loader::ModInformation::UpdateIgnoreStatus()
  */
 bool Loader::ModInformation::UpdatePriority()
 {
-    auto priority = parent.GetPriority(this->name);
+    auto priority = parent.Profile().GetPriority(this->name);
     if(this->priority != priority)
     {
         this->priority = priority;

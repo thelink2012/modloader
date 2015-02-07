@@ -1,6 +1,9 @@
 v0.2.4 (In Dev)
 ------------------------
 * Added AUDIO/STREAMS/, TrakLkUp.dat and StrmPaks.dat overriders.
+* Added profiles, a feature to let you have different mod setups with easy switching between them or even automatic *(See modloader/.data/Profiles.md for details)*. 
+* Restored the `mod` command line and also added the `-modprof` command line to load a profile. *(See modloader/.data/Command Line Arguments.md for details)*. 
+* The `mod` command line allows the user to specify a priority now.
 * Fixed non-GENRL wave files not being installed properly.
 
 v0.2.3 (Feb 02 2015)
@@ -11,7 +14,7 @@ v0.2.3 (Feb 02 2015)
  * Implemented *weapon.dat* merger and readme reader.
  * Implemented *ar_stats.dat, animgrp.dat, ped.dat, pedstats.dat, pedgrp.dat, cargrp.dat, melee.dat, statdisp.dat, shopping.dat, surface.dat, surfinfo.dat, surfaud.dat, object.dat, procobj.dat and decision makers* merger.
  * Implemented *clothes.dat, furnitur.dat, fonts.dat, roadblox.dat, tracks.dat, tracks2.dat, tracks3.dat and tracks4.dat* overrider.
- * Removed the *-mod* command-line, something better than that will come up later (*-nomods* is still available!).
+ * Removed the `-mod` command-line, something better than that will come up later (`-nomods` is still available!).
  * Fixed no date-time in the load game menu screen.
  * Other minor fixes
 
@@ -46,7 +49,7 @@ v0.2.1 (Nov 23 2014)
  * Fixed script sprites not loading properly
  * Fixed ini entries beggining with square brackets not being readen properly
  * Fixed an issues with the std.asi path translator
- * Fixed command line argument -nomods not working properly
+ * Fixed command line argument `-nomods` not working properly
  
 v0.2.0 (Aug 02 2014)
 ------------------------
