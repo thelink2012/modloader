@@ -34,7 +34,7 @@ But the following is **NOT** valid:
 Even simpler, just delete the mod content from *modloader* directory.
 If you just want to disable the mod for a while, go to the in-game menu and disable it or edit *modloader.ini* manually. 
 
-## Highlights and Details
+## Highlights and Features
 
 - Do not replace **ANY** original file, never, really.
 - Let Mod Loader take care of everything
@@ -49,7 +49,8 @@ If you just want to disable the mod for a while, go to the in-game menu and disa
 - In-Game menu for configurations
     + Go to *Options > Mod Loader Setup*
     + When the menu is not available, do it manually by editing *modloader/modloader.ini* and *modloader/.data/config.ini*
-
+- Profiles, so you can have many games in one.
+    + Read *modloader/.data/Profiles.md for details*
 
 ### Have you found a bug?
 

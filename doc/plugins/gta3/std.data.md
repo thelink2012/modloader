@@ -53,8 +53,8 @@ The following data files are currently supported:
 
 __Additional Notes__:
    * Decision files (.ped/.grp) mustbe in a *decision/allowed* directory to work
-   * IDE and IPL that doesn't have a matching gta.dat entry are loaded anyway
-   * IDE and IPL files usually needs to be structured the same way as it's gta.dat demands
+   * IDE and IPL that doesn't have a matching gta.dat are **NOT** loaded.
+   * IDE and IPL files usually needs to be structured the same way as it's gta.dat demands.
       (i.e. IPL DATA/MAPS/TEST.IPL should be structured like modloader/My Map/data/maps/test.ipl)
       although this is **NOT** necessary anymore since Mod Loader 0.2.x
    * This makes the loading screen dynamic, removing the flickering when there are too few gta.dat entries (usually on TCs)

@@ -143,6 +143,16 @@ bool ThePlugin::ModuleInfo::Load()
         // We need the fullpath into the module because of the way Windows load dlls
         // More info at: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682586(v=vs.85).aspx
 
+        if(this->bIsD3D9 == false)
+        {
+            // Avoid double modules if not d3d9
+            if(GetModuleHandleA(file->filename()))
+            {
+                plugin_ptr->Log("Warning: Failed to load module \"%s\" as another instance is already loaded.", file->filepath());
+                return false;
+            }
+        }
+
         // Load the library module into our module field
         SetLastError(0);
         this->module = bIsMainExecutable? GetModuleHandleA(0) : LoadLibraryA(file->fullpath().c_str());

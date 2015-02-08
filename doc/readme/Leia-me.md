@@ -34,7 +34,7 @@ Entretanto, o seguinte **NÃO** é um método válido:
 Ainda mais fácil, apenas delete o conteúdo do mod que deseja instalar do diretório do *modloader*.
 Se você só quiser desabilitar o mod por um instante, vá para o menu in-game para desabilitá-lo, ou edite o *modloader.ini* manualmente.
 
-## Destaques e detalhes
+## Destaques
 
 - Não substitua **NENHUM** arquivo original. Nunca. Sério.
 - Deixe que o Mod Loader tome conta de tudo.
@@ -49,7 +49,8 @@ Se você só quiser desabilitar o mod por um instante, vá para o menu in-game p
 - Menu 'em jogo' para configurações
     + Vá para *Options > Mod Configuration*
     + Quando o menu não estiver disponível, faça as edições manualmente em *modloader/modloader.ini* e *modloader/.data/config.ini*
-
+- Profiles, assim você pode ter varios jogos em um.
+    + Leia *modloader/.data/Profiles.md* for para detalhes
 
 ### Encontrou uma falha?
 
