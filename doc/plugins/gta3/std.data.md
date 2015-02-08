@@ -47,6 +47,7 @@ The following data files are currently supported:
 | tracks4.dat    |    X     |       |        |
 | weapon.dat     |    X     |   X   |   X    |
 | procobj.dat    |    X     |   X   |        |
+| stream.ini     |    X     |   X   |        |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     

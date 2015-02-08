@@ -4,10 +4,9 @@ Mod Loader Profiles
 Mod Loader comes with a nice feature to manage which modifications to get loaded under certain circustances called profiles.
 Profiles let you select a group of mods to load, files to ignore and so on.
 
-To make use a profile either switch the current profile in *modloader.ini base config* or from the in-game menu, send a command line `-modprof` followed by the profile name to use, or have a `UseIfModule` condition on it.
+To make use a profile switch the current profile in *modloader.ini base config*, send a command line `-modprof` followed by the profile name to use, or have a `UseIfModule` condition on it.
 
-To create or modify profiles either go into `modloader.ini` or the in-game menu.
-Let's talk about the ini in this document as the menu has instructions built-in plus easiness.
+To create or modify profiles go into `modloader.ini` or create a new ini in the *.profiles/* directory, such ini can have any name.
 
 For a profile to be detected as existing, you need to have at least one ini section named after a profile.
 A profile section starts with `Profile` followed by a *dot*, then the *profile name* followed by another *dot* and now what the section is supposed to do. Example:
@@ -63,24 +62,32 @@ Using a profile if running from SAMP example:
 --------------------------------------
 Any modification listed on this section is going to be ignored while scanning for mods.
 
+Supports wildcards.
+
 `[Profiles.ProfileName.IncludeMods]`
 --------------------------------------
 All the mods in this list are going to be used even when `[Profiles.ProfileName.Config]:ExcludeAllMods` is set to `true`. 
+
+Supports wildcards.
 
 `[Profiles.ProfileName.ExclusiveMods]`
 --------------------------------------
 Any mod in this list will be loaded *ONLY* by this profile, any other profile will have this mod automatically ignored.
 If another profile has a similar exclusive mod, both will have the mods as exclusive and use them.
 
+Supports wildcards.
+
 `[Profiles.ProfileName.IgnoreFiles]`
 --------------------------------------
-Any file glob  in this list are ignored by the loader while scanning for files.
-The globs can contain sub folders, for example:
+Any file in this list are ignored by the loader while scanning for files.
+The wildcards can contain sub folders, for example:
 
     to_ignore/*.dff
 
 This line would ignores all files in the *to_ignore* directory that have a dff extension.
 Notice *to_ignore* must be **INSIDE a mod directory**, such as *modloader/my mod/to_ignore/*
+
+Supports wildcards.
 
 `[Profiles.ProfileName.Priority]`
 --------------------------------------

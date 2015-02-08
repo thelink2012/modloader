@@ -55,10 +55,11 @@ void Loader::ModInformation::Scan()
     bool fine = this->IsIgnored()? true : FilesWalk("", "*.*", true, [this](FileWalkInfo& file)
     {
         auto filename = NormalizePath(file.filename);
-        auto filepath = this->path + NormalizePath(file.filebuf);
+        auto filedir  = NormalizePath(file.filebuf);
+        auto filepath = this->path + filedir;
 
         // Nested Mod Loader folder...
-        if(!parent.Profile().IsFileIgnored(filename))
+        if(!parent.Profile().IsFilePathIgnored(filedir))
         {
             uint64_t uid;
             modloader::file m;

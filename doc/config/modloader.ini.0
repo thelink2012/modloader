@@ -15,14 +15,14 @@ ExcludeAllMods = false            ; Excludes all mods from being loaded except t
 ;MyMod=50
 
 [Profiles.Default.IgnoreFiles]
-; Put files globs to be ignored here (e.g. cheetah.dff, *.dff)
+; Put wildcard to files to be ignored here (e.g. cheetah.dff, *.dff, path_in_mod/*.dff)
 
 [Profiles.Default.IgnoreMods]
-; Put mods to be ignored here (this is not a glob)
+; Put wildcard to mods to be ignored here
 _ignore
 
 [Profiles.Default.IncludeMods]
-; Put mods to be included in the game even when ExcludeAllMods=true
+; Put wildcard to mods to be included in the game even when ExcludeAllMods=true
 
 [Profiles.Default.ExclusiveMods]
-; Put mods that should be loaded ONLY on this profile
+; Put wildcard to mods that should be loaded ONLY on this profile

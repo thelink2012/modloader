@@ -291,7 +291,7 @@ class Loader : public modloader_t
 
                 // Checks
                 bool IsIgnored(const std::string& name) const;
-                bool IsFileIgnored(const std::string& name) const;
+                bool IsFilePathIgnored(const std::string& path) const;
                 int GetPriority(const std::string& name) const;
                 bool IsIgnoredNoExclusive(const std::string& name) const;
                 bool IsExcluded(const std::string& name) const;
@@ -299,7 +299,7 @@ class Loader : public modloader_t
                 bool IsInheritedFrom(const Profile& profile) const;
                 
                 // Priority, inclusion and ignores
-                void IgnoreFileGlob(std::string glob);
+                void IgnoreFile(std::string glob);
                 void SetPriority(std::string name, int priority);
                 void Include(std::string name);
                 void Uninclude(const std::string& name);
@@ -319,10 +319,6 @@ class Loader : public modloader_t
                 bool IsExcluding() const { return IsExcludingAll(); }
                 bool IsOnIgnoringList(const std::string& name) const;
                 bool IsOnIncludingList(const std::string& name) const;
-
-                // Rebuilds the glob string for exclude_globs
-                void RebuildIncludeModsGlob();
-                void RebuildExcludeFilesGlob();
 
                 // Clears all buffers from this structure
                 void Clear();
@@ -378,8 +374,6 @@ class Loader : public modloader_t
                 std::set<std::string> include_mods;         // All mod globs inside this list shall be included when bExcludeAll is true
                 std::set<std::string> ignore_files;         // All file globs inside this list shall be ignored
                 std::set<std::string> exclusive_mods;       // All mods inside this list shall be exclusive to this profile
-                std::string include_mods_glob;              // include_mods built into a single glob
-                std::string ignore_files_glob;              // ignore_files built into a single glob
                 
                 // Folder flags
                 std::pair<bool, bool> bIgnoreAll    = { false, false }; // .first = Has this flag?; .second = When true, no mod will be readen

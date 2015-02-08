@@ -7,20 +7,30 @@
 #include "loader.hpp"
 using namespace modloader;
 
-// TODO GLOBS
-// TODO GLOBS IN MODS LIST?
+extern bool match_wildcard(const char* pattern, const char* string);
 
-template<class L>
-static void BuildGlobString(const L& list, std::string& glob)
+static bool MatchWildcard(const char* string, const char* pattern)
 {
-    glob.clear();
-    for(auto& g : list) glob.append(g).push_back(';');
+    return match_wildcard(pattern, string);
 }
 
-static bool MatchGlob(const std::string& name, const std::string& glob)
+template<class Container>
+static bool MatchWildcards(const char* string, const Container& patterns)
 {
-    return !glob.empty() && PathMatchSpecA(name.c_str(), glob.c_str()) != 0;
+    if(!patterns.empty())
+    {
+        for(auto& pattern : patterns)
+            if(MatchWildcard(string, pattern.c_str())) return true;
+    }
+    return false;
 }
+
+template<class Container>
+static bool MatchWildcards(const std::string& string, const Container& patterns)
+{
+    return MatchWildcards(string.c_str(), patterns);
+}
+
 
 
 /*
@@ -44,8 +54,6 @@ void Loader::Profile::Clear()
     this->ignore_files.clear();
     this->use_if_module.clear();
     this->ClearInheritance();
-    this->RebuildExcludeFilesGlob();
-    this->RebuildIncludeModsGlob();
 }
 
 /*
@@ -184,7 +192,7 @@ bool Loader::Profile::IsIgnored(const std::string& name) const
  */
 bool Loader::Profile::IsExclusiveToMe(const std::string& name) const
 {
-    return exclusive_mods.count(name) > 0;
+    return MatchWildcards(name, exclusive_mods);
 }
 
 /*
@@ -194,23 +202,12 @@ bool Loader::Profile::IsExclusiveToMe(const std::string& name) const
  */
 bool Loader::Profile::IsIgnoredNoExclusive(const std::string& name) const
 {
-    return this->CallHierarchy(true, [&name](const Profile& profile)
+    return this->CallHierarchy(true, [this, &name](const Profile& profile)
     {
-        // If excluse all is under effect, check if we are included, otherwise check if we are excluded.
-        if(profile.IsExcluding())
-        {
-            return (MatchGlob(name, profile.include_mods_glob) == false);
-        }
+        if(this->IsExcluding())     // Use the exclusion flag from the derived object!!!
+            return !profile.IsOnIncludingList(name);
         else
-        {
-            if(profile.IsOnIgnoringList(name) == false) // Check if not on ignore mods list
-            {
-                auto it = profile.mods_priority.find(name);
-                return (it != profile.mods_priority.end() && it->second == 0);  // If priority is 0 ignore this mod
-            }
-            else
-                return true;    // it's on the ignore list, ignore.
-        }
+            return (profile.IsOnIgnoringList(name) || profile.GetPriority(name) == 0);
     });
 }
 
@@ -238,15 +235,17 @@ bool Loader::Profile::IsExcluded(const std::string& name) const
     return false;
 }
 
-
 /*
- *  Profile::IsFileIgnored
- *      Checks if the specified file @name (normalized) should be ignored
+ *  Profile::IsFilePathIgnored
+ *      Checks if the specified filedir @path (normalized) should be ignored
  */
-bool Loader::Profile::IsFileIgnored(const std::string& name) const
+bool Loader::Profile::IsFilePathIgnored(const std::string& path) const
 {
-    return this->CallHierarchy(true, [&name](const Profile& profile) {
-        if(MatchGlob(name, profile.ignore_files_glob)) return true;
+    const char* filename = &path[GetLastPathComponent(path)];
+    return this->CallHierarchy(true, [&filename, &path](const Profile& profile) {
+        if(MatchWildcards(filename, profile.ignore_files)
+        || MatchWildcards(path, profile.ignore_files))
+            return true;
         return false;
     });
 }
@@ -291,7 +290,7 @@ int Loader::Profile::GetPriority(const std::string& name) const
 bool Loader::Profile::IsOnIgnoringList(const std::string& name) const
 {
     return this->CallHierarchy(true, [&name](const Profile& profile) {
-        return profile.ignore_mods.count(name) > 0;
+        return MatchWildcards(name, profile.ignore_mods);
     });
 }
 
@@ -302,28 +301,27 @@ bool Loader::Profile::IsOnIgnoringList(const std::string& name) const
 bool Loader::Profile::IsOnIncludingList(const std::string& name) const
 {
     return this->CallHierarchy(true, [&name](const Profile& profile) {
-        return profile.include_mods.count(name) > 0;
+        return MatchWildcards(name, profile.include_mods);
     });
 }
 
 /*
 *   FolderInformation::Include
-*       Adds a file @name (normalized) to the inclusion list, to be included even if ExcludeAllMods=true
+*       Adds a mod wildcard @name (normalized) to be included even if ExcludeAllMods=true
 */
 void Loader::Profile::Include(std::string name)
 {
     include_mods.emplace(std::move(name));
-    RebuildIncludeModsGlob();
 }
 
 /*
  *  Profile::Uninclude
- *      Removes the file @name (normalized) from the inclusion list
+ *      Removes the file @name (normalized) from the inclusion list.
+ *      Does not support removing wildcards.
  */
 void Loader::Profile::Uninclude(const std::string& name)
 {
     include_mods.erase(name);
-    RebuildIncludeModsGlob();
 }
 
 /*
@@ -338,6 +336,7 @@ void Loader::Profile::AddExclusivity(const std::string& mod)
 /*
  *  Profile::RemExclusivity
  *      Removes exclusivity for the mod @name (normalized) on this profile
+ *      Does not support removing wildcards.
  */
 void Loader::Profile::RemExclusivity(const std::string& mod)
 {
@@ -346,17 +345,16 @@ void Loader::Profile::RemExclusivity(const std::string& mod)
 
 /*
  *  Profile::IgnoreFileGlob
- *      Adds a file @glob (normalized) to be ignored
+ *      Adds a file wildcard @file (normalized) to be ignored
  */
-void Loader::Profile::IgnoreFileGlob(std::string glob)
+void Loader::Profile::IgnoreFile(std::string file)
 {
-    ignore_files.emplace(std::move(glob));
-    RebuildExcludeFilesGlob();
+    ignore_files.emplace(std::move(file));
 }
 
 /*
  *  Profile::IgnoreMod
- *      Adds a mod @mod (normalized) to be ignored
+ *      Adds a mod wildcard @mod (normalized) to be ignored
  */
 void Loader::Profile::IgnoreMod(std::string mod)
 {
@@ -366,27 +364,12 @@ void Loader::Profile::IgnoreMod(std::string mod)
 /*
  *  Profile::UnignoreMod
  *      Removes the mod @mod (normalized) from the ignored list
+ *      Does not support removing wildcards.
  */
 void Loader::Profile::UnignoreMod(const std::string& mod)
 {
     ignore_mods.erase(mod);
 }
-
-/*
- *  Profile::RebuildExcludeFilesGlob  - Rebuilds glob for files exclusion
- *  Profile::RebuildIncludeModsGlob   - Rebuilds glob for files inclusion
- */
-
-void Loader::Profile::RebuildExcludeFilesGlob()
-{
-    BuildGlobString(this->ignore_files, this->ignore_files_glob);
-}
-
-void Loader::Profile::RebuildIncludeModsGlob()
-{
-    BuildGlobString(this->include_mods, this->include_mods_glob);
-}
-
 
 /*
  *  Profile::SetIgnoreAll     - Ignores all mods 
@@ -494,7 +477,7 @@ void Loader::Profile::LoadConfigFromINI(const modloader_ini& ini)
     auto ReadIgnoreFiles = [this](const modloader_ini::key_container& kv)
     {
         this->ignore_files.clear();
-        for(auto& pair : kv) this->IgnoreFileGlob(NormalizePath(pair.first));
+        for(auto& pair : kv) this->IgnoreFile(NormalizePath(pair.first));
     };
 
     // Reads the [Profiles.ProfileName.IncludeMods] section

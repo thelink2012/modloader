@@ -1,11 +1,14 @@
 v0.2.4 (In Dev)
 ------------------------
- * Added AUDIO/STREAMS/, TrakLkUp.dat and StrmPaks.dat overriders.
- * IPL and IDE files given to modloader **NEED** to be registered in *gta.dat* like before, the *not needing* approach was error-prone.
+ * Added *AUDIO/STREAMS/*, TrakLkUp.dat and StrmPaks.dat overriders.
+ * Added *stream.ini* merger.
  * Added profiles, a feature to let you have different mod setups with easy switching between them or even automatic *(See modloader/.data/Profiles.md for details)*. 
+ * Wildcards support has been expanded plus not only the IgnoreFiles list support wildcards but the others too.
+ * IPL and IDE files given to modloader **NEED** to be registered in *gta.dat* like before, the *not needing* approach was error-prone.
  * Restored the `mod` command line and also added the `-modprof` command line to load a profile. *(See modloader/.data/Command Line Arguments.md for details)*. 
  * The `mod` command line allows the user to specify a priority now.
  * Fixed non-GENRL wave files not being installed properly.
+ * Other minor fixes.
 
 v0.2.3 (Feb 02 2015)
 ------------------------
