@@ -181,6 +181,8 @@ namespace injector
                     if(const char* value = FindFromKey(key))
                         return value;
                 }
+                injector::scoped_basic<5> save_hook;
+                save_hook.save(data().GetText.get(), 5, false);
                 UnHook();
                 auto result = ((GetType) data().GetText.get())(self, 0, key);
                 MakeHook();

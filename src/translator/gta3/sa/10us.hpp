@@ -272,6 +272,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x6F74BC] = 0x6F74BC;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
         map[0x6F7496] = 0x6F7496;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks3.dat"
         map[0x6F74E2] = 0x6F74E2;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks4.dat"
+        map[0x5BCCDE] = 0x5BCCDE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; "stream.ini"
         map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
         map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
