@@ -177,6 +177,9 @@ void Loader::Startup()
         modloader_t::Log             = this->Log;
         modloader_t::vLog            = this->vLog;
         modloader_t::Error           = this->Error;
+        modloader_t::CreateSharedData= this->CreateSharedData;
+        modloader_t::DeleteSharedData= this->DeleteSharedData;
+        modloader_t::FindSharedData  = this->FindSharedData;
 
         // Initialise sub systems
         this->ParseCommandLine();   // Parse command line arguments

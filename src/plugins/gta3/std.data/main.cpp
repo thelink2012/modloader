@@ -22,7 +22,7 @@ CEREAL_REGISTER_RTTI(void); // for DataPlugin::line_data_base
 const DataPlugin::info& DataPlugin::GetInfo()
 {
     static const char* extable[] = { "dat", "cfg", "ide", "ipl", "zon", "ped", "grp", "txt", 0 };
-    static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", 54, extable };
+    static const info xinfo      = { "std.data", get_version_by_date(), "LINK/2012", -1, extable };
     return xinfo;
 }
 
@@ -132,6 +132,21 @@ int DataPlugin::GetBehaviour(modloader::file& file)
         }
         else if(file.is_ext("ipl") || file.is_ext("zon"))
         {
+             if(gvm.IsSA() && file.is_ext("ipl"))
+             {
+                // Make sure this is not binary IPL by reading the file magic
+                char buf[4];
+                if(FILE* f = fopen(file.fullpath().c_str(), "rb"))
+                {
+                    if(fread(buf, 4, 1, f) && !memcmp(buf, "bnry", 4))
+                    {
+                        fclose(f);
+                        return MODLOADER_BEHAVIOUR_NO;
+                    }
+                    fclose(f);
+                }
+            }
+
             if(setup_behaviour(file, ipl_behv))
                 return MODLOADER_BEHAVIOUR_YES;
         }

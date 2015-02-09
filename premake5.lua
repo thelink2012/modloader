@@ -227,8 +227,8 @@ solution "modloader"
     configuration "gmake"
         buildoptions { "-std=gnu++14", "-Wno-deprecated" }
     configuration "vs*"
-        buildoptions { "/arch:IA32" }   -- disable the use of SSE/SSE2 instructions (old game, old computers)
-        buildoptions { "/Zm150" }       -- more precompiled header memory (for gta3.std.data)
+        buildoptions { "/arch:IA32" }           -- disable the use of SSE/SSE2 instructions (old game, old computers)
+        buildoptions { "/Zm150", "/bigobj" }    -- gta3.std.data is a monster
 
     project "docs"
         dummyproject()
