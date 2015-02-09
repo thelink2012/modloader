@@ -1,5 +1,6 @@
-v0.2.4 (In Dev)
+v0.2.4 (Feb 09 2015)
 ------------------------
+ * Added IDE refresher.
  * Added *AUDIO/STREAMS/*, TrakLkUp.dat and StrmPaks.dat overriders.
  * Added *stream.ini* merger.
  * Added profiles, a feature to let you have different mod setups with easy switching between them or even automatic *(See modloader/.data/Profiles.md for details)*. 
