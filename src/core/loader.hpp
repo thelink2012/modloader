@@ -402,6 +402,9 @@ class Loader : public modloader_t
         std::map<std::string, int>      plugins_priority;   // List of priorities to be applied to plugins
         std::list<PluginInformation>    plugins;            // List of plugins
         
+        // Others
+        std::map<std::string, modloader_shdata_t> shdata;   // Shared data between plugins
+
     private: // Logging
         void OpenLog();     // Open log stream
         void CloseLog();    // Closes log stream
@@ -455,6 +458,11 @@ class Loader : public modloader_t
         static void Error(const char* msg, ...);
         static void FatalError(const char* msg, ...);
         
+        // Shared data
+        static modloader_shdata_t* CreateSharedData(const char* name);
+        static modloader_shdata_t* FindSharedData(const char* name);
+        static void DeleteSharedData(modloader_shdata_t* data);
+
         // Unique ids function
         uint64_t PickUniqueModId()  { return ++currentModId; }
         uint64_t PickUniqueFileId() { return ++currentFileId; }

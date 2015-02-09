@@ -1,10 +1,11 @@
 /* 
  * Standard Streamer Plugin for Mod Loader
- * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2014-2015  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
  * 
  */
 #include <stdinc.hpp>
+#include <interfaces/gta3/std.stream.hpp>
 #include "streaming.hpp"
 using namespace modloader;
 
@@ -19,14 +20,14 @@ struct tag_ped_t {} tag_ped;
  *      Refreshes the streaming, essentially refresh models that have been added, modified or deleted on Mod Loader.
  */
 template<class T>   // T = Traits (see traits/gta3)
-class Refresher : private T
+class Refresher : public IStreamRefresher, private T
 {
     public:
         // To run the refresher, just construct it passing the streaming as argument
         Refresher(CAbstractStreaming& s);
         Refresher(tag_player_t, CAbstractStreaming& s);
 
-    private:
+    public:
         // Stuf from T we're going to use.... be explict... C++ compilant code needs this
         using T::txd_start;
         using T::GetEntityType;
@@ -76,19 +77,53 @@ class Refresher : private T
         std::map<EntityType, EntityEvent>   mEntityEvents;  // Map of association between type of entities and their refreshing events
         std::map<id_t, RefreshInfo>         mToRefresh;     // List of resources that needs to be refreshed (dff/txd/col/ifp/ipl/etc)
 
+        // List populated by the user
+        std::vector<id_t>                   mRefreshRequests; // Resources asked to be refreshed
 
         // Initialization
-        void BuildRefreshMap();
-        void BuildTxdAssociationMap();
-        void BuildEntitiesAssociationMap();
         void SetupEntityEvents();
+        void BuildTxdAssociationMap();
+        void BuildRefreshMap();
+        void BuildEntitiesAssociationMap();
 
         // Actual refreshing
-        void DestroyEntities();
-        void RemoveModels();
+        void DestroyEntities() override;
+        void RemoveModels() override;
         void ProcessImportList();
-        void RequestModels();
-        void RecreateEntities();
+        void RequestModels() override;
+        void RecreateEntities() override;
+
+        // Asks to refresh a mod during the refreshing process
+        void RequestRefresh(id_t id) override
+        {
+            mRefreshRequests.emplace_back(id);
+        }
+
+        //
+        // Helpers
+        //
+
+        void PrepareRefresh() override
+        {
+            this->BuildRefreshMap();
+            this->BuildEntitiesAssociationMap();
+        }
+
+        void PerformRefresh() override
+        {
+            this->PerformRefresh(false);
+        }
+
+        void PerformRefresh(bool process_implist)   // process_implist should be used only internally by this module (std.stream)
+        {
+            this->DestroyEntities();
+            this->RemoveModels();
+            if(process_implist) this->ProcessImportList();
+            this->RequestModels();
+            this->RecreateEntities();
+        }
+
+    private:
 
         // Returns an vector of models that uses the specified txd index (starts from 0)
         // This should be ran only after the txd association map is already built
@@ -146,6 +181,32 @@ class Refresher : private T
 
 
 /*
+ *  PerformStandardRefresh
+ *      Processes the standard refreshing process for std.stream
+ */
+template<class T>
+void PerformStandardRefresh(CAbstractStreaming& s)
+{
+    plugin_ptr->Log("Refreshing necessary models...");
+
+    Refresher<T> refresher(s);
+
+    // Ask to refresh the specified models
+    for(auto& imp : s.to_import)
+    {
+        auto id = streaming.FindModelFromHash(imp.first);
+        if(id != -1) refresher.RequestRefresh(id);
+    }
+
+    // Do it!!!!!!!!!!!
+    refresher.PrepareRefresh();
+    refresher.PerformRefresh(true);
+
+    plugin_ptr->Log("Successfully refreshed models.");
+    s.to_import.clear();
+}
+
+/*
  *  CAbstractStreaming::ProcessRefreshes
  *      Forwards the call to the correct Refresher
  */
@@ -153,8 +214,7 @@ void CAbstractStreaming::ProcessRefreshes()
 {
     if(this->to_import.size())
     {
-        if(gvm.IsSA()) Refresher<TraitsSA>(*this);
-        this->to_import.clear();
+        if(gvm.IsSA()) PerformStandardRefresh<TraitsSA>(*this);
     }
     
     if(this->to_rebuild_player)
@@ -173,29 +233,17 @@ template<class T>
 Refresher<T>::Refresher(CAbstractStreaming& s) 
     : streaming(s)
 {
-    plugin_ptr->Log("Refreshing necessary models...");
-
     // Before we do anything we shouldn't have anything on the streaming bus
     streaming.FlushChannels();
 
-    // Remove all unused models on the streaming, so our reloading process will be less painful (faster),
-    // we won't end up reloading unused models
+    // Remove all unused models on the streaming, so our reloading process will be less painful (faster)
+    // since we won't end up reloading unused models
     streaming.RemoveUnusedResources();
 
-    // Setup the refresher (order matters)
-    this->BuildTxdAssociationMap();
-    this->BuildRefreshMap();
-    this->BuildEntitiesAssociationMap();
+    // Initialise some stuff
+    this->mRefreshRequests.reserve(256);
     this->SetupEntityEvents();
-    
-    // Do the refreshing proccess
-    this->DestroyEntities();                // Destroy anything that will be refreshed on the existing entities
-    this->RemoveModels();                   // Remove all models that needs refreshing from the streaming
-    this->ProcessImportList();              // Process the import list
-    this->RequestModels();                  // Request all models previosly removed
-    this->RecreateEntities();               // Recreate the pieces of the entities we destroyed previosly
-
-    plugin_ptr->Log("Successfully refreshed models.");
+    this->BuildTxdAssociationMap();
 }
 
 /*
@@ -241,10 +289,11 @@ template<class T> auto Refresher<T>::GetModelsUsingTxdIndex(id_t index) -> const
  */
 template<class T> void Refresher<T>::BuildTxdAssociationMap()
 {
+    this->mTxdAssoc.clear();
     for(auto i = 0u; i < this->max_models; ++i)
     {
         auto txd = this->GetModelTxdIndex(i);
-        if(txd != -1) mTxdAssoc[txd].emplace_back(i);
+        if(txd != -1) this->mTxdAssoc[txd].emplace_back(i);
     }
 }
 
@@ -270,10 +319,10 @@ template<class T> void Refresher<T>::BuildRefreshMap()
         return false;
     };
 
-    // For each model that needs reimporting.....
-    for(auto& imp : streaming.to_import)
+    // For each model that needs refreshing.....
+    for(auto id : this->mRefreshRequests)
     {
-        auto id = streaming.FindModelFromHash(imp.first);
+        //auto id = streaming.FindModelFromHash(imp.first);<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<TODO
         auto type = streaming.GetIdType(id);
 
         // Cannot refresh some kinds of resources just in time (In fact I'm not giving any effort to refresh those)
@@ -486,5 +535,47 @@ template<class T> void Refresher<T>::SetupEntityEvents()
         // Buildings and objects do not need a "Recreate", they'll be recreated automatically by the streaming on demand
         building.Destroy = DestroyModel;
         object.Destroy   = DestroyModel;
+    }
+}
+
+
+
+//
+//  Exported interface for refreshing
+//
+
+static modloader_shdata_t* shStreamRefresherCreate = 0;
+
+namespace // avoid conflict with the same function defined in <interfaces/gta3/std.stream.hpp>
+{
+    extern "C" __declspec(dllexport)
+    IStreamRefresher* StreamRefresherCreate(uint32_t flags)
+    {
+        if(gvm.IsSA())
+            return new Refresher<TraitsSA>(streaming);
+        return nullptr;
+    }
+
+    static void* StreamRefresherCreatePtr()
+    {
+        return (void*)(&StreamRefresherCreate);
+    }
+}
+
+void CAbstractStreaming::InitRefreshInterface()
+{
+    if(shStreamRefresherCreate = plugin_ptr->loader->CreateSharedData("StreamRefresherCreate"))
+    {
+        shStreamRefresherCreate->type = MODLOADER_SHDATA_FUNCTION;
+        shStreamRefresherCreate->f    = StreamRefresherCreatePtr();
+    }
+}
+
+void CAbstractStreaming::ShutRefreshInterface()
+{
+    if(shStreamRefresherCreate)
+    {
+        plugin_ptr->loader->DeleteSharedData(shStreamRefresherCreate);
+        shStreamRefresherCreate = 0;
     }
 }

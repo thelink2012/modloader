@@ -294,6 +294,9 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B413B] = 0x5B413B;   // call    _ZN10CModelInfo13AddClumpModelEi         ; @CFileLoader::LoadAnimatedClumpObject
         map[0x5B6FD1] = 0x5B6FD1;   // call    _ZN10CModelInfo15AddVehicleModelEi
         map[0x5B74A7] = 0x5B74A7;   // call    _ZN10CModelInfo11AddPedModelEi
+        map[0x5B85DD] = 0x5B85DD;
+        map[0x5B3DC2] = 0x5B3DC2;
+        map[0x731850] = 0x731850;
     }
 
 

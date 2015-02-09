@@ -104,6 +104,40 @@ typedef struct
  **************************************/
 
 /*
+ *  Shared data between plugins
+ */
+#define MODLOADER_SHDATA_ANY        0       /* Could be any data (default value) */
+#define MODLOADER_SHDATA_EMPTY      1       /* Empty variable */
+#define MODLOADER_SHDATA_FUNCTION   2       /* Function variable */
+#define MODLOADER_SHDATA_POINTER    3       /* Pointer variable */
+#define MODLOADER_SHDATA_INT        4       /* Signed 32 Bits Integer */
+#define MODLOADER_SHDATA_UINT       5       /* Unsigned 32 Bits Integer */
+/*#define MODLOADER_SHDATA_LIST       10    /* Linked list */
+
+struct modloader_shdata_t
+{
+    uint32_t    type;       /* Type of the data as in MODLOADER_SHDATA_* constants */
+
+    /* Data */
+    union {
+        void*     p;    /* MODLOADER_SHDATA_POINTER pointer */
+        void*     f;    /* MODLOADER_SHDATA_FUNCTION function pointer */
+        int32_t   i;    /* MODLOADER_SHDATA_INT */
+        uint32_t  u;    /* MODLOADER_SHDATA_UINT */
+    };
+};
+
+/*
+ *  modloader_fCreateSharedData -> Creates a shared data named @name. Returns a pointer to the created shared data or NULL on failure.
+ *  modloader_fDeleteSharedData -> Frees a previosly @data created using CreateSharedData.
+ *  modloader_fFindSharedData    -> Gets the pointer of the shared data named @name. Returns the pointer to the shared data object or NULL on failure.
+ */
+typedef modloader_shdata_t* (*modloader_fCreateSharedData)(const char* name);
+typedef void (*modloader_fDeleteSharedData)(modloader_shdata_t* data);
+typedef modloader_shdata_t* (*modloader_fFindSharedData)(const char* name);
+
+
+/*
  * Log
  *      Logs something into the modloader log file
  */
@@ -133,10 +167,14 @@ typedef struct modloader_t
     uint8_t    _rsv3;           /* Reserved */
     uint8_t    _rsv4;           /* Reserved */
 
-    modloader_fLog          Log;
-    modloader_fvLog         vLog;
-    modloader_fError        Error;
-    
+    /* Interface */
+    modloader_fLog                  Log;
+    modloader_fvLog                 vLog;
+    modloader_fError                Error;
+    modloader_fCreateSharedData     CreateSharedData;
+    modloader_fDeleteSharedData     DeleteSharedData;
+    modloader_fFindSharedData       FindSharedData;
+
 } modloader_t;
 
 

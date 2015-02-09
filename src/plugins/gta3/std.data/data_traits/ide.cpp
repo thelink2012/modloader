@@ -6,6 +6,7 @@
 #include <stdinc.hpp>
 #include "../data_traits.hpp"
 #include <traits/gta3/sa.hpp>
+#include <interfaces/gta3/std.stream.hpp>
 using namespace modloader;
 using std::tuple;
 using std::string;
@@ -173,19 +174,77 @@ static std::function<void()> MakeIdeReloader()
     });
 
 
-    return []
+    return []   // this will be called whenever IDEs need refresh
     {
-        auto AddOrMatchModel = [](std::function<void*(int)> Add, int id)
+        int mWorkingModelId     = -1;
+        void* mWorkingModelPtr  = nullptr;
+        bool mHasAnyChange      = false;
+        std::unique_ptr<IStreamRefresher> refresher(StreamRefresherCreate());
+
+        if(refresher == nullptr)
         {
+            plugin_ptr->Log("Warning: Cannot refresh IDE files because std.stream.dll is missing!");
+            return;
+        }
+        else
+            refresher.reset();
+
+        // TODO CHECK ON MODEL THO
+
+        auto RegisterChange = [&](int id)
+        {
+            if(!mHasAnyChange)
+            {
+                mHasAnyChange = true;
+                refresher->RequestRefresh(mWorkingModelId);
+                refresher->RequestRefresh(id);
+                refresher->PrepareRefresh();
+                refresher->DestroyEntities();
+                refresher->RemoveModels();
+            }
+        };
+
+        auto AddOrMatchModel = [&](std::function<void*(int)> Add, int id)
+        {
+            mWorkingModelId = id;
             auto p = TraitsSA::GetModelInfo(id);
-            if(p != nullptr) return p;
-            return Add(id);
+            if(p != nullptr) return (mWorkingModelPtr = p);
+            return (mWorkingModelPtr = Add(id));
+        };
+
+        auto CheckTexDictionaryChange = [&](std::function<void(void*, const char*)> SetTexDictionary, void* modelinfo, const char* txdname)
+        {
+            auto FindTxdSlot = injector::cstd<int(const char*)>::call<0x731850>;
+            auto newtxd = FindTxdSlot(txdname);
+            auto oldtxd = TraitsSA::GetModelTxdIndex(mWorkingModelId);
+            if(newtxd != oldtxd)
+            {
+                RegisterChange(mWorkingModelId);
+                return SetTexDictionary(modelinfo, txdname);
+            }
         };
 
         auto emptyide_mf = make_function_hook<emptyide_hook>([](emptyide_hook::func_type fopen, const char* filename, const char* mode) {
             void* f = fopen(filename, mode);
             return f? f : fopen(modloader::szNullFile, mode);
         });
+
+        auto DummyLineParse = [](std::function<int(const char*)>, const char*) -> int
+        {};
+
+        auto LineParseRefresh = [&](std::function<int(const char*)> parse, const char* line) -> int
+        {
+            mHasAnyChange = false;
+            refresher.reset(StreamRefresherCreate());
+            auto i = parse(line);
+            if(mHasAnyChange)
+            {
+                refresher->RequestModels();
+                refresher->RecreateEntities();
+            }
+            return i;
+        };
+
 
         auto obj0_mf = make_function_hook<function_hooker<0x5B3D8E, void*(int id)>>(AddOrMatchModel);
         auto obj1_mf = make_function_hook<function_hooker<0x5B3D9A, void*(int id)>>(AddOrMatchModel);
@@ -197,12 +256,26 @@ static std::function<void()> MakeIdeReloader()
         auto peds_mf = make_function_hook<function_hooker<0x5B74A7, void*(int id)>>(AddOrMatchModel);
 
         scoped_nop<5> nop_ide_2dfx(0x5B86B7, 5);
+        //scoped_nop<5> nop_ide_objs(raw_ptr(0x5B85DD), 5); // TODO PROPER PTR
+        scoped_nop<5> nop_ide_tobj(raw_ptr(0x5B862C), 5);   // TODO PROPER PTR
+        scoped_nop<5> nop_ide_weap(raw_ptr(0x5B8634), 5);   // TODO PROPER PTR
+        scoped_nop<5> nop_ide_hier(raw_ptr(0x5B863C), 5);   // TODO PROPER PTR
+        scoped_nop<5> nop_ide_anim(raw_ptr(0x5B8644), 5);   // TODO PROPER PTR
+        scoped_nop<5> nop_ide_cars(raw_ptr(0x5B864C), 5);   // TODO PROPER PTR
+        scoped_nop<5> nop_ide_peds(raw_ptr(0x5B8654), 5);   // TODO PROPER PTR
+        scoped_nop<5> nop_ide_txdp(raw_ptr(0x5B86C5), 5);   // TODO PROPER PTR
+
+        auto lparse1_hk = make_function_hook<function_hooker<0x5B85DD, int(const char*)>>(LineParseRefresh);
+        auto texch_hk   = make_function_hook<function_hooker_thiscall<0x5B3DC2, void(void*, const char*)>>(CheckTexDictionaryChange);
 
         void(*LoadObjectTypes)(const char*) = ReadRelativeOffset(0x5B9206 + 1).get();
         for(auto& ide : ide_files)
         {
-            if(ide == "data\\maps\\generic\\vegepart.ide" /*|| ide == "data\\maps\\generic\\procobj.ide"*/)
+            if(ide == "data\\maps\\generic\\vegepart.ide" || ide == "data\\maps\\generic\\procobj.ide")
+            //if(true)
+            {
                 LoadObjectTypes(ide.c_str());
+            }
         }
     };
 }
