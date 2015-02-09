@@ -1,12 +1,24 @@
+v0.2.4 (In Dev)
+------------------------
+ * Added *AUDIO/STREAMS/*, TrakLkUp.dat and StrmPaks.dat overriders.
+ * Added *stream.ini* merger.
+ * Added profiles, a feature to let you have different mod setups with easy switching between them or even automatic *(See modloader/.data/Profiles.md for details)*. 
+ * Wildcards support has been expanded plus not only the IgnoreFiles list support wildcards but the others too.
+ * IPL and IDE files given to modloader **NEED** to be registered in *gta.dat* like before, the *not needing* approach was error-prone.
+ * Restored the `mod` command line and also added the `-modprof` command line to load a profile. *(See modloader/.data/Command Line Arguments.md for details)*. 
+ * The `mod` command line allows the user to specify a priority now.
+ * Fixed non-GENRL wave files not being installed properly.
+ * Other minor fixes.
+
 v0.2.3 (Feb 02 2015)
 ------------------------
- * The In-Game menu is ready to be used _(go into Options > Mod Loader Setup)_. _(make sure it's enabled from *modloader/.data/config.ini*, EnableMenu=true)_
+ * The In-Game menu is ready to be used _(go into Options > Mod Configuration)_.
  * Automatic refreshing implemented, meaning changes on *modloader/* directory are detected automatically while you play.
  * The refresh key _(by default F4)_ has been removed in consequence of the addition of the menu and automatic refreshing.
  * Implemented *weapon.dat* merger and readme reader.
  * Implemented *ar_stats.dat, animgrp.dat, ped.dat, pedstats.dat, pedgrp.dat, cargrp.dat, melee.dat, statdisp.dat, shopping.dat, surface.dat, surfinfo.dat, surfaud.dat, object.dat, procobj.dat and decision makers* merger.
  * Implemented *clothes.dat, furnitur.dat, fonts.dat, roadblox.dat, tracks.dat, tracks2.dat, tracks3.dat and tracks4.dat* overrider.
- * Removed the *-mod* command-line, something better than that will come up later (*-nomods* is still available!).
+ * Removed the `-mod` command-line, something better than that will come up later (`-nomods` is still available!).
  * Fixed no date-time in the load game menu screen.
  * Other minor fixes
 
@@ -41,7 +53,7 @@ v0.2.1 (Nov 23 2014)
  * Fixed script sprites not loading properly
  * Fixed ini entries beggining with square brackets not being readen properly
  * Fixed an issues with the std.asi path translator
- * Fixed command line argument -nomods not working properly
+ * Fixed command line argument `-nomods` not working properly
  
 v0.2.0 (Aug 02 2014)
 ------------------------

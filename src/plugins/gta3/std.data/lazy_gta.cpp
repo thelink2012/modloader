@@ -202,9 +202,17 @@ void ProcessGtaDatEntries()
             else if(count == 0)
             {
                 // Missing this entry, let's add it
-                entries.emplace(is_ide? LineType::IDE : LineType::IPL, vpath);
-                plugin_ptr->Log("The file \"%s\" is not a registered entry in the level file, registering it anyway as \"%s\"",
-                    mfile->filepath(), vpath.c_str());
+                if(false)
+                {
+                    entries.emplace(is_ide? LineType::IDE : LineType::IPL, vpath);
+                    plugin_ptr->Log("The file \"%s\" is not a registered entry in the level file, registering it anyway as \"%s\"",
+                        mfile->filepath(), vpath.c_str());
+                }
+                else
+                {
+                    plugin_ptr->Log("The file \"%s\" is not a registered entry in the level file, ignoring.",
+                        mfile->filepath(), vpath.c_str());
+                }
             }
         }
     }

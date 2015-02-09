@@ -49,7 +49,7 @@ namespace injector
                     if(key == 0)
                     {
                         // ...and the current iterating character is a space...
-                        if(isspace(*p))
+                        if(*p == 0x20 || (*p >= 0x09 && *p <= 0x0D))
                         {
                             // ..we've just found that the key is there
                             *p = 0;

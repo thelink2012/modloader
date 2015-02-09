@@ -1,7 +1,7 @@
 gta3.std.data
 =========================================================================
  + __Author__:   LINK/2012 (<dma_2012@hotmail.com>)
- + __Priority__: 54
+ + __Priority__: 50
 
 *************************************************************************
 
@@ -47,14 +47,15 @@ The following data files are currently supported:
 | tracks4.dat    |    X     |       |        |
 | weapon.dat     |    X     |   X   |   X    |
 | procobj.dat    |    X     |   X   |        |
+| stream.ini     |    X     |   X   |        |
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     
 
 __Additional Notes__:
    * Decision files (.ped/.grp) mustbe in a *decision/allowed* directory to work
-   * IDE and IPL that doesn't have a matching gta.dat entry are loaded anyway
-   * IDE and IPL files usually needs to be structured the same way as it's gta.dat demands
+   * IDE and IPL that doesn't have a matching gta.dat are **NOT** loaded.
+   * IDE and IPL files usually needs to be structured the same way as it's gta.dat demands.
       (i.e. IPL DATA/MAPS/TEST.IPL should be structured like modloader/My Map/data/maps/test.ipl)
       although this is **NOT** necessary anymore since Mod Loader 0.2.x
    * This makes the loading screen dynamic, removing the flickering when there are too few gta.dat entries (usually on TCs)

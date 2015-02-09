@@ -227,8 +227,8 @@ solution "modloader"
     configuration "gmake"
         buildoptions { "-std=gnu++14", "-Wno-deprecated" }
     configuration "vs*"
-        buildoptions { "/arch:IA32" }   -- disable the use of SSE/SSE2 instructions (old game, old computers)
-        buildoptions { "/Zm150" }       -- more precompiled header memory (for gta3.std.data)
+        buildoptions { "/arch:IA32" }           -- disable the use of SSE/SSE2 instructions (old game, old computers)
+        buildoptions { "/Zm150", "/bigobj" }    -- gta3.std.data is a monster
 
     project "docs"
         dummyproject()
@@ -244,6 +244,7 @@ solution "modloader"
         addinstall { source = "doc/config/plugins.ini.0",       destination = "modloader/.data"         }
         addinstall { source = "doc/CHANGELOG.md",               destination = "modloader/.data"         }
         addinstall { source = "doc/Command Line Arguments.md",  destination = "modloader/.data"         }
+        addinstall { source = "doc/Profiles.md",                destination = "modloader/.data"         }
 
     project "addr"
         language "C++"
@@ -276,8 +277,8 @@ solution "modloader"
         "std.sprites",
         "std.fx",
         "std.text",
+        "std.tracks",
         "std.bank",
-
         "std.stream",
         "std.asi",
         "std.data"

@@ -32,14 +32,6 @@ static const uint32_t type_mask_shf  = 32;                      // Takes 3 bits,
 static const uint32_t bank_mask_shf  = type_mask_shf + 3;       // Takes 16 bits
 static const uint32_t sound_mask_shf = bank_mask_shf + 16;      // Takes 10 bits
 
-#if 0
-// Actual maskes with shifting
-static const uint64_t hash_mask     = 0x00000000FFFFFFFF;                   // Hash mask
-static const uint64_t type_mask     = (type_mask_base  << type_mask_shf);   // Type of this behaviour
-static const uint64_t bank_mask     = (bank_mask_base  << bank_mask_shf);   // Sound bank related to this behaviour
-static const uint64_t sound_mask    = (sound_mask_base << sound_mask_shf);   // Sound number related to this behaviour
-#endif
-
 // Sets the initial value for a behaviour, by using an filename hash and file type
 inline uint64_t SetType(uint32_t hash, Type type)
 {

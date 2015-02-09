@@ -79,7 +79,7 @@ namespace modloader
         template<class T>
         static uint64_t set_mask(uint64_t mask, uint64_t umask, uint32_t shift, T value)
         {
-            return ((mask & ~umask) | (uint64_t(value) << shift));
+            return ((mask & ~(umask << shift)) | (uint64_t(value) << shift));
         }
 
         template<class T>

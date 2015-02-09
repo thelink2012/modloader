@@ -56,6 +56,7 @@ bool ThePlugin::OnStartup()
     {
         // Setup abstract streaming
         streaming.Patch();
+        streaming.InitRefreshInterface();
 
         // Setup ped.ifp overrider
         ov_ped_ifp.SetParams(file_overrider::params(nullptr));
@@ -72,6 +73,7 @@ bool ThePlugin::OnStartup()
  */
 bool ThePlugin::OnShutdown()
 {
+    streaming.ShutRefreshInterface();
     return true;
 }
 

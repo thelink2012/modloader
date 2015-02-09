@@ -237,6 +237,8 @@ class CAbstractStreaming
         ~CAbstractStreaming();
         void Patch();
         void DataPatch();
+        void InitRefreshInterface();
+        void ShutRefreshInterface();
 
         // Some analogues to the game CStreaming (may perform some additional work)
         void RequestModel(id_t id, uint32_t flags);
@@ -385,6 +387,9 @@ class CAbstractStreaming
 
 
     private: // Resources helper methods
+
+        template<class T>
+        friend void PerformStandardRefresh(CAbstractStreaming& s);
 
         // Finds resource index from it's filename hash, returns -1 if none
         id_t FindModelFromHash(hash_t hash)

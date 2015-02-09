@@ -12,6 +12,7 @@
 #include <modloader/modloader.hpp>
 #include <modloader/util/path.hpp>
 #include <modloader/util/container.hpp>
+#include <ini_parser/ini_parser.hpp>
 #include <string>
 #include <vector>
 #include <list>
@@ -30,6 +31,8 @@ using modloader::compare;
 static const char* modurl  = "https://github.com/thelink2012/modloader";
 static const char* downurl = "https://github.com/thelink2012/modloader/releases";
 
+//
+static const char* default_profile_name = "Default";
 
 // Functor for sorting based on priority
 template<class T>
@@ -53,6 +56,15 @@ struct PriorityPred
                 pred(a, b) : compare(a.name, b.name, true) < 0);
     }
 };
+
+struct ModLoaderIniSectionPred
+{
+    bool operator()(const std::string& a, const std::string& b) const;
+};
+using modloader_ini_map_key  = std::map<std::string, std::string>;
+using modloader_ini_map_sect = std::map<std::string, modloader_ini_map_key, ModLoaderIniSectionPred>;
+using modloader_ini = linb::basic_ini<char, std::string, modloader_ini_map_key, modloader_ini_map_sect>;
+
 
 // The Mod Loader Core
 class Loader : public modloader_t
@@ -92,6 +104,7 @@ class Loader : public modloader_t
         class FileInformation;
         class PluginInformation;
         class FolderInformation;
+        class Profile;
         using ExtMap = std::map<std::string, ref_list<PluginInformation>>;
         using Journal = std::map<std::string, Loader::Status>;  // [{".", Status::Updated}] means refresh all
         using BehvSet = std::set<std::pair<PluginInformation*, uint64_t>>;  // .first=handler, .second=behaviour; list of behaviours
@@ -250,7 +263,123 @@ class Loader : public modloader_t
                 bool UpdatePriority();
         };
         
-        
+        // Information about a profile (mods to load, files to ignore, etc)
+        class Profile
+        {
+            public:
+                Profile(FolderInformation& parent, std::string profname) :
+                    name(std::move(profname)), parent(parent)
+                {}
+
+                Profile(const Profile&) = default;
+                ~Profile();
+
+                //
+                FolderInformation& Parent() const  { return this->parent; }
+                const std::string& GetName() const { return this->name; }
+                void SetName(std::string name)     { this->name = std::move(name); }
+
+                // Case Insensitive Compare
+                bool operator<(const Profile& rhs) const
+                { return modloader::compare(this->GetName(), rhs.GetName(), false) < 0; }
+
+                bool operator==(const std::string& rhs) const
+                { return modloader::compare(this->GetName(), rhs, false) == 0; }
+
+                bool operator==(const Profile& rhs) const
+                { return (*this == rhs.GetName()); }
+
+                // Checks
+                bool IsIgnored(const std::string& name) const;
+                bool IsFilePathIgnored(const std::string& path) const;
+                int GetPriority(const std::string& name) const;
+                bool IsIgnoredNoExclusive(const std::string& name) const;
+                bool IsExcluded(const std::string& name) const;
+                bool IsExclusiveToMe(const std::string& name) const;
+                bool IsInheritedFrom(const Profile& profile) const;
+                
+                // Priority, inclusion and ignores
+                void IgnoreFile(std::string glob);
+                void SetPriority(std::string name, int priority);
+                void Include(std::string name);
+                void Uninclude(const std::string& name);
+                void IgnoreMod(std::string mod);
+                void UnignoreMod(const std::string& mod);
+                void AddExclusivity(const std::string& mod);
+                void RemExclusivity(const std::string& mod);
+
+                // Sets flags
+                void SetIgnoreAll(bool bSet);
+                void SetExcludeAll(bool bSet);
+                bool IsIgnoringAll() const;
+                bool IsExcludingAll() const;
+
+                // Get flags
+                bool IsIgnoring() const  { return IsIgnoringAll(); }
+                bool IsExcluding() const { return IsExcludingAll(); }
+                bool IsOnIgnoringList(const std::string& name) const;
+                bool IsOnIncludingList(const std::string& name) const;
+
+                // Clears all buffers from this structure
+                void Clear();
+
+                // Removes all the references to the specified profile in this profile
+                void RemoveReferences(const Profile& prof)
+                { RemoveInheritance(prof); }
+
+                // Inheritance
+                void AddInheritance(Profile& profile, bool modify_str = true);
+                void ClearInheritance(bool modify_str = true);
+                void RemoveInheritance(const Profile& profile, bool modify_str = true);
+                void UpdateInheritance();
+                void AddInheritanceToCurrent();  // should call UpdateInheritance after this
+
+                // Sets the ini that has this profile data or empty for modloader.ini
+                void SetGenerator(std::string ininame = "")
+                { this->inifile = std::move(ininame); }
+
+                // Gets the ini file that this profile data is stored at
+                std::string GetGenerator()
+                { return this->inifile; }
+
+                //
+                Profile& operator=(const Profile& rhs) = delete;
+
+            public:
+                const std::string& GetModuleCondition() { return this->use_if_module; }
+            protected:
+                friend class FolderInformation;
+                friend struct ModLoaderIniSectionPred;
+                void LoadConfigFromINI(const modloader_ini& ini);
+                void SaveConfigForINI(modloader_ini& ini);
+                static std::set<std::string> GetListOfProfilesInIni(const modloader_ini& ini);
+                static std::vector<std::string> GetProfileComps(const std::string& ini_sect);
+
+                bool CallHierarchy(bool stop_if, bool default_return, std::function<bool(const Profile&)>) const;
+
+                bool CallHierarchy(bool stop_if, std::function<bool(const Profile&)> fun) const
+                { return CallHierarchy(stop_if, !stop_if, fun); }
+
+            private:
+                FolderInformation& parent;          // Owner of this Profile
+                std::string name;                   // Name of this profile     (CASE INSENSITIVE!)
+                std::string inifile;                // Name of the ini file this profile came from (empty if modloader.ini)
+                std::set<Profile*> inherits;        // Parent profiles
+                std::set<std::string> inherits_str; // Name of the parents (tolower), shouldn't be used unless for saving to the ini
+                                                    // May contain $current.
+
+                // List of settings, all strings are normalized!!!!!
+                std::map<std::string, int> mods_priority;   // List of priorities to be applied to mods
+                std::set<std::string> ignore_mods;          // All mods inside this list shall be ignored (this isn't a glob)
+                std::set<std::string> include_mods;         // All mod globs inside this list shall be included when bExcludeAll is true
+                std::set<std::string> ignore_files;         // All file globs inside this list shall be ignored
+                std::set<std::string> exclusive_mods;       // All mods inside this list shall be exclusive to this profile
+                
+                // Folder flags
+                std::pair<bool, bool> bIgnoreAll    = { false, false }; // .first = Has this flag?; .second = When true, no mod will be readen
+                std::pair<bool, bool> bExcludeAll   = { false, false }; // .first = Has this flag?; .second = When true, no mod gets loaded but the ones at include_mods list
+                std::string use_if_module;                              // Forces the use of this profile if the specified module is loaded
+        };
         
         // Information about a modloader folder
         class FolderInformation
@@ -265,60 +394,21 @@ class Loader : public modloader_t
                 {}
                 
                 // Config
-                void LoadConfigFromINI(const std::string& inifile);
-                void SaveConfigForINI(const std::string& inifile);
                 void SaveConfigForINI();
                 void LoadConfigFromINI();
 
-                // Ignore checking
-                bool IsIgnored(const std::string& name);
-                bool IsFileIgnored(const std::string& name);
-                
-                // Adders (and Finders)
-                FolderInformation& AddChild(const std::string& path);
+                // Adders
                 ModInformation& AddMod(const std::string& name);
                 
-                // Priority, inclusion and ignores
-                void IgnoreFileGlob(std::string glob);
-                void SetPriority(std::string name, int priority);
-                int GetPriority(const std::string& name);
-                void Include(std::string name);
-                void Uninclude(const std::string& name);
-                void IgnoreMod(std::string mod);
-                void UnignoreMod(const std::string& mod);
-                
-                // Sets flags
-                void SetIgnoreAll(bool bSet);
-                void SetForceIgnore(bool bSet);
-                void SetExcludeAll(bool bSet);
-                void SetForceExclude(bool bSet);
-                bool IsIgnoringAll() { return bIgnoreAll; }
-                bool IsExcludingAll(){ return bExcludeAll; }
-
-                // Get flags
-                bool IsIgnoring()  { return bIgnoreAll || bForceIgnore; }
-                bool IsExcluding() { return bExcludeAll || bForceExclude; }
-                bool IsOnIgnoringList(const std::string& name)
-                { return (ignore_mods.find(name) != ignore_mods.end()); }
-                bool IsOnIncludingList(const std::string& name)
-                { return (include_mods.find(name) != include_mods.end()); }
-
-                // Gets me, my childs, my child-childs....
-                ref_list<FolderInformation> GetAll();
-                
                 // Get my mods sorted by priority
-                ref_list<ModInformation>    GetMods();
-                ref_list<ModInformation>    GetModsByName();
-                ref_list<ModInformation>    GetModsByPriority();
-                
-                // Rebuilds the glob string for exclude_globs
-                void RebuildIncludeModsGlob();
-                void RebuildExcludeFilesGlob();
-                
+                ref_list<ModInformation> GetMods();
+                ref_list<ModInformation> GetModsByName();
+                ref_list<ModInformation> GetModsByPriority();
+
                 // Scanning and Updating
                 void Scan();
                 void Scan(const Journal&);
-                void Update();  // After this call some ModInformation may have been deleted
+                void Update();                              // After this call some ModInformation may have been deleted
                 static void Update(ModInformation& mod);    // ^
                 
                 // Gets the path to this modfolder (relative to gamedir, normalized)
@@ -327,34 +417,45 @@ class Loader : public modloader_t
                 // Clears all buffers from this structure
                 void Clear();
                 
+                // Profile management
+                Loader::Profile& Profile();
+                Loader::Profile& AddProfile(std::string name);
+                Loader::Profile* FindProfile(const std::string& name);
+                Loader::Profile* FindProfile(const Loader::Profile&);
+                Loader::Profile& GetNonAnonProfile();
+                void RemoveReferencesToProfile(Loader::Profile& rm);
+                void RemoveProfiles();
+                ref_list<Loader::Profile> Profiles();
+                bool SwitchToProfile(Loader::Profile& prof);
+                bool SwitchToProfileAsAnonymous(Loader::Profile& prof);
+
+                void SetAnonymousProfile(const Loader::Profile& profile, bool replace = false);
+                void RemAnonymousProfile();
+                Loader::Profile& GetAnonymousProfile(); // must check IsUsingAnonymousProfile before calling
+                bool IsUsingAnonymousProfile() const;
+
+                // Makes a profile having this Folder as parent
+                // Notice the newly created profile is not registed in this FolderInformation object! Add manually using AddProfile
+                Loader::Profile MakeProfile(std::string profname)
+                { return Loader::Profile(*this, profname); }
+
             protected:
                 friend class Loader;
                 Status status;                      // Folder status
                 
             private:
-                bool gotConfig = false;             // Has config file been read?
-                std::string path;                   // Path relative to game dir
+                std::string path;                   // Folder relative to game dir (modloader/)
                 FolderInformation* parent;          // Parent folder
                 
                 ModInformationList       mods;      // All mods on this folder
-                FolderInformationList    childs;    // All child mod folders on this mod folder (sub sub "modloader/" folders)
                 
-                // List of settings, all strings are normalized!!!!!
-                std::map<std::string, int> mods_priority;   // List of priorities to be applied to mods
-                std::set<std::string> ignore_mods;          // All mods inside this list shall be ignored (this isn't a glob)
-                std::set<std::string> include_mods;         // All mod globs inside this list shall be included when bExcludeAll is true
-                std::set<std::string> ignore_files;        // All file globs inside this list shall be ignored
-                std::string include_mods_glob;              // include_mods built into a single glob
-                std::string ignore_files_glob;             // ignore_files built into a single glob
-                
-                // Folder flags
-                bool bIgnoreAll    = false;     // When true, no mod will be readen
-                bool bForceIgnore  = false;     // When true, have the same effect as ignore all (set by command line)
-                bool bExcludeAll   = false;     // When true, no mod gets loaded but the ones at include_mods list (set by INI)
-                bool bForceExclude = false;     // When true, have the same effect as exclude all (set by command line)
-                
+                // Profiles
+                std::list<Loader::Profile>  profiles;       // List of available profiles
+                Loader::Profile*            current_profile;// Curretly selected profile from the 'profiles' list
+                std::unique_ptr<Loader::Profile> anon_profile;// Forced temporary profile (made by command line, conditionals, etc)
+                                                                    // The .first boolean specifies whether we have a temporary profile
+
             protected:
-                const decltype(childs)& InfoContainer() const { return childs; }
                 void SetUnchanged() { if(status != Status::Removed) status = Status::Unchanged; }
         };
 
@@ -384,11 +485,11 @@ class Loader : public modloader_t
         // Directories
         std::string     gamePath;               // Full game path
         std::string     dataPath;               // .data path
-        //std::string     cachePath;              // Cache path (relative to game path) (deprecated for globalAppDataPath)
+        std::string     profilesPath;           // .profiles path
         std::string     commonAppDataPath;      // for all users AppData path
         std::string     localAppDataPath;       // for the current user AppData path
         std::string     pluginPath;             // Plugins path (relative to game path)
-        
+
         std::string     basicConfig;
         std::string     basicConfigDefault;     // Full path for the default basic config file
         std::string     folderConfigFilename;
@@ -402,6 +503,12 @@ class Loader : public modloader_t
         std::map<std::string, int>      plugins_priority;   // List of priorities to be applied to plugins
         std::list<PluginInformation>    plugins;            // List of plugins
         
+        // Mod Profiles
+        std::string modprof_cmd;    // -modprof <modname> received from command line (modname content)
+
+        // Shared Data
+        std::map<std::string, modloader_shdata_t> shdata;   // Shared data between plugins
+
     private: // Logging
         void OpenLog();     // Open log stream
         void CloseLog();    // Closes log stream
@@ -433,6 +540,7 @@ class Loader : public modloader_t
         void CheckWatcher();
         void TestHotkeys();
         void ParseCommandLine();
+        void BeforeFirstScan();
         void Tick();
 
     public:
@@ -455,6 +563,11 @@ class Loader : public modloader_t
         static void Error(const char* msg, ...);
         static void FatalError(const char* msg, ...);
         
+        // Shared data
+        static modloader_shdata_t* CreateSharedData(const char* name);
+        static modloader_shdata_t* FindSharedData(const char* name);
+        static void DeleteSharedData(modloader_shdata_t* data);
+
         // Unique ids function
         uint64_t PickUniqueModId()  { return ++currentModId; }
         uint64_t PickUniqueFileId() { return ++currentFileId; }
@@ -470,6 +583,8 @@ class Loader : public modloader_t
         void ReadBasicConfig();
         void SaveBasicConfig();
         void UpdateOldConfig();
+        void UpdateOldConfig_0115_021();
+        void UpdateOldConfig_023_024();
         void LoadFolderConfig() { mods.LoadConfigFromINI(); }
         void SaveFolderConfig() { mods.SaveConfigForINI(); }
 

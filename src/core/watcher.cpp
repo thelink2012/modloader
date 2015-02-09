@@ -239,9 +239,10 @@ static void RegisterNotification(FILE_NOTIFY_INFORMATION* notify)
         auto filepath = NormalizePath(std::string(buffer, size));
 
         smatch match;
-        if(filepath == "modloader.ini")
+        if(filepath == "modloader.ini" || filepath == ".profiles")
         {
-            journal.emplace(filepath, Loader::Status::Updated);
+            // Tell the loader to refresh configs
+            journal.emplace("modloader.ini", Loader::Status::Updated);
             NotifyJournalChange();
         }
         else if(regex_match(filepath, match, regex))

@@ -120,10 +120,7 @@ void Loader::Startup()
         OpenLog();
         LogGameVersion();
 
-        // Setup basic path variables
-        this->dataPath    = "modloader/.data/";
-        this->pluginPath  = "modloader/.data/plugins/";
-        //this->cachePath   = "modloader/.data/cache/";
+        // Setup root path variables
         GetCurrentDirectoryA(sizeof(rootPath), rootPath);
         MakeSureStringIsDirectory(this->gamePath = rootPath);
 
@@ -135,6 +132,11 @@ void Loader::Startup()
         if(SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, appDataPath)))
             MakeSureStringIsDirectory(MakeSureStringIsDirectory(this->localAppDataPath = appDataPath).append("modloader"));
 
+        // Setup basic path variables
+        this->dataPath    = "modloader/.data/";
+        this->pluginPath  = "modloader/.data/plugins/";
+        this->profilesPath= "modloader/.profiles/";
+
         // Setup config file names
         this->folderConfigFilename = "modloader.ini";
         this->basicConfig          = dataPath + "config.ini";
@@ -145,8 +147,8 @@ void Loader::Startup()
 
         // Make sure the important folders exist
         if(!MakeSureDirectoryExistA(dataPath.c_str())
+        || !MakeSureDirectoryExistA(profilesPath.c_str())
         || !MakeSureDirectoryExistA(pluginPath.c_str())
-        //|| !MakeSureDirectoryExistA(cachePath.c_str())
         || !MakeSureDirectoryExistA(commonAppDataPath.c_str())
         || !MakeSureDirectoryExistA(localAppDataPath.c_str()))
             Log("Warning: Mod Loader important directories could not be created.");
@@ -175,11 +177,15 @@ void Loader::Startup()
         modloader_t::Log             = this->Log;
         modloader_t::vLog            = this->vLog;
         modloader_t::Error           = this->Error;
+        modloader_t::CreateSharedData= this->CreateSharedData;
+        modloader_t::DeleteSharedData= this->DeleteSharedData;
+        modloader_t::FindSharedData  = this->FindSharedData;
 
         // Initialise sub systems
         this->ParseCommandLine();   // Parse command line arguments
         this->StartupMenu();
         this->LoadPlugins();        // Load plugins at /modloader/.data/plugins
+        this->BeforeFirstScan();
         this->ScanAndUpdate();      // Search and install mods at /modloader
         this->StartupWatcher();     // Startups the automatic refresher
 
@@ -253,128 +259,6 @@ void Loader::TestHotkeys()
     }
 }
 
-
-/*
- *  Loader::ReadBasicConfig
- *       Read the basic configuration file @filename
- */
-void Loader::ReadBasicConfig()
-{
-    linb::ini data;
-
-    Log("Loading basic config file %s", basicConfig.c_str());
-    if(data.load_file(gamePath + basicConfig))
-    {
-        // Read basic stuff from [Config] section
-        for(auto& pair : data["Config"])
-        {
-            if(!compare(pair.first, "EnableMenu", false))
-                this->bEnableMenu = to_bool(pair.second);
-            else if(!compare(pair.first, "EnablePlugins", false))
-                this->bEnablePlugins = to_bool(pair.second);
-            else if(!compare(pair.first, "EnableLog", false))
-                this->bEnableLog = to_bool(pair.second);
-            else if(!compare(pair.first, "ImmediateFlushLog", false))
-                this->bImmediateFlush = to_bool(pair.second);
-            else if(!compare(pair.first, "MaxLogSize", false))
-                this->maxBytesInLog = std::strtoul(pair.second.data(), 0, 0);
-            else if(!compare(pair.first, "RefreshKey", false))
-                this->vkRefresh = std::stoi(pair.second.data(), 0, 0);
-            else if(!compare(pair.first, "AutoRefresh", false))
-                this->bAutoRefresh = to_bool(pair.second);
-        }
-    }
-    else
-        Log("Failed to load basic config file");
-}
-
-/*
- *  Loader::SaveConfig
- *       Saves the basic config file with the current settings applied on this loader
- */
- void Loader::SaveBasicConfig()
- {
-     linb::ini ini;
-     
-     auto& config = ini["Config"];
-     config["EnableMenu"]           = modloader::to_string(bEnableMenu);
-     config["EnablePlugins"]        = modloader::to_string(bEnablePlugins);
-     config["EnableLog"]            = modloader::to_string(bEnableLog);
-     config["ImmediateFlushLog"]    = modloader::to_string(bImmediateFlush);
-     config["MaxLogSize"]           = std::to_string(maxBytesInLog);
-     config["RefreshKey"]           = std::to_string(vkRefresh);
-     config["AutoRefresh"]          = modloader::to_string(bAutoRefresh);
-
-     // Log only about failure since we'll be saving every time a entry on the menu changes
-     if(!ini.write_file(gamePath + basicConfig))
-         Log("Failed to save basic config file");
- }
-
-
-/*
- *  Loader::ParseCommandLine
- *       Parse command line arguments
- */
-void Loader::ParseCommandLine()
-{
-    char buf[512];
-    wchar_t **argv; int argc; 
-    argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    
-    Log("\nParsing command line");
-
-    if(!argv) // CommandLineToArgvW failed!!
-    {
-        Log("Failed to parse command line. CommandLineToArgvW() failed.");
-        return;
-    }
-    
-    // Converts wchar_t buffer into char* ASCII buffer
-    auto toASCII = [](const wchar_t* wstr, char* abuf, size_t asize)
-    {
-        return !!WideCharToMultiByte(CP_ACP, 0, wstr, -1, abuf, asize, NULL, NULL);
-    };
-    
-    // Iterate on the arguments
-    for(int i = 0; i < argc; ++i)
-    {
-        // If an actual argument...
-        if(argv[i][0] == '-')
-        {
-            wchar_t *arg = (i+1 < argc? argv[i+1] : nullptr);
-            wchar_t *argname = &argv[i][1];
-
-            if(!_wcsicmp(argname, L"nomods"))
-            {
-                mods.SetForceIgnore(true);
-                Log("Command line ignore received (-nomods)");
-            }
-            else if(false && !_wcsicmp(argname, L"mod"))    // conflicts with the folder ini priority/excludes thing
-            {                                               // anyway, come up with profiles later, better than this
-                // Is argument after mod argument valid?
-                if(arg == nullptr)
-                {
-                    Log("Failed to read command line. Mod command line is incomplete.");
-                    break;
-                }
-                else
-                {
-                    if(toASCII(arg, buf, sizeof(buf)))  // FIXME bugs with the menu because of Include and SetPriority
-                    {
-                        // Force exclusion and include the specified mod
-                        mods.SetForceExclude(true);
-                        mods.Include(buf);
-                        mods.SetPriority(buf, default_cmd_priority);
-                        Log("Command line mod received: \"%s\"", buf);
-                    }
-                }
-            }
-        }
-    }
-    
-    LocalFree(argv);
-}
-
 /*
  *  Loader::LogGameVersion
  *      Logs the game version into the logging stream
@@ -385,6 +269,34 @@ void Loader::LogGameVersion()
     Log("Game version: %s", injector::address_manager::singleton().GetVersionText(buffer));
 }
 
+/*
+ *  Loader::BeforeFirstScan
+ *       Performs some important operations before the first scan such as loading modloader.ini and profiles
+ */
+void Loader::BeforeFirstScan()
+{
+    // Load modloader.ini and .profiles/*, then check out if we have a command line profile to take care of
+    this->mods.LoadConfigFromINI();
+    if(this->modprof_cmd.size())
+    {
+        if(auto* prof = this->mods.FindProfile(modprof_cmd))
+            this->mods.SwitchToProfileAsAnonymous(*prof);
+        else
+            Log("Warning: Profile \"%s\" received from command line does not exist", modprof_cmd.c_str());
+    }
+
+    // Check for conditional profiles
+    for(Profile& prof : this->mods.Profiles())
+    {
+        auto& module = prof.GetModuleCondition();
+        if(module.size() && GetModuleHandleA(module.c_str()))
+        {
+            this->mods.SwitchToProfileAsAnonymous(prof);
+            break;
+        }
+    }
+
+}
 
 /*
  *  Loader::ScanAndUpdate
@@ -487,71 +399,4 @@ auto Loader::GetPluginsBy(const std::string& extension) -> ref_list<PluginInform
     // Sort and return
     std::sort(list.begin(), list.end(), pred);
     return list;
-}
-
-
-/*
- *  Loader::UpdateOldConfig
- *       Updates the old ini config (from 0.1.15) into the new ini config format (as from 0.2.1)
- */
-void Loader::UpdateOldConfig()
-{
-    linb::ini old, newer;
-
-    struct keydata { const char *section, *key; };
-
-    // Loader independent config, as loaded by this->LoadBasicConfig(), as of 0.2.0 those configs are part of a different ini
-    // So just translate them to the new ini file
-    auto UpdateBasicConfig = [&]()
-    {
-        for(auto& pair : old["CONFIG"])
-        {
-            if(!compare(pair.first, "ENABLE_PLUGINS", false))
-                this->bEnablePlugins = to_bool(pair.second);
-            else if(!compare(pair.first, "LOG_ENABLE", false))
-                this->bEnableLog = to_bool(pair.second);
-            else if(!compare(pair.first, "LOG_IMMEDIATE_FLUSH", false))
-                this->bImmediateFlush = to_bool(pair.second);
-        }
-        this->SaveBasicConfig();
-    };
-
-    // Takes the key from the old ini and puts in the new ini with new formating
-    auto UpdateKey = [&](const keydata& oldkey, const keydata& newkey)
-    {
-        if(old[oldkey.section].count(oldkey.key))
-            newer[newkey.section].emplace(newkey.key, old[oldkey.section][oldkey.key]);
-    };
-
-    // Takes a section from the old ini and puts in the new ini with new formating
-    auto UpdateSection = [&](const keydata& oldsec, const keydata& newsec)
-    {
-        if(old.count(oldsec.section))
-            newer[newsec.section] = old[oldsec.section];
-    };
-
-    if(old.load_file(gamePath + "/modloader/modloader.ini"))
-    {
-        if(old.count("CONFIG") && old.count("PRIORITY"))
-        {
-            this->Log("Found old modloader.ini, updating to newer version");
-
-            // Updates key-values to newer version
-            UpdateBasicConfig();
-            UpdateSection(keydata { "PRIORITY" }, keydata { "Priority" });
-            UpdateSection(keydata { "EXCLUDE_FILES" }, keydata { "IgnoreFiles" });
-            UpdateSection(keydata { "INCLUDE_MODS" }, keydata { "IncludeMods" });
-            UpdateKey(keydata { "CONFIG", "IGNORE_ALL" },  keydata { "Config", "IgnoreAllFiles" });
-            UpdateKey(keydata { "CONFIG", "EXCLUDE_ALL" }, keydata { "Config", "ExcludeAllMods" });
-
-            // Reverse the priority since as from 0.2.1 it's '100 is greater, 1 is lower'
-            for(auto& kv : newer["Priority"])
-            {
-                auto pr = std::stoi(kv.second);
-                kv.second = std::to_string(pr > 0 && pr <= 100? 101 - pr : pr);
-            }
-
-            newer.write_file(gamePath + "modloader/" +  folderConfigFilename);
-        }
-    }
 }

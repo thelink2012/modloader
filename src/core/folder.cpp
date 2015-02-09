@@ -7,21 +7,6 @@
 #include "loader.hpp"
 using namespace modloader;
 
-
-template<class L>
-static void BuildGlobString(const L& list, std::string& glob)
-{
-    glob.clear();
-    for(auto& g : list) glob.append(g).push_back(';');
-}
-
-static bool MatchGlob(const std::string& name, const std::string& glob)
-{
-    return !glob.empty() && PathMatchSpecA(name.c_str(), glob.c_str()) != 0;
-}
-
-
-
 /*
  *  FolderInformation::Clear
  *      Clears this object
@@ -29,59 +14,179 @@ static bool MatchGlob(const std::string& name, const std::string& glob)
 void Loader::FolderInformation::Clear()
 {
     mods.clear();
-    childs.clear();
-    mods_priority.clear();
-    include_mods.clear();
-    ignore_files.clear();
-    RebuildExcludeFilesGlob();
-    RebuildIncludeModsGlob();
+    profiles.clear();
+    current_profile = nullptr;
 }
 
 /*
- *  FolderInformation::IsIgnored
- *      Checks if the specified mod @name (normalized) should be ignored
- *      This doesn't check parents IsIgnored
+ *  FolderInformation::Profile
+ *      Gets the current working profile or temp profile.
+ *      ALWAYS access the current profile from this method since it gets a default profile if none is selected and may give a temp/unamed profile.
  */
-bool Loader::FolderInformation::IsIgnored(const std::string& name)
+Loader::Profile& Loader::FolderInformation::Profile()
 {
-    // If excluse all is under effect, check if we are included, otherwise check if we are excluded.
-    if(this->IsExcluding())
-        return (MatchGlob(name, include_mods_glob) == false);
-    else
+    if(!this->IsUsingAnonymousProfile())
+        return this->GetNonAnonProfile();
+    return this->GetAnonymousProfile();
+}
+
+/*
+ *  FolderInformation::NonAnonProfile
+ *      Gets the current profile working profile (ignores temp profile)
+ */
+Loader::Profile& Loader::FolderInformation::GetNonAnonProfile()
+{
+    if(!this->current_profile)
+        this->SwitchToProfile(this->AddProfile(default_profile_name));
+    return *this->current_profile;
+}
+
+/*
+ *  FolderInformation::AddProfile
+ *      Adds a new profile named @name or gets a existing one with the same name.
+ */
+Loader::Profile& Loader::FolderInformation::AddProfile(std::string name)
+{
+    if(auto* prof = this->FindProfile(name))
+        return *prof;
+    return (*this->profiles.emplace(this->profiles.end(), *this, std::move(name)));
+}
+
+/*
+ *  FolderInformation::FindProfile
+ *      Finds the profile named @name and returns a pointer to it otherwise returns nullptr.
+ */
+Loader::Profile* Loader::FolderInformation::FindProfile(const std::string& name)
+{
+    auto it = std::find_if(this->profiles.begin(), this->profiles.end(), [&](const Loader::Profile& profile) {
+        return (profile == name);
+    });
+    return (it != this->profiles.end()? &(*it) : nullptr);
+}
+
+/*
+ *  FolderInformation::FindProfile
+ *      Finds the profile pointed by @prof_to_find and returns a pointer to it otherwise returns nullptr.
+ *      (only works if the profile is registered)
+ */
+Loader::Profile* Loader::FolderInformation::FindProfile(const Loader::Profile& prof_to_find)
+{
+    auto it = std::find_if(this->profiles.begin(), this->profiles.end(), [&](const Loader::Profile& profile) {
+        return (&profile == &prof_to_find);
+    });
+    return (it != this->profiles.end()? &(*it) : nullptr);
+}
+
+/*
+ *  FolderInformation::SwitchToProfile
+ *      Switches to the specified profile (only works if the profile is registered)
+ */
+bool Loader::FolderInformation::SwitchToProfile(Loader::Profile& prof)
+{
+    if(this->FindProfile(prof))
     {
-        if(this->IsOnIgnoringList(name) == false) // Check if not on ignore mods list
-        {
-            auto it = mods_priority.find(name);
-            return (it != mods_priority.end() && it->second == 0);  // If priority is 0 ignore this mod
-        }
-        else return true;
+        this->current_profile = &prof;
+        if(this->current_profile && !this->IsUsingAnonymousProfile())
+            loader.Log("Using profile named \"%s\".", prof.GetName().c_str());
+        return true;
+    }
+    return false;
+}
+
+/*
+ *  FolderInformation::SwitchToProfileAsAnonymous
+ *      Switches to the specified profile but as an anonymous copy
+ */
+bool Loader::FolderInformation::SwitchToProfileAsAnonymous(Loader::Profile& prof)
+{
+    if(this->FindProfile(prof))
+    {
+        this->SetAnonymousProfile(prof);
+        return true;
+    }
+    return false;
+}
+
+/*
+ *  FolderInformation::RemoveReferencesToProfile
+ *      Removes all references in existing profiles 'n stuff about the profile @rm
+ */
+void Loader::FolderInformation::RemoveReferencesToProfile(Loader::Profile& rm)
+{
+    for(auto& prof : this->profiles)
+        prof.RemoveReferences(rm);
+    if(this->current_profile == &rm)
+        this->current_profile = nullptr;
+    
+    // Should not do this on the anon profile! Would cause a circular destructor!
+}
+
+/*
+ *  FolderInformation::RemoveProfiles
+ *      Removes all the named profiles
+ */
+void Loader::FolderInformation::RemoveProfiles()
+{
+    for(auto it = this->profiles.begin(); it != this->profiles.end(); )
+        it = this->profiles.erase(it);  // Profile destructor automatically cleans this->current_profile
+}
+
+/*
+ *  FolderInformation::Profiles
+ *      Gets a list of the available profiles
+ */
+ref_list<Loader::Profile> Loader::FolderInformation::Profiles()
+{
+    return refs(this->profiles);
+}
+
+/*
+ *  FolderInformation::SetAnonymousProfile
+ *      Sets the anonymous profile to use
+ */
+void Loader::FolderInformation::SetAnonymousProfile(const Loader::Profile& profile, bool replace)
+{
+    if(!this->IsUsingAnonymousProfile() || replace)
+    {
+        this->anon_profile.reset(new Loader::Profile(profile));
+        loader.Log("Using anonymous profile.");
     }
 }
 
 /*
- *  FolderInformation::IsFileIgnored
- *      Checks if the specified file @name (normalized) should be ignored
- *      This also checks on parents
+ *  FolderInformation::RemAnonymousProfile
+ *      Removes the working anonymous profile or does nothing if none is set
  */
-bool Loader::FolderInformation::IsFileIgnored(const std::string& name)
+void Loader::FolderInformation::RemAnonymousProfile()
 {
-    if(MatchGlob(name, ignore_files_glob)) return true;
-    return (this->parent? parent->IsFileIgnored(name) : false);
+    if(this->IsUsingAnonymousProfile())
+    {
+        this->anon_profile.reset();
+        loader.Log("Not using anonymous profile anymore.");
+    }
 }
-
 
 /*
- *  FolderInformation::AddChild
- *      Adds or finds a child FolderInformation at @path (normalized) into this
+ *  FolderInformation::GetAnonymousProfile
+ *      Gets the current temporary profile
  */
-auto Loader::FolderInformation::AddChild(const std::string& path) -> FolderInformation&
+Loader::Profile& Loader::FolderInformation::GetAnonymousProfile()
 {
-    auto ipair = childs.emplace(std::piecewise_construct,
-                        std::forward_as_tuple(path),
-                        std::forward_as_tuple(path, this));
-    
-    return ipair.first->second;
+    if(this->IsUsingAnonymousProfile())
+        return *this->anon_profile;
+    throw std::logic_error("Called GetAnonymousProfile while no anonymous profile is set");
 }
+
+/*
+ *  FolderInformation::IsUsingAnonymousProfile
+ *      Checks if is using a temp/unamed profile
+ */
+bool Loader::FolderInformation::IsUsingAnonymousProfile() const
+{
+    return this->anon_profile != nullptr;
+}
+
+
 
 /*
  *  FolderInformation::AddMod
@@ -96,139 +201,6 @@ auto Loader::FolderInformation::AddMod(const std::string& name) -> ModInformatio
     return ipair.first->second;
 }
 
-/*
- *  FolderInformation::SetPriority
- *      Sets the @priority for the next mods named @name (normalized) over here
- */
-void Loader::FolderInformation::SetPriority(std::string name, int priority)
-{
-    if(priority == default_priority)
-        mods_priority.erase(name);
-    else
-        mods_priority[name] = priority;
-}
-
-
-/*
- *  FolderInformation::GetPriority
- *      Gets the @priority for the mod named @name (normalized)
- */
-int Loader::FolderInformation::GetPriority(const std::string& name)
-{
-    auto it = mods_priority.find(name);
-    return (it == mods_priority.end()? default_priority : it->second);
-}
-
-/*
- *  FolderInformation::Include
- *      Adds a file @name (normalized) to the inclusion list, to be included even if ExcludeAllMods=true
- */
-void Loader::FolderInformation::Include(std::string name)
-{
-    include_mods.emplace(std::move(name));
-    RebuildIncludeModsGlob();
-}
-
-/*
- *  FolderInformation::Uninclude
- *      Removes the file @name (normalized) from the inclusion list
- */
-void Loader::FolderInformation::Uninclude(const std::string& name)
-{
-    include_mods.erase(name);
-    RebuildIncludeModsGlob();
-}
-
-/*
- *  FolderInformation::IgnoreFileGlob
- *      Adds a file @glob (normalized) to be ignored
- */
-void Loader::FolderInformation::IgnoreFileGlob(std::string glob)
-{
-    ignore_files.emplace(std::move(glob));
-    RebuildExcludeFilesGlob();
-}
-
-/*
- *  FolderInformation::IgnoreMod
- *      Adds a mod @mod (normalized) to be ignored
- */
-void Loader::FolderInformation::IgnoreMod(std::string mod)
-{
-    ignore_mods.emplace(std::move(mod));
-}
-
-/*
- *  FolderInformation::UnignoreMod
- *      Removes the mod @mod (normalized) from the ignored list
- */
-void Loader::FolderInformation::UnignoreMod(const std::string& mod)
-{
-    ignore_mods.erase(mod);
-}
-
-
-/*
- *  FolderInformation::RebuildExcludeFilesGlob  - Rebuilds glob for files exclusion
- *  FolderInformation::RebuildIncludeModsGlob   - Rebuilds glob for files inclusion
- */
-
-void Loader::FolderInformation::RebuildExcludeFilesGlob()
-{
-    BuildGlobString(this->ignore_files, this->ignore_files_glob);
-}
-
-void Loader::FolderInformation::RebuildIncludeModsGlob()
-{
-    BuildGlobString(this->include_mods, this->include_mods_glob);
-}
-
-
-/*
- *  FolderInformation::SetIgnoreAll     - Ignores all mods 
- *  FolderInformation::SetForceIgnore   - Internal IgnoreAll for -nomods command line
- *  FolderInformation::SetExcludeAll    - Excludes all mods except the ones being included ([IncludeMods])
- *  FolderInformation::SetForceExclude  - Internal ExcludeAll for -mod command line
- * 
- */
-
-void Loader::FolderInformation::SetIgnoreAll(bool bSet)
-{
-    this->bIgnoreAll = bSet;
-}
-
-void Loader::FolderInformation::SetForceIgnore(bool bSet)
-{
-    this->bForceIgnore = bSet;
-}
-
-void Loader::FolderInformation::SetExcludeAll(bool bSet)
-{
-    this->bExcludeAll = bSet;
-}
-
-void Loader::FolderInformation::SetForceExclude(bool bSet)
-{
-    this->bForceExclude = bSet;
-}
-
-
-
-
-/*
- *  FolderInformation::GetAll 
- *      Gets all the childs and subchilds FolderInformation including self
- */
-auto Loader::FolderInformation::GetAll() -> ref_list<FolderInformation>
-{
-    ref_list<FolderInformation> list = { *this };  // self
-    for(auto& pair : this->childs)
-    {
-        auto rest = pair.second.GetAll();
-        list.insert(list.end(), rest.begin(), rest.end());  // subchilds
-    }
-    return list;
-}
 
 /*
  *  FolderInformation::GetMods 
@@ -277,19 +249,12 @@ void Loader::FolderInformation::Scan()
 
     bool fine = true;
     
-    // Loads the config file only once
-    if(!this->gotConfig)
-    {
-        this->gotConfig = true;
-        this->LoadConfigFromINI();
-    }
-
     // > Status here is Status::Unchanged
     // Mark all current mods as removed
     MarkStatus(this->mods, Status::Removed);
 
     // Walk on this folder to find mods
-    if(this->IsIgnoring() == false)
+    if(this->Profile().IsIgnoring() == false)
     {
         fine = FilesWalk("", "*.*", false, [this](FileWalkInfo & file)
         {
@@ -300,19 +265,6 @@ void Loader::FolderInformation::Scan()
     
     // Find the underlying status of this folder
     UpdateStatus(*this, this->mods, fine);
-    
-    // Scan on my childs too
-    if(this->status != Status::Removed)
-    {
-        for(auto& pair : this->childs)
-        {
-            FolderInformation& child = pair.second;
-            
-            child.Scan();
-            if(this->status == Status::Unchanged && child.status != Status::Unchanged)
-                this->status = Status::Updated;
-        }
-    }
 }
 
 /*
@@ -324,7 +276,7 @@ void Loader::FolderInformation::Scan(const Journal& journal)
 {
     ::scoped_gdir xdir(this->path.c_str());
 
-    if(this->IsIgnoring() == false)
+    if(this->Profile().IsIgnoring() == false)
     {
         for(auto& change : journal)
         {
@@ -372,15 +324,8 @@ void Loader::FolderInformation::Update()
             mod.SetUnchanged();
         }
 
-        // Update my childs
-        for(auto& child : this->childs)
-        {
-            child.second.Update();
-        }
-
         // Collect garbaged data (mods and childs that are unused atm)
         CollectInformation(this->mods);
-        CollectInformation(this->childs);
         this->SetUnchanged();
     }
 }
@@ -400,106 +345,95 @@ void Loader::FolderInformation::Update(ModInformation& mod)
  *  FolderInformation::LoadConfigFromINI
  *      Loads configuration specific to this folder from the specified ini file
  */
-void Loader::FolderInformation::LoadConfigFromINI(const std::string& inifile)
+void Loader::FolderInformation::LoadConfigFromINI()
 {
-    linb::ini cfg;
-    CopyFileA(loader.folderConfigDefault.c_str(), inifile.c_str(), TRUE);
+    ::scoped_gdir xdir(this->path.c_str());
+    modloader_ini ini;
+    CopyFileA(loader.folderConfigDefault.c_str(), loader.folderConfigFilename.c_str(), TRUE);
+    
+    this->RemoveProfiles();
 
-    // Reads the top [Config] section
-    auto ReadConfig = [this](const linb::ini::key_container& kv)
+    // Read the profiles present in the specified ini file
+    auto ReadProfilesFromINI = [this](modloader_ini& ini, std::string generator)   // generator must be empty for modloader.ini
     {
-        for(auto& pair : kv)
+        auto prof_filename = std::string(generator.empty()? "modloader.ini" : (loader.profilesPath + generator));
+        for(auto& profname : Profile::GetListOfProfilesInIni(ini))
         {
-            if(!compare(pair.first, "IgnoreAllFiles", false))
-                this->SetIgnoreAll(to_bool(pair.second));
-            else if(!compare(pair.first, "ExcludeAllMods", false))
-                this->SetExcludeAll(to_bool(pair.second));
+            if(this->FindProfile(profname) == nullptr)  // no profile with this name so add from here
+            {
+                auto& prof = this->AddProfile(profname);
+                prof.LoadConfigFromINI(ini);
+                prof.SetGenerator(std::move(generator));
+                Log("Reading profile named \"%s\" at \"%s\".", profname.c_str(), prof_filename.c_str());
+            }
+            else
+                Log("Warning: Failed to read profile named \"%s\" at \"%s\". Profile already exists elsewhere.",
+                            profname.c_str(), prof_filename.c_str());
         }
     };
 
-    // Reads the [Priority] section
-    auto ReadPriorities = [this](const linb::ini::key_container& kv)
-    {
-        this->mods_priority.clear();
-        for(auto& pair : kv) this->SetPriority(NormalizePath(pair.first), std::strtol(pair.second.c_str(), 0, 0));
-    };
+    // First take the profiles from modloader.ini
+    if(ini.load_file(loader.folderConfigFilename))
+        ReadProfilesFromINI(ini, "");
+    else
+        Log("Warning: Failed to load folder config file");
 
-    // Reads the [IgnoreMods] section
-    auto ReadIgnoreMods = [this](const linb::ini::key_container& kv)
+    // Then from the profiles directory
+    if(MakeSureDirectoryExistA((loader.gamePath + loader.profilesPath).c_str()))
     {
-        this->ignore_mods.clear();
-        for(auto& pair : kv) this->IgnoreMod(NormalizePath(pair.first));
-    };
-
-    // Reads the [IgnoreFiles] section
-    auto ReadIgnoreFiles = [this](const linb::ini::key_container& kv)
-    {
-        this->ignore_files.clear();
-        for(auto& pair : kv) this->IgnoreFileGlob(NormalizePath(pair.first));
-    };
-
-    // Reads the [IncludeMods] section
-    auto ReadIncludeMods = [this](const linb::ini::key_container& kv)
-    {
-        this->include_mods.clear();
-        for(auto& pair : kv) this->Include(NormalizePath(pair.first));
-    };
-
-    // Load the ini and readddddddddddddd
-    if(cfg.load_file(inifile))
-    {
-        ReadConfig(cfg["Config"]);
-        ReadPriorities(cfg["Priority"]);
-        ReadIgnoreMods(cfg["IgnoreMods"]);
-        ReadIgnoreFiles(cfg["IgnoreFiles"]);
-        ReadIncludeMods(cfg["IncludeMods"]);
-        
+        ::scoped_gdir xdir(loader.profilesPath.c_str());
+        for(auto& filename : FilesWalk("", "*.ini", false))
+            ReadProfilesFromINI(modloader_ini(filename.data()), filename);
     }
     else
-        Log("Failed to load folder config file");
+        Log("Warning: Failed to access \".profiles/\" directory.");
 
+    // Find out working profile
+    if(auto* prof = this->FindProfile(ini.get("Folder.Config", "Profile", default_profile_name)))
+        this->SwitchToProfile(*prof);
+    Log("Using profile named \"%s\"", this->Profile().GetName().c_str());
+
+    // Transform the parent strings read from the ini into actual parents
+    for(auto& prof : this->profiles)
+        prof.UpdateInheritance();
+    if(this->IsUsingAnonymousProfile())
+        this->GetAnonymousProfile().UpdateInheritance();
 }
 
 /*
  *  FolderInformation::SaveConfigForINI
  *      Saves configuration specific to this folder to the specified ini file
  */
-void Loader::FolderInformation::SaveConfigForINI(const std::string& inifile)
-{
-    linb::ini ini;
-    auto& config      = ini["Config"];
-    auto& priority    = ini["Priority"];
-    auto& ignoremods  = ini["IgnoreMods"];
-    auto& ignorefiles = ini["IgnoreFiles"];
-    auto& includemods = ini["IncludeMods"];
-    
-    config["IgnoreAllFiles"] = modloader::to_string(this->IsIgnoringAll());
-    config["ExcludeAllMods"] = modloader::to_string(this->IsExcludingAll());
-
-    for(auto& pair : this->mods_priority)
-        priority[pair.first] = std::to_string(pair.second);
-
-    for(auto& mod : this->ignore_mods)
-        ignoremods[mod];
-
-    for(auto& file : this->ignore_files)
-        ignorefiles[file];
-
-    for(auto& mod : this->include_mods)
-        includemods[mod];
-
-    if(!ini.write_file(inifile))
-        Log("Failed to save folder config file");
-}
-
 void Loader::FolderInformation::SaveConfigForINI()
 {
     ::scoped_gdir xdir(this->path.c_str());
-    return this->SaveConfigForINI(loader.folderConfigFilename);
-}
+    modloader_ini ini;
 
-void Loader::FolderInformation::LoadConfigFromINI()
-{
-    ::scoped_gdir xdir(this->path.c_str());
-    return this->LoadConfigFromINI(loader.folderConfigFilename);
+    // Save current profile
+    ini.set("Folder.Config", "Profile", this->Profile().GetName());
+
+    // Save all the profiles
+    for(auto& profile : this->profiles)
+    {
+        auto& generator = profile.GetGenerator();
+
+        if(generator.empty())
+        {
+            // Profile direcly in modloader.ini
+            profile.SaveConfigForINI(ini);
+        }
+        else if(MakeSureDirectoryExistA((loader.gamePath + loader.profilesPath).c_str()))
+        {
+            // This profile has it's own directory
+            ::scoped_gdir xdir(loader.profilesPath.c_str());
+            modloader_ini prof_ini;
+            profile.SaveConfigForINI(prof_ini);
+            if(!prof_ini.write_file(generator))
+                Log("Warning: Failed to save profile into file \"%s\"", generator.c_str());
+        }
+    }
+
+    // Finish Him!
+    if(!ini.write_file(loader.folderConfigFilename))
+        Log("Warning: Failed to save folder config file");
 }

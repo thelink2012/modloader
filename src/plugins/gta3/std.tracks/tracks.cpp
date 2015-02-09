@@ -1,279 +1,267 @@
 /*
- * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
+ * Copyright (C) 2015  LINK/2012 <dma_2012@hotmail.com>
  * Licensed under GNU GPL v3, see LICENSE at top level directory.
- * 
- * 
- *  !!!!!THIS IS A PROTOTYPE AND NEEDS REWRITING!!!!!!!
- * 
+ *
  */
-#include <modloader.hpp>
-#include <modloader_util.hpp>
-#include <modloader_util_path.hpp>
-#include <modloader_util_injector.hpp>
-using namespace modloader;
+#include <stdinc.hpp>
 
-#include "CAETrackLoader.h"
-#include <list>
-#include <map>
+enum class Type
+{
+    Ogg             = 0,
+    StreamPak       = 1,    // StrmPak.dat
+    StreamLookUp    = 2,    // StrmLkUp.dat
+    PakFiles        = 3,    // ...
+    Max             = 7,    // Max 3 bits
+};
+
+
+// Basical maskes
+static const uint64_t hash_mask_base  = 0xFFFFFFFF;
+static const uint64_t type_mask_base  = 0x0007;                 // Mask for type without any shifting
+static const uint32_t type_mask_shf  = 32;                      // Takes 3 bits, starts from 33th bit because first 32th bits is a hash
+
+// Sets the initial value for a behaviour, by using an filename hash and file type
+inline uint64_t SetType(uint32_t hash, Type type)
+{
+    return modloader::file::set_mask(uint64_t(hash), type_mask_base, type_mask_shf, type);
+}
+
+// Gets the behaviour file type
+inline Type GetType(uint64_t mask)
+{
+    return modloader::file::get_mask<Type>(mask, type_mask_base, type_mask_shf);
+}
 
 
 /*
  *  The plugin object
  */
-class CThePlugin : public modloader::CPlugin
+class ThePlugin : public modloader::basic_plugin
 {
+    private:
+        modloader::file_overrider ov_strmpaks;                  // StrmPaks.dat overrider
+        modloader::file_overrider ov_traklkup;                  // TrakLkUp.dat overrider
+        std::map<std::string, const modloader::file*> streams;  // Stream paks
+
     public:
-        static const int default_priority = 52;
-        
-        // stream_import.ini
-        struct StreamImport
-        {
-            std::string ini;        // 
-            std::string folder;
-            
-            StreamImport(const std::string& ini, const std::string& folder)
-            : ini(ini), folder(folder)
-            {}
-        };
-        
-        std::string strmpaks, traklkup;
-        
-        std::map<std::string, std::string> streams;
-        
-        //      <TrackID, OggPath>
-        std::map<uint16_t, std::string> tracks;
-        
-        std::list<StreamImport> stream_import;
-        
-        
-        
-        const char* GetName();
-        const char* GetAuthor();
-        const char* GetVersion();
-        
+        const info& GetInfo();
+
         bool OnStartup();
         bool OnShutdown();
-        
-        bool CheckFile(modloader::modloader::file& file);
-        bool ProcessFile(const modloader::modloader::file& file);
-        bool PosProcess();
-        
-        //bool OnSplash();
-        //bool OnLoad();
-        //bool OnReload();
-        
-        const char** GetExtensionTable();
-        
-        
-        
-        void InitialiseTracks(CAETrackLoader&);
+        int GetBehaviour(modloader::file&);
+        bool InstallFile(const modloader::file&);
+        bool ReinstallFile(const modloader::file&);
+        bool UninstallFile(const modloader::file&);
+
+    private: // Patching stuff
+        static void RedirectToThunk(injector::memory_pointer_tr call_at, injector::memory_pointer_tr thunk_at);
+
+        template<uintptr_t CatAt>
+        static void PatchStreamCat();
+
+        template<uintptr_t NewAt>
+        static void AllocMaxPath();
 
 } plugin;
 
-/*
- *  Export plugin object data
- */
-extern "C" __declspec(dllexport)
-void GetPluginData(modloader_plugin_t* data)
-{
-    modloader::RegisterPluginData(plugin, data, plugin.default_priority);
-}
+REGISTER_ML_PLUGIN(::plugin);
 
-
+using namespace modloader;
 
 /*
- *  Basic plugin informations
+ *  ThePlugin::GetInfo
+ *      Returns information about this plugin 
  */
-const char* CThePlugin::GetName()
+const ThePlugin::info& ThePlugin::GetInfo()
 {
-    return "std-tracks";
+    static const char* extable[] = { "", "ogg", "ini", "dat", 0 };
+    static const info xinfo      = { "std.tracks", get_version_by_date(), "LINK/2012", -1, extable };
+    return xinfo;
 }
 
-const char* CThePlugin::GetAuthor()
-{
-    return "LINK/2012";
-}
-
-const char* CThePlugin::GetVersion()
-{
-    return "0.1";
-}
-
-const char** CThePlugin::GetExtensionTable()
-{
-    /* Put the extensions  this plugin handles on @table */
-    static const char* table[] = { "ini", "dat", "", 0 };
-    return table;
-}
 
 /*
- *  Startup / Shutdown (do nothing)
+ *  ThePlugin::OnStartup
+ *      Startups the plugin
  */
-bool CThePlugin::OnStartup()
+bool ThePlugin::OnStartup()
 {
-    return true;
-}
-
-bool CThePlugin::OnShutdown()
-{
-    return true;
-}
-
-/*
- *  Check if the file is the one we're looking for
- */
-bool CThePlugin::CheckFile(modloader::modloader::file& file)
-{
-    if(!file.is_dir)
+    using namespace modloader;
+    if(gvm.IsSA())
     {
-        if(*file.filext == 0)
-        {
-            if(IsFileInsideFolder(file.filepath, true, "STREAMS")) return true;
-            if(!strcmp(file.filename, "AA", false)) return true;
-            if(!strcmp(file.filename, "ADVERTS", false)) return true;
-            if(!strcmp(file.filename, "AMBIENCE", false)) return true;
-            if(!strcmp(file.filename, "CUTSCENE", false)) return true;
-            if(!strcmp(file.filename, "BEATS", false)) return true;
-            if(!strcmp(file.filename, "CH", false)) return true;
-            if(!strcmp(file.filename, "CO", false)) return true;
-            if(!strcmp(file.filename, "CR", false)) return true;
-            if(!strcmp(file.filename, "DS", false)) return true;
-            if(!strcmp(file.filename, "HC", false)) return true;
-            if(!strcmp(file.filename, "MH", false)) return true;
-            if(!strcmp(file.filename, "MR", false)) return true;
-            if(!strcmp(file.filename, "NJ", false)) return true;
-            if(!strcmp(file.filename, "RE", false)) return true;
-            if(!strcmp(file.filename, "RG", false)) return true;
-            if(!strcmp(file.filename, "TK", false)) return true;
-        }
-        else if(IsFileExtension(file.filext, "ini") && !strcmp(file.filename, "stream_import.ini", false))
-            return true;
-        else if(IsFileExtension(file.filext, "dat"))
-        {
-            if(!strcmp(file.filename, "TRAKLKUP.dat", false))
-                return true;
-            else if(!strcmp(file.filename, "STRMPAKS.dat", false))
-                return true;
-        }
+        // Make the CreateFileA caller call a function not a function pointer
+        RedirectToThunk(0x4E0A09, raw_ptr(CreateFileA));
+        RedirectToThunk(0x4E0989, raw_ptr(CreateFileA));
+
+        // Let the strcat buffer that holds the path to the stream files be large enought to hold a full path
+        AllocMaxPath<0x4E0AF2>();
+        AllocMaxPath<0x4E0C80>();
+        AllocMaxPath<0x4E0DA2>();
+
+        // Patch the lstrcatA calls to detour streams
+        PatchStreamCat<0x4E0AF9>();
+        PatchStreamCat<0x4E0C9D>();
+        PatchStreamCat<0x4E0DA9>();
+
+        // Overriders
+        auto no_reinstall = file_overrider::params(nullptr);
+        ov_traklkup.SetParams(no_reinstall);
+        ov_strmpaks.SetParams(no_reinstall);
+        ov_traklkup.SetFileDetour(WinCreateFileA<0x4E0A09>());
+        ov_strmpaks.SetFileDetour(WinCreateFileA<0x4E0989>());
+
+        return true;
     }
     return false;
 }
 
 /*
- * Process the replacement
+ *  ThePlugin::OnShutdown
+ *      Shutdowns the plugin
  */
-bool CThePlugin::ProcessFile(const modloader::modloader::file& file)
+bool ThePlugin::OnShutdown()
 {
-    if(*file.filext == 0)
+    return true;
+}
+
+
+/*
+ *  ThePlugin::GetBehaviour
+ *      Gets the relationship between this plugin and the file
+ */
+int ThePlugin::GetBehaviour(modloader::file& file)
+{
+    if(!file.is_dir())
     {
-        std::string filename = file.filename; tolower(filename);
-        std::string filepath = GetFilePath(file);
-        
-        auto it = this->streams.find(filename);
-        if(it != this->streams.end())
-            it->second = filepath;
+        if(file.is_ext(""))
+        {
+            // Accept any file without extension in a STREAM/ folder as a STREAM
+            // Also accept default STREAMS outside that folder....
+            if((modloader::IsFileInsideFolder(file.filepath(), true, "STREAMS"))
+            ||(!_stricmp(file.filename(), "AA"))       || (!_stricmp(file.filename(), "TK"))
+            ||(!_stricmp(file.filename(), "ADVERTS"))  || (!_stricmp(file.filename(), "AMBIENCE"))
+            ||(!_stricmp(file.filename(), "CUTSCENE")) || (!_stricmp(file.filename(), "BEATS"))
+            ||(!_stricmp(file.filename(), "CH"))       || (!_stricmp(file.filename(), "CO"))
+            ||(!_stricmp(file.filename(), "CR"))       || (!_stricmp(file.filename(), "DS"))
+            ||(!_stricmp(file.filename(), "HC"))       || (!_stricmp(file.filename(), "MH"))
+            ||(!_stricmp(file.filename(), "MR"))       || (!_stricmp(file.filename(), "NJ"))
+            ||(!_stricmp(file.filename(), "RE"))       || (!_stricmp(file.filename(), "RG")))
+            {
+                file.behaviour = SetType(file.hash, Type::StreamPak);
+                return MODLOADER_BEHAVIOUR_YES;
+            }
+        }
+        else if(file.is_ext("dat"))
+        {
+            // Data files hashes, must be lower case (normalized), to check against file hash
+            static const auto traklkup_dat = modloader::hash("traklkup.dat");
+            static const auto strmpaks_dat = modloader::hash("strmpaks.dat");
+
+            // Check if this is an bank loader data file by checking it's filename hash
+            if(file.hash == traklkup_dat)
+                file.behaviour = SetType(file.hash, Type::StreamLookUp);
+            else if(file.hash == strmpaks_dat)
+                file.behaviour = SetType(file.hash, Type::PakFiles);
+            else
+                return MODLOADER_BEHAVIOUR_NO;
+
+            return MODLOADER_BEHAVIOUR_YES;
+        }
+    }
+    return MODLOADER_BEHAVIOUR_NO;
+}
+
+/*
+ *  ThePlugin::InstallFile
+ *      Installs a file using this plugin
+ */
+bool ThePlugin::InstallFile(const modloader::file& file)
+{
+    switch(GetType(file.behaviour))
+    {
+        case Type::Ogg:             return false;
+        case Type::StreamPak:       this->streams.emplace(file.filename(), &file); return true;
+        case Type::StreamLookUp:    return ov_traklkup.InstallFile(file);
+        case Type::PakFiles:        return ov_strmpaks.InstallFile(file);
+    }
+    return false;
+}
+
+/*
+ *  ThePlugin::ReinstallFile
+ *      Reinstall a file previosly installed that has been updated
+ */
+bool ThePlugin::ReinstallFile(const modloader::file& file)
+{
+    switch(GetType(file.behaviour))
+    {
+        case Type::Ogg:             return false;
+        case Type::StreamPak:       return false;
+        case Type::StreamLookUp:    return ov_traklkup.ReinstallFile();
+        case Type::PakFiles:        return ov_strmpaks.ReinstallFile();
+    }
+    return false;
+}
+
+/*
+ *  ThePlugin::UninstallFile
+ *      Uninstall a previosly installed file
+ */
+bool ThePlugin::UninstallFile(const modloader::file& file)
+{
+    switch(GetType(file.behaviour))
+    {
+        case Type::Ogg:             return false;
+        case Type::StreamLookUp:    return ov_traklkup.UninstallFile();
+        case Type::PakFiles:        return ov_strmpaks.UninstallFile();
+        case Type::StreamPak:
+                                    if(!this->loader->has_game_started) 
+                                    {
+                                        this->streams.erase(file.filename());
+                                        return true;
+                                    }
+                                    return false;
+    }
+    return false;
+}
+
+
+/**************************************/
+
+void ThePlugin::RedirectToThunk(injector::memory_pointer_tr call_at, injector::memory_pointer_tr thunk_at)
+{
+    using namespace injector;
+    if(ReadMemory<uint8_t>(call_at+0, true) == 0xFF && ReadMemory<uint8_t>(call_at+1, true) == 0x15)
+    {
+        MakeNOP(call_at, 6, true);
+        MakeCALL(call_at, thunk_at.get(), true);
+    }
+}
+
+template<uintptr_t NewAt>
+void ThePlugin::AllocMaxPath()
+{
+    using namespace injector;
+    make_static_hook<function_hooker<NewAt, void*(size_t)>>([](std::function<void*(size_t)> new_, size_t size)
+    {
+        return size < MAX_PATH? new_(MAX_PATH) : new_(size);
+    });
+}
+
+template<uintptr_t CatAt>
+void ThePlugin::PatchStreamCat()
+{
+    using lstrcatA_type = LPTSTR(__stdcall*)(LPTSTR, LPTSTR);
+    auto mycat = [](LPTSTR dest, LPTSTR cat) -> LPTSTR
+    {
+        auto& plugin = plugin_ptr->cast<ThePlugin>();
+        auto it = plugin.streams.find(NormalizePath(cat));
+        if(it != plugin.streams.end())
+            return strcpy(dest, it->second->fullpath().c_str());
         else
-            this->streams.emplace(filename, filepath);
-        
-        return true;
-    }
-    else if(IsFileExtension(file.filext, "ini") && !strcmp(file.filename, "stream_import.ini", false))
-    {
-        std::string ini = GetFilePath(file);
-        this->stream_import.emplace_front(ini, ini.substr(0, GetLastPathComponent(ini)));
-        return true;
-    }
-    else if(IsFileExtension(file.filext, "dat"))
-    {
-        if(!strcmp(file.filename, "TRAKLKUP.dat", false))
-            RegisterReplacementFile(*this, "TRAKLKUP.dat", this->traklkup, GetFilePath(file).c_str());
-        else if(!strcmp(file.filename, "STRMPAKS.dat", false))
-            RegisterReplacementFile(*this, "STRMPAKS.dat", this->strmpaks, GetFilePath(file).c_str());
-        return true;
-    }
-    return false;
-}
-
-char* __stdcall transform_path1(char* dest, const char* src)
-{
-    std::string filename = src; tolower(filename);
-    auto it = plugin.streams.find(filename);
-    if(it != plugin.streams.end())
-    {
-        *dest = 0;
-        src = it->second.c_str();
-    }
-    return strcat(dest, src);
-}
-
-
-/*
- * Called after all files have been processed
- */
-bool CThePlugin::PosProcess()
-{
-    //.text:004DC620     ; CAEDataStream *__thiscall CAEDataStream__constructor(CAEDataStream *this, int id, char *path, unsigned int offset, unsigned int size, char encrypted)
-    typedef function_hooker_fastcall<0x4E0E25, void*(void*, int, int, const char*, uint32_t, uint32_t, char)> ds_hook;
-    typedef function_hooker<0x4E0DA2, void*(size_t)> a1_hook;
-    typedef function_hooker<0x4E0AF2, void*(size_t)> a2_hook;
-
-    typedef function_hooker_fastcall<0x4F1731, char(CAETrackLoader*)> init_hook;
-    
-    
-    static void* transform_path = (void*)(transform_path1);
-    
-    auto alloc_path = [](a1_hook::func_type alloc, size_t& size)
-    {
-        if(size < MAX_PATH) size = MAX_PATH;
-        return alloc(size);
+            return strcat(dest, cat);
     };
-    
 
-    make_function_hook<a1_hook>(alloc_path);
-    make_function_hook<a2_hook>(alloc_path);
-    WriteMemory(0x4E0DA7 + 2, &transform_path, true);
-    WriteMemory(0x4E0AF7 + 2, &transform_path, true);
-    
-    
-    make_function_hook<ds_hook>([](ds_hook::func_type func, void*& self, int&, int& id, const char*& szPath, uint32_t& dwOffset, uint32_t& dwSize, char& bEncrypted)
-    {
-        auto it = plugin.tracks.find(id);
-        if(it != plugin.tracks.end())
-        {
-            szPath = it->second.c_str();
-            dwOffset = dwSize = 0;
-            bEncrypted = false;
-        }
-        return func(self, 0, id, szPath, dwOffset, dwSize, bEncrypted);
-    });
-    
-    make_function_hook<init_hook>([](init_hook::func_type func, CAETrackLoader*& AETrackLoader)
-    {
-        char result = func(AETrackLoader);
-        if(result) plugin.InitialiseTracks(*AETrackLoader);
-        return result;
-    });
-    
-    
-    
-    if(this->strmpaks.size())
-        WriteMemory<const char*>(0x4E0982 + 1, this->strmpaks.c_str(), true);
-    if(this->traklkup.size())
-        WriteMemory<const char*>(0x4E0A02 + 1, this->traklkup.c_str(), true);
-    
-    return true;
+    static lstrcatA_type ptr = (lstrcatA_type)(mycat);
+    WriteMemory(CatAt, &ptr, true);
 }
-
-
-
-
-
-void CThePlugin::InitialiseTracks(CAETrackLoader& AETrackLoader)
-{
-    
-}
-
-
-
-
-

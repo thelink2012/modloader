@@ -272,6 +272,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x6F74BC] = 0x6F74BC;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
         map[0x6F7496] = 0x6F7496;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks3.dat"
         map[0x6F74E2] = 0x6F74E2;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks4.dat"
+        map[0x5BCCDE] = 0x5BCCDE;   // call    _ZN8CFileMgr8OpenFileEPKcS1_  ; "stream.ini"
         map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
         map[0x590D2A] = 0x590D2A;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
         map[0x590D67] = 0x590D67;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
@@ -282,8 +283,61 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53BC9B] = 0x53BC9B;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
         map[0x4C5940] = 0x4C5940;   // _ZN10CModelInfo12GetModelInfoEPKcPi
         map[0x5B922F] = 0x5B922F;   // call    _Z20MatchAllModelStringsv                ; @CFileLoader::LoadLevel
+
+        // Refreshing IDEs
+        map[0x5B9206] = 0x5B9206;   // call    _ZN11CFileLoader15LoadObjectTypesEPKc
+        map[0x5B3D8E] = 0x5B3D8E;   // call    _ZN10CModelInfo20AddDamageAtomicModelEi
+        map[0x5B3D9A] = 0x5B3D9A;   // call    _ZN10CModelInfo14AddAtomicModelEi
+        map[0x5B3F32] = 0x5B3F32;   // call    _ZN10CModelInfo12AddTimeModelEi
+        map[0x5B3FE6] = 0x5B3FE6;   // call    _ZN10CModelInfo14AddWeaponModelEi
+        map[0x5B407E] = 0x5B407E;   // call    _ZN10CModelInfo13AddClumpModelEi         ; @CFileLoader::LoadClumpObject
+        map[0x5B413B] = 0x5B413B;   // call    _ZN10CModelInfo13AddClumpModelEi         ; @CFileLoader::LoadAnimatedClumpObject
+        map[0x5B6FD1] = 0x5B6FD1;   // call    _ZN10CModelInfo15AddVehicleModelEi
+        map[0x5B74A7] = 0x5B74A7;   // call    _ZN10CModelInfo11AddPedModelEi
+        map[0x5B8428] = 0x5B8428;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
+        map[0x5B85DD] = 0x5B85DD;   // call    _ZN11CFileLoader10LoadObjectEPKc
+        map[0x5B862C] = 0x5B862C;   // call    _ZN11CFileLoader14LoadTimeObjectEPKc 
+        map[0x5B8634] = 0x5B8634;   // call    _ZN11CFileLoader16LoadWeaponObjectEPKc
+        map[0x5B863C] = 0x5B863C;   // call    _ZN11CFileLoader15LoadClumpObjectEPKc
+        map[0x5B8644] = 0x5B8644;   // call    _ZN11CFileLoader23LoadAnimatedClumpObjectEPKc
+        map[0x5B864C] = 0x5B864C;   // call    _ZN11CFileLoader17LoadVehicleObjectEPKc
+        map[0x5B8654] = 0x5B8654;   // call    _ZN11CFileLoader13LoadPedObjectEPKc
+        map[0x5B86C5] = 0x5B86C5;   // call    _ZN11CFileLoader13LoadTXDParentEPKc
+        map[0x5B86B7] = 0x5B86B7;   // call    _ZN11CFileLoader12Load2dEffectEPKc
+        map[0x5B3DB0] = 0x5B3DB0;   // call    _ZN7CKeyGen15GetUppercaseKeyEPKc         ; @CFileLoader::LoadObject
+        map[0x5B3F51] = 0x5B3F51;   // call    _ZN7CKeyGen15GetUppercaseKeyEPKc         ; @CFileLoader::LoadTimedObject
+        map[0x5B3FF2] = 0x5B3FF2;   // call    _ZN7CKeyGen15GetUppercaseKeyEPKc         ; @CFileLoader::LoadWeaponObject
+        map[0x5B408A] = 0x5B408A;   // call    _ZN7CKeyGen15GetUppercaseKeyEPKc         ; @CFileLoader::LoadClumpObject
+        map[0x5B4147] = 0x5B4147;   // call    _ZN7CKeyGen15GetUppercaseKeyEPKc         ; @CFileLoader::LoadAnimatedClumpObject
+        map[0x5B6FE3] = 0x5B6FE3;   // call    _ZN7CKeyGen15GetUppercaseKeyEPKc         ; @CFileLoader::LoadVehicleObject   
+        map[0x5B74B6] = 0x5B74B6;   // call    _ZN7CKeyGen15GetUppercaseKeyEPKc         ; @CFileLoader::LoadPedObject
+        map[0x5B3DC2] = 0x5B3DC2;   // call    _ZN14CBaseModelInfo16SetTexDictionaryEPKcS1_ ; @CFileLoader::LoadObject
+        map[0x5B3F63] = 0x5B3F63;   // call    _ZN14CBaseModelInfo16SetTexDictionaryEPKcS1_ ; @CFileLoader::LoadTimedObject
+        map[0x5B400B] = 0x5B400B;   // call    _ZN14CBaseModelInfo16SetTexDictionaryEPKcS1_ ; @CFileLoader::LoadWeaponObject
+        map[0x5B409C] = 0x5B409C;   // call    _ZN14CBaseModelInfo16SetTexDictionaryEPKcS1_ ; @CFileLoader::LoadClumpObject
+        map[0x5B4159] = 0x5B4159;   // call    _ZN14CBaseModelInfo16SetTexDictionaryEPKcS1_ ; @CFileLoader::LoadAnimatedClumpObject
+        map[0x5B6FF8] = 0x5B6FF8;   // call    _ZN14CBaseModelInfo16SetTexDictionaryEPKcS1_ ; @CFileLoader::LoadVehicleObject   
+        map[0x5B74CB] = 0x5B74CB;   // call    _ZN14CBaseModelInfo16SetTexDictionaryEPKcS1_ ; @CFileLoader::LoadPedObject
+        map[0x5B40AA] = 0x5B40AA;   // call    _ZN14CBaseModelInfo11SetColModelEP9CColModelb ; @CFileLoader::LoadClumpObject
+        map[0x5B4025] = 0x5B4025;   // call    _ZN14CBaseModelInfo11SetColModelEP9CColModelb ; @CFileLoader::LoadWeaponObject
+        map[0x5B74E5] = 0x5B74E5;   // call    _ZN14CBaseModelInfo11SetColModelEP9CColModelb ; @CFileLoader::LoadPedObject
+        map[0x4C5200] = 0x4C5200;   // _ZN15CClumpModelInfo11SetAnimFileEPKc
+        map[0x4C7670] = 0x4C7670;   // _ZN17CVehicleModelInfo11SetAnimFileEPKc
+        map[0x731850] = 0x731850;   // _ZN9CTxdStore11FindTxdSlotEPKc
     }
 
+    // std.tracks
+    if(true)
+    {
+        map[0x4E0A09] = 0x4E0A09;   // call    ds:__imp_CreateFileA     ; @CAETrackLoader::LoadTrackLookupTable
+        map[0x4E0989] = 0x4E0989;   // call    ds:__imp_CreateFileA     ; @CAETrackLoader::LoadStreamPackTable
+        map[0x4E0AF2] = 0x4E0AF2;   // call    operator new             ; @CAETrackLoader::GetBeatInfo
+        map[0x4E0C80] = 0x4E0C80;   // call    operator new             ; @CAETrackLoader::Initialise
+        map[0x4E0DA2] = 0x4E0DA2;   // call    operator new             ; @CAETrackLoader::GetDataStream
+        map[0x4E0AF9] = 0x4E0AF9;   // mov     ebp, ->ds:__imp_lstrcatA ; @CAETrackLoader::GetBeatInfo
+        map[0x4E0C9D] = 0x4E0C9D;   // mov     ebp, ->ds:__imp_lstrcatA ; @CAETrackLoader::Initialise
+        map[0x4E0DA9] = 0x4E0DA9;   // mov     ebp, ->ds:__imp_lstrcatA ; @CAETrackLoader::GetDataStream
+    }
 
     // traits
     if(true)

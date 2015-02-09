@@ -294,19 +294,17 @@ namespace modloader
         FindClose(hSearch);  
         return true;
     }
-    
 
-#if 0
-    /*
-     *  IsFileExtension
-     *      @str: File
-     *      @ext: Extension
-     */
-    inline bool IsFileExtension(const std::string& str, const char* ext)
+    // Get a list of files matching the FilesWalk
+    inline std::vector<std::string> FilesWalk(std::string dir, const std::string& glob, bool recursive)
     {
+        std::vector<std::string> files;
+        FilesWalk(std::move(dir), glob, recursive, [&](FileWalkInfo& info) {
+            files.emplace_back(info.filebuf, info.length);
+            return true;
+        });
+        return files;
     }
-#endif
-
     
     /*
      * IsDirectoryA

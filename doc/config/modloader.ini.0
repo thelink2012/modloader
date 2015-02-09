@@ -1,26 +1,28 @@
 ;
-;           Mod Loader Per-Folder Config File -- Inherits from parent
+;           Mod Loader Folder Config File
 ;
-[Config]
-IgnoreAllFiles = false            ; Ignores all files. This essentially disables mods loading
-ExcludeAllMods = false            ; Excludes all mods from being loaded except the ones at INCLUDE_MODS list
+[Folder.Config]
+Profile = Default                 ; Profile to be used to configure mods
 
-; --------------------------> Exclusion/Inclusion <------------------------------
+[Profiles.Default.Config]
+IgnoreAllMods  = false            ; Ignores all mods. This essentially disables mods loading.
+ExcludeAllMods = false            ; Excludes all mods from being loaded except the ones at IncludeMods list
 
-[Priority]
+[Profiles.Default.Priority]
 ; Defines mods priority (which mods should go into effect if both replaces the same file)
 ; The priority should be between 1 and 100, where 100 overrides 1, additionally priority 0 makes be ignored (just like IgnoreMods)
 ; The default priority is 50!
 ;MyMod=50
 
+[Profiles.Default.IgnoreFiles]
+; Put wildcard to files to be ignored here (e.g. cheetah.dff, *.dff, path_in_mod/*.dff)
 
-[IgnoreMods]
-; Put mods to be ignored here (this is not a glob)
+[Profiles.Default.IgnoreMods]
+; Put wildcard to mods to be ignored here
 _ignore
 
-[IgnoreFiles]
-; Put files globs to be ignored here (e.g. cheetah.dff, *.dff)
+[Profiles.Default.IncludeMods]
+; Put wildcard to mods to be included in the game even when ExcludeAllMods=true
 
-[IncludeMods]
-; Put mods to be included in the game even when ExcludeAllMods=true or you passed a -mod command line to the game
-
+[Profiles.Default.ExclusiveMods]
+; Put wildcard to mods that should be loaded ONLY on this profile

@@ -34,7 +34,7 @@ Entretanto, o seguinte **NÃO** é um método válido:
 Ainda mais fácil, apenas delete o conteúdo do mod que deseja instalar do diretório do *modloader*.
 Se você só quiser desabilitar o mod por um instante, vá para o menu in-game para desabilitá-lo, ou edite o *modloader.ini* manualmente.
 
-## Destaques e detalhes
+## Destaques
 
 - Não substitua **NENHUM** arquivo original. Nunca. Sério.
 - Deixe que o Mod Loader tome conta de tudo.
@@ -43,15 +43,14 @@ Se você só quiser desabilitar o mod por um instante, vá para o menu in-game p
     + Leitura de arquivos 'leia-me'
         * Não é necessário ligar para as linhas data em arquivos 'leia-me', o Mod Loader instala elas por você também !!!
 - Recarregar Mods
-    + Mude ou adiciona arquivos enquanto o jogo está rodando e veja-as imediatamente !!!
+    + Mude ou adiciona arquivos enquanto o jogo está rodando e veja-as imediatamente!!!
 - Suporte para linhas de comando
     + Veja *modloader/.data/Command Line Arguments.md*
 - Menu 'em jogo' para configurações
-    + Vá para *Options > Mod Loader Setup*
+    + Vá para *Options > Mod Configuration*
     + Quando o menu não estiver disponível, faça as edições manualmente em *modloader/modloader.ini* e *modloader/.data/config.ini*
-
-\* No momento você precisa apertar F4 para recarregar os mods, alguns arquivos não são recarregáveis, porém a maioria é.
-
+- Profiles, assim você pode ter varios jogos em um.
+    + Leia *modloader/.data/Profiles.md* for para detalhes
 
 ### Encontrou uma falha?
 
