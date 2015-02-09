@@ -101,4 +101,12 @@ struct TraitsSA : TraitsGTA
         if(auto m = GetModelInfo(id)) return ReadOffset<uint16_t>(m, 0x08);
         return 0;
     }
+
+    // Gets the hash of the name of the specified model
+    static uint32_t GetModelKey(id_t id)
+    {
+        if(auto m = GetModelInfo(id)) return ReadOffset<uint32_t>(m, 0x04);
+        return 0;
+    }
+
 };

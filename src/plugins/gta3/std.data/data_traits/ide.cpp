@@ -158,128 +158,7 @@ namespace datalib {
     }
 }
 
-static std::function<void()> MakeIdeReloader()
-{
-    using namespace injector;
-    static std::set<std::string> ide_files;
-    static bool has_new_sys = false;
-
-    using loadide_hook = function_hooker<0x5B9206, void(const char*)>;
-    using emptyide_hook = function_hooker<0x5B8428, void*(const char*, const char*)>;
-
-    make_static_hook<loadide_hook>([](loadide_hook::func_type LoadObjectTypes, const char* filename)
-    {
-        ide_files.emplace(filename);
-        return LoadObjectTypes(filename);
-    });
-
-
-    return []   // this will be called whenever IDEs need refresh
-    {
-        int mWorkingModelId     = -1;
-        void* mWorkingModelPtr  = nullptr;
-        bool mHasAnyChange      = false;
-        std::unique_ptr<IStreamRefresher> refresher(StreamRefresherCreate());
-
-        if(refresher == nullptr)
-        {
-            plugin_ptr->Log("Warning: Cannot refresh IDE files because std.stream.dll is missing!");
-            return;
-        }
-        else
-            refresher.reset();
-
-        // TODO CHECK ON MODEL THO
-
-        auto RegisterChange = [&](int id)
-        {
-            if(!mHasAnyChange)
-            {
-                mHasAnyChange = true;
-                refresher->RequestRefresh(mWorkingModelId);
-                refresher->RequestRefresh(id);
-                refresher->PrepareRefresh();
-                refresher->DestroyEntities();
-                refresher->RemoveModels();
-            }
-        };
-
-        auto AddOrMatchModel = [&](std::function<void*(int)> Add, int id)
-        {
-            mWorkingModelId = id;
-            auto p = TraitsSA::GetModelInfo(id);
-            if(p != nullptr) return (mWorkingModelPtr = p);
-            return (mWorkingModelPtr = Add(id));
-        };
-
-        auto CheckTexDictionaryChange = [&](std::function<void(void*, const char*)> SetTexDictionary, void* modelinfo, const char* txdname)
-        {
-            auto FindTxdSlot = injector::cstd<int(const char*)>::call<0x731850>;
-            auto newtxd = FindTxdSlot(txdname);
-            auto oldtxd = TraitsSA::GetModelTxdIndex(mWorkingModelId);
-            if(newtxd != oldtxd)
-            {
-                RegisterChange(mWorkingModelId);
-                return SetTexDictionary(modelinfo, txdname);
-            }
-        };
-
-        auto emptyide_mf = make_function_hook<emptyide_hook>([](emptyide_hook::func_type fopen, const char* filename, const char* mode) {
-            void* f = fopen(filename, mode);
-            return f? f : fopen(modloader::szNullFile, mode);
-        });
-
-        auto DummyLineParse = [](std::function<int(const char*)>, const char*) -> int
-        {};
-
-        auto LineParseRefresh = [&](std::function<int(const char*)> parse, const char* line) -> int
-        {
-            mHasAnyChange = false;
-            refresher.reset(StreamRefresherCreate());
-            auto i = parse(line);
-            if(mHasAnyChange)
-            {
-                refresher->RequestModels();
-                refresher->RecreateEntities();
-            }
-            return i;
-        };
-
-
-        auto obj0_mf = make_function_hook<function_hooker<0x5B3D8E, void*(int id)>>(AddOrMatchModel);
-        auto obj1_mf = make_function_hook<function_hooker<0x5B3D9A, void*(int id)>>(AddOrMatchModel);
-        auto tobj_mf = make_function_hook<function_hooker<0x5B3F32, void*(int id)>>(AddOrMatchModel);
-        auto weap_mf = make_function_hook<function_hooker<0x5B3FE6, void*(int id)>>(AddOrMatchModel);
-        auto hier_mf = make_function_hook<function_hooker<0x5B407E, void*(int id)>>(AddOrMatchModel);
-        auto anim_mf = make_function_hook<function_hooker<0x5B413B, void*(int id)>>(AddOrMatchModel);
-        auto cars_mf = make_function_hook<function_hooker<0x5B6FD1, void*(int id)>>(AddOrMatchModel);
-        auto peds_mf = make_function_hook<function_hooker<0x5B74A7, void*(int id)>>(AddOrMatchModel);
-
-        scoped_nop<5> nop_ide_2dfx(0x5B86B7, 5);
-        //scoped_nop<5> nop_ide_objs(raw_ptr(0x5B85DD), 5); // TODO PROPER PTR
-        scoped_nop<5> nop_ide_tobj(raw_ptr(0x5B862C), 5);   // TODO PROPER PTR
-        scoped_nop<5> nop_ide_weap(raw_ptr(0x5B8634), 5);   // TODO PROPER PTR
-        scoped_nop<5> nop_ide_hier(raw_ptr(0x5B863C), 5);   // TODO PROPER PTR
-        scoped_nop<5> nop_ide_anim(raw_ptr(0x5B8644), 5);   // TODO PROPER PTR
-        scoped_nop<5> nop_ide_cars(raw_ptr(0x5B864C), 5);   // TODO PROPER PTR
-        scoped_nop<5> nop_ide_peds(raw_ptr(0x5B8654), 5);   // TODO PROPER PTR
-        scoped_nop<5> nop_ide_txdp(raw_ptr(0x5B86C5), 5);   // TODO PROPER PTR
-
-        auto lparse1_hk = make_function_hook<function_hooker<0x5B85DD, int(const char*)>>(LineParseRefresh);
-        auto texch_hk   = make_function_hook<function_hooker_thiscall<0x5B3DC2, void(void*, const char*)>>(CheckTexDictionaryChange);
-
-        void(*LoadObjectTypes)(const char*) = ReadRelativeOffset(0x5B9206 + 1).get();
-        for(auto& ide : ide_files)
-        {
-            if(ide == "data\\maps\\generic\\vegepart.ide" || ide == "data\\maps\\generic\\procobj.ide")
-            //if(true)
-            {
-                LoadObjectTypes(ide.c_str());
-            }
-        }
-    };
-}
-
+static std::function<void()> MakeIdeReloader();
 
 // Object Types Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
@@ -340,3 +219,197 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
         return nothing;
     });
 });
+
+
+/*
+ *  IDE Refresher
+ *      This is called once to return a functor responssible for refreshing IDEs.
+ */
+static std::function<void()> MakeIdeReloader()
+{
+    using namespace injector;
+    using namespace std::placeholders;
+    static std::set<std::string> ide_files; // List of all registered ide files
+
+    using loadide_hook = function_hooker<0x5B9206, void(const char*)>;
+    make_static_hook<loadide_hook>([](loadide_hook::func_type LoadObjectTypes, const char* filename)
+    {
+        ide_files.emplace(filename);
+        return LoadObjectTypes(filename);
+    });
+
+
+    // The following functor will be called whenever IDEs need refresh
+    return []
+    {
+        using emptyide_hook = function_hooker<0x5B8428, void*(const char*, const char*)>;
+
+        // Those are used on each IDE line that is parsed
+        int mWorkingModelId     = -1;
+        bool mHasAnyChange      = false;
+
+        // We need a streaming refresher to perform this, so let's communicate with std.stream
+        IStreamRefresher* refresher = StreamRefresherCreate(STREAMREFRESHER_CAPABILITY_MODEL, 0);
+        if(!refresher)
+        {
+            plugin_ptr->Log("Warning: Cannot refresh IDE files because std.stream.dll is missing!");
+            return;
+        }
+
+        // In case the IDE file doesn't exist just open a blank file
+        auto emptyide_mf = make_function_hook<emptyide_hook>([](emptyide_hook::func_type fopen, const char* filename, const char* mode) {
+            void* f = fopen(filename, mode);
+            return f? f : fopen(modloader::szNullFile, mode);
+        });
+
+        // Tells the refresher that something changed in THIS IDE LINE
+        // This should be called before ANY actual change to the model info!!!!!!
+        auto BeforeChange = [&]()
+        {
+            if(!mHasAnyChange)
+            {
+                mHasAnyChange = true;
+                plugin_ptr->Log("Updating model %d definition...", mWorkingModelId);
+                refresher->Clear();
+                refresher->RequestRefresh(mWorkingModelId);
+                refresher->PrepareRefresh();
+                refresher->DestroyEntities();
+                refresher->RemoveModels();
+            }
+        };
+
+
+        //
+        // Change Checkers
+        //
+
+        // Replacement for AddModelInfo that gets the existing model info instead of adding one
+        auto AddOrMatchModel = [&](std::function<void*(int)> AddModelInfo, int id, TraitsSA::ModelType type)
+        {
+            mWorkingModelId = id;
+            if(auto p = TraitsSA::GetModelInfo(id))
+            {
+                if(TraitsSA::GetModelType(id) == type)
+                    return p;
+                else
+                {
+                    plugin_ptr->Log("Warning: Model type for %d changed during definition refresh from %d to %d",
+                                    id, TraitsSA::GetModelType(id), type);
+                    BeforeChange();
+                    // continue to alloc another struct for the new type
+                }
+            }
+            return AddModelInfo(id);
+        };
+
+        // Checks if this model name changed, if it did request a refresh
+        auto CheckModelChange = [&](std::function<uint32_t(const char*)> GetUppercaseKey, const char* modelname)
+        {
+            auto newkey = GetUppercaseKey(modelname);
+            if(newkey != TraitsSA::GetModelKey(mWorkingModelId))
+                BeforeChange();
+            return newkey;
+        };
+
+        // Checks if this tex dcitionary changed, if it did request a refresh
+        auto CheckTexDictionaryChange = [&](std::function<void(void*, const char*)> SetTexDictionary, void* modelinfo, const char* txdname)
+        {
+            auto FindTxdSlot = injector::cstd<int(const char*)>::call<0x731850>;
+            if(FindTxdSlot(txdname) != TraitsSA::GetModelTxdIndex(mWorkingModelId))
+            {
+                BeforeChange();
+                SetTexDictionary(modelinfo, txdname);
+                refresher->RebuildTxdAssociationMap();
+            }
+        };
+
+        //
+        auto DummyColSet = [](std::function<void(void*, void*, int)> SetColModel, void* modelinfo, void* col, int b)
+        {
+            return;
+        };
+
+        //
+        //  IDE Line Parsers (to refresh the line)
+        //
+
+        // Use this line parser when a specific model type isn't refreshable
+        auto DummyLineParse = [](std::function<int(const char*)>, const char*) -> int
+        { return -1; };
+
+        // Use this line parser when the model type is refreshable
+        auto LineParseRefresh = [&](std::function<int(const char*)> parse, const char* line) -> int
+        {
+            mHasAnyChange = false;
+            auto i = parse(line);
+            if(mHasAnyChange)
+            {
+                refresher->RequestModels();
+                refresher->RecreateEntities();
+            }
+            return i;
+        };
+
+        // Refreshers parsers
+        auto objs_parse = make_function_hook<function_hooker<0x5B85DD, int(const char*)>>(LineParseRefresh);
+        auto tobj_parse = make_function_hook<function_hooker<0x5B862C, int(const char*)>>(LineParseRefresh);
+        auto weap_parse = make_function_hook<function_hooker<0x5B8634, int(const char*)>>(LineParseRefresh);
+        auto hier_parse = make_function_hook<function_hooker<0x5B863C, int(const char*)>>(DummyLineParse);      // nope cuz generic models + col change
+        auto anim_parse = make_function_hook<function_hooker<0x5B8644, int(const char*)>>(LineParseRefresh);
+        auto cars_parse = make_function_hook<function_hooker<0x5B864C, int(const char*)>>(LineParseRefresh);
+        auto peds_parse = make_function_hook<function_hooker<0x5B8654, int(const char*)>>(DummyLineParse);      // nope cuz generic models + col change
+        auto txdp_parse = make_function_hook<function_hooker<0x5B86C5, int(const char*)>>(DummyLineParse);
+        auto a2dfx_parse= make_function_hook<function_hooker<0x5B86B7, int(const char*)>>(DummyLineParse);
+
+        // AddOrMatchModel checkers
+        auto obj0_mf = make_function_hook<function_hooker<0x5B3D8E, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::DamageAtomic));
+        auto obj1_mf = make_function_hook<function_hooker<0x5B3D9A, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::Atomic));
+        auto tobj_mf = make_function_hook<function_hooker<0x5B3F32, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::Time));
+        auto weap_mf = make_function_hook<function_hooker<0x5B3FE6, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::Weapon));
+        auto hier_mf = make_function_hook<function_hooker<0x5B407E, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::Clump));
+        auto anim_mf = make_function_hook<function_hooker<0x5B413B, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::Clump));
+        auto cars_mf = make_function_hook<function_hooker<0x5B6FD1, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::Vehicle));
+        auto peds_mf = make_function_hook<function_hooker<0x5B74A7, void*(int id)>>(std::bind(AddOrMatchModel, _1, _2, TraitsSA::ModelType::Ped));
+
+        // Model change checkers
+        auto objs_mdlch = make_function_hook<function_hooker<0x5B3DB0, uint32_t(const char*)>>(CheckModelChange);
+        auto tobj_mdlch = make_function_hook<function_hooker<0x5B3F51, uint32_t(const char*)>>(CheckModelChange);
+        auto weap_mdlch = make_function_hook<function_hooker<0x5B3FF2, uint32_t(const char*)>>(CheckModelChange);
+        auto hier_mdlch = make_function_hook<function_hooker<0x5B408A, uint32_t(const char*)>>(CheckModelChange);
+        auto anim_mdlch = make_function_hook<function_hooker<0x5B4147, uint32_t(const char*)>>(CheckModelChange);
+        auto cars_mdlch = make_function_hook<function_hooker<0x5B6FE3, uint32_t(const char*)>>(CheckModelChange);
+        auto peds_mdlch = make_function_hook<function_hooker<0x5B74B6, uint32_t(const char*)>>(CheckModelChange);
+            
+        // Texture change checkers
+        auto objs_texch = make_function_hook<function_hooker_thiscall<0x5B3DC2, void(void*, const char*)>>(CheckTexDictionaryChange);
+        auto tobj_texch = make_function_hook<function_hooker_thiscall<0x5B3F63, void(void*, const char*)>>(CheckTexDictionaryChange);
+        auto weap_texch = make_function_hook<function_hooker_thiscall<0x5B400B, void(void*, const char*)>>(CheckTexDictionaryChange);
+        auto hier_texch = make_function_hook<function_hooker_thiscall<0x5B409C, void(void*, const char*)>>(CheckTexDictionaryChange);
+        auto anim_texch = make_function_hook<function_hooker_thiscall<0x5B4159, void(void*, const char*)>>(CheckTexDictionaryChange);
+        auto cars_texch = make_function_hook<function_hooker_thiscall<0x5B6FF8, void(void*, const char*)>>(CheckTexDictionaryChange);
+        auto peds_texch = make_function_hook<function_hooker_thiscall<0x5B74CB, void(void*, const char*)>>(CheckTexDictionaryChange);
+
+        // Disallow change of modelinfo anim file
+        static uint8_t asm_retn4[] = { 0xC2, 0x04, 0x00 };
+        scoped_write<sizeof(asm_retn4)> clump_noanimch;
+        scoped_write<sizeof(asm_retn4)> vehhh_noanimch;
+        clump_noanimch.write(0x4C5200, asm_retn4, sizeof(asm_retn4), true);
+        vehhh_noanimch.write(0x4C7670, asm_retn4, sizeof(asm_retn4), true);
+
+        // Disallow col changes
+        //auto peds_nocollch = make_function_hook<function_hooker_thiscall<0x5B74E5, void(void*, void*, int)>>(DummyColSet);
+        //auto hier_nocollch = make_function_hook<function_hooker_thiscall<0x5B40AA, void(void*, void*, int)>>(DummyColSet);
+        //auto weap_nocollch = make_function_hook<function_hooker_thiscall<0x5B4025, void(void*, void*, int)>>(DummyColSet);
+
+
+        // Perform the refreshing
+        void(*LoadObjectTypes)(const char*) = ReadRelativeOffset(0x5B9206 + 1).get();
+        for(auto& ide : ide_files)
+        {
+            LoadObjectTypes(ide.c_str());
+        }
+
+        refresher->Release();
+    };
+}
+
