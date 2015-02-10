@@ -7,6 +7,37 @@
 #include "../data_traits.hpp"
 using namespace modloader;
 
+namespace {
+/*
+ *  readme_key 
+ *      This key is special because two keys will never be the same.
+ *      This is important for data taken from readme files and later merged into the default store.
+ */
+struct readme_key
+{
+    readme_key() : mykey(getkey()) {}
+    readme_key(const readme_key&) : mykey(getkey()) {}
+    readme_key(readme_key&& rhs) { this->mykey = rhs.mykey; rhs.mykey = -1; }
+
+    bool operator<(const readme_key& rhs) const  { return this->mykey < rhs.mykey; }
+    bool operator==(const readme_key& rhs) const { return this->mykey == rhs.mykey; }
+
+private:
+    uint32_t mykey;
+
+    static int getkey()
+    {
+        static uint32_t i = 0;
+        return ++i;
+    }
+
+public:
+    template<class Archive>
+    void serialize(Archive&)
+    { /* dont save anything, key is per instance */ }
+};
+}
+
 //
 struct gtadat_traits : public data_traits
 {
@@ -26,7 +57,7 @@ struct gtadat_traits : public data_traits
                           
     //
     using dtype      = data_slice<either<uint32_t, std::string>>;                // may be a index to the path (after premerge) or the path itself (before premerge)
-    using key_type   = std::pair<uint32_t, uint32_t>;                            // .first is section, .second is either a global index (after premerge) or
+    using key_type   = std::pair<uint32_t, either<uint32_t, readme_key>>;        // .first is section, .second is either a global index (after premerge) or
                                                                                  //   a local index (as in this->index) (before premere)
     using value_type = gta3::data_section<dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype>;
 
@@ -46,7 +77,12 @@ struct gtadat_traits : public data_traits
         if(auto* index = get<uint32_t>(&a.get_slice<dtype>().get<0>()))
             return key_type(a.section()->id, *index);
         else
-            return key_type(a.section()->id, ++this->index);
+        {
+            if(this->is_readme)
+                return key_type(a.section()->id, readme_key());
+            else
+                return key_type(a.section()->id, ++this->index);
+        }
     }
 
     static const gta3::section_info* section_by_line(const gta3::section_info* sections, const std::string& line)
@@ -154,15 +190,13 @@ struct gtadat_traits : public data_traits
     public:
         void setup_for_readme()
         {
-            // Turns the index as high as possible while inserting lines from a readme
-            // That's because the readme store kinda of merges with a store similar to the default one and
-            // we'd conflict keys with the same local index of 0
-            this->index = (std::numeric_limits<decltype(index)>::max)() / 2;
+            this->is_readme = true;
         }
 
     protected:
    
         uint32_t index = 0; // local indexing before premerge
+        bool is_readme = false;
 
         template<class Archive>
         void serialize(Archive& archive)
