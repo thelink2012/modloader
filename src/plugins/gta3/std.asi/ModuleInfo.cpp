@@ -143,7 +143,7 @@ bool ThePlugin::ModuleInfo::Load()
         // We need the fullpath into the module because of the way Windows load dlls
         // More info at: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682586(v=vs.85).aspx
 
-        if(this->bIsD3D9 == false)
+        if(!this->bIsD3D9 && !this->bIsMainExecutable)
         {
             // Avoid double modules if not d3d9
             if(GetModuleHandleA(file->filename()))
