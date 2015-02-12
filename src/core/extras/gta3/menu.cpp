@@ -303,8 +303,12 @@ int TheMenu::NumModsOnPage(int n)
     {
         if(auto max = GetTotalModsPage())
         {
-            if(n + 1 >= max) return (mMods.size() % NumModsPerPage);
-            return NumModsPerPage;  // Not the last page, contains usual amount of mods
+            if(n + 1 >= max)    // last page?
+            {
+                auto rem = (mMods.size() % NumModsPerPage);
+                return rem? rem : NumModsPerPage;
+            }
+            return NumModsPerPage;
         }
     }
     return 0;

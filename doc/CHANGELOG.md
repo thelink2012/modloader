@@ -1,3 +1,9 @@
+v0.2.5 (In Dev)
+------------------------
+ * carcols.dat lines with only a single color are allowed now.
+ * Fixed profile inheritance.
+ * Fixed last menu page being empty when number of mods is multiple of 9.
+
 v0.2.4 (Feb 09 2015)
 ------------------------
  * Added IDE refresher.

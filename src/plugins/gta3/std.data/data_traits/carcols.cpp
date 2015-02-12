@@ -129,7 +129,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
     {
         // A pattern for a carcols line is very specific and needs special spacing, it is exactly:
         // <VEHMODEL>REPEAT(  <c1> <c2> [<c3> <c4>])
-        static auto regex = make_regex(R"___(^(\w+)\s*(?:((?: (?: \d+){2}){2,})|((?: (?: \d+){4}){2,}))\s*$)___");
+        static auto regex = make_regex(R"___(^(\w+)\s*(?:((?: (?: \d+){2})+)|((?: (?: \d+){4})+))\s*$)___");
 
         smatch match;
         if(regex_match(line, match, regex))

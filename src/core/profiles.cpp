@@ -202,13 +202,10 @@ bool Loader::Profile::IsExclusiveToMe(const std::string& name) const
  */
 bool Loader::Profile::IsIgnoredNoExclusive(const std::string& name) const
 {
-    return this->CallHierarchy(true, [this, &name](const Profile& profile)
-    {
-        if(this->IsExcluding())     // Use the exclusion flag from the derived object!!!
-            return !profile.IsOnIncludingList(name);
-        else
-            return (profile.IsOnIgnoringList(name) || profile.GetPriority(name) == 0);
-    });
+    if(this->IsExcluding())
+        return !this->IsOnIncludingList(name);
+    else
+        return (this->IsOnIgnoringList(name) || this->GetPriority(name) == 0);
 }
 
 /*
