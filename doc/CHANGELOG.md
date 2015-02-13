@@ -1,9 +1,3 @@
-v0.2.5 (In Dev)
-------------------------
- * carcols.dat lines with only a single color are allowed now.
- * Fixed profile inheritance.
- * Fixed last menu page being empty when number of mods is multiple of 9.
-
 v0.2.4 (Feb 09 2015)
 ------------------------
  * Added IDE refresher.
@@ -16,6 +10,14 @@ v0.2.4 (Feb 09 2015)
  * The `mod` command line allows the user to specify a priority now.
  * Fixed non-GENRL wave files not being installed properly.
  * Other minor fixes.
+
+ * __Hotfix 1 (Feb 10 2015)__:
+    + Fixed readme lines for gta.dat not handled properly.
+
+ * __Hotfix 2 (Feb 11 2015)__:
+    + carcols.dat lines with only a single color are allowed now.
+    + Fixed profiles inheritance.
+    + Fixed last menu page being empty when number of mods is multiple of 9.  
 
 v0.2.3 (Feb 02 2015)
 ------------------------
