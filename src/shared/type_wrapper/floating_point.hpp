@@ -49,11 +49,11 @@ struct floating_point_comparer
                 template<class T>
                 bool operator()(const T& delta, const T& a, const T& b) const
                 {
+                    // Please, check if Pred could be placed like so:
+                    //
+                    //  return Pred()(delta, Ep::absolute_epsilon());
                     Pred pred;
-                    if(pred(delta, Ep::absolute_epsilon())) // For numbers near zero
-                        return true;
-                    else
-                        return false;
+                    return pred(delta, Ep::absolute_epsilon()); // For numbers near zero
                 }
             };
             
