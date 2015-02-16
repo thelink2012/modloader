@@ -52,6 +52,8 @@ struct floating_point_comparer
                     // Please, check if Pred could be placed like so:
                     //
                     //  return Pred()(delta, Ep::absolute_epsilon());
+                    
+                    // IMPORTANT: What the heck are 'a' and 'b' doing nothing here?
                     Pred pred;
                     return pred(delta, Ep::absolute_epsilon()); // For numbers near zero
                 }
