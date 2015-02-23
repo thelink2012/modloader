@@ -1,6 +1,6 @@
 /* 
  * Copyright (C) 2014  LINK/2012 <dma_2012@hotmail.com>
- * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * Licensed under the MIT License, see LICENSE at top level directory.
  * 
  *  Most of things game version dependent (not being addressed by the addr translator) should be handled by the game trait
  *

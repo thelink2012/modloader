@@ -79,7 +79,7 @@ You can download the lastest version of Mod Loader from:
 ## Source Code
 
 Mod Loader is a open source project, feel free to learn and contribute.
-The source code is licensed under the GPL v3 license, check it out on [GitHub](https://github.com/thelink2012/modloader/).
+The source code is licensed under the MIT License, check it out on [GitHub](https://github.com/thelink2012/modloader/).
 
 ## Credits
 

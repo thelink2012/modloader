@@ -152,11 +152,3 @@ Utility headers
 
 Beyond API headers (*include/modloader.h* and *include/modloader.hpp*) there are utility headers on the *include/modloader/util/* directory.
 Those utility headers are there to help plugin creators with usual tasks.
-
-
-There are no licensing issues
--------------------------------
-
-Despite Mod Loader being licensed under GNU General Public License you are completly free to use whatever license you want on your plugin, there's no GPL infection here since you don't link with the infected code and the include files are under the public domain.
-
-However, if you want your plugin to be merged into Mod Loader you shall use at least a GPL-compatible license 

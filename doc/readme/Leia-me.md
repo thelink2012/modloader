@@ -79,7 +79,7 @@ Você pode fazer o download da última versão do Mod Loader em um dos seguintes
 ## Código-Fonte
 
 Mod Loader é um projeto open source, sinta-se livre para aprender e contribuir.
-O código fonte está sob a GPL v3, se ligue no [GitHub](https://github.com/thelink2012/modloader/).
+O código fonte está sob a MIT License, se ligue no [GitHub](https://github.com/thelink2012/modloader/).
 
 ## Créditos
 

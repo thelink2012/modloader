@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2013-2014 LINK/2012 <dma_2012@hotmail.com>
-* Licensed under GNU GPL v3, see LICENSE at top level directory.
+* Licensed under the MIT License, see LICENSE at top level directory.
 *
 *   std.fx  - Standard FX Loader Plugin for Mod Loader
 *       This handles FX files that are placed in models/ folder
