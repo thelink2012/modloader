@@ -9,7 +9,7 @@ Modifications are very popular in the Grand Theft Auto community, specially in G
 
 This modification aims to provide a extremely simple way to install modifications as seen in games with official modding support, you just place the modification in the modloader folder and look, it is installed! Easier than that is impossible. Uninstalling is that simple too, just remove the modification from the modloader folder.
 
-A important note is that modloader **DO NOT** touch **ANY** file from your game installation, so no risks.
+An important note is that modloader **DO NOT** touch **ANY** file from your game installation, so no risks.
 
 It may be very helpful for people with two or more game installations for different kind of modifications (e.g. one install clean, one install to play multiplayer, one install for mods, one install for a total conversion...).
 
