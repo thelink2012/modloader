@@ -59,7 +59,7 @@ Use *premake5 --help* for more command line options.
 
 ### License
 
-The source code is licensed under GNU GPL v3, giving you the freedom to modify, create derivated works and more. See the LICENSE file for details.
+The source code is licensed under the MIT License, giving you all the freedom you possibly want, see LICENSE for details.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Grand Theft Auto and all related trademarks are © Rockstar North 1997-2014.
