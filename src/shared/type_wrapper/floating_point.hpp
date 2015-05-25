@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2014 Denilson das Mercês Amorim (aka LINK/2012)
+ *  Copyright (C) 2014 Denilson das MercÃªs Amorim (aka LINK/2012)
  *  Licensed under the Boost Software License v1.0 (http://opensource.org/licenses/BSL-1.0)
  *
  */
@@ -40,6 +40,25 @@ struct floating_point_comparer
         // Internal stuff
         struct detail
         {
+            // Performs the comparision between 'a' and 'b' using their 'delta' by using absolute/fixed epsilon comparision
+            // @Pred is the predicate to compare the delta with the epsilons
+            // @Ep is the epsilon values
+            template<class Pred, class Ep>
+            struct absolute_epsilon_checker
+            {
+                template<class T>
+                bool operator()(const T& delta, const T& a, const T& b) const
+                {
+                    // Please, check if Pred could be placed like so:
+                    //
+                    //  return Pred()(delta, Ep::absolute_epsilon());
+                    
+                    // IMPORTANT: What the heck are 'a' and 'b' doing nothing here?
+                    Pred pred;
+                    return pred(delta, Ep::absolute_epsilon()); // For numbers near zero
+                }
+            };
+            
             // Performs the comparision between 'a' and 'b' using their 'delta' by using relative epsilon comparision
             // @Pred is the predicate to compare the delta with the epsilons
             // @Ep is the epsilon values
@@ -50,29 +69,8 @@ struct floating_point_comparer
                 bool operator()(const T& delta, const T& a, const T& b) const
                 {
                     Pred pred;
-                    if(pred(delta, Ep::absolute_epsilon())) // For numbers near zero
-                        return true;
-                    else if(pred(delta, ((std::max)(std::abs(a), std::abs(b)) * Ep::relative_epsilon())))   // For numbers farther from zero
-                        return true;
-                    else
-                        return false;
-                }
-            };
-
-            // Performs the comparision between 'a' and 'b' using their 'delta' by using absolute/fixed epsilon comparision
-            // @Pred is the predicate to compare the delta with the epsilons
-            // @Ep is the epsilon values
-            template<class Pred, class Ep>
-            struct absolute_epsilon_checker
-            {
-                template<class T>
-                bool operator()(const T& delta, const T& a, const T& b) const
-                {
-                    Pred pred;
-                    if(pred(delta, Ep::absolute_epsilon())) // For numbers near zero
-                        return true;
-                    else
-                        return false;
+                    return absolute_epsilon_checker<Pred, Ep>()(delta, a, b) ? // For numbers near zero
+                        true : pred(delta, ((std::max)(std::abs(a), std::abs(b)) * Ep::relative_epsilon()))); // For numbers farther from zero
                 }
             };
 
