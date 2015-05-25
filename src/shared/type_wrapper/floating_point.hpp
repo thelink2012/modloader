@@ -47,13 +47,8 @@ struct floating_point_comparer
             struct absolute_epsilon_checker
             {
                 template<class T>
-                bool operator()(const T& delta, const T& a, const T& b) const
+                bool operator()(const T& delta, const T&, const T&) const
                 {
-                    // Please, check if Pred could be placed like so:
-                    //
-                    //  return Pred()(delta, Ep::absolute_epsilon());
-                    
-                    // IMPORTANT: What the heck are 'a' and 'b' doing nothing here?
                     Pred pred;
                     return pred(delta, Ep::absolute_epsilon()); // For numbers near zero
                 }
