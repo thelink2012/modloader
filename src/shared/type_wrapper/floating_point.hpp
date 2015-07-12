@@ -65,7 +65,7 @@ struct floating_point_comparer
                 {
                     Pred pred;
                     return absolute_epsilon_checker<Pred, Ep>()(delta, a, b) ? // For numbers near zero
-                        true : pred(delta, ((std::max)(std::abs(a), std::abs(b)) * Ep::relative_epsilon()))); // For numbers farther from zero
+                        true : pred(delta, ((std::max)(std::abs(a), std::abs(b)) * Ep::relative_epsilon())); // For numbers farther from zero
                 }
             };
 

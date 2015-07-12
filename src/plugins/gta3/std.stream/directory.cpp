@@ -129,10 +129,26 @@ void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, const char*& file
     // to open it, so it reads dummy scripts. Well, let's follow SAMP, use original game funcs.
     if(isSAMP)
     {
-        // SAMP works in 1.0US only, so we don't care about address translations here
-        fopen  = raw_ptr(0x8232D8).get();   // _fopen
-        fread  = raw_ptr(0x823521).get();   // _fread
-        fclose = raw_ptr(0x82318B).get();   // _fclose
+        // SAMP works in 1.0US and 1.0EU only, so we don't care about address translations here. Let's do it manually!
+        if(gvm.GetMajorVersion() == 1 && gvm.GetMinorVersion() == 0 && (gvm.IsEU() || gvm.IsUS()))
+        {
+            if(gvm.IsUS())
+            {
+                fopen  = raw_ptr(0x8232D8).get();   // _fopen
+                fread  = raw_ptr(0x823521).get();   // _fread
+                fclose = raw_ptr(0x82318B).get();   // _fclose
+            }
+            else // IsEU then
+            {
+                fopen  = raw_ptr(0x8232D8 + 0x40).get();   // _fopen
+                fread  = raw_ptr(0x823521 + 0x40).get();   // _fread
+                fclose = raw_ptr(0x82318B + 0x40).get();   // _fclose
+            }
+        }
+        else
+        {
+            plugin_ptr->Log("Warning: Detected SAMP, but game is not 1.0US or 1.0EU!");
+        }
     }
 
     // Do actual work
