@@ -98,11 +98,11 @@ int __stdcall CdStreamThread()
         if(cd->status == 0)
         {
             // Setup vars
-            size_t bsize  = cd->nSectorsToRead;
-            size_t offset = cd->nSectorOffset  << 11;       // translate 2KiB based offset to actual offset
-            size_t size   = bsize << 11;                    // translate 2KiB based size to actual size
-            HANDLE hFile  = (HANDLE) cd->hFile;
-            bool bResult  = false;
+            uint32_t bsize  = cd->nSectorsToRead;
+            uint64_t offset = uint64_t(cd->nSectorOffset)  << 11;   // translate 2KiB based offset to actual offset
+            uint32_t size   = uint32_t(bsize) << 11;                // translate 2KiB based size to actual size
+            HANDLE hFile    = (HANDLE) cd->hFile;
+            bool bResult    = false;
             const char* filename = nullptr; int index = -1; // When abstract those fields are valid
             
             // Try to find abstract file from hFile
@@ -117,7 +117,7 @@ int __stdcall CdStreamThread()
                     // Setup vars based on abstract file
                     sfile  = &(*it);
                     offset = 0;
-                    size   = (size_t) sfile->info.file->size;
+                    size   = (uint32_t) sfile->info.file->size;
                     bsize  = GetSizeInBlocks(size);
                     index  = sfile->index;
                     filename = sfile->info.file->filepath();
@@ -126,8 +126,10 @@ int __stdcall CdStreamThread()
             
             
             // Setup overlapped structure
-            cd->overlapped.Offset     = offset;
-            cd->overlapped.OffsetHigh = 0;
+            LARGE_INTEGER offset_li;
+            offset_li.QuadPart        = offset;
+            cd->overlapped.Offset     = offset_li.LowPart;
+            cd->overlapped.OffsetHigh = offset_li.HighPart;
             
             // Read the stream
             if(ReadFile(hFile, cd->lpBuffer, size, &nBytesReaden, &cd->overlapped))
