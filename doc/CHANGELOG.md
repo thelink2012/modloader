@@ -1,3 +1,10 @@
+v0.2.5 (WIP)
+------------------------
+ * Support for UTF-8, UTF-16 and UTF-32 readme files.
+ * Support for 32GB img archives.
+ * Readme files are now limited to 60KB instead of 10KB.
+ * Fixed *GTA San Andreas 1.0 EU* support crashing on SAMP.
+
 v0.2.4 (Feb 09 2015)
 ------------------------
  * Added IDE refresher.
