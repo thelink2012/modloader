@@ -5,6 +5,7 @@
  */
 #include <stdinc.hpp>
 #include "loader.hpp"
+#include <unicode.hpp>
 using namespace modloader;
 
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));

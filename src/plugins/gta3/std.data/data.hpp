@@ -170,6 +170,8 @@ class DataPlugin : public modloader::basic_plugin
 
         // Temporary buffer used for parsing readmes
         std::unique_ptr<char[]> readme_buffer;
+        // Temporary buffer used for converting the readme format to UTF-8
+        std::vector<uint8_t> readme_buffer_utf8;
 
         // stores readme handlers
         using read_handler = std::function<maybe<size_t>(const modloader::file&, const std::string&, either<uint32_t, line_data*>)>;

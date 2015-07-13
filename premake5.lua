@@ -208,12 +208,9 @@ solution "modloader"
         "include",
         "deps/cereal/include",
         "deps/injector/include",
-        "deps/ini_parser/include",
-        "deps/fxt_parser/include",
-        "deps/datalib/include",
-        "deps/type_wrapper/include",
         "deps/boost",
         "deps/tinympl",
+        "deps/utf8-cpp/source",
         "src/shared",
     }
 

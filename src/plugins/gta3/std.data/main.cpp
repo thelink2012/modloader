@@ -4,8 +4,22 @@
  * 
  */
 #include <stdinc.hpp>
+#include <unicode.hpp>
 #include "data_traits.hpp"
 using namespace modloader;
+
+
+//
+// TIP! TIP! TIP! TIP! TIP!! TIP! TIP! TIP!!!!!!!!!
+// ------------------------------------------------------
+//
+// If you are working with Mod Loader's or this plugin's code you may truly want to exclude as many data_traits as you can from the build.
+// Otherwise you'll get really high compilation and linking times.
+//
+// To do so in Visual Studio, select as many (or every) cpp source file in the data_traits/ directory at the solution explorer,
+// then right-click and go to Properties, then General and mark "Yes" on "Exclude From Build".
+//
+
 
 void LazyGtaDatPatch();
 
@@ -303,6 +317,8 @@ void DataPlugin::Update()
 
     // Free up the temporary readme_buffer that may have been allocated in ParseReadme()
     this->readme_buffer.reset();
+    this->readme_buffer_utf8.clear();
+    this->readme_buffer_utf8.shrink_to_fit();
 
     // If anything changed in the readmes state (i.e. installed, removed or reinstalled a readme)
     // then rewrite it's cache
@@ -497,20 +513,47 @@ void DataPlugin::UpdateReadmeState()
  */
 std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file)
 {
-    static const size_t max_readme_size = 10000; // ~10KB, don't increase too much, gotta read to memory
+    static const size_t max_readme_size = 60000; // ~60KB, don't increase too much to avoid reading too big files.
+                                                 // Plus we may have two buffers with this size while readmes are being read.
 
     if(file.size <= max_readme_size)
     {
         std::ifstream stream(file.fullpath(), std::ios::binary);
         if(stream)
         {
-            // Allocate buffer to work with readme files
-            // This buffer will be later freed at Update() time
+            // Allocate buffer to work with readme files.
+            // This buffer will be later freed at Update() time.
             if(readme_buffer == nullptr)
                 readme_buffer.reset(new char[max_readme_size]);
 
             if(stream.read(&readme_buffer[0], file.size))
-                return this->ParseReadme(file, std::make_pair(&readme_buffer[0], &readme_buffer[(size_t)(file.size)]));
+            {
+                const char* start = &readme_buffer[0];
+                const char* end   = &readme_buffer[(size_t)(file.size)];
+
+                // If the text is not in UTF-8, convert it to UTF-8!!!!!!
+                auto encoding = unicode::detect_encoding(start, end);
+                if(encoding != unicode::encoding::utf8)
+                {
+                    // Ensure emptyness and capacity for UTF-8 intermediary buffer.
+                    // This buffer will be later freed at Update() time.
+                    readme_buffer_utf8.clear();
+                    readme_buffer_utf8.reserve(max_readme_size);
+
+                    // Convert from the detected encoding to UTF-8 by ignoring any invalid code point (unchecked).
+                    unicode::unchecked::any_to_utf8(encoding, start, end, std::back_inserter(readme_buffer_utf8));
+
+                    // Resetup start and end of text pointers.
+                    start = (const char*)(readme_buffer_utf8.data() + 0);
+                    end   = (const char*)(readme_buffer_utf8.data() + readme_buffer_utf8.size());
+                }
+
+                // Skip BOM
+                if(std::distance(start, end) >= 3 && utf8::is_bom(start))
+                    start = start + 3;
+
+                return this->ParseReadme(file, std::make_pair(start, end));
+            }
             else
                 this->Log("Warning: Failed to read from \"%s\".", file.filepath());
         }
@@ -526,7 +569,9 @@ std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file)
 /*
  *  DataPlugin::ParseReadme
  *      Parses the specified readme buffer (the 'buffer' pair represents begin and end respectively) from the readme file
- *      and returns a list of mergers that are related to data found in this file
+ *      and returns a list of mergers that are related to data found in this file.
+ *
+ *      NOTE: buffer will be interpreted as ASCII (to follow GTA), so do any unicode specific handling before calling this!
  */
 std::set<size_t> DataPlugin::ParseReadme(const modloader::file& file, std::pair<const char*, const char*> buffer)
 {
