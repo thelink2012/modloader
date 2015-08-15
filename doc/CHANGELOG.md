@@ -1,4 +1,4 @@
-v0.2.5 (WIP)
+v0.2.5 (Aug 15 2015)
 ------------------------
  * Support for UTF-8, UTF-16 and UTF-32 readme files.
  * Support for 32GB img archives.
