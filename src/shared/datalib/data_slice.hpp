@@ -411,7 +411,7 @@ class data_slice : public data_slice_base
             template<class Integral, class TypeWr>
             bool operator()(Integral, TypeWr, typename TypeWr::type& value)
             {
-                if(self.used.at(Integral::value))
+                if(self.used[Integral::value])
                 {
                     perform_print<Integral::value, TypeWr::type>(value);
                 }
@@ -455,8 +455,8 @@ class data_slice : public data_slice_base
             bool compare()
             {
                 using Type = typename std::tuple_element<N, tuple_type>::type;
-                bool lhs_used = lhs.used.at(N);
-                bool rhs_used = rhs.used.at(N);
+                bool lhs_used = lhs.used[N];
+                bool rhs_used = rhs.used[N];
 
                 if(lhs_used == rhs_used)    // it should have the same state at both sides for it to be equal
                 {

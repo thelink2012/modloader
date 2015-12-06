@@ -427,7 +427,7 @@ static bool ModulesWalk(uint32_t pid, F functor)
         }
         
         // Search is done
-        FindClose(hSnapshot);
+        CloseHandle(hSnapshot);
         return true;
     }
     

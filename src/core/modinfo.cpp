@@ -68,8 +68,8 @@ void Loader::ModInformation::Scan()
 
             // This buffer setup is tricky but should work fine
             m.buffer       = filepath.data();
-            m.pos_eos      = filepath.length();
-            m.pos_filedir  = this->path.length();
+            m.pos_eos      = (uint8_t)(filepath.length());   // TODO make sure (len <= 255)?
+            m.pos_filedir  = (uint8_t)(this->path.length()); // ^ 
             m.pos_filename = m.pos_filedir + (file.filename - file.filebuf);
             m.pos_filext   = m.pos_filedir + (file.filext - file.filebuf);
             m.hash         = modloader::hash(filepath.data() + m.pos_filename);

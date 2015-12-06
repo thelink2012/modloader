@@ -19,6 +19,9 @@ struct readme_key
     readme_key(const readme_key&) : mykey(getkey()) {}
     readme_key(readme_key&& rhs) { this->mykey = rhs.mykey; rhs.mykey = -1; }
 
+    // Note: This method exists because boost asks for it, don't invoke it directly.
+    readme_key& operator=(const readme_key&) = default;
+
     bool operator<(const readme_key& rhs) const  { return this->mykey < rhs.mykey; }
     bool operator==(const readme_key& rhs) const { return this->mykey == rhs.mykey; }
 

@@ -258,7 +258,7 @@ class DataPlugin : public modloader::basic_plugin
         // Adds a behaviour type
         void AddBehv(size_t hash, bool canmerge)
         {
-            vbehav.emplace_back(files_behv_t { hash, canmerge, vbehav.size()+1 });
+            vbehav.emplace_back(files_behv_t { hash, canmerge, Type(vbehav.size()+1) });
             if(vbehav.size() >= type_mask_base) throw std::logic_error("type_mask_base too small");
         }
 

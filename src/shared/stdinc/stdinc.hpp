@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <functional>
 #include <type_traits>
+#include <iterator>
 
 // Mod Loader stuff
 #include <modloader/modloader.hpp>

@@ -191,7 +191,7 @@ struct shopping_traits : public data_traits
     // Finds the key for a value
     key_type key_from_value(const value_type& value)
     {
-        return get<0>(value).apply_visitor(key_from_value_visitor(*this, get(get<1>(value))));
+        return get<0>(value).apply_visitor(key_from_value_visitor(*this, datalib::get(get<1>(value))));
     }
 
     // Does the manual section handling

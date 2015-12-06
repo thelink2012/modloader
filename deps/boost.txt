@@ -1,7 +1,7 @@
-Notice boost/ contains only a subset of Boost 1.57.0, the subset we are going to use.
+Notice boost/ contains only a subset of Boost 1.59.0, the subset we are going to use.
 
 Additional Notice:
-  boost/optional/detail/optional.hpp has been modified, added a macro in between the forwardly declared operator<< so it
+  boost/optional/optional.hpp has been modified, added a macro in between the forwardly declared operator<< so it
   doesn't conflict with user defined one (from datalib)
 
 

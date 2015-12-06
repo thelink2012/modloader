@@ -30,7 +30,6 @@
     #endif
 #endif
 
-
 namespace cwc
 {
 
@@ -409,7 +408,12 @@ inline wchar_t* strstr(wchar_t* str1, const wchar_t* str2)
 
 inline wchar_t* strtok(wchar_t* str, const wchar_t* delims)
 {
+#if _MSC_VER < 1900 || defined(_CRT_NON_CONFORMING_WCSTOK) // not VS2015 or [VS2015 and non conforming wcstok]
 	return wcstok(str, delims);
+#else
+    static wchar_t* context = nullptr;
+    return wcstok(str, delims, &context);
+#endif
 }
 
 inline size_t strxfrm(wchar_t* destination, const wchar_t* source, size_t num)

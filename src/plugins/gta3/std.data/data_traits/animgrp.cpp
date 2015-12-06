@@ -84,7 +84,7 @@ struct animgrp_traits : public data_traits
     key_type key_from_value(const value_type& value)
     {
         return key_type(
-            get(get<1>(value)),
+            datalib::get(get<1>(value)),
             get<0>(value).apply_visitor(key_from_value_visitor(*this)));
     }
 
