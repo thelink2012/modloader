@@ -446,8 +446,9 @@ template<class T> void Refresher<T>::RequestModels()
     for(auto& pair : mToRefresh)
     {
         auto& model = *streaming.InfoForModel(pair.first);
-        if(model.flags || pair.second.bShallLoadBack) // Has any importance to the streaming?
-            streaming.RequestModel(pair.first, model.flags);
+        auto mflags = model.GetStreamFlags();
+        if(mflags || pair.second.bShallLoadBack) // Has any importance to the streaming?
+            streaming.RequestModel(pair.first, mflags);
     }
 
     // Stream those models in now!

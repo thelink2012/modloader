@@ -19,6 +19,10 @@ struct CDirectory	// sizeof = 0x10
 	uint32_t m_dwCount;
 	uint8_t m_bDynamicAllocated;
 	uint8_t __pad[3];
+
+    CDirectory() = delete;
+    CDirectory(const CDirectory&) = delete;
+    CDirectory& operator=(const CDirectory&) = delete;
 };
 #pragma pack(pop)
 

@@ -17,6 +17,10 @@ struct CdStream	// sizeof = 0x30
 	HANDLE semaphore;
 	HANDLE hFile;
 	OVERLAPPED overlapped;
+
+    CdStream() = delete;
+    CdStream(const CdStream&) = delete;
+    CdStream& operator=(const CdStream&) = delete;
 };
 #pragma pack(pop)
 
@@ -40,6 +44,10 @@ struct CdStreamInfo	// sizeof = 0x8C0
 	DWORD field_8B4;
 	DWORD gtaint_id;
 	DWORD gta3_id;
+
+    CdStreamInfo() = delete;
+    CdStreamInfo(const CdStreamInfo&) = delete;
+    CdStreamInfo& operator=(const CdStreamInfo&) = delete;
 };
 #pragma pack(pop)
 

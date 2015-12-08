@@ -230,7 +230,10 @@ class CAbstractStreaming
         uint32_t newcloth_blocks = 0;                               // On the player rebuilding process, realloc the streaming buffer if necessary because of this clothing item size (in blocks)
 
         // Abstract streaming
-        std::list<AbctFileHandle> stm_files;                    // List of abstract files currently open for reading
+        std::list<AbctFileHandle> stm_files;                        // List of abstract files currently open for reading
+
+        // Dynamic cross-game structures caching
+        size_t sizeof_CStreamingInfo;                               // The size of the CStreamingInfo structure
 
     public:
         CAbstractStreaming();
@@ -248,7 +251,7 @@ class CAbstractStreaming
         void RemoveUnusedResources();
         bool IsModelOnStreaming(id_t id);
         bool IsModelAvailable(id_t id);
-        CStreamingInfo* InfoForModel(id_t id = 0);
+        CStreamingInfo* InfoForModel(id_t id);
 
         // Checks if file is clothing item
         bool IsClothes(const modloader::file* file);
@@ -320,11 +323,10 @@ class CAbstractStreaming
         void SetInfoForModel(id_t id, uint32_t offset, uint32_t blocks)
         {
             auto& model = *this->InfoForModel(id);
-            model.offset    = offset;
-            model.blocks    = blocks;
-            model.nextOnCd  = -1;
+            model.SetStreamData(offset, blocks);
+            model.SetNextOnCd(-1);
             ClearNextOnCdPointingTo(id);
-            if(!bHasInitializedStreaming) model.flags = 0;
+            if(!bHasInitializedStreaming) model.ClearStreamFlags();
         }
 
         // Restores the info for model structure for the specified resource id
@@ -344,14 +346,14 @@ class CAbstractStreaming
         void ClearNextOnCdPointingTo(id_t id)
         {
             auto prev_pair = prev_on_cd.find(id);
-            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->nextOnCd = -1;
+            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->SetNextOnCd(-1);
         }
 
         // Restore the next on cd pointing to the specified model....
         void RestoreNextOnCdPointingTo(id_t id)
         {
             auto prev_pair = prev_on_cd.find(id);
-            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->nextOnCd = id;
+            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->SetNextOnCd(id);
         }
 
     public://protected:
@@ -391,6 +393,8 @@ class CAbstractStreaming
         template<class T>
         friend void PerformStandardRefresh(CAbstractStreaming& s);
 
+        id_t InfoForModelIndex(const CStreamingInfo& model);
+
         // Finds resource index from it's filename hash, returns -1 if none
         id_t FindModelFromHash(hash_t hash)
         {
@@ -410,12 +414,6 @@ class CAbstractStreaming
         {
             auto it = this->cd_dir.find(id);
             return it != cd_dir.end()? it->second.type : ResType::None;
-        }
-
-        // Returns the resource index from it's model info structure
-        id_t InfoForModelIndex(const CStreamingInfo& model)
-        {
-            return (&model - InfoForModel());
         }
 
 

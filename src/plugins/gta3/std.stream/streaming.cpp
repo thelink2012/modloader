@@ -16,6 +16,7 @@ CAbstractStreaming streaming;
  */
 CAbstractStreaming::CAbstractStreaming()
 {
+    this->sizeof_CStreamingInfo = CStreamingInfo::GetSizeof();
     InitializeCriticalSection(&cs);
 }
 
@@ -31,9 +32,19 @@ CAbstractStreaming::~CAbstractStreaming()
  */
 CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
 {
+    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the indexing manually
+    // with sizeof_CStreamingInfo!!
     using max_InfoForModel = lazy_object<0x5B8AFC, CStreamingInfo*>;
-    CStreamingInfo* info = &ms_aInfoForModel[id];
+    CStreamingInfo* info = (CStreamingInfo*)( (uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo) );
     return (info < max_InfoForModel::get()? info : nullptr);
+}
+
+// Returns the resource index from it's model info structure
+auto CAbstractStreaming::InfoForModelIndex(const CStreamingInfo& model) -> id_t
+{
+    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the substraction manually
+    // with sizeof_CStreamingInfo!!
+    return (id_t)( ((uint8_t*)(&model) - (uint8_t*)(InfoForModel(0))) / sizeof_CStreamingInfo );
 }
 
 /*
@@ -42,7 +53,7 @@ CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
  */
 bool CAbstractStreaming::IsModelOnStreaming(id_t id)
 {
-    return InfoForModel(id)->load_status != 0;
+    return InfoForModel(id)->GetLoadStatus() != 0;
 }
 
 /*
@@ -51,7 +62,7 @@ bool CAbstractStreaming::IsModelOnStreaming(id_t id)
  */
 bool CAbstractStreaming::IsModelAvailable(id_t id)
 {
-    return InfoForModel(id)->load_status == 1;
+    return InfoForModel(id)->GetLoadStatus() == 1;
 }
 
 /*

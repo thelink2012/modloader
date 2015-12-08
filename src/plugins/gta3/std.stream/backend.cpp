@@ -19,8 +19,11 @@ extern "C"
     int  iNextModelBeingLoaded = -1;            // Set by RegisterNextModelRead, will then be sent to iModelBeingLoaded
     int  iModelBeingLoaded = -1;                // Model currently passing throught CdStreamRead
 
-    //
+    // Note: Don't perform pointer arithimetic, or indexing, with this pointer! This have a sizeof = 0 (4 actually).
+    // Use the InfoForModel(id) and InfoForModelIndex(info) functions!!!
     CStreamingInfo* ms_aInfoForModel = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+
+    //
     DWORD *pStreamCreateFlags        = memory_pointer(0x8E3FE0).get();
 
     // Returns the file handle to be used for iModelBeingLoaded (called from Assembly)
@@ -300,8 +303,11 @@ void CAbstractStreaming::BuildPrevOnCdMap()
 {
     CStreamingInfo* res;
     prev_on_cd.clear();
-    for(int i = 0; res = InfoForModel(i); ++i)
-        if(res->nextOnCd != -1) prev_on_cd.emplace(res->nextOnCd, i);
+    for(id_t i = 0; res = InfoForModel(i); ++i)
+    {
+        id_t nextOnCd = res->GetNextOnCd();
+        if(nextOnCd != -1) prev_on_cd.emplace(nextOnCd, i);
+    }
 }
 
 
@@ -422,11 +428,11 @@ void CAbstractStreaming::Patch()
         {
             // Check if we have a overrider for this clothing item (based on directory offset)
             DirectoryInfo* entry;
-            auto it = this->clothes.find(InfoForModel(index)->offset);
+            auto it = this->clothes.find(InfoForModel(index)->GetOffset());
             if(it != clothes.end() && (entry = this->FindClothEntry(it->second->hash)))
             {
                 // Yep, we have a overrider, save stock entry and quickly import our abstract model
-                this->RegisterStockEntry(it->second->filename(), *entry, index, InfoForModel(index)->img_id);
+                this->RegisterStockEntry(it->second->filename(), *entry, index, InfoForModel(index)->GetImgId());
                 this->QuickImport(index, it->second, false, true);
             }
             else
