@@ -67,7 +67,7 @@ class Refresher : public IStreamRefresher, private T
 
 
         // Reference to the streaming object
-        CAbstractStreaming* streaming;
+        CAbstractStreaming& streaming;
         uint32_t capabilities;          // capabilities of this refresher (optimization hint)
         
 
@@ -198,7 +198,7 @@ void PerformStandardRefresh(CAbstractStreaming& s)
     // Ask to refresh the specified models
     for(auto& imp : s.to_import)
     {
-        auto id = streaming.FindModelFromHash(imp.first);
+        auto id = s.FindModelFromHash(imp.first);
         if(id != -1) refresher.RequestRefresh(id);
     }
 
@@ -248,7 +248,7 @@ Refresher<T>::Refresher(CAbstractStreaming& s, uint32_t capabilities)
  */
 template<class T> 
 Refresher<T>::Refresher(tag_player_t, CAbstractStreaming& s) 
-    : streaming(&s)
+    : streaming(s)
 {
     plugin_ptr->Log("Refreshing player...");
 
@@ -256,7 +256,7 @@ Refresher<T>::Refresher(tag_player_t, CAbstractStreaming& s)
     always.write<void*>(0x5A8346 + 1, nullptr, true);   // even when ""nothing"" changed in it
 
     // Update the streaming buffer with the new highest clothing item
-    CAbstractStreaming::StreamingBufferUpdater().AddItem(streaming->newcloth_blocks);
+    CAbstractStreaming::StreamingBufferUpdater().AddItem(streaming.newcloth_blocks);
 
     auto ped = injector::cstd<void*(int)>::call<0x56E210>(-1);      // FindPlayerPed
     injector::cstd<void(void*, char)>::call<0x5A82C0>(ped, false);  // CClothes::RebuildPlayer              
@@ -325,7 +325,7 @@ template<class T> void Refresher<T>::BuildRefreshMap()
     auto AddRefresh = [this](id_t id)
     {
         // Go ahead only if this model is valid and is present on the streaming (loaded)
-        if(id != -1 && streaming->IsModelOnStreaming(id))
+        if(id != -1 && streaming.IsModelOnStreaming(id))
         {
             this->mToRefresh.emplace(std::piecewise_construct,
                 std::forward_as_tuple(id),
@@ -400,8 +400,8 @@ template<class T> void Refresher<T>::DestroyEntities()
  */
 template<class T> void Refresher<T>::RemoveModels()
 {
-    for(auto& pair : this->mToRefresh) streaming->RemoveModel(pair.first);
-    streaming->RemoveUnusedResources();
+    for(auto& pair : this->mToRefresh) streaming.RemoveModel(pair.first);
+    streaming.RemoveUnusedResources();
 }
 
 /*
@@ -413,12 +413,12 @@ template<class T> void Refresher<T>::ProcessImportList()
 {
     ref_list<const modloader::file*> import;    // To import
     std::vector<hash_t> unimport;               // To unimport
-    auto size = streaming->to_import.size();
+    auto size = streaming.to_import.size();
 
     // Setup the lists
     import.reserve(size);
     unimport.reserve(size);
-    for(auto& pair : streaming->to_import)
+    for(auto& pair : streaming.to_import)
     {
         // If has file associated, we need to import otherwise export
         if(pair.second) import.emplace_back(std::ref(pair.second));
@@ -428,12 +428,12 @@ template<class T> void Refresher<T>::ProcessImportList()
     // Order maters, so, first unimport the models
     for(auto hash : unimport)
     {
-        auto id = streaming->FindModelFromHash(hash);
-        if(id != -1) streaming->UnimportModel(id);
+        auto id = streaming.FindModelFromHash(hash);
+        if(id != -1) streaming.UnimportModel(id);
     }
 
     // ...and then import
-    streaming->ImportModels(import);
+    streaming.ImportModels(import);
 }
 
 /*
@@ -445,14 +445,14 @@ template<class T> void Refresher<T>::RequestModels()
     // Do the requests
     for(auto& pair : mToRefresh)
     {
-        auto& model = *streaming->InfoForModel(pair.first);
+        auto& model = *streaming.InfoForModel(pair.first);
         auto mflags = model.GetStreamFlags();
         if(mflags || pair.second.bShallLoadBack) // Has any importance to the streaming?
-            streaming->RequestModel(pair.first, mflags);
+            streaming.RequestModel(pair.first, mflags);
     }
 
     // Stream those models in now!
-    streaming->LoadAllRequestedModels();
+    streaming.LoadAllRequestedModels();
 }
 
 /*
@@ -579,7 +579,7 @@ namespace // avoid conflict with the same function defined in <interfaces/gta3/s
     IStreamRefresher* StreamRefresherCreate(uint32_t capabilities, uint32_t flags)
     {
         if(gvm.IsSA())
-            return new Refresher<TraitsSA>(streaming, capabilities);
+            return new Refresher<TraitsSA>(*streaming, capabilities);
         return nullptr;
     }
 
