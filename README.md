@@ -23,26 +23,13 @@ This is a open source project, so, feel free to learn and contribute!
 If you are building from the source code, it is very simple to compile. You'll need the following:
 
 + [Premake](http://industriousone.com/premake/download) 5 *(pre-built executable available in this repository root)*
-+ An C++11 compiler, tested under:
-    - [Visual Studio](http://www.visualstudio.com/downloads) 2013 or greater
-    - [MinGW](http://mingw-w64.sourceforge.net/download.php) 4.9.0 or greater _(currently have build errors with gta3.std.data)_
++ [Visual Studio](http://www.visualstudio.com/downloads) 2013 or greater.
 
+Then, in a command-line shell go into the repository root directory and run the command:
 
-Then, in a command-line shell go into the repository root directory and run the commands:
-
- + __For Visual Studio__:
- 
         premake5 vs2013
 
-    then you can compile the generated project in the build directory
-
- + __For MinGW__:
- 
-        premake5 gmake
-        cd build
-        mingw32-make CC=gcc
-        cd ..
-
+    then you can compile the generated project in the build directory.
 
 After such, you can install the generated binaries into your game directory by running
 
