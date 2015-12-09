@@ -76,27 +76,39 @@ extern "C"
  */
 int __stdcall CdStreamThread()
 {
-    DWORD nBytesReaden;
-    
-    // Get reference to the addresses we'll use
-    CdStreamInfo& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfo>();
-    
+    HANDLE* pSemaphore = nullptr;
+    Queue* pQueue      = nullptr;
+    CdStream** ppStreams = nullptr;
+
+    // Get reference to the addresses we'll use.
+    if(gvm.IsSA())
+    {
+        auto& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfoSA>();
+        pSemaphore = &cdinfo.semaphore;
+        pQueue = &cdinfo.queue;
+        ppStreams = &cdinfo.pStreams;
+    }
+    else
+    {
+        auto message = "Warning: Failed to initialise CdStreamThread; This should never happen.";
+        plugin_ptr->Log(message);
+        throw std::runtime_error(message);
+    }
+
     // Loop in search of things to load in the queue
     while(true)
     {
-        int i = -1;
-        CdStream* cd;
         bool bIsAbstract = false;
         CAbstractStreaming::AbctFileHandle* sfile = nullptr;
         
         // Wait until there's something to be loaded...
-        WaitForSingleObject(cdinfo.semaphore, -1);
+        WaitForSingleObject(*pSemaphore, -1);
         
         // Take the stream index from the queue
-        i = GetFirstInQueue(&cdinfo.queue);
+        int i = GetFirstInQueue(pQueue);
         if(i == -1) continue;
         
-        cd = &cdinfo.pStreams[i];
+        CdStream* cd = &((*ppStreams)[i]);
         cd->bInUse = true;          // Mark the stream as under work
         if(cd->status == 0)
         {
@@ -130,6 +142,7 @@ int __stdcall CdStreamThread()
             
             // Setup overlapped structure
             LARGE_INTEGER offset_li;
+            DWORD nBytesReaden;
             offset_li.QuadPart        = offset;
             cd->overlapped.Offset     = offset_li.LowPart;
             cd->overlapped.OffsetHigh = offset_li.HighPart;
@@ -161,7 +174,7 @@ int __stdcall CdStreamThread()
         }
         
         // Remove from the queue what we just readed
-        RemoveFirstInQueue(&cdinfo.queue);
+        RemoveFirstInQueue(pQueue);
         
         // Cleanup
         if(bIsAbstract) streaming.CloseModel(sfile);
