@@ -382,26 +382,31 @@ bool CAbstractStreaming::IsClothes(const modloader::file* file)
  */
 bool CAbstractStreaming::ImportCloth(const modloader::file* file)
 {
-    if(auto entry = FindClothEntry(file->hash))
+    if(gvm.IsSA())
     {
-        // Every cloth import should go through this code path....
-        // The else condition calls this function again so it goes by this path
+        auto clothesDirectory = (CDirectorySA*)(::clothesDirectory);
 
-        // Allow import only if we don't have any clothing like that installed
-        return this->clothes.emplace(entry->m_dwFileOffset, file).second;
-    }
-    else if(true)
-    {
-        // We need to add a new entry into the clothes directory...
-        DirectoryInfo entry;
-        plugin_ptr->Log("Adding new item to clothing directory \"%s\"", file->filename());
-        this->RegisterClothingItem(file->filename(), clothesDirectory->m_dwCount);              // Tell us about it
-        FillDirectoryEntry(entry, file->filename(), TakeClothSparseOffset(), file->size);
-        injector::thiscall<void(CDirectory*, DirectoryInfo*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
-        sparse_dir_entries.emplace_back(entry);
+        if(auto entry = FindClothEntry(file->hash))
+        {
+            // Every cloth import should go through this code path....
+            // The else condition calls this function again so it goes by this path
 
-        // Try again, now it'll work
-        return this->ImportCloth(file); 
+            // Allow import only if we don't have any clothing like that installed
+            return this->clothes.emplace(entry->m_dwFileOffset, file).second;
+        }
+        else if(true)
+        {
+            // We need to add a new entry into the clothes directory...
+            DirectoryInfo entry;
+            plugin_ptr->Log("Adding new item to clothing directory \"%s\"", file->filename());
+            this->RegisterClothingItem(file->filename(), clothesDirectory->m_dwCount);              // Tell us about it
+            FillDirectoryEntry(entry, file->filename(), TakeClothSparseOffset(), file->size);
+            injector::thiscall<void(CDirectorySA*, DirectoryInfo*)>::call<0x532310>(clothesDirectory, &entry);  // CDirectory::AddItem
+            sparse_dir_entries.emplace_back(entry);
+
+            // Try again, now it'll work
+            return this->ImportCloth(file); 
+        }
     }
     return false;
 }

@@ -105,7 +105,7 @@ inline void FillDirectoryEntry(DirectoryInfo& entry, const char* filename, uint3
     strncpy(entry.m_szFileName, filename, 23);
     entry.m_szFileName[23]  = 0;
     entry.m_dwFileOffset    = offset;
-    entry.m_usLightSize     = 0;
+    entry.m_usCompressedSize__   = 0;
     entry.m_usSize          = GetSizeInBlocks(size_in_bytes);
 }
 
@@ -166,7 +166,7 @@ class CAbstractStreaming
                 // Has separate filename because entry filename is incomplete (without extension)
                 this->hash   = mhash(filename);
                 this->offset = entry.m_dwFileOffset;
-                this->blocks = entry.m_usLightSize? entry.m_usLightSize : entry.m_usSize;
+                this->blocks = gvm.IsSA() && entry.m_usCompressedSize__? entry.m_usCompressedSize__ : entry.m_usSize;
                 this->img    = (uint8_t)(img_id);
                 this->type   = GetResTypeFromExtension(ext);
             }

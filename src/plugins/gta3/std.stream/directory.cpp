@@ -170,10 +170,13 @@ void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, const char*& file
         // Read entry by entry and push to @cd_dir deque
         while(count-- && fread(&entry, sizeof(entry), 1, f))
         {
-            if(entry.m_usLightSize != 0)
+            if(gvm.IsSA())  // Only SA has two size fields
             {
-                entry.m_usSize = entry.m_usLightSize;
-                entry.m_usLightSize = 0;
+                if(entry.m_usCompressedSize__ != 0)
+                {
+                    entry.m_usSize = entry.m_usCompressedSize__;
+                    entry.m_usCompressedSize__ = 0;
+                }
             }
 
             deque.emplace_back(entry);
@@ -313,6 +316,8 @@ void CAbstractStreaming::BuildClothesMap()
         this->clothes_map.clear();
         injector::cstd<void()>::call<0x5A4190>();       // CClothesBuilder::LoadCdDirectory
 
+        auto clothesDirectory = (CDirectorySA*)(::clothesDirectory);
+
         // Build clothes map based on clothes directory
         for(auto i = 0u; i < clothesDirectory->m_dwCount; ++i)
         {
@@ -358,8 +363,15 @@ void CAbstractStreaming::BuildClothesMap()
  */
 DirectoryInfo* CAbstractStreaming::FindClothEntry(hash_t hash)
 {
-    auto it = this->clothes_map.find(hash);
-    if(it != clothes_map.end()) return &clothesDirectory->m_pEntries[it->second];
+    if(gvm.IsSA())
+    {
+        auto it = this->clothes_map.find(hash);
+        if(it != clothes_map.end())
+        {
+            auto clothesDirectory = (CDirectorySA*)(::clothesDirectory);
+            return &clothesDirectory->m_pEntries[it->second];
+        }
+    }
     return nullptr;
 }
 
