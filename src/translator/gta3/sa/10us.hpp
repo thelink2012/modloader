@@ -113,6 +113,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x72F4F0] = 0x72F4F0;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x532310;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
         map[0x532450] = 0x532450;   // _ZN10CDirectory8FindItemEPKc
+        map[0x5324A0] = 0x5324A0;   // _ZN10CDirectory8FindItemEPKcRjS2_
 
         map[0x406560] = 0x406560;   // _Z14CdStreamThreadPv
         map[0x5B8E1B] = 0x5B8E1B;   // call    _ZN10CStreaming15LoadCdDirectoryEv       ; @CStreaming::Init

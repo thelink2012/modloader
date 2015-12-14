@@ -30,14 +30,16 @@ static void PerformDirectoryRead(size_t size,
     using nf_hook = function_hooker<0x5B6183, void*(const char*, const char*)>;
     using cf_hook = function_hooker<0x5B61B8, size_t(void*, void*, size_t)>;
     using rf_hook = function_hooker<0x5B61E1, size_t(void*, void*, size_t)>;
+    using rf2_hook = function_hooker<xVc(0x40FDD9), size_t(void*, void*, size_t)>;
     using sf_hook = function_hooker_thiscall<0x5B627A, void(CDirectory*, DirectoryInfo* entry)>;
-    using gf_hook = function_hooker_thiscall<0x5B6449, char(CStreamingInfo*, int*, int*)>;
+    //using gf_hook = function_hooker_thiscall<0x5B6449, char(CStreamingInfo*, int*, int*)>;
 
-    nf_hook nf; // Open Null File
-    cf_hook cf; // Entry Count
-    rf_hook rf; // Read Entry
-    sf_hook sf; // Register Special Entry
-    gf_hook gf; // Register Entry
+    nf_hook nf;   // Open Null File
+    cf_hook cf;   // Entry Count
+    rf_hook rf;   // Read Entry
+    rf2_hook rf2; // Read Entry
+    sf_hook sf;   // Register Special Entry
+    //gf_hook gf;   // Register Entry
 
     // Open a null but valid file handle, so it can be closed (fclose) without any problem
     nf = make_function_hook<nf_hook>([](nf_hook::func_type OpenFile, const char*&, const char*& mode)
@@ -55,7 +57,7 @@ static void PerformDirectoryRead(size_t size,
     }
 
     // Fills a directory entry
-    rf = make_function_hook<rf_hook>([&ReadEntry](rf_hook::func_type, void*&, void*& buf_, size_t&)
+    auto rf_cb = [&ReadEntry](rf_hook::func_type, void*&, void*& buf_, size_t&)
     {
         auto& buf = *reinterpret_cast<DirectoryInfo*>(buf_);
         if(!ReadEntry(buf))
@@ -65,29 +67,71 @@ static void PerformDirectoryRead(size_t size,
             return size_t(0);
         }
         return sizeof(buf);
-    });
+    };
+    rf  = make_function_hook<rf_hook>(rf_cb);
+    rf2 = make_function_hook<rf2_hook>(rf_cb);
 
     // Registers a special entry
     sf = make_function_hook<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, DirectoryInfo*& entry)
     {
+        int a, b;
+
         // Tell the callback about this registering
         if(RegisterSpecialEntry) RegisterSpecialEntry(*entry);
 
         // Add entry to directory ONLY if it doesn't exist yet
-        if(injector::thiscall<DirectoryInfo*(void*, const char*)>::call<0x532450>(dir, entry->m_szFileName) == nullptr)  // CDirectory::FindItem
+        if(injector::thiscall<char(void*, const char*, int*, int*)>::call<0x5324A0>(dir, entry->m_szFileName, &a, &b) == 0)  // CDirectory::FindItem
             AddItem(dir, entry);
     });
 
     // Registers a normal entry
-    gf = make_function_hook<gf_hook>([&RegisterEntry](gf_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+    if(gvm.IsSA())
     {
-        char r = GetCdPosnAndSize(model, pOffset, pSize);
-        if(RegisterEntry) r = (char) RegisterEntry(*model, !!r);    // Override function result
-        return r;
-    });
+        using gfsa_hook = function_hooker_thiscall<0x5B6449, char(CStreamingInfo*, int*, int*)>;
 
-    // Run the cd directory reader
-    Run();
+        auto gf = make_function_hook<gfsa_hook>([&RegisterEntry](gfsa_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+        {
+            char r = GetCdPosnAndSize(model, pOffset, pSize);
+            if(RegisterEntry) r = (char) RegisterEntry(*model, !!r);    // Override function result
+            return r;
+        });
+
+        return Run();
+    }
+    else if(gvm.IsVC())
+    {
+        using gfvc_hook = function_hooker<xVc(0x40FD82 + 0x06), char(uint32_t, char)>;
+
+        static const uint8_t asm00[] = {
+            /* 0x00 */ 0x60,                                // pushad
+            /* 0x01 */ 0x50,                                // push eax
+            /* 0x02 */ 0xFF, 0x74, 0x24, 0x50,              // push [esp + 2Ch + 4h + 20h (=50h)]
+            /* 0x06 */ 0xE8, 0x00, 0x00, 0x00, 0x00,        // call ????????        ; if offset changed, MUST change hooker above
+            /* 0x0B */ 0x83, 0xC4, 0x08,                    // add esp, 08
+            /* 0x0E */ 0x84, 0xC0,                          // test al, al
+            /* 0x10 */ 0x61,                                // popad
+            /* 0x11 */ 0x0F, 0x84, 0x00, 0x00, 0x00, 0x00   // je ????????          ; if offset changed, MUST change code below
+            /* 0x17 */
+        };
+        static_assert(sizeof(asm00) == 0x17, "Ensure size and offsets are correct.");
+        static_assert(sizeof(asm00) < 0x18, "Not enough space in the game code for this.");
+
+        // Clear code there to completly rewrite the assembly.
+        MakeRangedNOP(xVc(0x40FD82), xVc(0x40FD9A));
+        memory_pointer_raw p = memory_pointer(xVc(0x40FD82)).get();
+        WriteMemoryRaw(p, asm00, sizeof(asm00), true);
+        MakeRelativeOffset(p + 0x11 + 2, xVc(0x40FDA0));
+
+        auto gf = make_function_hook<gfvc_hook>([&RegisterEntry](gfvc_hook::func_type DontCallMe, uint32_t id, char hadModel)
+        {
+            char r = hadModel;
+            if(RegisterEntry) r = (char) RegisterEntry(*streaming->InfoForModel(id), !!r);
+            return r;
+        });
+
+        return Run();
+    }
+    // TODO VC III
 }
 
 
@@ -146,7 +190,7 @@ void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, const char*& file
     if(FILE* f = fopen(filename, "rb"))
     {
         uint32_t count = -1;
-        DirectoryInfo entry;      // Works for III/VC and SA!!!!
+        DirectoryInfo entry;
 
         auto& deque = cd_dir.emplace(cd_dir.end(), std::piecewise_construct, 
                                         std::forward_as_tuple(id), std::forward_as_tuple())->second;

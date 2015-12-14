@@ -13,6 +13,8 @@ extern "C"
     // Assembly hooks at "asm/" folder
     extern void HOOK_RegisterNextModelRead();
     extern void HOOK_NewFile();
+    extern void HOOK_RegisterNextModelRead_VC();
+    extern void HOOK_NewFile_VC();
     extern void HOOK_FixBikeSuspLines();
 
     // Next model read registers. It's important to have those two vars! Don't leave only one!
@@ -95,6 +97,13 @@ int __stdcall CdStreamThread()
         pQueue = &cdinfo.queue;
         ppStreams = &cdinfo.pStreams;
     }
+    else if(gvm.IsVC())
+    {
+        pSemaphore = memory_pointer(xVc(0x6F76F4)).get<HANDLE>();
+        pQueue = memory_pointer(xVc(0x6F7700)).get<Queue>();
+        ppStreams = memory_pointer(xVc(0x6F76FC)).get<CdStream*>();
+    }
+    // TODO III
     else
     {
         auto message = "Warning: Failed to initialise CdStreamThread; This should never happen.";
@@ -341,20 +350,24 @@ void CAbstractStreaming::Patch()
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
     
     // Pointers
-    ms_aInfoForModel    = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+    ms_aInfoForModel    = ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
     pStreamCreateFlags  = memory_pointer(0x8E3FE0).get();
     pStreamingBuffer    = memory_pointer(0x8E4CAC).get<void*>();
     streamingBufferSize = memory_pointer(0x8E4CA8).get<uint32_t>();
     LoadCdDirectory2    = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
-    clothesDirectory    = ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true);
+    clothesDirectory    = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
 
     // See data.cpp
     this->DataPatch();
 
+    // TODO CHECK THIS ms_imageOffsets THING IN VC (@ CStreaming::LoadCdDirectory)
+
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
-        plugin_ptr->Log("Initializing the streaming->..");
+        LaunchDebugger();
+
+        plugin_ptr->Log("Initializing the streaming...");
 
         // Load standard cd directories.....
         TempCdDir_t tmp_cd_dir;
@@ -363,7 +376,7 @@ void CAbstractStreaming::Patch()
         this->BuildPrevOnCdMap();
         tmp_cd_dir.clear();
 
-        // Do custom setup
+        // Do custom setup TODO FIX
         this->BuildClothesMap();                                // Find out clothing hashes and remove clothes from raw_models
         this->LoadAbstractCdDirectory(refs_mapped(raw_models)); // Load abstract directory, our custom files
 
@@ -381,12 +394,27 @@ void CAbstractStreaming::Patch()
         MakeJMP(0x406560, raw_ptr(CdStreamThread));
 
         // We need to know the next model to be read before the CdStreamRead call happens
-        MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
-        MakeNOP(0x40CCA6 + 5, 2);
+        if(gvm.IsSA())
+        {
+            MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
+            MakeNOP(0x40CCA6 + 5, 2);
+        }
+        else if(gvm.IsVC()) // TODO III
+        {
+            MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead_VC));
+            MakeNOP(0x40CCA6 + 5, 1);
+        }
 
         // We need to return a new hFile if the file is on disk
-        MakeCALL(0x406A5B, raw_ptr(HOOK_NewFile));
-        MakeNOP(0x406A5B + 5, 1);
+        if(gvm.IsSA())
+        {
+            MakeCALL(0x406A5B, raw_ptr(HOOK_NewFile));
+            MakeNOP(0x406A5B + 5, 1);
+        }
+        else if(gvm.IsVC()) // TODO III
+        {
+            MakeCALL(xVc(0x408521), raw_ptr(HOOK_NewFile_VC));
+        }
 
         // We need to know the model index that will pass throught CallGetAbstractHandle
         make_static_hook<cdread_hook>([](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
@@ -398,8 +426,9 @@ void CAbstractStreaming::Patch()
         });
     }
 
+
     // Special models
-    if(true)
+    if(gvm.IsSA()) // TODO VC III
     {
         static DirectoryInfo* pRQSpecialEntry;    // Stores the special entry we're working with
         using findspecial_hook  = function_hooker_thiscall<0x409F76, char(void*, const char*, unsigned int&, unsigned int&)>;
@@ -487,11 +516,15 @@ void CAbstractStreaming::Patch()
         using addr3_hook  = function_hooker<0x5B63E8, id_t(const char*)>;
         using addscm_hook = function_hooker_thiscall<0x5B6419, id_t(void*, const char*)>;
 
-        // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
-        make_static_hook<addcol_hook>([this](addcol_hook::func_type AddColSlot, const char*& name)
+        // Although streamed COLs exist in Vice too, they are checked, so we don't need to check ourselves
+        if(gvm.IsSA())
         {
-            return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
-        });
+            // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
+            make_static_hook<addcol_hook>([this](addcol_hook::func_type AddColSlot, const char*& name)
+            {
+                return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
+            });
+        }
 
         // The following files are in SA only
         if(gvm.IsSA())
@@ -512,7 +545,7 @@ void CAbstractStreaming::Patch()
 
 
     // CdStream path overiding
-    if(true)
+    if(gvm.IsSA())  // TODO VC III
     {
         static void*(*OpenFile)(const char*, const char*);
         static void*(*RwStreamOpen)(int, int, const char*);
@@ -562,6 +595,8 @@ void CAbstractStreaming::Patch()
     // Some fixes to allow the refreshing process to happen
     if(gvm.IsSA())
     {
+        // TODO VC would this be necessary?
+
         // Fix issue with CBike having some additional fields on SetupSuspensionLines that gets deallocated when
         // we destroy it's model or something. Do just like CQuad and other does, checks if the pointer is null and then allocate it.
         MakeNOP(0x6B89CE, 6);

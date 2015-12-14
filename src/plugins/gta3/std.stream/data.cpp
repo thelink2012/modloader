@@ -22,6 +22,9 @@ static void* LoadNonStreamedRes(std::function<void*(const char*)> load, const ch
  */
 void CAbstractStreaming::DataPatch()
 {
+    // TODO VC III
+    if(!gvm.IsSA()) return;
+
     if(gvm.IsSA())
         FixColFile(); // Fix broken COLFILE in GTA SA
 

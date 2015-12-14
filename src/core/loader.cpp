@@ -8,6 +8,9 @@
 #include <unicode.hpp>
 using namespace modloader;
 
+// TODO VC build system should move modloader.asi to the scripts folder
+// This is not related to the .cpp code, probably the .lua installer.
+
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
 #define USE_TEST 0
@@ -57,6 +60,17 @@ void Loader::Patch()
             static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
             gGameState = 5; // skip intro
             MakeNOP(raw_ptr(0x601B3B), 10);
+
+            // Remove internal exception handler
+            //MakeRangedNOP(raw_ptr(0x667BFF), raw_ptr(0x667C12));
+
+            /*WriteMemory<uint8_t>(raw_ptr(0x677E40), 0xB8, true);
+            WriteMemory<uint32_t>(raw_ptr(0x677E40+1), EXCEPTION_CONTINUE_SEARCH, true);
+            WriteMemory<uint32_t>(raw_ptr(0x677E40+1+4), 0xC3, true);*/
+
+            MakeJMP(raw_ptr(0x401000), &Log);
+#else
+            #error Remove me
 #endif
 
             // Install exception filter to log crashes

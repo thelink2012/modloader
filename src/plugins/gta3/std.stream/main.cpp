@@ -52,7 +52,7 @@ const ThePlugin::info& ThePlugin::GetInfo()
  */
 bool ThePlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    if(gvm.IsVC() || gvm.IsSA())
     {
         // Setup abstract streaming
         streaming = new CAbstractStreaming();
@@ -74,9 +74,12 @@ bool ThePlugin::OnStartup()
  */
 bool ThePlugin::OnShutdown()
 {
-    streaming->ShutRefreshInterface(); // TODO move to dtor?
-    delete streaming;
-    streaming = nullptr;
+    if(streaming)
+    {
+        streaming->ShutRefreshInterface(); // TODO move to dtor?
+        delete streaming;
+        streaming = nullptr;
+    }
     return true;
 }
 

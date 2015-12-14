@@ -34,9 +34,10 @@ CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
 {
     // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the indexing manually
     // with sizeof_CStreamingInfo!!
-    using max_InfoForModel = lazy_object<0x5B8AFC, CStreamingInfo*>;
+    //using max_InfoForModel = gvm.IsSA()? lazy_object<0x5B8AFC, CStreamingInfo*>;
+    static CStreamingInfo* max_InfoForModel = gvm.IsSA()? lazy_object<0x5B8AFC, CStreamingInfo*>::get() : memory_pointer(xVc(0x974AFC)).get();
     CStreamingInfo* info = (CStreamingInfo*)( (uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo) );
-    return (info < max_InfoForModel::get()? info : nullptr);
+    return (info < max_InfoForModel? info : nullptr);
 }
 
 // Returns the resource index from it's model info structure

@@ -8,3 +8,6 @@
 #include "CdStreamInfo.h"
 #include "CDirectory.h"
 #include "CPool.h"
+
+
+#include <debugger.hpp>

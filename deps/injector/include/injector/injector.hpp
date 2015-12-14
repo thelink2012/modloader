@@ -319,7 +319,7 @@ struct scoped_unprotect
  *      Writes into memory @addr the content of @value with a sizeof @size
  *      Does memory unprotection if @vp is true
  */
-inline void WriteMemoryRaw(memory_pointer_tr addr, void* value, size_t size, bool vp)
+inline void WriteMemoryRaw(memory_pointer_tr addr, const void* value, size_t size, bool vp)
 {
     scoped_unprotect xprotect(addr, vp? size : 0);
     memcpy(addr.get(), value, size);

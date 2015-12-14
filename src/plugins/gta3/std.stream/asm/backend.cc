@@ -68,6 +68,28 @@ void __declspec(naked) HOOK_RegisterNextModelRead()
 }
 
 /*
+    void _nakedcall HOOK_RegisterNextModelRead(ebx = objectIndex, ecx = someOffsetAt_aInfoForModel)
+    Used to tell us which model will get loaded ahead, so we know if it's a imported one
+*/
+void __declspec(naked) HOOK_RegisterNextModelRead_VC()
+{
+    _asm
+    {
+        pushad
+        push ebx
+        call RegisterNextModelRead
+        add esp, 4
+        popad
+
+        /* Run replaced code: */
+        mov edx, dword ptr[ms_aInfoForModel]
+        add edx, ecx
+        //mov edx, [edx + 0xC + eax * 4]    /* edx = ms_aInfoForModel[iLoadingModelIndex].blocks */
+        ret
+    }
+}
+
+/*
     HANDLE _nakedcall HOOK_NewFile(eax = hOriginalFile, esi = blockOffset)
         Returns the file handle to the file that will get read to get an object data
         Normally it will return it's original handle, but if a custom file (put in a modloader folder) it will return a new unique handle
@@ -80,6 +102,24 @@ void __declspec(naked) HOOK_NewFile()
         push eax
         call CallGetAbstractHandle
         add esp, 4
+        ret
+    }
+}
+
+/*
+    TODO VC DESCRIPTION
+*/
+void __declspec(naked) HOOK_NewFile_VC()
+{
+    _asm
+    {
+        push ebp
+        call CallGetAbstractHandle
+        add esp, 4
+        mov ebp, eax
+
+        add esi, edi        /* Original code */
+        mov [esi+0x18], ebp /* Original code */
         ret
     }
 }
