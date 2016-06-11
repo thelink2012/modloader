@@ -118,7 +118,10 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x406560] = 0x408260;   // _Z14CdStreamThreadPv
         map[0x5B8E1B] = 0x410723;   // call    _ZN10CStreaming15LoadCdDirectoryEv       ; @CStreaming::Init
         map[0x40CF34] = 0x40BBB9;   // call    _Z12CdStreamReadiPvjj                    ; @CStreaming::RequestModelStream
+        map[xVc(0x40B76A)] = 0x40B76A;// call    _Z12CdStreamReadiPvjj                    ; @CStreaming::LoadAllRequestedModels
+        map[xVc(0x40B780)] = 0x40B780;// call    _Z12CdStreamReadiPvjj                    ; @CStreaming::LoadAllRequestedModels
         map[0x40CCA6] = 0x40B97D;   // mov     edx, ms_aInfoForModel.iBlockCount[eax*4] ; @CStreaming::RequestModelStream
+        map[xVc(0x40B738)] = 0x40B738;// mov     edx, ds:_ZN10CStreaming16ms_aInfoForModelE.uArchiveSize[ecx] ; @CStreaming::LoadAllRequestedModels
         //map[0x406A5B] = 0x408559;   // and     esi, 0FFFFFFh    ; @CdStreamRead
         map[xVc(0x408521)] = 0x408521; // TODO ASM
         map[0x409F76] = 0x40ACEE;   // call    _ZN10CDirectory8FindItemEPKcRjS2_        ; @CStreaming::RequestSpecialModel

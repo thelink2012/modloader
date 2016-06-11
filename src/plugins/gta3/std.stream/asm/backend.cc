@@ -76,14 +76,19 @@ void __declspec(naked) HOOK_RegisterNextModelRead_VC()
     _asm
     {
         pushad
-        push ebx
+        mov ebx, ebx // TODO remove
+        xor edx, edx
+        mov eax, ecx
+        mov ecx, 0x14  // sizeof CStreamingInfo on VC (TODO III)
+        div ecx
+        push eax // result of div
         call RegisterNextModelRead
         add esp, 4
         popad
 
         /* Run replaced code: */
         mov edx, dword ptr[ms_aInfoForModel]
-        add edx, ecx
+        mov edx, [edx+ecx+0x10] // TODO III 0x10 offset same in III?
         //mov edx, [edx + 0xC + eax * 4]    /* edx = ms_aInfoForModel[iLoadingModelIndex].blocks */
         ret
     }

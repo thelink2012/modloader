@@ -31,6 +31,24 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 }
 
 
+#ifndef NDEBUG // TODO REMOVE ME!!!!
+#include <cstdarg>
+static void VCLog(const char* msg, ...) // (msg, ...)
+{
+    if(!strcmp(msg, "FAILED\n"))
+    {
+        //__debugbreak();
+    }
+
+    va_list va;
+    va_start(va, msg);
+    loader.vLog(msg, va);
+    va_end(va);
+}
+#else
+#error remove me
+#endif
+
 /*
  *  Loader::Patch
  *      Patches the game code to run the loader
@@ -68,7 +86,7 @@ void Loader::Patch()
             WriteMemory<uint32_t>(raw_ptr(0x677E40+1), EXCEPTION_CONTINUE_SEARCH, true);
             WriteMemory<uint32_t>(raw_ptr(0x677E40+1+4), 0xC3, true);*/
 
-            MakeJMP(raw_ptr(0x401000), &Log);
+            MakeJMP(raw_ptr(0x401000), &VCLog);
 #else
             #error Remove me
 #endif

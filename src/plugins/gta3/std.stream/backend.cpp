@@ -388,8 +388,6 @@ void CAbstractStreaming::Patch()
     // Standard models
     if(true)
     {
-        using cdread_hook = function_hooker<0x40CF34, int(int, void*, int, int)>;
-
         // Making our our code for the stream thread would make things so much better
         MakeJMP(0x406560, raw_ptr(CdStreamThread));
 
@@ -402,7 +400,9 @@ void CAbstractStreaming::Patch()
         else if(gvm.IsVC()) // TODO III
         {
             MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead_VC));
+            MakeCALL(xVc(0x40B738), raw_ptr(HOOK_RegisterNextModelRead_VC));
             MakeNOP(0x40CCA6 + 5, 1);
+            MakeNOP(xVc(0x40B738) + 5, 1);
         }
 
         // We need to return a new hFile if the file is on disk
@@ -416,14 +416,29 @@ void CAbstractStreaming::Patch()
             MakeCALL(xVc(0x408521), raw_ptr(HOOK_NewFile_VC));
         }
 
-        // We need to know the model index that will pass throught CallGetAbstractHandle
-        make_static_hook<cdread_hook>([](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
+        if(true)
         {
-            iModelBeingLoaded = iNextModelBeingLoaded;
-            auto result = CdStreamRead(streamNum, buf, sectorOffset, sectorCount);
-            iModelBeingLoaded = iNextModelBeingLoaded = -1;
-            return result;
-        });
+            using cdread_hook = function_hooker<0x40CF34, int(int, void*, int, int)>;
+            using cdread_hook2 = function_hooker<xVc(0x40B76A), int(int, void*, int, int)>;
+            using cdread_hook3 = function_hooker<xVc(0x40B780), int(int, void*, int, int)>;
+
+            // We need to know the model index that will pass throught CallGetAbstractHandle
+            auto f = [](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
+            {
+                iModelBeingLoaded = iNextModelBeingLoaded;
+                auto result = CdStreamRead(streamNum, buf, sectorOffset, sectorCount);
+                iModelBeingLoaded = iNextModelBeingLoaded = -1;
+                return result;
+            };
+
+            make_static_hook<cdread_hook>(f);
+
+            if(gvm.IsVC()) // TODO III
+            {
+                make_static_hook<cdread_hook2>(f);
+                make_static_hook<cdread_hook3>(f);
+            }
+        }
     }
 
 
