@@ -534,8 +534,10 @@ void CAbstractStreaming::Patch()
         // Although streamed COLs exist in Vice too, they are checked, so we don't need to check ourselves
         if(gvm.IsSA())
         {
+            TraitsSA traits; // see comment above
+
             // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
-            make_static_hook<addcol_hook>([this](addcol_hook::func_type AddColSlot, const char*& name)
+            make_static_hook<addcol_hook>([&](addcol_hook::func_type AddColSlot, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
             });
@@ -544,14 +546,16 @@ void CAbstractStreaming::Patch()
         // The following files are in SA only
         if(gvm.IsSA())
         {
+            TraitsSA traits;
+
             // CVehicleRecording do not care about duplicates, but we should
-            make_static_hook<addr3_hook>([this](addr3_hook::func_type RegisterRecordingFile, const char*& name)
+            make_static_hook<addr3_hook>([&](addr3_hook::func_type RegisterRecordingFile, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "rrr", traits.rrr_start, RegisterRecordingFile, name);
             });
             
             // CStreamedScripts do not care about duplicates but we should
-            make_static_hook<addscm_hook>([this](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
+            make_static_hook<addscm_hook>([&](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "scm", traits.scm_start, RegisterScript, self, name);
             });
@@ -610,8 +614,6 @@ void CAbstractStreaming::Patch()
     // Some fixes to allow the refreshing process to happen
     if(gvm.IsSA())
     {
-        // TODO VC would this be necessary?
-
         // Fix issue with CBike having some additional fields on SetupSuspensionLines that gets deallocated when
         // we destroy it's model or something. Do just like CQuad and other does, checks if the pointer is null and then allocate it.
         MakeNOP(0x6B89CE, 6);

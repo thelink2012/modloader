@@ -17,4 +17,9 @@ struct TraitsGTA
     {
         return *(injector::raw_ptr(ptr) + offset).get<T>();
     }
+
+    static void DoesNotExistInThisGame [[noreturn]]()
+    {
+        *(int*)(0xFFEA2012) = 0;
+    }
 };

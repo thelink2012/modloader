@@ -17,6 +17,7 @@
 #include "CStreamingInfo.h"
 
 #include <traits/gta3/sa.hpp>
+#include <traits/gta3/vc.hpp>
 
 using namespace modloader;
 
@@ -130,8 +131,6 @@ class CAbstractStreaming
         CRITICAL_SECTION cs;                        // This must be used together with imported files list for thread-safety
         std::string fbuffer;                        // File buffer to avoid a dynamic allocation everytime we open a model
         std::list<const modloader::file*> imgFiles; // List of img files imported with Mod Loader
-
-        TraitsSA traits;                            // Game specific info
 
     public:
         // Basic types

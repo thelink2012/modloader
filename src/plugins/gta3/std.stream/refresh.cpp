@@ -34,6 +34,7 @@ class Refresher : public IStreamRefresher, private T
         using T::GetEntityModel;
         using T::GetEntityRwObject;
         using T::GetPedTaskManager;
+        using T::GetVehicleType;
         using typename T::PedPool_t;
         using typename T::VehiclePool_t;
         using typename T::BuildingPool_t;
@@ -43,6 +44,7 @@ class Refresher : public IStreamRefresher, private T
         using hash_t        = CAbstractStreaming::hash_t;
         using id_t          = CAbstractStreaming::id_t;
         using EntityType    = typename T::EntityType;
+        using VehicleType   = typename T::VehicleType;
 
         // Events that happens to an entity during the refresh
         struct EntityEvent
@@ -219,6 +221,8 @@ void CAbstractStreaming::ProcessRefreshes()
     if(this->to_import.size())
     {
         if(gvm.IsSA()) PerformStandardRefresh<TraitsSA>(*this);
+        else if(gvm.IsVC()) PerformStandardRefresh<TraitsVC>(*this);
+        // TODO III
     }
     
     if(this->to_rebuild_player)
@@ -477,7 +481,7 @@ template<class T> void Refresher<T>::RecreateEntities()
  *  Refresher::SetupEntityEvents
  *      Setup events to refresh entities
  */
-template<class T> void Refresher<T>::SetupEntityEvents()
+template<class Traits> void Refresher<Traits>::SetupEntityEvents()
 {
     auto& ped       = mEntityEvents[EntityType::Ped];
     auto& vehicle   = mEntityEvents[EntityType::Vehicle];
@@ -487,17 +491,19 @@ template<class T> void Refresher<T>::SetupEntityEvents()
     // Calls CEntity::SetModelIndex to recreate the entity model
     static auto RecreateModel = [](void* entity)
     {
-        injector::thiscall<void(void*, int)>::vtbl<5>(entity, GetEntityModel(entity));  // CEntity::SetModelIndex
+        static const size_t vmt_id = Traits::vmt_SetModelIndex;
+        injector::thiscall<void(void*, int)>::vtbl<vmt_id>(entity, GetEntityModel(entity));  // CEntity::SetModelIndex
     };
 
     // Calls CEntity::DeleteRwObject to destroy the entity model
     static auto DestroyModel = [](void* entity)
     {
-        injector::thiscall<void(void*)>::vtbl<8>(entity);   // CEntity::DeleteRwObject
+        static const size_t vmt_id = Traits::vmt_DeleteRwObject;
+        injector::thiscall<void(void*)>::vtbl<vmt_id>(entity);   // CEntity::DeleteRwObject
     };
 
     // Peds refreshing (based on script command @BUILD_PLAYER_MODEL)
-    if(true)
+    if(gvm.IsSA())
     {
         // We need to restore the animation association after the recreatioon process
         ped.Recreate = [this](void* entity)
@@ -530,6 +536,12 @@ template<class T> void Refresher<T>::SetupEntityEvents()
             DestroyModel(entity);
         };
     }
+    else
+    {
+        // TODO III VC version of the above.
+        ped.Recreate = RecreateModel;
+        ped.Destroy  = DestroyModel;
+    }
 
     // Vehicles refreshes
     if(true)
@@ -538,7 +550,25 @@ template<class T> void Refresher<T>::SetupEntityEvents()
         vehicle.Recreate = [](void* entity)
         {
             RecreateModel(entity);
-            injector::thiscall<void(void*)>::vtbl<48>(entity);  // CVehicle::SetupSuspensionLines
+            if(gvm.IsSA())
+            {
+                injector::thiscall<void(void*)>::vtbl<48>(entity);  // CVehicle::SetupSuspensionLines
+            }
+            else if(gvm.IsVC()) // TODO III
+            {
+                switch(GetVehicleType(entity))
+                {
+                    case VehicleType::Automobile:
+                        injector::thiscall<void(void*)>::call<xVc(0x59E2B0)>(entity); // CAutomobile::SetupSuspensionLines
+                        break;
+                    case VehicleType::Bike:
+                        injector::thiscall<void(void*)>::call<xVc(0x615080)>(entity); // CBike::SetupSuspensionLines
+                        break;
+                    default:
+                        // No need to do anything.
+                        break;
+                }
+            }
         };
 
         // Destroying is pretty standard

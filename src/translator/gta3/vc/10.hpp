@@ -8,6 +8,27 @@
 #include <modloader/util/injector.hpp>
 #include <map>
  
+// Emulating SA's CStreaming::RemoveAllUnusedModels for VC
+static void vcemu_CStreaming__RemoveAllUnusedModels()
+{
+    void* ptr_begin = injector::lazy_pointer<xVc(0x40FF65)>::get<void>();
+    void* ptr_end   = injector::lazy_pointer<xVc(0x40FFB1)>::get<void>();
+
+    injector::scoped_nop<5> nop1;
+    nop1.make_nop(raw_ptr(ptr_end), 1);
+    injector::MakeRET(raw_ptr(ptr_end));
+
+    _asm
+    {
+        pushad
+        sub esp, 0xC
+        call dword ptr [ptr_begin]
+        add esp, 0xC
+        popad
+    }
+}
+
+
 // GTA VC 10 table
 static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 {
@@ -161,8 +182,10 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x4089A0] = 0x40D6E0;   // _ZN10CStreaming11RemoveModelEi
         map[0x40EA10] = 0x40B5F0;   // _ZN10CStreaming22LoadAllRequestedModelsEb
         map[0x40E460] = 0x40B580;   // _ZN10CStreaming13FlushChannelsEv
-        // TODO X refresh.cpp map[0x40CF80] = ;   // _ZN10CStreaming21RemoveAllUnusedModelsEv //doesn't exist
+        map[0x40CF80] = vcemu_CStreaming__RemoveAllUnusedModels; // _ZN10CStreaming21RemoveAllUnusedModelsEv
         map[0x40CFD0] = 0x40D5A0;   // _ZN10CStreaming20RemoveLeastUsedModelEj
+        map[xVc(0x59E2B0)] = 0x59E2B0; // _ZN11CAutomobile20SetupSuspensionLinesEv
+        map[xVc(0x615080)] = 0x615080; // _ZN5CBike20SetupSuspensionLinesEv
  
 #if 0   // TODO X data.cpp
         // Non streamed resources
@@ -268,7 +291,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B62CF] = 0x40FCDD;   // -> DWORD 4E20h   ; TXD Start Index
         map[0x5B6314] = 0x40FD1B;   // -> DWORD 61A8h   ; COL Start Index
         map[0x5B63C5] = 0x40FD48;   // -> DWORD 63E7h   ; IFP Start Index
-        map[0x408897] = 0x92D4C8;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
+        map[0x408897] = 0x4014EF+1; // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
 
 
         // TODO FIXME LATER
@@ -277,6 +300,13 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B641F] = (uintptr_t)&minusone32;
     }
  
+    // helpers for VC emulating SA
+    if(true)
+    {
+        map[xVc(0x40FF65)] = 0x40FF65; // begin of inlined CStreaming::RemoveAllUnusedModels
+        map[xVc(0x40FFB1)] = 0x40FFB1; // end of inlined CStreaming::RemoveAllUnusedModels
+    }
+
     // AbstractFrontend | TheMenu
     if(true)
     {
