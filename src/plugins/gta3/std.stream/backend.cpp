@@ -365,7 +365,9 @@ void CAbstractStreaming::Patch()
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
+        #ifndef NDEBUG
         LaunchDebugger();
+        #endif
 
         plugin_ptr->Log("Initializing the streaming...");
 

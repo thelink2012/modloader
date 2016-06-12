@@ -46,7 +46,7 @@ static void VCLog(const char* msg, ...) // (msg, ...)
     va_end(va);
 }
 #else
-#error remove me
+//#error TODO remove me
 #endif
 
 /*
@@ -88,7 +88,7 @@ void Loader::Patch()
 
             MakeJMP(raw_ptr(0x401000), &VCLog);
 #else
-            #error Remove me
+//            #error TODO Remove me
 #endif
 
             // Install exception filter to log crashes

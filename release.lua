@@ -21,6 +21,7 @@ newoption {
     description = "The toolset used to compile the release build",
     allowed     = {
         { "vs2013", "Microsoft Visual Studio 2013"  },
+        { "vs2015", "Microsoft Visual Studio 2015"  },
         { "gcc",    "GNU Compiler Collection"       }
     }
 }

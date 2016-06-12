@@ -9,5 +9,6 @@
 #include "CDirectory.h"
 #include "CPool.h"
 
-
+#ifndef NDEBUG
 #include <debugger.hpp>
+#endif

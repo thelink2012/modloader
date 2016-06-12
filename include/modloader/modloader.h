@@ -28,10 +28,10 @@ extern "C" {
 
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
-#define MODLOADER_VERSION_MINOR         2
-#define MODLOADER_VERSION_REVISION      6
+#define MODLOADER_VERSION_MINOR         3
+#define MODLOADER_VERSION_REVISION      0
 #ifdef NDEBUG
-#define MODLOADER_VERSION_ISDEV         0
+#define MODLOADER_VERSION_ISDEV         1 // TODO 0 again
 #else
 #define MODLOADER_VERSION_ISDEV         1
 #endif
