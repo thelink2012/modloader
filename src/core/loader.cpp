@@ -75,9 +75,15 @@ void Loader::Patch()
             bRan = true;
             
 #ifndef NDEBUG // TODO REMOVE ME!!!!
+            auto& gvm = injector::address_manager::singleton();
+
             static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
+
             gGameState = 5; // skip intro
-            MakeNOP(raw_ptr(0x601B3B), 10);
+            if(gvm.IsIII())
+                MakeNOP(raw_ptr(0x5811F8), 10);
+            else if(gvm.IsVC())
+                MakeNOP(raw_ptr(0x601B3B), 10);
 
             // Remove internal exception handler
             //MakeRangedNOP(raw_ptr(0x667BFF), raw_ptr(0x667C12));
@@ -86,7 +92,10 @@ void Loader::Patch()
             WriteMemory<uint32_t>(raw_ptr(0x677E40+1), EXCEPTION_CONTINUE_SEARCH, true);
             WriteMemory<uint32_t>(raw_ptr(0x677E40+1+4), 0xC3, true);*/
 
-            MakeJMP(raw_ptr(0x401000), &VCLog);
+            if(gvm.IsIII())
+                MakeJMP(raw_ptr(0x405DB0), &VCLog);
+            else if(gvm.IsVC())
+                MakeJMP(raw_ptr(0x401000), &VCLog);
 #else
 //            #error TODO Remove me
 #endif

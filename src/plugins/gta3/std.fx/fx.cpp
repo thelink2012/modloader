@@ -201,7 +201,7 @@ const FxPlugin::info& FxPlugin::GetInfo()
  */
 bool FxPlugin::OnStartup()
 {
-    if(gvm.IsVC() || gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         // File overrider params
         const auto reinstall_since_start = file_overrider::params(true, true, true, true);
@@ -219,6 +219,8 @@ bool FxPlugin::OnStartup()
         const auto fronten1_txd      = modloader::hash("fronten1.txd");
         const auto fronten2_txd      = modloader::hash("fronten2.txd");
         const auto fronten3_txd      = modloader::hash("fronten3.txd");
+        const auto frontend_txd      = modloader::hash("frontend.txd");
+        const auto menu_txd          = modloader::hash("menu.txd");
         const auto fronten_pc_txd    = modloader::hash("fronten_pc.txd");
         const auto vehicle_txd       = modloader::hash("vehicle.txd");
         const auto plant1_txd        = modloader::hash("plant1.txd");
@@ -247,10 +249,14 @@ bool FxPlugin::OnStartup()
                 "peds.col",
             };
         }
-        else if(gvm.IsVC())
+        else if(gvm.IsIII() || gvm.IsVC())
         {
             unused_table = {
-                "misc.txd", "peds.col", "generic.col",
+                // III/VC
+                "misc.txd", "peds.col",
+                // III
+                "commer.col", "indust.col", "suburb.col",
+                // TODO generic.txd???
             };
         }
 
@@ -301,8 +307,8 @@ bool FxPlugin::OnStartup()
         }
 
         // Detouring for frontend textures
-        AddDetour(fronten1_txd, reinstall_since_start, LoadTxdDetour<0x572F1E>(), gdir_refresh(ReloadFronten));
-        AddDetour(fronten2_txd, reinstall_since_start, LoadTxdDetour<0x573040>(), gdir_refresh(ReloadFronten));
+        AddDetour(gvm.IsIII()? frontend_txd : fronten1_txd, reinstall_since_start, LoadTxdDetour<0x572F1E>(), gdir_refresh(ReloadFronten));
+        AddDetour(gvm.IsIII()? menu_txd : fronten2_txd, reinstall_since_start, LoadTxdDetour<0x573040>(), gdir_refresh(ReloadFronten));
         if(gvm.IsSA())
         {
             AddDetour(fronten_pc_txd, reinstall_since_start, LoadTxdDetour<0x572FB5>(), gdir_refresh(ReloadFronten));
@@ -339,10 +345,10 @@ bool FxPlugin::OnStartup()
 
         // Detouring for markers
         // No reloading because there's no native cleanup for those
-        if(gvm.IsVC())
+        if(gvm.IsIII() || gvm.IsVC())
         {
-            AddDetour(zonecylb_dff, no_reinstall, LoadAtomic2ReturnDetour<0x570D8A>());
-            AddDetour(arrow_dff, no_reinstall, LoadAtomic2ReturnDetour<0x570D7A>());
+            AddDetour(zonecylb_dff, no_reinstall, LoadAtomic2ReturnDetour<xVc(0x570D8A)>());
+            AddDetour(arrow_dff, no_reinstall, LoadAtomic2ReturnDetour<xVc(0x570D7A)>());
         }
 
         return true;
@@ -367,7 +373,7 @@ int FxPlugin::GetBehaviour(modloader::file& file)
 {
     if(!file.is_dir())
     {
-        if((gvm.IsVC() && file.hash == player_bmp) || this->FindOverrider(file.hash))
+        if((!gvm.IsSA() && file.hash == player_bmp) || this->FindOverrider(file.hash))
         {
             file.behaviour = file.hash;
             return MODLOADER_BEHAVIOUR_YES;
