@@ -164,7 +164,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x8E4CA8] = 0xA0FC90;   // unsigned int CStreaming::ms_streamingBufferSize
  
 
-        map[0x72F420] = nullptr;    // _ZN10CMemoryMgr6MallocEj         // Doesn't exist? Doesn't matter. Used by us only in SA.
+        map[0x72F420] = nullptr;    // _ZN10CMemoryMgr6MallocEj         // Doesn't exist!!? Doesn't matter. Used by us only in SA.
         map[0x72F4C0] = 0x5805D0;   // _ZN10CMemoryMgr11MallocAlignEjj
         map[0x72F4F0] = 0x5805C0;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x4873F0;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
@@ -178,24 +178,19 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x40B780)] = 0x40B780;// call    _Z12CdStreamReadiPvjj                    ; @CStreaming::LoadAllRequestedModels
         map[0x40CCA6] = 0x40B97D;   // mov     edx, ms_aInfoForModel.iBlockCount[eax*4] ; @CStreaming::RequestModelStream
         map[xVc(0x40B738)] = 0x40B738;// mov     edx, ds:_ZN10CStreaming16ms_aInfoForModelE.uArchiveSize[ecx] ; @CStreaming::LoadAllRequestedModels
-        //map[0x406A5B] = 0x408559;   // and     esi, 0FFFFFFh    ; @CdStreamRead
-        map[xVc(0x408521)] = 0x408521; // TODO ASM
+        map[xVc(0x408521)] = 0x408521;// add     esi, edi    ; @CdStreamRead
         map[0x409F76] = 0x40ACEE;   // call    _ZN10CDirectory8FindItemEPKcRjS2_        ; @CStreaming::RequestSpecialModel
         map[0x409FD9] = 0x40AD47;   // call    _ZN10CStreaming12RequestModelEii         ; @CStreaming::RequestSpecialModel
         map[0x5B6183] = 0x40FBD3;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStreaming::LoadCdDirectory
-#if 0 // TODO X backend.cpp
-        map[0x532361] = 0x487383;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDirectory::ReadDirFile
-        map[0x5AFC9D] = 0x406E42;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CCutsceneMgr::LoadCutsceneData_postload
-        map[0x5AFBEF] = 0x406D9A;   // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_postload
-        map[0x5B07E9] = ;    // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_preload //doesnt exist?
-        map[0x40685E] = ;    // call    ds:__imp_CreateFileA                     ; @CdStreamOpen  //doesnt exist?
-#endif
+        // TODO X backend.cpp map[0x532361] = 0x487383;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDirectory::ReadDirFile
+        // TODO X backend.cpp map[0x5AFC9D] = 0x406E42;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CCutsceneMgr::LoadCutsceneData_postload
+        // TODO X backend.cpp map[0x5AFBEF] = 0x406D9A;   // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_postload
+        // TODO X backend.cpp map[0x5B07E9] = ;    // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_preload //doesnt exist?
+        // TODO X backend.cpp map[0x40685E] = ;    // call    ds:__imp_CreateFileA                     ; @CdStreamOpen  //doesnt exist?
         map[0x5B8310] = 0x40FE91;   // call    _ZN10CStreaming15LoadCdDirectoryEPKci    ; @CStreaming::LoadCdDirectory
-        //map[0x5B61B8] = ;   // call    _ZN8CFileMgr4ReadEiPci                   ; @CStreaming::LoadCdDirectory  ; read entry count //not sure what to do here, check 40FBC0
         map[0x5B61E1] = 0x40FBE9;   // call    _ZN8CFileMgr4ReadEiPci                   ; @CStreaming::LoadCdDirectory  ; read entry @up
         map[xVc(0x40FDD9)] = 0x40FDD9;// call    _ZN8CFileMgr4ReadEiPci             ; @CStreaming::LoadCdDirectory ; read entry @up
         map[0x5B627A] = 0x40FC9D;   // call    _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE ; @CStreaming::LoadCdDirectory
-        //map[0x5B6449] = ;   // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_  ; @CStreaming::LoadCdDirectory //doesn't exist?
         map[xVc(0x40FD82)] = 0x40FD82;  // TODO ASM
         map[xVc(0x40FD9A)] = 0x40FD9A;  // TODO ASM
         map[xVc(0x40FDA0)] = 0x40FDA0;  // TODO ASM
@@ -222,18 +217,11 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x59E2B0)] = 0x59E2B0; // _ZN11CAutomobile20SetupSuspensionLinesEv
         map[xVc(0x615080)] = 0x615080; // _ZN5CBike20SetupSuspensionLinesEv
  
-#if 0   // TODO X data.cpp
         // Non streamed resources
-        map[0x5B9188] = 0x48DB04 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
-        map[0x5B91B0] = ;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc //it's inlined in VC @48DB76
-        map[0x5B91DB] = 0x48DC22;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
-        map[0x5B910A] = ;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc //it's inlined in VC @48DA42
-#endif
-
-#if 0 // TODO x backend.cpp
-        // Other SA fixes (is it necessary in VC??????)
-        map[0x6B89CE] = ;   // mov     eax, [edi+10h]
-#endif
+        // TODO X data.cpp map[0x5B9188] = 0x48DB04 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
+        // TODO X data.cpp map[0x5B91B0] = ;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc //it's inlined in VC @48DB76
+        // TODO X data.cpp map[0x5B91DB] = 0x48DC22;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
+        // TODO X data.cpp map[0x5B910A] = ;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc //it's inlined in VC @48DA42
     }
 #endif
 
