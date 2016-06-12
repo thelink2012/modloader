@@ -443,7 +443,7 @@ void CAbstractStreaming::Patch()
 
 
     // Special models
-    if(gvm.IsSA()) // TODO VC III
+    if(gvm.IsSA() || gvm.IsVC()) // TODO III
     {
         static DirectoryInfo* pRQSpecialEntry;    // Stores the special entry we're working with
         using findspecial_hook  = function_hooker_thiscall<0x409F76, char(void*, const char*, unsigned int&, unsigned int&)>;
@@ -461,10 +461,23 @@ void CAbstractStreaming::Patch()
         {
             // Before this being called the game built the InfoForModel entry for this index based on the stock entry pRQSpecialEntry
             // Register stock entry, so it can be restored during gameplay if necessary
-            DirectoryInfo entry  = *pRQSpecialEntry;                   // Make copy to do proper processing
-            auto img_id          = pRQSpecialEntry->m_dwFileOffset >> 24;       // Extract img id from file offset
-            entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset & 0xFFFFFF;  // Extract actual file offset
-            this->RegisterStockEntry(strcat(entry.m_szFileName, ".dff"), entry, index, img_id);
+            {
+                DirectoryInfo entry  = *pRQSpecialEntry;                   // Make copy to do proper processing
+                uint32_t img_id;
+
+                if(gvm.IsSA())
+                {
+                    img_id               = pRQSpecialEntry->m_dwFileOffset >> 24;
+                    entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset & 0xFFFFFF; 
+                }
+                else
+                {
+                    img_id               = 0; // on III/VC there's no img_id, it's based on m_dwFileOffset itself.
+                    entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset;
+                }
+
+                this->RegisterStockEntry(strcat(entry.m_szFileName, ".dff"), entry, index, img_id);
+            }
 
             // Try to find abstract special entry related to this request....
             // If it's possible, quickly import our entry into this special index

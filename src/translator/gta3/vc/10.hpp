@@ -20,12 +20,41 @@ static void vcemu_CStreaming__RemoveAllUnusedModels()
 
     _asm
     {
-        pushad
-        sub esp, 0xC
+        pushad       // jumps into the middle of a game function, save regs
+        sub esp, 0xC // local space in the middle of the function
         call dword ptr [ptr_begin]
         add esp, 0xC
         popad
     }
+}
+
+// Emulating SA's CDirectory::FindItem(ecx, name) for VC
+static void* __fastcall vcemu_CDirectory_FindItem2(void* self, int, const char* name)
+{
+    int dummy;
+    void* ptr_FindItem = injector::lazy_pointer<0x5324A0>::get<void>(); // CDirectory::FindItem(ecx, name, out_offset, out_size)
+    void* ptr_dummy = &dummy;
+    void* result = nullptr;
+    
+    _asm
+    {
+        push ptr_dummy
+        push ptr_dummy
+        push name
+        mov ecx, self
+        call dword ptr [ptr_FindItem]
+        test al, al
+        jz NotFound
+
+        mov eax, self
+        mov eax, [eax+0] // m_pEntries
+        add eax, [esp-0x30] // HACKHACKHACK take offset in the local scope of FindItem
+        mov result, eax
+
+        NotFound:
+    }
+
+    return result;
 }
 
 
@@ -134,6 +163,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x72F4C0] = 0x5805D0;   // _ZN10CMemoryMgr11MallocAlignEjj
         map[0x72F4F0] = 0x5805C0;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x4873F0;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
+        map[0x532450] = vcemu_CDirectory_FindItem2;   // _ZN10CDirectory8FindItemEPKc
         map[0x5324A0] = 0x487220;   // _ZN10CDirectory8FindItemEPKcRjS2_
  
         map[0x406560] = 0x408260;   // _Z14CdStreamThreadPv
