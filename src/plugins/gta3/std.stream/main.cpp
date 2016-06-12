@@ -8,6 +8,7 @@
 #include "streaming.hpp"
 //using namespace modloader;
 
+static const size_t ped_ifp = modloader::hash("ped.ifp");
 
 /*
  *  The plugin object
@@ -52,7 +53,7 @@ const ThePlugin::info& ThePlugin::GetInfo()
  */
 bool ThePlugin::OnStartup()
 {
-    if(gvm.IsVC() || gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         // Setup abstract streaming
         streaming = new CAbstractStreaming();
@@ -60,8 +61,16 @@ bool ThePlugin::OnStartup()
         streaming->InitRefreshInterface(); // TODO move to ctor?
 
         // Setup ped.ifp overrider
-        ov_ped_ifp.SetParams(file_overrider::params(nullptr));
-        ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());
+        if(gvm.IsIII())
+        {
+            ov_ped_ifp.SetParams(file_overrider::params(nullptr));
+            ov_ped_ifp.SetFileDetour(Gta3LoadIfpDetour<xIII(0x4038FC)>());
+        }
+        else
+        {
+            ov_ped_ifp.SetParams(file_overrider::params(nullptr));
+            ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());
+        }
 
         return true;
     }
@@ -96,6 +105,11 @@ int ThePlugin::GetBehaviour(modloader::file& file)
         file.behaviour = file.hash | is_img_file_mask;
         return MODLOADER_BEHAVIOUR_YES;
     }
+    else if(!file.is_dir() && file.hash == ped_ifp)
+    {
+        file.behaviour = file.hash | is_pedifp_mask;
+        return MODLOADER_BEHAVIOUR_YES;
+    }
     else if(!file.is_dir())
     {
         ResType type = GetResTypeFromExtension(file.filext());
@@ -118,18 +132,6 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                 {
                     // Disabled, may conflict with nodes from data folder, use .img folder instead
                     return MODLOADER_BEHAVIOUR_NO;
-                }
-
-                case ResType::AnimFile:
-                {
-                    // Make sure it isn't the special ifp file ped.ifp
-                    static const auto ped_ifp = modloader::hash("ped.ifp");
-                    if(file.hash == ped_ifp)
-                    {
-                        file.behaviour = file.hash | is_pedifp_mask;
-                        return MODLOADER_BEHAVIOUR_YES;
-                    }
-                    break;
                 }
 
                 case ResType::StreamedScene:

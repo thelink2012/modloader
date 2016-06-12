@@ -38,7 +38,7 @@ static const uintptr_t vc_addr_begin   = 0x04000000;
 static const uintptr_t gta3_addr_begin = 0x06000000;
 
 #define xVc(addr)  ((addr) + vc_addr_begin)
-#define x3d(addr)  ((addr) + gta3_addr_begin)
+#define xIII(addr)  ((addr) + gta3_addr_begin)
 #define xSa(addr)  ((addr)) // not necessary to use
 
 namespace modloader

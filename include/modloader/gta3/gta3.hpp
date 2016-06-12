@@ -83,6 +83,10 @@ namespace modloader
     using LoadAtomic2ReturnDetour = modloader::basic_file_detour<Traits,
                                                 injector::function_hooker<addr, void*(const char*)>,
                                                                                 void*, const char*>; 
+
+    // function prototype is the same, too lazy to copy and paste more stuff :)
+    template<uintptr_t addr>
+    using Gta3LoadIfpDetour = LoadAtomic2ReturnDetour<addr>;
 }
 
 

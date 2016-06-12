@@ -97,18 +97,11 @@ int __stdcall CdStreamThread()
         pQueue = &cdinfo.queue;
         ppStreams = &cdinfo.pStreams;
     }
-    else if(gvm.IsVC())
+    else if(gvm.IsVC() || gvm.IsIII())
     {
         pSemaphore = memory_pointer(xVc(0x6F76F4)).get<HANDLE>();
         pQueue = memory_pointer(xVc(0x6F7700)).get<Queue>();
         ppStreams = memory_pointer(xVc(0x6F76FC)).get<CdStream*>();
-    }
-    // TODO III
-    else
-    {
-        auto message = "Warning: Failed to initialise CdStreamThread; This should never happen.";
-        plugin_ptr->Log(message);
-        throw std::runtime_error(message);
     }
 
     // Loop in search of things to load in the queue
@@ -349,6 +342,10 @@ void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
     
+    #ifndef NDEBUG
+    LaunchDebugger();
+    #endif
+
     // Pointers
     ms_aInfoForModel    = ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
     pStreamCreateFlags  = memory_pointer(0x8E3FE0).get();
@@ -362,13 +359,10 @@ void CAbstractStreaming::Patch()
 
     // TODO CHECK THIS ms_imageOffsets THING IN VC (@ CStreaming::LoadCdDirectory)
 
+#if 0
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
-        #ifndef NDEBUG
-        LaunchDebugger();
-        #endif
-
         plugin_ptr->Log("Initializing the streaming...");
 
         // Load standard cd directories.....
@@ -576,6 +570,7 @@ void CAbstractStreaming::Patch()
             });
         }
     }
+#endif
 
 
     // CdStream path overiding
