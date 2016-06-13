@@ -453,7 +453,7 @@ void CAbstractStreaming::Patch()
     }
 
     // Special models
-    if(gvm.IsSA() || gvm.IsVC()) // TODO III
+    if(gvm.IsSA() || gvm.IsVC() || gvm.IsIII())
     {
         static DirectoryInfo* pRQSpecialEntry;    // Stores the special entry we're working with
         using findspecial_hook  = function_hooker_thiscall<0x409F76, char(void*, const char*, unsigned int&, unsigned int&)>;

@@ -8,6 +8,13 @@
 #include <modloader/util/injector.hpp>
 #include <map>
 
+ // Emulating SA's CDirectory::FindItem(ecx, name) for III
+static void* __fastcall gta3emu_CDirectory_FindItem2(void* self, int, const char* name)
+{
+    // The functions (and thus the patches) are identical between III and VC!
+    return vcemu_CDirectory_FindItem2(self, 0, name);
+}
+
 // GTA 3 10 table
 static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 {
@@ -116,7 +123,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x72F4C0] = 0x526FD0;   // _ZN10CMemoryMgr11MallocAlignEjj
         map[0x72F4F0] = 0x527000;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x473600;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
-        map[0x532450] = /*TODO*/nullptr;   // _ZN10CDirectory8FindItemEPKc
+        map[0x532450] = gta3emu_CDirectory_FindItem2; // _ZN10CDirectory8FindItemEPKc
         map[0x5324A0] = 0x4736E0;   // _ZN10CDirectory8FindItemEPKcRjS2_
 
         map[0x406560] = 0x406140;   // _Z14CdStreamThreadPv
