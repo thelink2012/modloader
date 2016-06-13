@@ -167,13 +167,17 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x40CF80] = 0x408940;   // _ZN10CStreaming21RemoveAllUnusedModelsEv
         map[0x40CFD0] = 0x4089B0;   // _ZN10CStreaming20RemoveLeastUsedModelEj
         map[xVc(0x59E2B0)] = 0x52D210; // _ZN11CAutomobile20SetupSuspensionLinesEv
-        map[xVc(0x615080)] = /*TODO*/nullptr; // _ZN5CBike20SetupSuspensionLinesEv
+        //map[xVc(0x615080)] = /*TODO*/nullptr; // _ZN5CBike20SetupSuspensionLinesEv
 
         // Non streamed resources
         // TODO X data.cpp map[0x5B9188] = 0x4763B2 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
         // TODO X data.cpp map[0x5B91B0] = 0x4763E2;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc //should be it
         // TODO X data.cpp map[0x5B91DB] = 0x47640F;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
         // TODO X data.cpp map[0x5B910A] = 0x476358;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc //should be it
+
+        // Removal of txd.img / txd.dir
+        map[xVc(0x410814)] = 0x48C108; // call    _ZN8CFileMgr8OpenFileEPKcS1_; "models/txd.img"
+        map[xVc(0x41083A)] = 0x48C12E; // call    __CreateCacheTxdImage
     }
 #endif
 
@@ -264,7 +268,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     if(true)
     {
         map[0x5B62CF] = 0x40702D;   // -> DWORD 4E20h   ; TXD Start Index+
-        map[0x408897] = 0x83D408;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE+
+        map[0x408897] = 0x407F11;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE+
     }
 
     // AbstractFrontend | TheMenu

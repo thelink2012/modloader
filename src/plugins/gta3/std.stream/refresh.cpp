@@ -9,6 +9,10 @@
 #include "streaming.hpp"
 using namespace modloader;
 
+
+// TODO handle III Treadable? what's that?
+
+
 class CAnimBlendAssociation;
 class CTask;
 struct tag_player_t {} tag_player;
@@ -222,7 +226,7 @@ void CAbstractStreaming::ProcessRefreshes()
     {
         if(gvm.IsSA()) PerformStandardRefresh<TraitsSA>(*this);
         else if(gvm.IsVC()) PerformStandardRefresh<TraitsVC>(*this);
-        // TODO III
+        else if(gvm.IsIII()) PerformStandardRefresh<TraitsIII>(*this);
     }
     
     if(this->to_rebuild_player)
@@ -554,7 +558,7 @@ template<class Traits> void Refresher<Traits>::SetupEntityEvents()
             {
                 injector::thiscall<void(void*)>::vtbl<48>(entity);  // CVehicle::SetupSuspensionLines
             }
-            else if(gvm.IsVC()) // TODO III
+            else if(gvm.IsVC() || gvm.IsIII())
             {
                 switch(GetVehicleType(entity))
                 {
@@ -562,7 +566,10 @@ template<class Traits> void Refresher<Traits>::SetupEntityEvents()
                         injector::thiscall<void(void*)>::call<xVc(0x59E2B0)>(entity); // CAutomobile::SetupSuspensionLines
                         break;
                     case VehicleType::Bike:
-                        injector::thiscall<void(void*)>::call<xVc(0x615080)>(entity); // CBike::SetupSuspensionLines
+                        if(gvm.IsVC())
+                        {
+                            injector::thiscall<void(void*)>::call<xVc(0x615080)>(entity); // CBike::SetupSuspensionLines
+                        }
                         break;
                     default:
                         // No need to do anything.

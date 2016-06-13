@@ -222,6 +222,11 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         // TODO X data.cpp map[0x5B91B0] = ;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc //it's inlined in VC @48DB76
         // TODO X data.cpp map[0x5B91DB] = 0x48DC22;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
         // TODO X data.cpp map[0x5B910A] = ;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc //it's inlined in VC @48DA42
+
+        // Removal of txd.img / txd.dir
+        map[xVc(0x410801)] = 0x410801; // call    sub_61E310
+        map[xVc(0x410814)] = 0x410814; // call    _ZN8CFileMgr8OpenFileEPKcS1_; "models/txd.img"
+        map[xVc(0x41083A)] = 0x41083A; // call    __CreateCacheTxdImage
     }
 #endif
 

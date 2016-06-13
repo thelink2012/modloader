@@ -18,6 +18,7 @@
 
 #include <traits/gta3/sa.hpp>
 #include <traits/gta3/vc.hpp>
+#include <traits/gta3/iii.hpp>
 
 using namespace modloader;
 

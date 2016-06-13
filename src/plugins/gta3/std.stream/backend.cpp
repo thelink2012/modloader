@@ -452,7 +452,6 @@ void CAbstractStreaming::Patch()
         }
     }
 
-#if 0
     // Special models
     if(gvm.IsSA() || gvm.IsVC()) // TODO III
     {
@@ -585,7 +584,6 @@ void CAbstractStreaming::Patch()
             });
         }
     }
-#endif
 
 
     // CdStream path overiding
@@ -643,6 +641,20 @@ void CAbstractStreaming::Patch()
         // we destroy it's model or something. Do just like CQuad and other does, checks if the pointer is null and then allocate it.
         MakeNOP(0x6B89CE, 6);
         MakeCALL(0x6B89CE, HOOK_FixBikeSuspLines);
+    }
+
+    // Disable txd.img / txd.dir
+    if(gvm.IsIII() || gvm.IsVC())
+    {
+        // Make the fopen that checks if txd.img exists return NULL (does not exist).
+        MakeCALL(xVc(0x410814), raw_ptr(return_value<void*, nullptr>));
+        // Do not let __CreateCacheTxdImage do anything, and return that cache wasn't created (false).
+        MakeCALL(xVc(0x41083A), raw_ptr(return_value<bool, false>));
+
+        // Do not even let the code above run!
+        // Important because when __CreateCacheTxd fails on VC, bad things seem to happen.
+        if(gvm.IsVC())
+            MakeCALL(xVc(0x410801), raw_ptr(return_value<bool, true>));
     }
 }
 

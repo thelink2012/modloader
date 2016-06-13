@@ -249,14 +249,17 @@ bool FxPlugin::OnStartup()
                 "peds.col",
             };
         }
-        else if(gvm.IsIII() || gvm.IsVC())
+        else if(gvm.IsVC())
         {
             unused_table = {
-                // III/VC
-                "misc.txd", "peds.col",
-                // III
-                "commer.col", "indust.col", "suburb.col",
-                // TODO generic.txd???
+                "misc.txd", "intro.txd", "peds.col",
+            };
+        }
+        else if(gvm.IsIII())
+        {
+            unused_table = {
+                "zonecyla.dff", "zonesphr.dff", "sphere.dff", "qsphere.dff", "peds.dff",
+                "peds.col", "commer.col", "indust.col", "suburb.col",
             };
         }
 
