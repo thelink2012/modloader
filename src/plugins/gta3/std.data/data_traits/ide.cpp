@@ -227,6 +227,8 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
  */
 static std::function<void()> MakeIdeReloader()
 {
+    // TODO VC III
+
     using namespace injector;
     using namespace std::placeholders;
     static std::set<std::string> ide_files; // List of all registered ide files

@@ -35,7 +35,7 @@ struct TraitsVC : TraitsGTA
     enum class ModelType : uint8_t
     {
         Atomic = 1, Time = 3,
-        Weapon = 4, Clump = 5, Vehicle = 6, Ped = 7, /* TODO 2dfx=9 */
+        Weapon = 4, Clump = 5, Vehicle = 6, Ped = 7, _2DFX = 9,
     };
 
     // Type of CVehicle

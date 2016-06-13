@@ -2,7 +2,7 @@
  * San Andreas Mod Loader - Address Translation Between Game Versions
  * Copyright (C) 2013-2015  LINK/2012 <dma_2012@hotmail.com>
  * Copyright (C) 2014-2015  ThirteenAG <thirteenag@gmail.com>
- * Licensed under GNU GPL v3, see LICENSE at top level directory.
+ * Licensed under the MIT License, see LICENSE at top level directory.
  *
  */
 #include <modloader/util/injector.hpp>

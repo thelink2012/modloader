@@ -33,9 +33,8 @@ struct TraitsIII : TraitsGTA
     // Type of models
     enum class ModelType : uint8_t
     {
-        // TODO IM NOT SURE THIS IS CORRECT, SEE ALSO http://aap.papnet.eu/gta/RE/modelinfo_iii.txt
-        Atomic = 1, Time = 3,
-        Weapon = 4, Clump = 5, Vehicle = 6, Ped = 7, /* TODO 2dfx=9? */
+        Atomic = 1, Mlo = 2, Time = 3,
+        Clump = 4, Vehicle = 5, Ped = 6, XtraComps = 7,
     };
 
     // Type of CVehicle
@@ -95,7 +94,7 @@ struct TraitsIII : TraitsGTA
     }
 
     // Gets the model type (Building, Ped, Vehicle, etc) from the model id
-    static ModelType GetModelType(id_t id) // TODO CHECK CORRECT
+    static ModelType GetModelType(id_t id)
     {
         auto m = GetModelInfo(id);
         return ModelType(ReadOffset<uint8_t>(m, 42));
@@ -109,7 +108,7 @@ struct TraitsIII : TraitsGTA
     }
 
     // Gets the usage count of the specified model id
-    static int GetModelUsageCount(id_t id) // TODO CHECK CORRECT
+    static int GetModelUsageCount(id_t id)
     {
         if(auto m = GetModelInfo(id)) return ReadOffset<uint16_t>(m, 38);
         return 0;
