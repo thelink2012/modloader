@@ -285,6 +285,9 @@ namespace datalib {
 // Level File Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     // Mergers for gta.dat and default.dat
     plugin_ptr->AddMerger<gtadat_store>("gta.dat", true, true, false, no_reinstall);
     plugin_ptr->AddMerger<gtadat_store>("default.dat", true, true, false, no_reinstall);

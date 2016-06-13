@@ -43,7 +43,10 @@ using pedstats_store = gta3::data_store<pedstats_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadPedStats = injector::cstd<void()>::call<0x5BB890>;
-    plugin_ptr->AddMerger<pedstats_store>("pedstats.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadPedStats));
+    if(gvm.IsSA())
+    {
+        auto ReloadPedStats = injector::cstd<void()>::call<0x5BB890>;
+        plugin_ptr->AddMerger<pedstats_store>("pedstats.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadPedStats));
+    }
 });
 

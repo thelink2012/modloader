@@ -36,6 +36,9 @@ using plants_store = gta3::data_store<plants_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     auto ReloadPlantsDat = [plugin_ptr]
     {
         if(!injector::cstd<char()>::call<0x5DD780>()) // CPlantMgr::ReloadConfig

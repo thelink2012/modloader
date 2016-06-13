@@ -284,7 +284,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53BC95] = 0x53BC95;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- default.dat
         map[0x53BC9B] = 0x53BC9B;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
         map[0x4C5940] = 0x4C5940;   // _ZN10CModelInfo12GetModelInfoEPKcPi
-        map[0x5B922F] = 0x5B922F;   // call    _Z20MatchAllModelStringsv                ; @CFileLoader::LoadLevel
+        map[0x5B925F] = 0x5B925F;   // call    _ZN11CObjectData10InitialiseEPc          ; @CFileLoader::LoadLevel
 
         // Refreshing IDEs
         map[0x5B9206] = 0x5B9206;   // call    _ZN11CFileLoader15LoadObjectTypesEPKc

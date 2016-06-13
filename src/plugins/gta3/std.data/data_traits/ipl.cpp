@@ -18,4 +18,10 @@ struct ipl_traits
 using OpenSceneDetour = modloader::OpenFileDetour<0x5B871A, ipl_traits::dtraits>;
 
 using namespace std::placeholders;
-static auto xinit = initializer(std::bind(&DataPlugin::AddIplOverrider<OpenSceneDetour>, _1, ipl_merger_name, false, false, true, no_reinstall));
+static auto xinit = initializer([](DataPlugin* plugin_ptr)
+{
+    if(gvm.IsSA())
+    {
+        plugin_ptr->AddIplOverrider<OpenSceneDetour>(ipl_merger_name, false, false, true, no_reinstall);
+    }
+});

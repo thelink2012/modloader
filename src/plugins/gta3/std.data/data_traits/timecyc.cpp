@@ -19,6 +19,9 @@ using OpenTimecycDetour = modloader::OpenFileDetour<0x5BBADE, timecyc_traits::dt
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     auto ReloadTimeCycle = []
     {
         injector::cstd<void()>::call<0x5BBAC0>();   // CTimeCycle::Initialise

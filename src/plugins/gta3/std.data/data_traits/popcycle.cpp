@@ -19,6 +19,9 @@ using OpenPopCycleDetour = modloader::OpenFileDetour<0x5BC0AE, popcycle_traits::
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     auto ReloadPopCycle = []
     {
         injector::cstd<void()>::call<0x5BC090>();   // CPopCycle::Initialise

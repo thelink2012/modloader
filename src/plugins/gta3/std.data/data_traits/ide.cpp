@@ -163,6 +163,9 @@ static std::function<void()> MakeIdeReloader();
 // Object Types Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     // IDE Merger
     plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, reinstall_since_load, MakeIdeReloader());
 

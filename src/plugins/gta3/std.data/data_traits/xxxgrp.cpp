@@ -133,6 +133,9 @@ static void initialise(DataPlugin* plugin_ptr, std::function<void()> refresher)
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    initialise<pedgrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BCFE0>));
-    initialise<cargrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BD1A0>));
+    if(gvm.IsSA())
+    {
+        initialise<pedgrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BCFE0>));
+        initialise<cargrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BD1A0>));
+    }
 });

@@ -47,7 +47,9 @@ const DataPlugin::info& DataPlugin::GetInfo()
  */
 bool DataPlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    void* p = mem_ptr(0x748CFB).get<void>();
+
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         this->readme_magics.reserve(20);
 
@@ -67,11 +69,11 @@ bool DataPlugin::OnStartup()
         LazyGtaDatPatch();
 
         // Hook allowing us to know when we are ready to know about the model names of the game
-        using modelinfo_hook =  function_hooker<0x5B922F, void()>;
-        make_static_hook<modelinfo_hook>([this](modelinfo_hook::func_type MatchAllModelStrings)
+        using modelinfo_hook =  function_hooker<0x5B925F, void(const char*)>;
+        make_static_hook<modelinfo_hook>([this](modelinfo_hook::func_type CObjectData__Initialise, const char* p)
         {
             this->has_model_info = true;
-            return MatchAllModelStrings();
+            return CObjectData__Initialise(p);
         });
 
         // Hook after the loading screen to write a readme cache

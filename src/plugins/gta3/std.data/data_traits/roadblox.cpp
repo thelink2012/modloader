@@ -19,6 +19,9 @@ using OpenRoadBloxDetour = modloader::OpenFileDetour<0x461125, roadblox_traits::
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadRoadBlox = injector::cstd<void()>::call<0x461100>;
-    plugin_ptr->AddDetour("roadblox.dat", reinstall_since_load, OpenRoadBloxDetour(), gdir_refresh(ReloadRoadBlox));
+    if(gvm.IsSA())
+    {
+        auto ReloadRoadBlox = injector::cstd<void()>::call<0x461100>;
+        plugin_ptr->AddDetour("roadblox.dat", reinstall_since_load, OpenRoadBloxDetour(), gdir_refresh(ReloadRoadBlox));
+    }
 });

@@ -168,7 +168,10 @@ using melee_store = gta3::data_store<melee_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadMelee = injector::cstd<void()>::call<0x5BEDC0>;
-    plugin_ptr->AddMerger<melee_store>("melee.dat", true, false, false, reinstall_since_load, ReloadMelee);
+    if(gvm.IsSA())
+    {
+        auto ReloadMelee = injector::cstd<void()>::call<0x5BEDC0>;
+        plugin_ptr->AddMerger<melee_store>("melee.dat", true, false, false, reinstall_since_load, ReloadMelee);
+    }
 });
 

@@ -99,7 +99,6 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 		map[0x836F3B] = 0x5AB904;   // SetCurrentDirectory return pointer for _chdir
     }
 
-#if 1
     // std.stream
     if(true)
     {
@@ -179,90 +178,87 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x410814)] = 0x48C108; // call    _ZN8CFileMgr8OpenFileEPKcS1_; "models/txd.img"
         map[xVc(0x41083A)] = 0x48C12E; // call    __CreateCacheTxdImage
     }
-#endif
 
-#if 0
     // std.data
     if(true)
     {
-        map[0x464D50] = ;   // _ZN11CTheScripts18IsPlayerOnAMissionEv
-        map[0x5B6890] = ;   // _ZN17CVehicleModelInfo18LoadVehicleColoursEv
-        map[0x5B68AB] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleColours
-        map[0x5B65A0] = ;   // _ZN17CVehicleModelInfo19LoadVehicleUpgradesEv
-        map[0x5B65BE] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleUpgrades
-        map[0xB4E6D8] = ;   // CLinkedUpgradeList CVehicleModelInfo::ms_linkedUpgradesE
-        map[0x4C6770] = ;   // mov     eax, gsVehicleModels.m_nCount
-        map[0x5B905E] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadLevel
-        map[0x5BD830] = ;   // _ZN16cHandlingDataMgr16LoadHandlingDataEv
-        map[0x5BD850] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @cHandlingDataMgr::LoadHandlingData
-        map[0xC2B9C8] = ;   // mod_HandlingManager CHandlingData
-        map[0x5B8428] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
-        map[0x5B871A] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
-        map[0x5DD780] = ;   // _ZN9CPlantMgr12ReloadConfigEv
-        map[0x5DD3D1] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPlantSurfPropMgr::LoadPlantsDat
-        map[0x5BF750] = ;   // _ZN11CWeaponInfo10InitialiseEv
-        map[0x5BE68A] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWeaponInfo::Initialise
-        map[0x5BC090] = ;   // _ZN9CPopCycle10InitialiseEv
-        map[0x5BC0AE] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopCycle::Initialise
-        map[0x5BBAC0] = ;   // _ZN10CTimeCycle10InitialiseEb 
-        map[0x5BBADE] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTimeCycle::initialise
-        map[0x6EAE80] = ;   // _ZN11CWaterLevel20WaterLevelInitialiseEv
-        map[0x5A7B30] = ;   // _ZN8CClothes15LoadClothesFileEv
-        map[0x5A7B54] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CClothes::LoadClothesFile
-        map[0x5C0297] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @FurnitureManager_c::LoadFurniture
-        map[0x6EAF4D] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWaterLevel::WaterLevelInitialise
-        map[0x5BD1A0] = ;   // _ZN11CPopulation13LoadCarGroupsEv
-        map[0x5BD1BB] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadCarGroups
-        map[0x5BCFE0] = ;   // _ZN11CPopulation13LoadPedGroupsEv
-        map[0x5BCFFB] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
-        map[0x5BB890] = ;   // _ZN9CPedStats12LoadPedStatsEv
-        map[0x5BB89F] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedStats::LoadPedStats
-        map[0x5B5360] = ;   // _ZN11CObjectData10InitialiseEPcb
-        map[0x5B5444] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise
-        map[0x7187C0] = ;   // _ZN5CFont14LoadFontValuesEv
-        map[0x7187DB] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFont::LoadFontValues
-        map[0x461100] = ;   // _ZN11CRoadBlocks4InitEv
-        map[0x461125] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CRoadBlocks::Init
-        map[0x5599B0] = ;   // _ZN6CStats23LoadActionReactionStatsEv
-        map[0x5599D8] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadActionReactionStats
-        map[0x55988F] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadStatUpdateConditions
-        map[0x608B45] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedType::LoadPedData
-        map[0x5BEDC0] = ;   // _ZN16CTaskSimpleFight13LoadMeleeDataEv
-        map[0x5BEF47] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTaskSimpleFight::LoadMeleeData
-        map[0x5BC92B] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CAnimManager::ReadAnimAssociationDefinitions
-        map[0x5BF400] = ;   //  _ZN29CDecisionMakerTypesFileLoader24LoadDefaultDecisionMakerEv
-        map[0x6076CE] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDecisionMakerTypesFileLoader::LoadDecisionMaker
-        map[0x5A3EA0] = ;   // _ZN15ProcObjectMan_c4InitEv
-        map[0xBB7CB0] = ;   // ProcObjectMan g_procObjMan
-        map[0x5A3154] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @ProcObjectMan_c::LoadDataFile
-        map[0x55F420] = ;   // _ZN14SurfaceInfos_c4InitEv
-        map[0xB79538] = ;   // SurfaceInfos_c g_surfaceInfos
-        map[0x55D100] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadAdhesiveLimits
-        map[0x55EBA4] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceInfos
-        map[0x55F2C1] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceAudioInfos
-        map[0x49AE30] = ;   // _ZN9CShopping16RemoveLoadedShopEv
-        map[0x49BBE0] = ;   // _ZN9CShopping8LoadShopEPKc
-        map[0xA9A7D8] = ;   // char _ZN9CShopping13ms_shopLoadedE[24]
-        map[0x49B6AF] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadStats
-        map[0x49B93F] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadPrices
-        map[0x49BC98] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadShop
-        map[0x6F7440] = ;   // _ZN6CTrain10InitTrainsEv
-        map[0x6F7470] = ;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks.dat"
-        map[0x6F74BC] = ;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
-        map[0x6F7496] = ;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks3.dat"
-        map[0x6F74E2] = ;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks4.dat"
-        map[0x748CFB] = ;   // call    _Z14InitialiseGamev
-        map[0x590D2A] = ;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
-        map[0x590D67] = ;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress
-        map[0x5B906A] = ;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop begin
-        map[0x5B92E6] = ;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop end
-        map[0x5B92F9] = ;   // call    _ZN8CFileMgr9CloseFileEi                 ; @CFileLoader::LoadLevel
-        map[0x53BC95] = ;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- default.dat
-        map[0x53BC9B] = ;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
-        map[0x4C5940] = ;   // _ZN10CModelInfo12GetModelInfoEPKcPi
-        map[0x5B922F] = ;   // call    _Z20MatchAllModelStringsv                ; @CFileLoader::LoadLevel
+        map[0x464D50] = 0x439410;   // _ZN11CTheScripts18IsPlayerOnAMissionEv
+        map[0x5B6890] = 0x521260;   // _ZN17CVehicleModelInfo18LoadVehicleColoursEv
+        map[0x5B68AB] = 0x521283;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleColours
+        //map[0x5B65A0] = ;   // _ZN17CVehicleModelInfo19LoadVehicleUpgradesEv //doesn't exist
+        //map[0x5B65BE] = ;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CVehicleModelInfo::LoadVehicleUpgrades //doesn't exist
+        //map[0xB4E6D8] = ;   // CLinkedUpgradeList CVehicleModelInfo::ms_linkedUpgradesE //doesn't exist
+        map[0x4C6770] = 0x50BA60;   // mov     eax, gsVehicleModels.m_nCount //=> cmp     ds:dword_8E2DE0, 78h doublecheck!
+        map[0x5B905E] = 0x4762C2;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadLevel
+        map[0x5BD830] = 0x546DB0;   // _ZN16cHandlingDataMgr16LoadHandlingDataEv //doublecheck
+        //map[0x5BD850] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @cHandlingDataMgr::LoadHandlingData //check 546DDE 
+        map[0xC2B9C8] = 0x728060;   // mod_HandlingManager CHandlingData
+        map[0x5B8428] = 0x476AEB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
+        map[0x5B871A] = 0x478393;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
+        //map[0x5DD780] = 0x;   // _ZN9CPlantMgr12ReloadConfigEv //doesn't exist?
+        //map[0x5DD3D1] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPlantSurfPropMgr::LoadPlantsDat //doesn't exist?
+        map[0x5BF750] = 0x564EA0;   // _ZN11CWeaponInfo10InitialiseEv
+        //map[0x5BE68A] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWeaponInfo::Initialise // check 5D527B
+        //map[0x5BC090] = 0x;   // _ZN9CPopCycle10InitialiseEv //doesn't exist?
+        //map[0x5BC0AE] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopCycle::Initialise //doesn't exist?
+        map[0x5BBAC0] = 0x4ABAE0;   // _ZN10CTimeCycle10InitialiseEb 
+        //map[0x5BBADE] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTimeCycle::initialise //check 4ABB14
+        map[0x6EAE80] = 0x554EA0;   // _ZN11CWaterLevel20WaterLevelInitialiseEv
+        //map[0x5A7B30] = 0x;   // _ZN8CClothes15LoadClothesFileEv  //doesn't exist?
+        //map[0x5A7B54] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CClothes::LoadClothesFile   //doesn't exist?
+       // map[0x5C0297] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @FurnitureManager_c::LoadFurniture   //doesn't exist?
+        map[0x6EAF4D] = 0x554ED0;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWaterLevel::WaterLevelInitialise
+        //map[0x5BD1A0] = 0x;   // _ZN11CPopulation13LoadCarGroupsEv //doesn't exist?
+        //map[0x5BD1BB] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadCarGroups //doesn't exist?
+        map[0x5BCFE0] = 0x4F3870;   // _ZN11CPopulation13LoadPedGroupsEv 
+        map[0x5BCFFB] = 0x4F388F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
+        map[0x5BB890] = 0x4EF580;   // _ZN9CPedStats12LoadPedStatsEv
+        //map[0x5BB89F] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedStats::LoadPedStats //check 4EF5B4
+        map[0x5B5360] = 0x4BC0E0;   // _ZN11CObjectData10InitialiseEPcb
+        //map[0x5B5444] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise // check 4BC10C
+        //map[0x7187C0] = 0x;   // _ZN5CFont14LoadFontValuesEv //doesn't exist?
+        //map[0x7187DB] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFont::LoadFontValues //doesn't exist?
+        map[0x461100] = 0x436F50;   // _ZN11CRoadBlocks4InitEv
+        //map[0x461125] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CRoadBlocks::Init //doesn't exist
+        //map[0x5599B0] = 0x;   // _ZN6CStats23LoadActionReactionStatsEv //doesn't exist
+        //map[0x5599D8] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadActionReactionStats //doesn't exist?
+        //map[0x55988F] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadStatUpdateConditions //doesn't exist?
+        //map[0x608B45] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedType::LoadPedData //check 4EE917
+        //map[0x5BEDC0] = 0x;   // _ZN16CTaskSimpleFight13LoadMeleeDataEv //doesn't exist
+        //map[0x5BEF47] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTaskSimpleFight::LoadMeleeData //doesn't exist
+        //map[0x5BC92B] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CAnimManager::ReadAnimAssociationDefinitions //doesn't exist?
+        //map[0x5BF400] = 0x;   //  _ZN29CDecisionMakerTypesFileLoader24LoadDefaultDecisionMakerEv //doesn't exist?
+        //map[0x6076CE] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDecisionMakerTypesFileLoader::LoadDecisionMaker //doesn't exist?
+        //map[0x5A3EA0] = 0x;   // _ZN15ProcObjectMan_c4InitEv //doesn't exist
+        //map[0xBB7CB0] = 0x;   // ProcObjectMan g_procObjMan //doesn't exist
+        //map[0x5A3154] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @ProcObjectMan_c::LoadDataFile //doesn't exist
+        //map[0x55F420] = 0x;   // _ZN14SurfaceInfos_c4InitEv //not sure, check 4CE8A0 (VC)
+        //map[0xB79538] = 0x;   // SurfaceInfos_c g_surfaceInfos //^
+        //map[0x55D100] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadAdhesiveLimits//^
+        //map[0x55EBA4] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceInfos//^
+        //map[0x55F2C1] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @SurfaceInfos_c::LoadSurfaceAudioInfos//^
+        //map[0x49AE30] = 0x;   // _ZN9CShopping16RemoveLoadedShopEv //doesn't exist
+        //map[0x49BBE0] = 0x;   // _ZN9CShopping8LoadShopEPKc //doesn't exist
+        //map[0xA9A7D8] = 0x;   // char _ZN9CShopping13ms_shopLoadedE[24] //doesn't exist
+        //map[0x49B6AF] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadStats //doesn't exist
+        //map[0x49B93F] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadPrices //doesn't exist
+        //map[0x49BC98] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CShopping::LoadShop //doesn't exist
+        map[0x6F7440] = 0x54F000;   // _ZN6CTrain10InitTrainsEv
+        map[0x6F7470] = 0x54F035;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks.dat" 
+        map[0x6F74BC] = 0x54F06D;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks2.dat"
+        //map[0x6F7496] = 0x;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks3.dat" //doesn't exist
+        //map[0x6F74E2] = 0x;   // call    _ZN6CTrain25ReadAndInterpretTrackFileEPcPP10CTrainNodePiPfi ; "tracks4.dat" //doesn't exist
+        map[0x748CFB] = 0x582E6C;   // call    _Z14InitialiseGamev
+        //map[0x590D2A] = 0x;   // mov     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress //doesn't exist
+        //map[0x590D67] = 0x;   // cmp     eax, 8Ch                                 ; 8Ch = Loading Screen Max Progress //doesn't exist
+        //map[0x5B906A] = 0x;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop begin //check 4764F8
+        //map[0x5B92E6] = 0x;   // call    _ZN11CFileLoader8LoadLineEi              ; @CFileLoader::LoadLevel -- loop end //check 4764F8
+        map[0x5B92F9] = 0x47650B;   // call    _ZN8CFileMgr9CloseFileEi                 ; @CFileLoader::LoadLevel
+        map[0x53BC95] = 0x48C038;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- default.dat
+        map[0x53BC9B] = 0x48C03F;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
+        map[0x4C5940] = 0x50B860;   // _ZN10CModelInfo12GetModelInfoEPKcPi
+        map[0x5B925F] = 0x476472;   // call    _ZN11CObjectData10InitialiseEPc          ; @CFileLoader::LoadLevel
     }
-#endif
 
     // traits
     if(true)

@@ -49,9 +49,12 @@ using object_store = gta3::data_store<object_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    // XXX a perfect refresh needs to set all the CBaseModelInfo::m_wObjectInfoIndex to -1 before reloading the data file
-    // and clearing all bytes from CObjectData::ms_aObjectInfo[]
-    auto ReloadObjectData = std::bind(injector::cstd<void(const char*, char)>::call<0x5B5360>, "data/object.dat", 0);
-    plugin_ptr->AddMerger<object_store>("object.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadObjectData));
+    if(gvm.IsSA())
+    {
+        // XXX a perfect refresh needs to set all the CBaseModelInfo::m_wObjectInfoIndex to -1 before reloading the data file
+        // and clearing all bytes from CObjectData::ms_aObjectInfo[]
+        auto ReloadObjectData = std::bind(injector::cstd<void(const char*, char)>::call<0x5B5360>, "data/object.dat", 0);
+        plugin_ptr->AddMerger<object_store>("object.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadObjectData));
+    }
 });
 

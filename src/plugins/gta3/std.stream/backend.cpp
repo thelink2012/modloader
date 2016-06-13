@@ -341,10 +341,6 @@ void CAbstractStreaming::BuildPrevOnCdMap()
 void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
-    
-    #ifndef NDEBUG
-    LaunchDebugger();
-    #endif
 
     // Pointers
     ms_aInfoForModel    = ReadMemory<CStreamingInfo*>(0x5B8AE8, true);

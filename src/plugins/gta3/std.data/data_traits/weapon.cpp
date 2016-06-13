@@ -125,6 +125,9 @@ namespace datalib {
 // Weapon Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     auto ReloadWeaponData = injector::cstd<void()>::call<0x5BF750>;
 
     // Weapon Merger

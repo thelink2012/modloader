@@ -19,7 +19,10 @@ using OpenFurniturDetour = modloader::OpenFileDetour<0x5C0297, furnitur_traits::
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadFurnitur = []{};
-    plugin_ptr->AddDetour("furnitur.dat", reinstall_since_load, OpenFurniturDetour(), gdir_refresh(ReloadFurnitur));
+    if(gvm.IsSA())
+    {
+        auto ReloadFurnitur = []{};
+        plugin_ptr->AddDetour("furnitur.dat", reinstall_since_load, OpenFurniturDetour(), gdir_refresh(ReloadFurnitur));
+    }
 });
 

@@ -121,6 +121,9 @@ namespace datalib {
 // Vehicle Colours Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     auto ReloadColours = injector::cstd<void()>::call<0x5B6890>;
     plugin_ptr->AddMerger<carcols_store>("carcols.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadColours));
 

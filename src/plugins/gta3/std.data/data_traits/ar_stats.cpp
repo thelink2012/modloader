@@ -35,7 +35,10 @@ using ar_stats_store = gta3::data_store<ar_stats_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadArStats = injector::cstd<void()>::call<0x5599B0>;
-    plugin_ptr->AddMerger<ar_stats_store>("ar_stats.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadArStats));
+    if(gvm.IsSA())
+    {
+        auto ReloadArStats = injector::cstd<void()>::call<0x5599B0>;
+        plugin_ptr->AddMerger<ar_stats_store>("ar_stats.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadArStats));
+    }
 });
 

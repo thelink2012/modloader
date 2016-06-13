@@ -61,6 +61,9 @@ using statdisp_store = gta3::data_store<statdisp_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadStatMessages = []{}; // shouldn't refresh at all, would break save game
-    plugin_ptr->AddMerger<statdisp_store>("statdisp.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadStatMessages));
+    if(gvm.IsSA())
+    {
+        auto ReloadStatMessages = []{}; // shouldn't refresh at all, would break save game
+        plugin_ptr->AddMerger<statdisp_store>("statdisp.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadStatMessages));
+    }
 });

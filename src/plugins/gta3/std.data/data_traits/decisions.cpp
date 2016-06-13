@@ -90,6 +90,9 @@ using decision_store = gta3::data_store<decision_traits, linear_map<    // linea
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     // Refreshing decision makes is allowed only out of mission so we don't break any mission custom decision maker!
     auto ReloadDecisionMakers = [plugin_ptr]
     {

@@ -234,6 +234,10 @@ void ProcessGtaDatEntries()
  */
 void LazyGtaDatPatch()
 {
+    /// TODO VC III
+    if(!gvm.IsSA())
+        return;
+
     using defaultdat_hook = function_hooker<0x53BC95, void(const char*)>;
     using gtadat_hook     = function_hooker<0x53BC9B, void(const char*)>;
     make_static_hook<defaultdat_hook>(PreLoadLevel);

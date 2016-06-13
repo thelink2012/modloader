@@ -19,7 +19,10 @@ using OpenClothesDetour = modloader::OpenFileDetour<0x5A7B54, clothes_traits::dt
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadClothes = injector::cstd<void()>::call<0x5A7B30>;
-    plugin_ptr->AddDetour("clothes.dat", reinstall_since_load, OpenClothesDetour(), gdir_refresh(ReloadClothes));
+    if(gvm.IsSA())
+    {
+        auto ReloadClothes = injector::cstd<void()>::call<0x5A7B30>;
+        plugin_ptr->AddDetour("clothes.dat", reinstall_since_load, OpenClothesDetour(), gdir_refresh(ReloadClothes));
+    }
 });
 

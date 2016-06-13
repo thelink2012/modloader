@@ -8,6 +8,10 @@
 #include <unicode.hpp>
 using namespace modloader;
 
+#ifndef NDEBUG
+#include <debugger.hpp>
+#endif
+
 // TODO VC build system should move modloader.asi to the scripts folder
 // This is not related to the .cpp code, probably the .lua installer.
 
@@ -76,26 +80,30 @@ void Loader::Patch()
             
 #ifndef NDEBUG // TODO REMOVE ME!!!!
             auto& gvm = injector::address_manager::singleton();
+            if(!gvm.IsSA())
+            {
+                static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
 
-            static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
+                gGameState = 5; // skip intro
+                if(gvm.IsIII())
+                    MakeNOP(raw_ptr(0x5811F8), 10);
+                else if(gvm.IsVC())
+                    MakeNOP(raw_ptr(0x601B3B), 10);
 
-            gGameState = 5; // skip intro
-            if(gvm.IsIII())
-                MakeNOP(raw_ptr(0x5811F8), 10);
-            else if(gvm.IsVC())
-                MakeNOP(raw_ptr(0x601B3B), 10);
+                // Remove internal exception handler
+                //MakeRangedNOP(raw_ptr(0x667BFF), raw_ptr(0x667C12));
 
-            // Remove internal exception handler
-            //MakeRangedNOP(raw_ptr(0x667BFF), raw_ptr(0x667C12));
+                /*WriteMemory<uint8_t>(raw_ptr(0x677E40), 0xB8, true);
+                WriteMemory<uint32_t>(raw_ptr(0x677E40+1), EXCEPTION_CONTINUE_SEARCH, true);
+                WriteMemory<uint32_t>(raw_ptr(0x677E40+1+4), 0xC3, true);*/
 
-            /*WriteMemory<uint8_t>(raw_ptr(0x677E40), 0xB8, true);
-            WriteMemory<uint32_t>(raw_ptr(0x677E40+1), EXCEPTION_CONTINUE_SEARCH, true);
-            WriteMemory<uint32_t>(raw_ptr(0x677E40+1+4), 0xC3, true);*/
+                if(gvm.IsIII())
+                    MakeJMP(raw_ptr(0x405DB0), &VCLog);
+                else if(gvm.IsVC())
+                    MakeJMP(raw_ptr(0x401000), &VCLog);
 
-            if(gvm.IsIII())
-                MakeJMP(raw_ptr(0x405DB0), &VCLog);
-            else if(gvm.IsVC())
-                MakeJMP(raw_ptr(0x401000), &VCLog);
+                LaunchDebugger();
+            }
 #else
 //            #error TODO Remove me
 #endif

@@ -87,7 +87,10 @@ using ped_store = gta3::data_store<ped_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadPedRelationship = []{}; // refreshing ped relationship during gameplay might break save game, don't do it at all
-    plugin_ptr->AddMerger<ped_store>("ped.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadPedRelationship));
+    if(gvm.IsSA())
+    {
+        auto ReloadPedRelationship = []{}; // refreshing ped relationship during gameplay might break save game, don't do it at all
+        plugin_ptr->AddMerger<ped_store>("ped.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadPedRelationship));
+    }
 });
 
