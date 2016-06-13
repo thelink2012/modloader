@@ -207,8 +207,33 @@ void Loader::Startup()
         || !MakeSureDirectoryExistA(pluginPath.c_str())
         || !MakeSureDirectoryExistA(commonAppDataPath.c_str())
         || !MakeSureDirectoryExistA(localAppDataPath.c_str()))
-            Log("Warning: Mod Loader important directories could not be created.");
-        
+        {
+            Log("Warning: Mod Loader important directories could not be created (1).");
+        }
+        else
+        {
+            char hash_as_string[128];
+            std::string normal_path = NormalizePath(this->gamePath);
+
+            static_assert(sizeof(size_t) == 4, "%.8x not correct");
+            sprintf(hash_as_string, "%.8x", modloader::hash(normal_path));
+
+            std::string unique_id;
+            unique_id += "10"; // version of the hashing method, increase if it changes
+            unique_id += hash_as_string;
+
+            this->localAppDataPath += unique_id;
+            this->commonAppDataPath += unique_id;
+
+            MakeSureStringIsDirectory(this->localAppDataPath);
+            MakeSureStringIsDirectory(this->commonAppDataPath);
+            if(!MakeSureDirectoryExistA(localAppDataPath.c_str())
+            || !MakeSureDirectoryExistA(commonAppDataPath.c_str()))
+            {
+                Log("Warning: Mod Loader important directories could not be created (2).");
+            }
+        }
+
         // Before loading inis, we should update from the old ini format to the new ini format (ofc only if the ini format is old)
         this->UpdateOldConfig();
 
