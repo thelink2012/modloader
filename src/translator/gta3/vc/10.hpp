@@ -218,10 +218,10 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x615080)] = 0x615080; // _ZN5CBike20SetupSuspensionLinesEv
  
         // Non streamed resources
-        // TODO X data.cpp map[0x5B9188] = 0x48DB04 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
-        // TODO X data.cpp map[0x5B91B0] = ;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc //it's inlined in VC @48DB76
-        // TODO X data.cpp map[0x5B91DB] = 0x48DC22;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
-        // TODO X data.cpp map[0x5B910A] = ;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc //it's inlined in VC @48DA42
+        map[0x5B9188] = 0x48DB04 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
+        map[0x5B91DB] = 0x48DC22;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
+        map[xVc(0x48DB7B)] = 0x48DB7B; // call    RwStreamOpen ; inlined _ZN11CFileLoader14LoadAtomicFileEPKc
+        map[xVc(0x48DA46)] = 0x48DA46; // call    RwStreamOpen ; inlined _ZN11CFileLoader17LoadTexDictionaryEPKc
 
         // Removal of txd.img / txd.dir
         map[xVc(0x410801)] = 0x410801; // call    sub_61E310

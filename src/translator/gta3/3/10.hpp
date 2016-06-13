@@ -169,10 +169,10 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x59E2B0)] = 0x52D210; // _ZN11CAutomobile20SetupSuspensionLinesEv
 
         // Non streamed resources
-        // TODO X data.cpp map[0x5B9188] = 0x4763B2 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
-        // TODO X data.cpp map[0x5B91B0] = 0x4763E2;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc //should be it
-        // TODO X data.cpp map[0x5B91DB] = 0x47640F;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
-        // TODO X data.cpp map[0x5B910A] = 0x476358;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc //should be it
+        map[0x5B9188] = 0x4763B2 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
+        map[0x5B91B0] = 0x4763E2;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc
+        map[0x5B91DB] = 0x47640F;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
+        map[0x5B910A] = 0x476358;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc
 
         // Removal of txd.img / txd.dir
         map[xVc(0x410814)] = 0x48C108; // call    _ZN8CFileMgr8OpenFileEPKcS1_; "models/txd.img"

@@ -52,24 +52,31 @@ struct gtadat_traits : public data_traits
     struct dtraits : modloader::dtraits::OpenFile
     {
         static const char* what()       { return "level file"; }
-        static const char* datafile()   { return "gta.dat"; }       // for readmes
+        static const char* datafile() // for readmes
+        {
+            if(gvm.IsSA()) return "gta.dat";
+            if(gvm.IsVC()) return "gta_vc.dat";
+            if(gvm.IsIII()) return "gta3.dat";
+            return nullptr;
+        }
     };
     
     // Detouring type
     using detour_type = modloader::OpenFileDetour<0x5B905E, dtraits>;
                           
     //
-    using dtype      = data_slice<either<uint32_t, std::string>>;                // may be a index to the path (after premerge) or the path itself (before premerge)
+    using dtype      = data_slice<either<uint32_t, std::string>, uint32_t>;      //< <0> = may be a index to the path (after premerge) or the path itself (before premerge)
+                                                                                 //^ <1> = for COLFILE, the level index, otherwise 0.
     using key_type   = std::pair<uint32_t, either<uint32_t, readme_key>>;        // .first is section, .second is either a global index (after premerge) or
                                                                                  //   a local index (as in this->index) (before premere)
-    using value_type = gta3::data_section<dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype>;
+    using value_type = gta3::data_section<dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype, dtype>;
 
     static const gta3::section_info* sections()
     {
         // Note: must be in the same order as declared in value_type
-        static auto sections = gta3::make_section_info("IMG", "TEXDICTION", "MODELFILE",    // ORDER HERE MATTERS VERY MUCH!!
-                                                       "IDE", "COLFILE", "IPL", "HIERFILE", // Notice COLFILE comes after IDE, that's right!
-                                                       "SPLASH", "EXIT");                   // !COLFILE needs the definitions available!
+        static auto sections = gta3::make_section_info("IMG", "CDIMAGE", "TEXDICTION", "MODELFILE",     // ORDER HERE MATTERS VERY MUCH!!
+                                                       "IDE", "COLFILE",  "MAPZONE", "IPL", "HIERFILE", // Notice COLFILE comes after IDE, that's right!
+                                                       "SPLASH", "EXIT");                               // !COLFILE needs the definitions available!
         static_assert(std::tuple_size<decltype(sections)>::value == 1 + value_type::num_sections, "incompatible sizes");
         return sections.data();
     }
@@ -108,12 +115,26 @@ struct gtadat_traits : public data_traits
         it = std::find_if(it + section->len, end, std::not1(isspace));  // skip section specifier (IMG, IDE, COLFILE, ...)
         if(it != end)
         {
-            if(section == colsec)   // for COLFILE section, skip the '0' integer after the section specifier
+            uint32_t level = 0;
+
+            if(section == colsec)   // for COLFILE section, get the level id after the section specifier
+            {
+                size_t beg_index = std::distance(line.begin(), it);
                 it = std::find_if(std::find_if(it, end, isspace), end, std::not1(isspace));
+                size_t end_index = std::distance(line.begin(), it);
+                try
+                {
+                    level = std::stoi(line.substr(beg_index, end_index - beg_index));
+                }
+                catch(const std::logic_error&)
+                {
+                    // do nothing about it, let it go
+                }
+            }
 
             if(it != end)   // the iterator should point to the path at this moment
             {
-                setup_data_value(data, section, NormalizePath(std::string(it, end)));
+                setup_data_value(data, section, NormalizePath(std::string(it, end)), level);
                 return true;
             }
         }
@@ -131,8 +152,11 @@ struct gtadat_traits : public data_traits
         static auto colsec = gta3::section_info::by_name(sections(), "COLFILE");
 
         line.assign(data.section()->name).push_back(' ');
-        if(data.section() == colsec)            // COLFILE has a '0' integer after it.
-            line.append("0").push_back(' ');    // It actually means the colpool index 0, aka generic collisions.
+        if(data.section() == colsec)
+        {
+            uint32_t level = data.get_slice<dtype>().get<1>();
+            line.append(std::to_string(level)).push_back(' ');
+        }
         line.append(path_from_index(get<uint32_t>(data.get_slice<dtype>().get<0>())));
 
         return true;
@@ -140,7 +164,7 @@ struct gtadat_traits : public data_traits
 
     // Set ups the value_type from the specified section and specified argument (string or uint32_t)
     template<class Arg>
-    static value_type& setup_data_value(value_type& data, const gta3::section_info* section, Arg&& arg)
+    static value_type& setup_data_value(value_type& data, const gta3::section_info* section, Arg&& arg, uint32_t level)
     {
         // Since we are setting the data_section and the data_slice manually, we need to call force_section instead of as_section.
         // Then we get the working slice for the section and manually set it's content
@@ -148,6 +172,7 @@ struct gtadat_traits : public data_traits
         auto& slice = data.get_slice<dtype>();
         slice.reset();                          // must clear content before setting the slice
         slice.set<0>(std::forward<Arg>(arg));
+        slice.set<1>(level);
         return data;
     }
 
@@ -164,7 +189,9 @@ struct gtadat_traits : public data_traits
         for(auto it = store.container().begin(); it != store.container().end(); ++it)
         {
             value_type data;
-            key_type key = key_from_value(setup_data_value(data, it->second.section(), index_for_path(get<std::string>(it->second.get_slice<dtype>().get<0>()))));
+            uint32_t index = index_for_path(get<std::string>(it->second.get_slice<dtype>().get<0>()));
+            uint32_t level = it->second.get_slice<dtype>().get<1>();
+            key_type key = key_from_value(setup_data_value(data, it->second.section(), index, level));
             newcontainer.emplace(std::move(key), std::move(data));
         }
 
@@ -285,11 +312,13 @@ namespace datalib {
 // Level File Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    if(!gvm.IsSA())
+    if((gvm.IsIII() || gvm.IsVC() || gvm.IsSA()) == false)
         return;
 
+    const char* maindat = gtadat_traits::dtraits::datafile();
+
     // Mergers for gta.dat and default.dat
-    plugin_ptr->AddMerger<gtadat_store>("gta.dat", true, true, false, no_reinstall);
+    plugin_ptr->AddMerger<gtadat_store>(maindat, true, true, false, no_reinstall);
     plugin_ptr->AddMerger<gtadat_store>("default.dat", true, true, false, no_reinstall);
 
     // Readme reader for gta.dat
@@ -297,7 +326,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
     {
         // To match a gta.dat line we need the section specifier followed by a single space
         // then a DIRECTORY/ followed by anything until the extension, which should be a valid one.
-        static auto regex = make_regex(R"___(^(?:IDE|IPL|IMG|COLFILE 0|TEXDICTION|MODELFILE|HIERFILE) \w+[\\/].*\.(?:IDE|IPL|ZON|IMG|COL|TXD|DFF)\s*$)___", 
+        static auto regex = make_regex(R"___(^(?:IDE|IPL|IMG|COLFILE \d|TEXDICTION|MODELFILE|HIERFILE) \w+[\\/].*\.(?:IDE|IPL|ZON|IMG|COL|TXD|DFF)\s*$)___", 
                                         sregex::ECMAScript|sregex::optimize|sregex::icase); // case insensitive because of the file extension
 
         if(regex_match(line, regex))
