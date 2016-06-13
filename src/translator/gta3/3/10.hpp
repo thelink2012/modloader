@@ -131,8 +131,6 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x40CF34] = 0x40A321;   // call    _Z12CdStreamReadiPvjj                    ; @CStreaming::RequestModelStream
         map[xVc(0x40B76A)] = 0x40A512;// call    _Z12CdStreamReadiPvjj                    ; @CStreaming::LoadAllRequestedModels
         map[xVc(0x40B780)] = 0x40A536;// call    _Z12CdStreamReadiPvjj                    ; @CStreaming::LoadAllRequestedModels
-        //map[0x40CCA6] = /*INLINED*/nullptr;   // mov     edx, ms_aInfoForModel.iBlockCount[eax*4] ; @CStreaming::RequestModelStream not found, should be here somewhere 40A180
-        //map[xVc(0x40B738)] = /*INLINED*/nullptr;// mov     edx, ds:_ZN10CStreaming16ms_aInfoForModelE.uArchiveSize[ecx] ; @CStreaming::LoadAllRequestedModels
         map[xIII(0x40A128)] = 0x40A128; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_ ; @CStreaming::RequestModelStream
         map[xIII(0x40A4F3)] = 0x40A4F3; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_ ; @CStreaming::LoadAllRequestedModels
         map[xVc(0x408521)] = 0x405E71;// add     esi, edi    ; @CdStreamRead
@@ -150,10 +148,6 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B627A] = 0x406F2B;   // call    _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE ; @CStreaming::LoadCdDirectory
         map[xIII(0x406EB0)] = 0x406EB0; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_  ; dff
         map[xIII(0x406FD9)] = 0x406FD9; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_  ; txd
-        //map[xVc(0x40FD82)] = /*TODO*/nullptr;  // TODO ASM
-        //map[xVc(0x40FD9A)] = /*TODO*/nullptr;  // TODO ASM
-        //map[xVc(0x40FDA0)] = /*TODO*/nullptr;  // TODO ASM
-        //map[0x5B630B] = /**/nullptr;   // call    _ZN9CColStore10AddColSlotEPKc //not found in III
         map[xIII(0x4038FC)] = 0x4038FC;   // call    __loadIfp    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
         map[0x40E2C5] = 0x40A571;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii
         map[0x40E1BE] = 0x40A585;   // call    _ZN10CStreaming22FinishLoadingLargeFileEPci
@@ -174,7 +168,6 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x40CF80] = 0x408940;   // _ZN10CStreaming21RemoveAllUnusedModelsEv
         map[0x40CFD0] = 0x4089B0;   // _ZN10CStreaming20RemoveLeastUsedModelEj
         map[xVc(0x59E2B0)] = 0x52D210; // _ZN11CAutomobile20SetupSuspensionLinesEv
-        //map[xVc(0x615080)] = /*TODO*/nullptr; // _ZN5CBike20SetupSuspensionLinesEv
 
         // Non streamed resources
         // TODO X data.cpp map[0x5B9188] = 0x4763B2 ;   // call    _ZN11CFileLoader17LoadCollisionFileEPKch
