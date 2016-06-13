@@ -50,7 +50,7 @@ const ScmPlugin::info& ScmPlugin::GetInfo()
  */
 bool ScmPlugin::OnStartup()
 {
-    if(gvm.IsVC() || gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         this->overrider.SetParams(file_overrider::params(true, true, true, true));
         this->overrider.SetFileDetour(OpenFileDetour<0x468EC9>(), OpenFileDetour<0x489A4A>());

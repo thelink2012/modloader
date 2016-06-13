@@ -79,7 +79,7 @@ void __declspec(naked) HOOK_RegisterNextModelRead_VC()
         mov ebx, ebx // TODO remove
         xor edx, edx
         mov eax, ecx
-        mov ecx, 0x14  // sizeof CStreamingInfo on VC (TODO III)
+        mov ecx, 0x14  // sizeof CStreamingInfo on VC
         div ecx
         push eax // result of div
         call RegisterNextModelRead
@@ -88,7 +88,7 @@ void __declspec(naked) HOOK_RegisterNextModelRead_VC()
 
         /* Run replaced code: */
         mov edx, dword ptr[ms_aInfoForModel]
-        mov edx, [edx+ecx+0x10] // TODO III 0x10 offset same in III?
+        mov edx, [edx+ecx+0x10] // field for VC
         //mov edx, [edx + 0xC + eax * 4]    /* edx = ms_aInfoForModel[iLoadingModelIndex].blocks */
         ret
     }
@@ -114,7 +114,7 @@ void __declspec(naked) HOOK_NewFile()
 /*
     TODO VC DESCRIPTION
 */
-void __declspec(naked) HOOK_NewFile_VC()
+void __declspec(naked) HOOK_NewFile_3VC()
 {
     _asm
     {

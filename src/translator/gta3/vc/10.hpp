@@ -14,9 +14,8 @@ static void vcemu_CStreaming__RemoveAllUnusedModels()
     void* ptr_begin = injector::lazy_pointer<xVc(0x40FF65)>::get<void>();
     void* ptr_end   = injector::lazy_pointer<xVc(0x40FFB1)>::get<void>();
 
-    injector::scoped_nop<5> nop1;
-    nop1.make_nop(raw_ptr(ptr_end), 1);
-    injector::MakeRET(raw_ptr(ptr_end));
+    injector::scoped_write<5> c3;
+    c3.write<uint8_t>(raw_ptr(ptr_end), 0xC3, true); // ret
 
     _asm
     {
@@ -31,6 +30,8 @@ static void vcemu_CStreaming__RemoveAllUnusedModels()
 // Emulating SA's CDirectory::FindItem(ecx, name) for VC
 static void* __fastcall vcemu_CDirectory_FindItem2(void* self, int, const char* name)
 {
+    // NOTE: This function is also used for on gta3emu, so mind it when touching.
+
     int dummy;
     void* ptr_FindItem = injector::lazy_pointer<0x5324A0>::get<void>(); // CDirectory::FindItem(ecx, name, out_offset, out_size)
     void* ptr_dummy = &dummy;
@@ -222,6 +223,11 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         // TODO X data.cpp map[0x5B91B0] = ;   // call    _ZN11CFileLoader14LoadAtomicFileEPKc //it's inlined in VC @48DB76
         // TODO X data.cpp map[0x5B91DB] = 0x48DC22;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
         // TODO X data.cpp map[0x5B910A] = ;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc //it's inlined in VC @48DA42
+
+        // Removal of txd.img / txd.dir
+        map[xVc(0x410801)] = 0x410801; // call    sub_61E310
+        map[xVc(0x410814)] = 0x410814; // call    _ZN8CFileMgr8OpenFileEPKcS1_; "models/txd.img"
+        map[xVc(0x41083A)] = 0x41083A; // call    __CreateCacheTxdImage
     }
 #endif
 

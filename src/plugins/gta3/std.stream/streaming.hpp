@@ -18,6 +18,7 @@
 
 #include <traits/gta3/sa.hpp>
 #include <traits/gta3/vc.hpp>
+#include <traits/gta3/iii.hpp>
 
 using namespace modloader;
 
@@ -72,16 +73,19 @@ inline ResType GetResTypeFromExtension(const char* ext)
 {
     if(ext && ext[0])   // Make sure we have ext, we're allowed to send a null string
     {
-        if(!_stricmp(ext, "dff"))         return ResType::Model;
-        else if(!_stricmp(ext, "txd"))    return ResType::TexDictionary;
-        else if(!_stricmp(ext, "col"))    return ResType::Collision;
-        else if(!_stricmp(ext, "ifp"))    return ResType::AnimFile;
-        else if(gvm.IsSA()) // The following files are present only in GTA SA
+        if(!_stricmp(ext, "dff")) return ResType::Model;
+        if(!_stricmp(ext, "txd")) return ResType::TexDictionary;
+        if(gvm.IsVC() || gvm.IsSA())
         {
-            if(!_stricmp(ext, "scm"))         return ResType::StreamedScript;
-            else if(!_stricmp(ext, "ipl"))    return ResType::StreamedScene;
-            else if(!_stricmp(ext, "dat"))    return ResType::Nodes;
-            else if(!_stricmp(ext, "rrr"))    return ResType::VehRecording;
+            if(!_stricmp(ext, "col")) return ResType::Collision;
+            if(!_stricmp(ext, "ifp")) return ResType::AnimFile;
+            if(gvm.IsSA())
+            {
+                if(!_stricmp(ext, "scm")) return ResType::StreamedScript;
+                if(!_stricmp(ext, "ipl")) return ResType::StreamedScene;
+                if(!_stricmp(ext, "dat")) return ResType::Nodes;
+                if(!_stricmp(ext, "rrr")) return ResType::VehRecording;
+            }
         }
     }
     return ResType::None;

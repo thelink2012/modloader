@@ -14,7 +14,7 @@ extern "C"
     extern void HOOK_RegisterNextModelRead();
     extern void HOOK_NewFile();
     extern void HOOK_RegisterNextModelRead_VC();
-    extern void HOOK_NewFile_VC();
+    extern void HOOK_NewFile_3VC();
     extern void HOOK_FixBikeSuspLines();
 
     // Next model read registers. It's important to have those two vars! Don't leave only one!
@@ -97,18 +97,11 @@ int __stdcall CdStreamThread()
         pQueue = &cdinfo.queue;
         ppStreams = &cdinfo.pStreams;
     }
-    else if(gvm.IsVC())
+    else if(gvm.IsVC() || gvm.IsIII())
     {
         pSemaphore = memory_pointer(xVc(0x6F76F4)).get<HANDLE>();
         pQueue = memory_pointer(xVc(0x6F7700)).get<Queue>();
         ppStreams = memory_pointer(xVc(0x6F76FC)).get<CdStream*>();
-    }
-    // TODO III
-    else
-    {
-        auto message = "Warning: Failed to initialise CdStreamThread; This should never happen.";
-        plugin_ptr->Log(message);
-        throw std::runtime_error(message);
     }
 
     // Loop in search of things to load in the queue
@@ -349,6 +342,10 @@ void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
     
+    #ifndef NDEBUG
+    LaunchDebugger();
+    #endif
+
     // Pointers
     ms_aInfoForModel    = ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
     pStreamCreateFlags  = memory_pointer(0x8E3FE0).get();
@@ -365,10 +362,6 @@ void CAbstractStreaming::Patch()
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
-        #ifndef NDEBUG
-        LaunchDebugger();
-        #endif
-
         plugin_ptr->Log("Initializing the streaming...");
 
         // Load standard cd directories.....
@@ -399,12 +392,26 @@ void CAbstractStreaming::Patch()
             MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
             MakeNOP(0x40CCA6 + 5, 2);
         }
-        else if(gvm.IsVC()) // TODO III
+        else if(gvm.IsVC())
         {
             MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead_VC));
             MakeCALL(xVc(0x40B738), raw_ptr(HOOK_RegisterNextModelRead_VC));
             MakeNOP(0x40CCA6 + 5, 1);
             MakeNOP(xVc(0x40B738) + 5, 1);
+        }
+        else if(gvm.IsIII())
+        {
+            using xcd_hook1 = function_hooker_thiscall<xIII(0x40A128), char(CStreamingInfo*, int*, int*)>;
+            using xcd_hook2 = function_hooker_thiscall<xIII(0x40A4F3), char(CStreamingInfo*, int*, int*)>;
+
+            auto fn_register = [this](xcd_hook1::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+            {
+                RegisterNextModelRead(this->InfoForModelIndex(*model));
+                return GetCdPosnAndSize(model, pOffset, pSize);
+            };
+
+            make_static_hook<xcd_hook1>(fn_register);
+            make_static_hook<xcd_hook2>(fn_register);
         }
 
         // We need to return a new hFile if the file is on disk
@@ -413,9 +420,9 @@ void CAbstractStreaming::Patch()
             MakeCALL(0x406A5B, raw_ptr(HOOK_NewFile));
             MakeNOP(0x406A5B + 5, 1);
         }
-        else if(gvm.IsVC()) // TODO III
+        else if(gvm.IsVC() || gvm.IsIII())
         {
-            MakeCALL(xVc(0x408521), raw_ptr(HOOK_NewFile_VC));
+            MakeCALL(xVc(0x408521), raw_ptr(HOOK_NewFile_3VC));
         }
 
         if(true)
@@ -423,6 +430,8 @@ void CAbstractStreaming::Patch()
             using cdread_hook = function_hooker<0x40CF34, int(int, void*, int, int)>;
             using cdread_hook2 = function_hooker<xVc(0x40B76A), int(int, void*, int, int)>;
             using cdread_hook3 = function_hooker<xVc(0x40B780), int(int, void*, int, int)>;
+
+            // TODO III VC see unhandled call to CdStreamRead at gta-vc:0x627D50
 
             // We need to know the model index that will pass throught CallGetAbstractHandle
             auto f = [](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
@@ -435,7 +444,7 @@ void CAbstractStreaming::Patch()
 
             make_static_hook<cdread_hook>(f);
 
-            if(gvm.IsVC()) // TODO III
+            if(gvm.IsVC() || gvm.IsIII())
             {
                 make_static_hook<cdread_hook2>(f);
                 make_static_hook<cdread_hook3>(f);
@@ -443,9 +452,8 @@ void CAbstractStreaming::Patch()
         }
     }
 
-
     // Special models
-    if(gvm.IsSA() || gvm.IsVC()) // TODO III
+    if(gvm.IsSA() || gvm.IsVC() || gvm.IsIII())
     {
         static DirectoryInfo* pRQSpecialEntry;    // Stores the special entry we're working with
         using findspecial_hook  = function_hooker_thiscall<0x409F76, char(void*, const char*, unsigned int&, unsigned int&)>;
@@ -633,6 +641,20 @@ void CAbstractStreaming::Patch()
         // we destroy it's model or something. Do just like CQuad and other does, checks if the pointer is null and then allocate it.
         MakeNOP(0x6B89CE, 6);
         MakeCALL(0x6B89CE, HOOK_FixBikeSuspLines);
+    }
+
+    // Disable txd.img / txd.dir
+    if(gvm.IsIII() || gvm.IsVC())
+    {
+        // Make the fopen that checks if txd.img exists return NULL (does not exist).
+        MakeCALL(xVc(0x410814), raw_ptr(return_value<void*, nullptr>));
+        // Do not let __CreateCacheTxdImage do anything, and return that cache wasn't created (false).
+        MakeCALL(xVc(0x41083A), raw_ptr(return_value<bool, false>));
+
+        // Do not even let the code above run!
+        // Important because when __CreateCacheTxd fails on VC, bad things seem to happen.
+        if(gvm.IsVC())
+            MakeCALL(xVc(0x410801), raw_ptr(return_value<bool, true>));
     }
 }
 

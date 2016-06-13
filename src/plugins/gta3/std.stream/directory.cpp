@@ -85,18 +85,30 @@ static void PerformDirectoryRead(size_t size,
     });
 
     // Registers a normal entry
-    if(gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsSA())
     {
-        using gfsa_hook = function_hooker_thiscall<0x5B6449, char(CStreamingInfo*, int*, int*)>;
+        using gf3_hook_dff = function_hooker_thiscall<xIII(0x406EB0), char(CStreamingInfo*, int*, int*)>; // for III
+        using gf3_hook_txd = function_hooker_thiscall<xIII(0x406FD9), char(CStreamingInfo*, int*, int*)>; // for III
+        using gfsa_hook = function_hooker_thiscall<0x5B6449, char(CStreamingInfo*, int*, int*)>;          // for SA
 
-        auto gf = make_function_hook<gfsa_hook>([&RegisterEntry](gfsa_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+        auto fn_hook = [&RegisterEntry](gfsa_hook::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
         {
             char r = GetCdPosnAndSize(model, pOffset, pSize);
-            if(RegisterEntry) r = (char) RegisterEntry(*model, !!r);    // Override function result
+            if(RegisterEntry) r = (char)RegisterEntry(*model, !!r);    // Override function result
             return r;
-        });
+        };
 
-        return Run();
+        if(gvm.IsSA())
+        {
+            auto gf = make_function_hook<gfsa_hook>(fn_hook);
+            return Run();
+        }
+        else if(gvm.IsIII())
+        {
+            auto gf1 = make_function_hook<gf3_hook_dff>(fn_hook);
+            auto gf2 = make_function_hook<gf3_hook_txd>(fn_hook);
+            return Run();
+        }
     }
     else if(gvm.IsVC())
     {

@@ -35,6 +35,7 @@ namespace modloader
 
         using LoadTxd = base<2>;
         using OpenFile = base<1>;
+        using LoadFile = base<1>;
         using RwStreamOpen = base<3>;
         using CreateVideoPlayer = base<2>;
         using ReadAndInterpretTrackFile = base<1>;
@@ -51,6 +52,11 @@ namespace modloader
     using OpenFileDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, void*(const char*, const char*)>,
                                                                             void*, const char*, const char*>;
+
+    template<uintptr_t addr, class Traits = dtraits::LoadFile>
+    using LoadFileDetour = modloader::basic_file_detour<Traits,
+                                            injector::function_hooker<addr, int(const char*, void*, int, const char*)>,
+                                                                            int, const char*, void*, int, const char*>;
 
     template<uintptr_t addr, class Traits = dtraits::RwStreamOpen>
     using RwStreamOpenDetour = modloader::basic_file_detour<Traits,
@@ -77,6 +83,10 @@ namespace modloader
     using LoadAtomic2ReturnDetour = modloader::basic_file_detour<Traits,
                                                 injector::function_hooker<addr, void*(const char*)>,
                                                                                 void*, const char*>; 
+
+    // function prototype is the same, too lazy to copy and paste more stuff :)
+    template<uintptr_t addr>
+    using Gta3LoadIfpDetour = LoadAtomic2ReturnDetour<addr>;
 }
 
 
