@@ -37,15 +37,42 @@ public:
     { archive(this->adhesion_line); }
 };
 
-using surface_store = gta3::data_store<surface_traits, std::map<
-                        surface_traits::key_type, surface_traits::value_type
+struct surface_traits_3vc : surface_traits
+{
+    struct dtraits : modloader::dtraits::LoadFile
+    {
+        static const char* what()
+        {
+            return "surface adhesion limits";
+        }
+    };
+
+    using detour_type = modloader::LoadFileDetour<xVc(0x4CE8CC), dtraits>;
+};
+
+struct surface_traits_sa : surface_traits
+{
+};
+
+template<typename Traits>
+using surface_store = gta3::data_store<Traits, std::map<
+                        typename Traits::key_type, typename Traits::value_type
                         >>;
+
+using surface_store_3vc = surface_store<surface_traits_3vc>;
+using surface_store_sa  = surface_store<surface_traits_sa>;
+
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     if(gvm.IsSA())
     {
         auto ReloadSurfaceInfo = std::bind(injector::thiscall<void(void*)>::call<0x55F420>, mem_ptr(0xB79538).get<void>());
-        plugin_ptr->AddMerger<surface_store>("surface.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceInfo));
+        plugin_ptr->AddMerger<surface_store_sa>("surface.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceInfo));
+    }
+    else if(gvm.IsIII() || gvm.IsVC())
+    {
+        auto ReloadSurfaceTable = std::bind(injector::cstd<void(const char*)>::call<xVc(0x4CE8A0)>, "data/surface.dat");
+        plugin_ptr->AddMerger<surface_store_3vc>("surface.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceTable));
     }
 });

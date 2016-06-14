@@ -308,6 +308,11 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53BC9B] = 0x4A4CA0;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
         map[0x4C5940] = 0x55F7D0;   // _ZN10CModelInfo12GetModelInfoEPKcPi
         map[0x5B925F] = 0x48DCF2;   // call    _ZN11CObjectData10InitialiseEPc          ; @CFileLoader::LoadLevel
+
+        map[xVc(0x5C395A)] = 0x5C395A; // call    _ZN8CFileMgr8OpenFileEPKcS1_ ; "data/waterpro.dat"
+        map[xVc(0x4D0614)] = 0x4D0614; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; "timecyc.dat"
+        map[xVc(0x4CE8A0)] = 0x4CE8A0; // _ZN13CSurfaceTable10InitialiseEPc
+        map[xVc(0x4CE8CC)] = 0x4CE8CC; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
     }
 
     // traits

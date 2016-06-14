@@ -34,6 +34,24 @@ struct xxxgrp_traits : public data_traits
         return std::make_pair(grpindex++, 0);
     }
 
+    template<typename StoreType, typename TData>
+    static bool setbyline(StoreType& store, TData& data, const gta3::section_info* section, const std::string& line)
+    {
+        if(gvm.IsVC())
+        {
+            // VC uses '//' at the end of the line.
+            // The game doesn't even reach the point of reading this char (it only reads 16 tokens),
+            // but our method to avoid it is erasing.
+            size_t comment_pos = line.find("//");
+            if(comment_pos != line.npos)
+            {
+                std::string fixed_line = line;
+                fixed_line.erase(comment_pos);
+                return data_traits::setbyline(store, data, section, fixed_line);
+            }
+        }
+        return data_traits::setbyline(store, data, section, line);
+    }
 
     // Before the merging process transform the set of models into individual models in each key of the container
     // This allows merging of individual entries in a group not just the entire group container itself
@@ -133,9 +151,6 @@ static void initialise(DataPlugin* plugin_ptr, std::function<void()> refresher)
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    if(gvm.IsSA())
-    {
-        initialise<pedgrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BCFE0>));
-        initialise<cargrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BD1A0>));
-    }
+    if(true)       initialise<pedgrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BCFE0>));
+    if(gvm.IsSA()) initialise<cargrp_traits>(plugin_ptr, gdir_refresh(injector::cstd<void()>::call<0x5BD1A0>));
 });
