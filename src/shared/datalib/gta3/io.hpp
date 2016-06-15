@@ -272,6 +272,7 @@ struct store_merger
                 std::for_each(st_begin, st_end, [](StoreType& store) { store.premerge(); });
                 auto result = do_merge<StoreType>(stream, st_begin, st_end, domflags);
                 std::for_each(st_begin, st_end, [](StoreType& store) { store.posmerge(); });
+                write_eof<StoreType>(stream);
                 return result;
             }
             return false;
@@ -467,6 +468,25 @@ struct store_merger
                                               stream, st_begin, st_end, domflags);
         }
 
+
+        template<class StoreType>
+        bool write_eof(std::false_type, std::ofstream& stream) const
+        {
+            return true;
+        }
+
+        template<class StoreType>
+        bool write_eof(std::true_type, std::ofstream& stream) const
+        {
+            stream << StoreType::traits_type::eof_string() << '\n';
+            return true;
+        }
+
+        template<class StoreType>
+        bool write_eof(std::ofstream& stream) const
+        {
+            return write_eof<StoreType>(std::integral_constant<bool, StoreType::traits_type::has_eof_string>(), stream);
+        }
 };
 
 

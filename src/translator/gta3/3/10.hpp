@@ -192,6 +192,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B905E] = 0x4762C2;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadLevel
         map[0x5BD830] = 0x546DB0;   // _ZN16cHandlingDataMgr16LoadHandlingDataEv //doublecheck
         //map[0x5BD850] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @cHandlingDataMgr::LoadHandlingData //check 546DDE 
+        map[xVc(0x5AAE4E)] = 0x546DDE; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; "handling.cfg"
         map[0xC2B9C8] = 0x728060;   // mod_HandlingManager CHandlingData
         map[0x5B8428] = 0x476AEB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
         map[0x5B871A] = 0x478393;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene

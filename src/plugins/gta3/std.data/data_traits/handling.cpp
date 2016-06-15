@@ -26,26 +26,18 @@ struct handling_traits : public data_traits
     static const bool has_sections      = true;     // Does this data file contains sections?
     static const bool per_line_section  = true;     // Is the sections of this data file different on each line?
 
-    // Detouring traits
-    struct dtraits : modloader::dtraits::OpenFile
-    {
-        static const char* what()       { return "vehicles handling"; }
-        static const char* datafile()   { return "handling.cfg"; }
-    };
-    
-    // Detouring type
-    using detour_type = modloader::OpenFileDetour<0x5BD850, dtraits>;
-
+    static const bool has_eof_string = true;
+    static const char* eof_string() { return ";the end"; }
 
     // Section slices
     //      Notice:
     //          + main_type uses hex<uint64_t> due to R* using a higher than 32 bit value in their handling (their sscanf could handle it properly)
     //          + notice fixtok<real_t> on plane_type, it's due to '$ RCRAIDER' broken float, having a 's' suffix
-    using anim_type  = data_slice<char, int, int, int, pack<bool, 18>, pack<real_t, 13>, int>;
-    using main_type  = data_slice<string, real_t, real_t, real_t, vec3, int, real_t, real_t, real_t, int, real_t, real_t, real_t, char, char, real_t, real_t, char, pack<real_t, 7>, real_t, real_t, real_t, int, hex<uint64_t>, hex<uint32_t>, char, char, int>;
-    using boat_type  = data_slice<char, string, vec2, real_t, real_t, real_t, real_t, real_t, vec3, vec3, real_t>;
-    using bike_type  = data_slice<char, string, pack<real_t, 15>>;
-    using plane_type = data_slice<char, string, pack<real_t, 13>, fixtok<real_t>, real_t, vec3, vec3>;
+    using anim_type  = data_slice<char, int, int, int, pack<bool, 18>, pack<real_t, 13>, int>; // SA only
+    using main_type  = data_slice<string, real_t, real_t, real_t, VC3Only<real_t>, vec3, int, real_t, real_t, real_t, int, real_t, real_t, SAOnly<real_t>, char, char, real_t, real_t, char, pack<real_t, 3>, SAOnly<real_t>, SAOnly<pack<real_t, 4>>, real_t, real_t, int, VC3Only<pack<real_t, 3>>, VCOnly<real_t>, SAOnly<hex<uint64_t>>, hex<uint32_t>, char, char, SAOnly<int>>;
+    using boat_type  = data_slice<char, string, vec2, real_t, real_t, real_t, real_t, real_t, vec3, vec3, real_t>; // VC/SA
+    using bike_type  = data_slice<char, string, pack<real_t, 15>>; // VC/SA
+    using plane_type = data_slice<char, string, pack<real_t, 11>, SAOnly<pack<real_t, 2>>, fixtok<real_t>, real_t, SAOnly<real_t>, real_t, real_t, vec3>; // III/VC/SA (III with Aircraft mod)
 
     // Aliases and constants related to section slices
     static const size_t main_anim_id = (std::tuple_size<main_type::tuple_type>::value - 1);  // index of either<int, anim_ptr> at main_type
@@ -274,6 +266,41 @@ struct handling_traits : public data_traits
             return std::make_pair(*map.emplace(map.end(), std::make_shared<T>(a)), true);
         return std::make_pair(*it, false);
     }
+
+public:
+    bool eof = false;
+
+    template<class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(this->eof);
+    }
+};
+
+struct handling_traits_sa : public handling_traits
+{
+    // Detouring traits
+    struct dtraits : modloader::dtraits::OpenFile
+    {
+        static const char* what()       { return "vehicles handling"; }
+        static const char* datafile()   { return "handling.cfg"; }
+    };
+    
+    // Detouring type
+    using detour_type = modloader::OpenFileDetour<0x5BD850, dtraits>;
+};
+
+struct handling_traits_3vc : public handling_traits
+{
+    // Detouring traits
+    struct dtraits : modloader::dtraits::LoadFile
+    {
+        static const char* what()       { return "vehicles handling"; }
+        static const char* datafile()   { return "handling.cfg"; }
+    };
+
+    // Detouring type
+    using detour_type = modloader::LoadFileDetour<xVc(0x5AAE4E), dtraits>;
 };
 
 /////////////////////// datalib I/O
@@ -312,11 +339,16 @@ namespace std
 
 
 //
-using handling_store = gta3::data_store<handling_traits, std::map<
-                        handling_traits::key_type, handling_traits::value_type
+template<typename Traits>
+using handling_store = gta3::data_store<Traits, std::map<
+                        typename Traits::key_type, typename Traits::value_type
                         >>;
 
-REGISTER_RTTI_FOR_ANY(handling_store);
+using handling_store_sa = handling_store<handling_traits_sa>;
+using handling_store_3vc = handling_store<handling_traits_3vc>;
+
+REGISTER_RTTI_FOR_ANY(handling_store_sa);
+REGISTER_RTTI_FOR_ANY(handling_store_3vc);
 
 
 // sections function specialization
@@ -330,29 +362,39 @@ namespace datalib {
     }
 }
 
-
-// Handling Merger
-static auto xinit = initializer([](DataPlugin* plugin_ptr)
+///
+template<typename HandlingStoreType>
+static auto MakeReadmeReader() -> std::function<maybe_readable<HandlingStoreType>(const std::string& line)>
 {
-    if(!gvm.IsSA())
-        return;
-
-    auto ReloadHandling = std::bind(injector::thiscall<void(void*)>::call<0x5BD830>, mem_ptr(0xC2B9C8).get<void>());
-
-    // Handling Merger
-    plugin_ptr->AddMerger<handling_store>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));
-
-    // Readme Reader for handling.cfg lines
-    plugin_ptr->AddReader<handling_store>([](const std::string& line) -> maybe_readable<handling_store>
+    using traits_type = typename HandlingStoreType::traits_type;
+    return [](const std::string& line) -> maybe_readable<HandlingStoreType>
     {
-        handling_store store;
+        HandlingStoreType store;
         reading_from_readme = true;
-        if(store.insert(handling_traits::section_by_line(handling_traits::sections(), line), line))
+        if(store.insert(traits_type::section_by_line(traits_type::sections(), line), line))
         {
             reading_from_readme = false;
             return store;
         }
         reading_from_readme = false;
         return nothing;
-    });
+    };
+}
+
+// Handling Merger
+static auto xinit = initializer([](DataPlugin* plugin_ptr)
+{
+    auto ReloadHandling = std::bind(injector::thiscall<void(void*)>::call<0x5BD830>, mem_ptr(0xC2B9C8).get<void>());
+
+    // Handling Merger
+    if(gvm.IsSA())
+        plugin_ptr->AddMerger<handling_store_sa>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));
+    else
+        plugin_ptr->AddMerger<handling_store_3vc>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));
+
+    // Readme Reader for handling.cfg lines
+    if(gvm.IsSA())
+        plugin_ptr->AddReader<handling_store_sa>(MakeReadmeReader<handling_store_sa>());
+    else
+        plugin_ptr->AddReader<handling_store_3vc>(MakeReadmeReader<handling_store_3vc>());
 });

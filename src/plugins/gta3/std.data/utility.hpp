@@ -389,6 +389,8 @@ template<typename T>
 using SinceVC = only_game<GAMEFLAG_VC|GAMEFLAG_SA, T>;
 template<typename T>
 using VC3Only = only_game<GAMEFLAG_III|GAMEFLAG_VC, T>;
+template<typename T>
+using VCOnly = only_game<GAMEFLAG_VC, T>;
 
 namespace datalib {
 
