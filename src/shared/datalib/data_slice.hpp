@@ -153,16 +153,16 @@ class data_slice : public data_slice_base
 
         // Gets an element from the data tuple
         template<size_t I>
-        auto get() -> decltype(std::get<I>(std::declval<tuple_type>()))
+        auto get() -> decltype(std::get<I>(std::declval<tuple_type&>()))
         {
             static_assert(I < tuple_size, "Invalid slice element index");
-            using result_type = decltype(std::get<I>(std::declval<tuple_type>()));
+            using result_type = decltype(std::get<I>(std::declval<tuple_type&>()));
             return std::forward<result_type>(std::get<I>(this->tuple));
         }
 
         // Sets the nth element I from this data silce to the specified object
         template<size_t I, class T>
-        auto set(T&& obj) -> decltype(std::get<I>(std::declval<tuple_type>()))
+        auto set(T&& obj) -> decltype(std::get<I>(std::declval<tuple_type&>()))
         {
             static_assert(I < tuple_size, "Invalid slice element index");
             std::get<I>(this->tuple) = std::forward<T>(obj);
@@ -174,7 +174,7 @@ class data_slice : public data_slice_base
                     ++this->used_count;
                 }
             }
-            using result_type = decltype(std::get<I>(std::declval<tuple_type>()));
+            using result_type = decltype(std::get<I>(std::declval<tuple_type&>()));
             return std::forward<result_type>(this->get<I>());
         }
 
@@ -523,13 +523,13 @@ class data_slice : public data_slice_base
 // CXX14 HELP-ME
 
 template<size_t I, class ...Types> inline
-auto get(data_slice<Types...>& data) -> decltype(std::declval<data_slice<Types...>>().get<I>())
+auto get(data_slice<Types...>& data) -> decltype(std::declval<data_slice<Types...>&>().get<I>())
 {
     return data.get<I>();
 }
 
 template<size_t I, class ...Types> inline
-auto get(const data_slice<Types...>& data) -> std::add_const_t<decltype(get<I>(std::declval<data_slice<Types...>>()))>
+auto get(const data_slice<Types...>& data) -> std::add_const_t<decltype(get<I>(std::declval<data_slice<Types...>&>()))>
 {
     return get<I>(const_cast<data_slice<Types...>&>(data));
 }

@@ -171,9 +171,15 @@ class data_section
             return !this->has_section();    // no section goes first
         }
 
-        //
-        //
-        //
+        // Sets the contained in this object.
+        // \warning If tsection and secdata doesn't match, the behaviour is undefined.
+        template<typename T>
+        void set_data(const section_info* tsection, T secdata)
+        {
+            this->force_section(tsection);
+            this->data = std::move(secdata);
+            assert(tsection->id + 1 == this->data.which());
+        }
 
         // Checks if the data present in line is compatible with the section specifier and sets the working section for this object.
         // In case the line doesn't match the section specifier, the working section gets invalidated and the method returns false
@@ -382,14 +388,14 @@ class data_section
         struct get_nth_visitor_p : either_static_visitor<Type*>
         {
             template<class T>
-            typename std::enable_if<std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T>()))>>::value, Type*>::type
+            typename std::enable_if<std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T&>()))>>::value, Type*>::type
             /* Type* */ operator()(T& slice) const 
             {
                 return &(::get<I>(slice));
             }
 
             template<class T>
-            typename std::enable_if<!std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T>()))>>::value, Type*>::type
+            typename std::enable_if<!std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T&>()))>>::value, Type*>::type
             /* Type* */ operator()(T& slice) const 
             {
                 return nullptr;
