@@ -12,6 +12,59 @@ using std::tuple;
 using std::string;
 using ipair = std::pair<int, int>;
 
+namespace { // avoid namespace conflict
+
+enum class PathType : uint8_t {
+    Ped, Car
+};
+
+template<>
+struct enum_map<PathType>
+{
+    static std::map<string, PathType>& map()
+    {
+        static std::map<string, PathType> xmap = {
+            { "ped", PathType::Ped },
+            { "car", PathType::Car },
+        };
+        return xmap;
+    }
+};
+
+} // anon namespace
+
+// Path section data (III)
+using path_head = tuple<PathType, int, dummy_string>;
+using path_carped = tuple<int16_t, int16_t, int16_t, vec3, real_t, optional<tuple<int, int>>>;
+using path_ptr = std::shared_ptr<path_head>;
+using path_key = std::pair<path_ptr, int>;
+
+static bool operator<(const path_ptr& a, const path_ptr& b)
+{ return (*a < *b); }
+
+static bool operator==(const path_ptr& a, const path_ptr& b)
+{ return (*a == *b); }
+
+namespace datalib
+{
+    template<>  // The udata<path_key> should be ignored during the data_slice scan/print
+    struct data_info<udata<path_key>> : data_info_base
+    {
+        static const bool ignore = true;
+    };
+}
+
+namespace std
+{
+    // Output for a path section base pointer
+    template<class CharT, class Traits>
+    static std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const path_ptr& ptr)
+    {
+        return (os << *ptr);
+    }
+}
+
+
 // Aliases of the possible endings of the OBJS and TOBJ lines
 using objs0e = tuple<real_t, int>;
 using objs1e = tuple<int, real_t, int>;
@@ -22,17 +75,26 @@ using tobj1e = tuple<objs1e, int16_t, int16_t>;
 using tobj2e = tuple<objs2e, int16_t, int16_t>;
 using tobj3e = tuple<objs3e, int16_t, int16_t>;
 
-// Aliases of possible endings of the 2DFX lines
-// fx<gtasaexe_switch_id>_<read_order_inversed>e    (read order inversed is the order at either<...> inversed)
-using fx8_2e = tuple<int>;
-using fx1_1e = tuple<string>;
-using fx9_3e = tuple<real_t, real_t, int>;
-using fx10_5e = tuple<real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int>;
-using fx6_6e = tuple<real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, int, string, int>;
-using fx3_7e = tuple<int, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, int, string>;
-using fx0_8e = tuple<int, int, int, int, string, string, real_t, real_t, real_t, real_t, int, int, int, int, int, int, int, int, int>;
-using fx7_4e = tuple<real_t, real_t, real_t, real_t, real_t, int, optional<string>, optional<string>, optional<string>, optional<string>>;
-using fx5_9e = tuple<int, real_t, real_t, real_t, real_t, ipair,  ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair>;
+// Aliases of possible endings of the 2DFX lines (SA)
+// safx<gtasaexe_switch_id>_<read_order_inversed>e    (read order inversed is the order at either<...> inversed)
+using safx8_2e = tuple<int>;
+using safx1_1e = tuple<string>;
+using safx9_3e = tuple<real_t, real_t, int>;
+using safx10_5e = tuple<real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int>;
+using safx6_6e = tuple<real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, int, string, int>;
+using safx3_7e = tuple<int, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, real_t, int, int, string>;
+using safx0_8e = tuple<int, int, int, int, string, string, real_t, real_t, real_t, real_t, int, int, int, int, int, int, int, int, int>;
+using safx7_4e = tuple<real_t, real_t, real_t, real_t, real_t, int, optional<string>, optional<string>, optional<string>, optional<string>>;
+using safx5_9e = tuple<int, real_t, real_t, real_t, real_t, ipair,  ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair, ipair>;
+
+// Aliases of possible endings of the 2DFX lines (III/VC)
+// vc3fx_<read_order_inversed>e    (read order inversed is the order at either<...> inversed)
+using vc3fx_4e = tuple<texname, texname, real_t, real_t, real_t, real_t, int, int, int, int, int>;
+using vc3fx_1e = tuple<int, vec3, real_t>;
+using vc3fx_2e = tuple<int, vec3, int>;
+using vc3fx_3e = tuple<int, vec3, vec3>;
+//using vc3fx_0e = tuple<>; -- use optional instead
+
 
 //
 struct ide_traits : public data_traits
@@ -51,25 +113,27 @@ struct ide_traits : public data_traits
     using detour_type = modloader::OpenFileDetour<0x5B8428, dtraits>;
 
     // Section slices
-    using path_type = data_slice<>;
-    using txdp_type = data_slice<texname, texname>;
+    using path_type = data_slice<either<path_ptr, path_carped>, udata<path_key>>; // III only
+    using txdp_type = data_slice<texname, texname>; // SA Only
     using hier_type = data_slice<int, modelname, texname, delimopt, animname, real_t>;  /* (opt args not readen by the game but used in ides) */
-    using anim_type = data_slice<int, modelname, texname, animname, real_t, int>;
-    using weap_type = data_slice<int, modelname, texname, animname, int, real_t, delimopt, int>;  /* (opt args not readen by the game but used in ides) */
-    using objs_type = data_slice<int, modelname, texname, either<objs3e, objs2e, objs1e, objs0e>>;
-    using tobj_type = data_slice<int, modelname, texname, either<tobj3e, tobj2e, tobj1e, tobj0e>>;
-    using _2dfx_type= data_slice<int, vec3, int, either<fx5_9e, fx0_8e, fx3_7e, fx6_6e, fx10_5e, fx7_4e, fx9_3e, fx8_2e, fx1_1e>>;
-    using peds_type = data_slice<int, modelname, texname, string, string, string, hex<uint32_t>, hex<uint32_t>, animname, int, int, string, string, string>;
-    using cars_type = data_slice<int, modelname, texname, string, string, labelname, animname, string, int, int, hex<uint32_t>, delimopt, int, real_t, real_t, int>;
+    using anim_type = data_slice<int, modelname, texname, animname, real_t, int>; // SA Only
+    using weap_type = data_slice<int, modelname, texname, animname, int, real_t, delimopt, int>;  // VC/SA only /* (opt args not readen by the game but used in ides) */
+    using objs_type = data_slice<int, modelname, texname, either<objs3e, objs2e, objs1e, SAOnlyFail<objs0e>>>;
+    using tobj_type = data_slice<int, modelname, texname, either<tobj3e, tobj2e, tobj1e, SAOnlyFail<tobj0e>>>;
+    using _2dfx_type= data_slice<int, vec3, VC3Only<tuple<int16_t, int16_t, int16_t, int>>, int,
+                                            VC3Only<optional<either</*vc3fx_5e,*/ vc3fx_4e, vc3fx_3e, vc3fx_2e, vc3fx_1e>>>,
+                                            SAOnly <either<safx5_9e, safx0_8e, safx3_7e, safx6_6e, safx10_5e, safx7_4e, safx9_3e, safx8_2e, safx1_1e>>>;
+    using peds_type = data_slice<int, modelname, texname, string, string, string, hex<uint32_t>, SAOnly<hex<uint32_t>>, SinceVC<tuple<animname, int, int>>, SAOnly<tuple<string, string, string>>>;
+    using cars_type = data_slice<int, modelname, texname, string, string, labelname, SinceVC<animname>, string, int, int, hex<uint32_t>, delimopt, int, real_t, SAOnly<real_t>, SAOnly<int>>;
 
     // Data
-    using key_type   = either<int, std::size_t, std::tuple<int, vec3, int>>;   // <int> for most sections, <size_t> for txdp, <int, vec3> for 2dfx
-    using value_type = gta3::data_section<objs_type, tobj_type, hier_type, anim_type, weap_type, cars_type, peds_type, txdp_type, _2dfx_type>;
+    using key_type   = either<int, std::size_t, std::tuple<int, vec3, int>, path_key>; // <int> for most sections, <size_t> for txdp, <int, vec3, int> for 2dfx
+    using value_type = gta3::data_section<objs_type, tobj_type, hier_type, anim_type, weap_type, cars_type, peds_type, txdp_type, _2dfx_type, path_type>;
 
     static const gta3::section_info* sections()
     {
         // Note: must be in the same order as declared in value_type
-        static auto sections = gta3::make_section_info("objs", "tobj", "hier", "anim", "weap", "cars", "peds", "txdp", "2dfx");
+        static auto sections = gta3::make_section_info("objs", "tobj", "hier", "anim", "weap", "cars", "peds", "txdp", "2dfx", "path");
         static_assert(std::tuple_size<decltype(sections)>::value == 1 + value_type::num_sections, "incompatible sizes");
         return sections.data();
     }
@@ -77,9 +141,9 @@ struct ide_traits : public data_traits
     // key_from_value
     struct key_from_value_visitor : gta3::data_section_visitor<key_type>
     {
-        // path section is not supported, so just output a dummy key
+        // path section key should be the object being set (type_pedcar, object_id) and the index in the object nodes.
         key_type operator()(const path_type& slice) const
-        { return key_type(/* empty */); }
+        { return datalib::get(get<1>(slice)); }
 
         // txdp section key should be the child model, since the game sets {child->parent = parent;}
         key_type operator()(const txdp_type& slice) const
@@ -88,12 +152,17 @@ struct ide_traits : public data_traits
         // 2dfx section associates existing models (more than once too) to a 2dfx effect type at a position
         // so the key should be: first the model id to associate, second the effect position and third the effect type
         key_type operator()(const _2dfx_type& slice) const
-        { return std::make_tuple(get<0>(slice), get<1>(slice), get<2>(slice)); }
+        { return std::make_tuple(get<0>(slice), get<1>(slice), get<3>(slice)); }
 
         // all the other section types have a id in the elem0, just pick it as the key
         template<class T>
         key_type operator()(const T& slice) const
-        { return int(get<0>(slice)); }
+        {
+            int id = int(get<0>(slice));
+            if(gvm.IsIII() && id == 199) // lopolyguy
+                return -id; // put this before a ped entry happens, i.e. at the top
+            return id;
+        }
 
         // and of course the following should never happen
         key_type operator()(const either_blank&) const
@@ -105,29 +174,93 @@ struct ide_traits : public data_traits
         return value.apply_visitor(key_from_value_visitor());
     }
 
+    // Path section have to be handled manually
+    template<class StoreType>
+    static bool setbyline(StoreType& store, value_type& data, const gta3::section_info* section, const std::string& line)
+    {
+        static auto pathsec = gta3::section_info::by_name(sections(), "path");
+
+        auto& traits = store.traits();
+        
+        // Path section have to be handled manually
+        if(section == pathsec)
+        {
+            if(gvm.IsIII())
+            {
+                auto& traits = store.traits();
+
+                if(traits.current_path && ++traits.current_path_index > 12)
+                {
+                    traits.current_path = nullptr;
+                }
+
+                if(traits.current_path == nullptr) // not working in a path section yet, or ended a group of paths (12)
+                {
+                    data_slice<path_head> head;
+                    if(head.check(line) && head.set(line))
+                    {
+                        traits.current_path       = traits.add_path(head.get<0>());
+                        traits.current_path_index = 0;
+                        data.set_data(section, path_type(traits.current_path, make_udata<path_key>(traits.current_path, traits.current_path_index)));
+                        return true;
+                    }
+                }
+                else
+                {
+                    data_slice<path_carped> entry;
+                    if(entry.check(line) && entry.set(line))
+                    {
+                        data.set_data(section, path_type(get<0>(entry), make_udata<path_key>(traits.current_path, traits.current_path_index)));
+                        return true;
+                    }
+                }
+            }
+            return fail(line);
+        }
+
+        traits.current_path = nullptr; // not in a path section anymore
+        return data_traits::setbyline(store, data, section, line);
+    }
+
     // Specialize this one so we can filter out IDE readme entries for specific files
     template<class StoreType>
     static DataPlugin::readme_data_list<StoreType>
         query_readme_data(const std::string& filename)
     {
         DataPlugin::readme_data_list<StoreType> list;
-        bool is_peds_ide     = (filename == "peds.ide");
-        bool is_vehicles_ide = (filename == "vehicles.ide");
-        bool is_vehmods_ide  = (filename == "veh_mods.ide");
+        bool is_peds_ide, is_vehicles_ide, is_vehmods_ide;
+
+        if(gvm.IsSA())
+        {
+            is_peds_ide     = (filename == "peds.ide");
+            is_vehicles_ide = (filename == "vehicles.ide");
+            is_vehmods_ide  = (filename == "veh_mods.ide");
+        }
+        else
+        {
+            is_peds_ide     = (filename == "default.ide");
+            is_vehicles_ide = is_peds_ide;
+            is_vehmods_ide  = false;
+        }
 
         if(is_peds_ide || is_vehicles_ide || is_vehmods_ide)   // can only have readme entries for those
         {
             list = data_traits::query_readme_data<StoreType>(filename);
-            auto section = gta3::section_info::by_name(sections(), is_peds_ide? "peds" :
-                                                                   is_vehicles_ide? "cars" :
-                                                                   is_vehmods_ide? "objs" : "");
+
+            const datalib::gta3::section_info* sections[] = {
+                is_peds_ide?     gta3::section_info::by_name(ide_traits::sections(), "peds") : nullptr,
+                is_vehicles_ide? gta3::section_info::by_name(ide_traits::sections(), "cars") : nullptr,
+                is_vehmods_ide?  gta3::section_info::by_name(ide_traits::sections(), "objs") : nullptr,
+            };
 
             // Filter outs readme stores that aren't related to the section type related to this file
             for(auto it = list.begin(); it != list.end(); )
             {
                 auto& container = it->second.second.get().container();
                 if(std::any_of(container.begin(), container.end(), [&](const std::pair<const key_type, value_type>& kv) {
-                    return (StoreType::section_by_kv(kv.first, kv.second) != section);
+                    auto the_section = StoreType::section_by_kv(kv.first, kv.second);
+                    return !the_section
+                        || !(std::find(std::begin(sections), std::end(sections), the_section) != std::end(sections));
                 }))
                     it = list.erase(it);
                 else
@@ -136,6 +269,23 @@ struct ide_traits : public data_traits
         }
 
         return list;
+    }
+
+public:
+    path_ptr current_path;       // Working header, if on a path section
+    int      current_path_index; // Current index of the working path   
+    std::vector<path_ptr> path_heads;  // List of paths and current index
+
+    path_ptr add_path(const path_head& head)
+    {
+        path_heads.emplace_back(std::make_shared<path_head>(head));
+        return path_heads.back();
+    }
+
+    template<class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(this->path_heads);
     }
 };
 
@@ -163,21 +313,26 @@ static std::function<void()> MakeIdeReloader();
 // Object Types Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    if(!gvm.IsSA())
-        return;
-
     // IDE Merger
-    plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, reinstall_since_load, MakeIdeReloader());
+    if(gvm.IsSA()) // TODO III VC
+    {
+        plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, reinstall_since_load, MakeIdeReloader());
+    }
+    else
+    {
+        plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, no_reinstall);
+    }
 
     // Readme Reader for CARS entries (vehicles.ide)
     plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
     {
+        // TODO III|VC check the new/nonexistent mtruck... and richfamily... on those games.
         static auto regex_vehicles = make_fregex(
-                            "^%d %s %s "
-                            "%{car|mtruck|quad|heli|f_heli|plane|f_plane|boat|train|bike|bmx|trailer} "
-                            "%s %s %s "
-                            "%{normal|poorfamily|richfamily|executive|worker|big|taxi|moped|motorbike|leisureboat|workerboat|bicycle|ignore} "
-                            "%d %d %x(?: %d)?(?: %f)?(?: %f)?(?: %d)?$");
+                            "^%d %s %s"
+                            " %{car|mtruck|quad|heli|f_heli|plane|f_plane|boat|train|bike|bmx|trailer}"
+                            " %s %s" + string(!gvm.IsIII()? " %s" : "") +
+                            " %{normal|special|poorfamily|richfamily|executive|worker|big|taxi|moped|motorbike|leisureboat|workerboat|bicycle|ignore}"
+                            " %d %d %x(?: %d)?(?: %f)?(?: %f)?(?: %d)?$");
 
         if(regex_match(line, regex_vehicles))
         {
@@ -188,30 +343,37 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
         return nothing;
     });
 
-    // Readme Reader for tunning OBJS entries (veh_mods.ide)
-    plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
+    if(gvm.IsSA())
     {
-        static auto regex_vehmods = make_fregex(
-            "^%d "
-            R"___(%{hydralics|stereo|wheel_\w+|nto_\w+|bnt_\w+|chss_\w+|exh_\w+|bntl_\w+|bntr_\w+|spl_\w+|wg_l_\w+|wg_r_\w+|fbb_\w+|bbb_\w+|lgt_\w+|rf_\w+|fbmp_\w+|rbmp_\w+|misc_a_\w+|misc_b_\w+|misc_c_\w+})___"
-            " %s %d %d$");
-
-        if(regex_match(line, regex_vehmods))
+        // Readme Reader for tunning OBJS entries (veh_mods.ide)
+        plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
         {
-            ide_store store;
-            if(store.insert<ide_traits::objs_type>(line))
-                return store;
-        }
-        return nothing;
-    });
+            static auto regex_vehmods = make_fregex(
+                "^%d "
+                R"___(%{hydralics|stereo|wheel_\w+|nto_\w+|bnt_\w+|chss_\w+|exh_\w+|bntl_\w+|bntr_\w+|spl_\w+|wg_l_\w+|wg_r_\w+|fbb_\w+|bbb_\w+|lgt_\w+|rf_\w+|fbmp_\w+|rbmp_\w+|misc_a_\w+|misc_b_\w+|misc_c_\w+})___"
+                " %s %d %d$");
+
+            if(regex_match(line, regex_vehmods))
+            {
+                ide_store store;
+                if(store.insert<ide_traits::objs_type>(line))
+                    return store;
+            }
+            return nothing;
+        });
+    }
 
     // Readme Reader for tunning PEDS entries (peds.ide)
     plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
     {
         static auto regex_vehmods = make_fregex(
-            "^%d %s %s "
-            "%{CIVMALE|CIVFEMALE|COP|GANG\\d+|PLAYER1|PLAYER2|PLAYER_NETWORK|PLAYER_UNUSED|DEALER|MEDIC|FIREMAN|CRIMINAL|BUM|PROSTITUTE|SPECIAL|MISSION\\d+} "
-            "%{STAT_\\w+} %s %x %x %s %d %d %{PED_TYPE_\\w+} %{VOICE_\\w+} %{VOICE_\\w+}$");
+            "^%d %s %s"
+            " %{CIVMALE|CIVFEMALE|COP|GANG\\d+|PLAYER\\d+|PLAYER_NETWORK|PLAYER_UNUSED|DEALER|MEDIC|EMERGENCY|FIREMAN|CRIMINAL|BUM|PROSTITUTE|SPECIAL|MISSION\\d+}"
+            " %{STAT_\\w+} %s %x"
+            + string(gvm.IsSA()? " %x" : "")
+            + string(gvm.IsSA() || gvm.IsVC()? " %s %d %d" : "")
+            + string(gvm.IsSA()? " %{PED_TYPE_\\w+} %{VOICE_\\w+} %{VOICE_\\w+}" : "")
+            + "$");
 
         if(regex_match(line, regex_vehmods))
         {
@@ -231,6 +393,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
 static std::function<void()> MakeIdeReloader()
 {
     // TODO VC III
+    assert(gvm.IsSA());
 
     using namespace injector;
     using namespace std::placeholders;

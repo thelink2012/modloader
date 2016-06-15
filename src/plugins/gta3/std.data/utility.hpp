@@ -336,3 +336,137 @@ namespace datalib
         return str;
     }
 };
+
+
+//
+// Game Specific Tags
+//
+
+enum
+{
+    GAMEFLAG_FAIL_IF_NOT_GAME = 0x1,        // IO will fail if this is not the correct game, due to optional<> and either<> requiring a fail, this exists.
+    GAMEFLAG_III              = 0x10,
+    GAMEFLAG_VC               = 0x20,
+    GAMEFLAG_SA               = 0x40,
+};
+
+template<size_t GameFlag, typename T>
+struct only_game
+{
+    optional<T> data;
+    
+    bool operator==(const only_game& rhs) const
+    {
+        return this->data == rhs.data;
+    }
+
+    bool operator<(const only_game& rhs) const
+    {
+        return this->data < rhs.data;
+    }
+
+    template<class Archive>
+    inline void serialize(Archive& ar)
+    {
+        ar(this->data);
+    }
+
+    bool check_game() const
+    {
+        if(gvm.IsSA()) return (GameFlag & GAMEFLAG_SA) != 0;
+        if(gvm.IsVC()) return (GameFlag & GAMEFLAG_VC) != 0;
+        if(gvm.IsIII()) return (GameFlag & GAMEFLAG_III) != 0;
+        return false;
+    }
+};
+
+
+template<typename T>
+using SAOnlyFail = only_game<GAMEFLAG_SA|GAMEFLAG_FAIL_IF_NOT_GAME, T>;
+template<typename T>
+using SAOnly  = only_game<GAMEFLAG_SA, T>;
+template<typename T>
+using SinceVC = only_game<GAMEFLAG_VC|GAMEFLAG_SA, T>;
+template<typename T>
+using VC3Only = only_game<GAMEFLAG_III|GAMEFLAG_VC, T>;
+
+namespace datalib {
+
+    /*
+    *  data_info<> specialization for 'only_game<T>'
+    */
+    template<size_t GameFlag, typename T>
+    struct data_info<only_game<GameFlag, T>> : data_info<T>
+    {
+        static const char separator = '\0';
+
+        // Performs cheap precomparision
+        static bool precompare(const only_game<GameFlag, T>& a, const only_game<GameFlag, T>& b)
+        {
+            return ((bool)(a.data) == (bool)(b.data));
+        }
+    };
+
+} // namespace datalib
+
+namespace datalib
+{
+    /*
+    *  Input Checker
+    */
+    template<class CharT, class Traits, size_t GameFlag, class T> inline
+        datalib::basic_icheckstream<CharT, Traits>& operator>>(datalib::basic_icheckstream<CharT, Traits>& is, const only_game<GameFlag, T>& og)
+    {
+        if(og.check_game())
+        {
+            auto& dummy_ref = *((const T*)(nullptr));
+            is >> dummy_ref;
+        }
+        else if(GameFlag & GAMEFLAG_FAIL_IF_NOT_GAME)
+        {
+            is.setstate(std::ios::failbit);
+        }
+        return is;
+    }
+}
+
+namespace std
+{
+    /*
+    *  Input
+    */
+    template<class CharT, class Traits, size_t GameFlag, class T> inline
+        std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is, only_game<GameFlag, T>& og)
+    {
+        if(og.check_game())
+        {
+            T obj;
+            if(is >> obj)
+            {
+                og.data.emplace(std::move(obj));
+            }
+        }
+        else if(GameFlag & GAMEFLAG_FAIL_IF_NOT_GAME)
+        {
+            is.setstate(std::ios::failbit);
+        }
+        return is;
+    }
+
+    /*
+    *  Output
+    */
+    template<class CharT, class Traits, size_t GameFlag, class T> inline
+        std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const only_game<GameFlag, T>& og)
+    {
+        if(og.check_game())
+        {
+            ((os << og.data.get()) && print_separator<T>(os));
+        }
+        else if(GameFlag & GAMEFLAG_FAIL_IF_NOT_GAME)
+        {
+            os.setstate(std::ios::failbit);
+        }
+        return os;
+    }
+}
