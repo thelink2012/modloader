@@ -38,9 +38,15 @@ ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file,
         bIsASI = true;
     }
     else if(!strcmp(filename, "gta", false))
+    {
         bIsMainExecutable = true;
-    else if(!strcmp("CLEO.asi", filename, false))
+    }
+    else if(!strcmp("CLEO.asi", filename, false)
+         || !strcmp("III.CLEO.asi", filename, false)
+         || !strcmp("VC.CLEO.asi", filename, false))
+    {
         bIsMainCleo = bIsCleo = true;
+    }
     else    // .cleo or .asi
     {
         // Check if it is a .cleo plugin
@@ -79,6 +85,8 @@ void ThePlugin::LocateCleo()
 
     // Find CLEO.asi module
     HMODULE hCleo = LoadLibraryA("CLEO.asi");
+    if(!hCleo && gvm.IsIII()) hCleo = LoadLibraryA("III.CLEO.asi");
+    if(!hCleo && gvm.IsVC()) hCleo = LoadLibraryA("VC.CLEO.asi");
 
     // We need CLEO.asi module for cleo script injection
     if(hCleo)
@@ -90,6 +98,12 @@ void ThePlugin::LocateCleo()
             {
                 // Find the library version
                 auto CLEO_GetVersion = (int (__stdcall*)()) GetProcAddress(hCleo, "_CLEO_GetVersion@0");
+                if(!CLEO_GetVersion)
+                {
+                    // not a stdcall, but will work as void(void)  
+                    CLEO_GetVersion = (int(__stdcall*)()) GetProcAddress(hCleo, "?CLEO_GetVersion@@YAIXZ");
+                }
+
                 this->iCleoVersion = CLEO_GetVersion? CLEO_GetVersion() : 0;
                 
                 Log("CLEO library version %X found at \"%s\"", iCleoVersion, p);
