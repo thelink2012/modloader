@@ -75,10 +75,10 @@ inline ResType GetResTypeFromExtension(const char* ext)
     {
         if(!_stricmp(ext, "dff")) return ResType::Model;
         if(!_stricmp(ext, "txd")) return ResType::TexDictionary;
+        if(!_stricmp(ext, "col")) return ResType::Collision; // although not streamed on III
+        if(!_stricmp(ext, "ifp")) return ResType::AnimFile;  // although not streamed on III
         if(gvm.IsVC() || gvm.IsSA())
         {
-            if(!_stricmp(ext, "col")) return ResType::Collision;
-            if(!_stricmp(ext, "ifp")) return ResType::AnimFile;
             if(gvm.IsSA())
             {
                 if(!_stricmp(ext, "scm")) return ResType::StreamedScript;
@@ -142,7 +142,7 @@ class CAbstractStreaming
         using hash_t    = uint32_t;
 
         //
-        using NonStreamedInfo_t = std::pair<const modloader::file*, NonStreamedType>;
+        using NonStreamedInfo_t = NonStreamedType;
 
         // Temporary cd directory for basic information extracting, used during initialization
         using TempCdDir_t = std::list<std::pair<int, std::deque<DirectoryInfo>>>;
@@ -362,8 +362,26 @@ class CAbstractStreaming
     public://protected:
 
         std::string TryLoadNonStreamedResource(std::string filepath, NonStreamedType type);
+
+        void RemoveNonStreamedFromRawModels();
+
+        // Checks if a file is not part of the streaming engine.
         bool IsNonStreamed(const modloader::file* file)
-        { return (this->non_stream.count(file->hash) > 0); }
+        {
+            if(gvm.IsIII())
+            {
+                switch(GetResType(*file))
+                {
+                    // GetResTypeFromExtension accepts giving those types on III, but they're not
+                    // streamed in this game, only static loaded and such.
+                    case ResType::Collision:
+                    case ResType::AnimFile:
+                        return true;
+                }
+            }
+
+            return (this->non_stream.count(file->hash) > 0);
+        }
 
         // Makes a previosly imported file use the stock resource info instead the one on disk.
         // The force parameter may only be true from an call before info setup in CStreaming::RequestModelStream, otherwise it's undefined behaviour.

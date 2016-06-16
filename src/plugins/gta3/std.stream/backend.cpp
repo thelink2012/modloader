@@ -360,6 +360,9 @@ void CAbstractStreaming::Patch()
     {
         plugin_ptr->Log("Initializing the streaming...");
 
+        // Remove non-streamed resources that are still puliting the raw_models list.
+        this->RemoveNonStreamedFromRawModels();
+
         // Load standard cd directories.....
         TempCdDir_t tmp_cd_dir;
         this->FetchCdDirectories(tmp_cd_dir, LoadCdDirectory1);

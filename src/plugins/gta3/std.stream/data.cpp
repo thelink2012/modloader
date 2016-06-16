@@ -87,7 +87,7 @@ std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath,
                 throw std::runtime_error("std.stream: TryLoadNonStreamedResource: Repeated resource!");
 
             // Register into non_stream and unregister from raw_models
-            this->non_stream.emplace(it->second->hash, std::make_pair(it->second, type));
+            this->non_stream.emplace(it->second->hash, type);
             std::string fullpath = it->second->fullpath();
             this->raw_models.erase(it);
             return fullpath;
@@ -95,6 +95,22 @@ std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath,
     }
     return std::string();
 }
+
+void CAbstractStreaming::RemoveNonStreamedFromRawModels()
+{
+    // This is only needed for III because of non-streamed .col/.ifp
+    if(!gvm.IsIII())
+        return;
+
+    for(auto it = this->raw_models.begin(); it != this->raw_models.end(); )
+    {
+        if(IsNonStreamed(it->second))
+            it = this->raw_models.erase(it);
+        else
+            ++it;
+    }
+}
+
 
 /*
  *  LoadNonStreamedRes
