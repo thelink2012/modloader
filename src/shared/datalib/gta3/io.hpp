@@ -51,7 +51,7 @@ inline std::string& trim_config_line(std::string& line, bool remove_separators =
         else
         {
             trim_back = line.npos;
-            if(!trim_front)
+            if(trim_front)
             {
                 // first non-whitespace char
                 trim_front = false;
