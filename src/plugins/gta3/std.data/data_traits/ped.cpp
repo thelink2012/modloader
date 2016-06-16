@@ -40,6 +40,13 @@ struct ped_traits : public data_traits
     static const bool has_sections      = false;
     static const bool per_line_section  = false;
 
+    struct dtraits : modloader::dtraits::SaOpenOr3VcLoadFileDetour
+    {
+        static const char* what() { return "ped relationship data"; }
+    };
+    
+    using detour_type = modloader::SaOpenOr3VcLoadFileDetour<0x608B45, dtraits>;
+
     using key_type      = std::pair<size_t, PedRelationship>;
     using value_type    = data_slice<either< std::tuple<PedRelationship, set<string>>, std::tuple<string, VC3Only<pack<real_t, 5>>> >>;
 
@@ -78,41 +85,12 @@ struct ped_traits : public data_traits
         { archive(this->pedtype); }
 };
 
-struct ped_traits_sa : public ped_traits
-{
-    struct dtraits : modloader::dtraits::OpenFile
-    {
-        static const char* what() { return "ped relationship data"; }
-    };
-    
-    using detour_type = modloader::OpenFileDetour<0x608B45, dtraits>;
-};
-
-struct ped_traits_3vc : public ped_traits
-{
-    struct dtraits : modloader::dtraits::LoadFile
-    {
-        static const char* what() { return "ped relationship data"; }
-    };
-    
-    using detour_type = modloader::LoadFileDetour<xVc(0x530BD7), dtraits>;
-};
-
-
-template<typename Traits>
-using ped_store = gta3::data_store<Traits, std::map<
-                        typename Traits::key_type, typename Traits::value_type
+using ped_store = gta3::data_store<ped_traits, std::map<
+                        ped_traits::key_type, ped_traits::value_type
                         >>;
-
-using ped_store_sa = ped_store<ped_traits_sa>;
-using ped_store_3vc = ped_store<ped_traits_3vc>;
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     auto ReloadPedRelationship = [] {}; // refreshing ped relationship during gameplay might break save game, don't do it at all
-
-    if(gvm.IsSA())
-        plugin_ptr->AddMerger<ped_store_sa>("ped.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadPedRelationship));
-    else
-        plugin_ptr->AddMerger<ped_store_3vc>("ped.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadPedRelationship));
+    plugin_ptr->AddMerger<ped_store>("ped.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadPedRelationship));
 });

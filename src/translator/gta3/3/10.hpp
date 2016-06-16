@@ -192,7 +192,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B905E] = 0x4762C2;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadLevel
         map[0x5BD830] = 0x546DB0;   // _ZN16cHandlingDataMgr16LoadHandlingDataEv //doublecheck
         //map[0x5BD850] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @cHandlingDataMgr::LoadHandlingData //check 546DDE 
-        map[xVc(0x5AAE4E)] = 0x546DDE; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; "handling.cfg"
+        map[0x5BD850] = 0x546DDE; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; "handling.cfg"
         map[0xC2B9C8] = 0x728060;   // mod_HandlingManager CHandlingData
         map[0x5B8428] = 0x476AEB;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
         map[0x5B871A] = 0x478393;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
@@ -225,7 +225,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         //map[0x5599D8] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadActionReactionStats //doesn't exist?
         //map[0x55988F] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStats::LoadStatUpdateConditions //doesn't exist?
         //map[0x608B45] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedType::LoadPedData //check 4EE917
-        map[xVc(0x530BD7)] = 0x4EE917; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; @CPedType::LoadPedData
+        map[0x608B45] = 0x4EE917; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; @CPedType::LoadPedData
         //map[0x5BEDC0] = 0x;   // _ZN16CTaskSimpleFight13LoadMeleeDataEv //doesn't exist
         //map[0x5BEF47] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CTaskSimpleFight::LoadMeleeData //doesn't exist
         //map[0x5BC92B] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CAnimManager::ReadAnimAssociationDefinitions //doesn't exist?
@@ -265,7 +265,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x5C395A)] = 0x554ED0;   // call    _ZN8CFileMgr8OpenFileEPKcS1_ ; "data/waterpro.dat"
         map[xVc(0x4D0614)] = 0x4ABB14;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; "timecyc.dat"
         map[xVc(0x4CE8A0)] = 0x4AB8F0;   // _ZN13CSurfaceTable10InitialiseEPc
-        map[xVc(0x4CE8CC)] = 0x4AB91C;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
+        map[0x55D100] = 0x4AB91C;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
     }
 
     // traits

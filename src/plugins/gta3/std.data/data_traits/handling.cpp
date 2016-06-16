@@ -29,6 +29,16 @@ struct handling_traits : public data_traits
     static const bool has_eof_string = true;
     static const char* eof_string() { return ";the end"; }
 
+    // Detouring traits
+    struct dtraits : modloader::dtraits::SaOpenOr3VcLoadFileDetour
+    {
+        static const char* what()       { return "vehicles handling"; }
+        static const char* datafile()   { return "handling.cfg"; }
+    };
+    
+    // Detouring type
+    using detour_type = modloader::SaOpenOr3VcLoadFileDetour<0x5BD850, dtraits>;
+
     // Section slices
     //      Notice:
     //          + main_type uses hex<uint64_t> due to R* using a higher than 32 bit value in their handling (their sscanf could handle it properly)
@@ -277,32 +287,6 @@ public:
     }
 };
 
-struct handling_traits_sa : public handling_traits
-{
-    // Detouring traits
-    struct dtraits : modloader::dtraits::OpenFile
-    {
-        static const char* what()       { return "vehicles handling"; }
-        static const char* datafile()   { return "handling.cfg"; }
-    };
-    
-    // Detouring type
-    using detour_type = modloader::OpenFileDetour<0x5BD850, dtraits>;
-};
-
-struct handling_traits_3vc : public handling_traits
-{
-    // Detouring traits
-    struct dtraits : modloader::dtraits::LoadFile
-    {
-        static const char* what()       { return "vehicles handling"; }
-        static const char* datafile()   { return "handling.cfg"; }
-    };
-
-    // Detouring type
-    using detour_type = modloader::LoadFileDetour<xVc(0x5AAE4E), dtraits>;
-};
-
 /////////////////////// datalib I/O
 namespace std
 {
@@ -339,16 +323,11 @@ namespace std
 
 
 //
-template<typename Traits>
-using handling_store = gta3::data_store<Traits, std::map<
-                        typename Traits::key_type, typename Traits::value_type
+using handling_store = gta3::data_store<handling_traits, std::map<
+                        handling_traits::key_type, handling_traits::value_type
                         >>;
 
-using handling_store_sa = handling_store<handling_traits_sa>;
-using handling_store_3vc = handling_store<handling_traits_3vc>;
-
-REGISTER_RTTI_FOR_ANY(handling_store_sa);
-REGISTER_RTTI_FOR_ANY(handling_store_3vc);
+REGISTER_RTTI_FOR_ANY(handling_store);
 
 
 // sections function specialization
@@ -387,14 +366,8 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
     auto ReloadHandling = std::bind(injector::thiscall<void(void*)>::call<0x5BD830>, mem_ptr(0xC2B9C8).get<void>());
 
     // Handling Merger
-    if(gvm.IsSA())
-        plugin_ptr->AddMerger<handling_store_sa>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));
-    else
-        plugin_ptr->AddMerger<handling_store_3vc>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));
+    plugin_ptr->AddMerger<handling_store>("handling.cfg", true, false, false, reinstall_since_start, gdir_refresh(ReloadHandling));
 
     // Readme Reader for handling.cfg lines
-    if(gvm.IsSA())
-        plugin_ptr->AddReader<handling_store_sa>(MakeReadmeReader<handling_store_sa>());
-    else
-        plugin_ptr->AddReader<handling_store_3vc>(MakeReadmeReader<handling_store_3vc>());
+    plugin_ptr->AddReader<handling_store>(MakeReadmeReader<handling_store>());
 });

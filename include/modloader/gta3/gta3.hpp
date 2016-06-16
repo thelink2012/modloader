@@ -36,6 +36,7 @@ namespace modloader
         using LoadTxd = base<2>;
         using OpenFile = base<1>;
         using LoadFile = base<1>;
+        using SaOpenOr3VcLoadFileDetour = base<1>;
         using RwStreamOpen = base<3>;
         using CreateVideoPlayer = base<2>;
         using ReadAndInterpretTrackFile = base<1>;
@@ -57,6 +58,9 @@ namespace modloader
     using LoadFileDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, int(const char*, void*, int, const char*)>,
                                                                             int, const char*, void*, int, const char*>;
+
+    template<uintptr_t addr, class Traits = dtraits::SaOpenOr3VcLoadFileDetour>
+    using SaOpenOr3VcLoadFileDetour = LoadFileDetour<addr>;
 
     template<uintptr_t addr, class Traits = dtraits::RwStreamOpen>
     using RwStreamOpenDetour = modloader::basic_file_detour<Traits,
