@@ -363,6 +363,7 @@ static auto MakeReadmeReader() -> std::function<maybe_readable<HandlingStoreType
 // Handling Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    // TODO instead of using 0xC2B9C8 read offset to handling data (III Airplane refreshing compatibility)
     auto ReloadHandling = std::bind(injector::thiscall<void(void*)>::call<0x5BD830>, mem_ptr(0xC2B9C8).get<void>());
 
     // Handling Merger

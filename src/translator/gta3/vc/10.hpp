@@ -267,6 +267,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         //map[0x5BB89F] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedStats::LoadPedStats //check 530054
         map[0x5B5360] = 0x4E4560;   // _ZN11CObjectData10InitialiseEPcb
         //map[0x5B5444] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise // check 4E476D
+        map[0x5B5444] = 0x4E476D;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi          ; @CObjectData::Initialise
         //map[0x7187C0] = 0x;   // _ZN5CFont14LoadFontValuesEv //doesn't exist?
         //map[0x7187DB] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFont::LoadFontValues //doesn't exist?
         map[0x461100] = 0x444AA0;   // _ZN11CRoadBlocks4InitEv

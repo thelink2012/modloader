@@ -7,6 +7,7 @@
 #include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
+using std::tuple;
 
 struct object_traits : public data_traits
 {
@@ -16,18 +17,20 @@ struct object_traits : public data_traits
     static const bool has_eof_string = true;
     static const char* eof_string() { return "*"; }
 
-    struct dtraits : modloader::dtraits::OpenFile
+    struct dtraits : modloader::dtraits::SaOpenOr3VcLoadFileDetour
     {
         static const char* what()       { return "object data"; }
         static const char* datafile()   { return "object.dat"; }
     };
     
-    using detour_type = modloader::OpenFileDetour<0x5B5444, dtraits>;
+    using detour_type = modloader::SaOpenOr3VcLoadFileDetour<0x5B5444, dtraits>;
 
     using key_type      = std::size_t;
     using value_type    = data_slice<modelname,
-                                real_t, real_t, real_t, real_t, real_t, real_t, real_t, int16_t, int16_t, char, char, char, delimopt,
-                                vec3, insen<string>, real_t, vec3, real_t, char, char>;
+                                real_t, real_t, real_t, real_t, real_t, real_t, real_t, int16_t, int16_t, char,
+                                SAOnly<tuple<char, char>>,
+                                delimopt,
+                                SAOnly<tuple<vec3, insen<string>, real_t, vec3, real_t, char, char>>>;
 
     key_type key_from_value(const value_type& value)
     {
@@ -49,12 +52,9 @@ using object_store = gta3::data_store<object_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    if(gvm.IsSA())
-    {
-        // XXX a perfect refresh needs to set all the CBaseModelInfo::m_wObjectInfoIndex to -1 before reloading the data file
-        // and clearing all bytes from CObjectData::ms_aObjectInfo[]
-        auto ReloadObjectData = std::bind(injector::cstd<void(const char*, char)>::call<0x5B5360>, "data/object.dat", 0);
-        plugin_ptr->AddMerger<object_store>("object.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadObjectData));
-    }
+    // XXX a perfect refresh needs to set all the CBaseModelInfo::m_wObjectInfoIndex to -1 before reloading the data file
+    // and clearing all bytes from CObjectData::ms_aObjectInfo[]
+    auto ReloadObjectData = std::bind(injector::cstd<void(const char*, char)>::call<0x5B5360>, "data/object.dat", 0);
+    plugin_ptr->AddMerger<object_store>("object.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadObjectData));
 });
 

@@ -60,7 +60,7 @@ namespace modloader
                                                                             int, const char*, void*, int, const char*>;
 
     template<uintptr_t addr, class Traits = dtraits::SaOpenOr3VcLoadFileDetour>
-    using SaOpenOr3VcLoadFileDetour = LoadFileDetour<addr>;
+    using SaOpenOr3VcLoadFileDetour = LoadFileDetour<addr, Traits>;
 
     template<uintptr_t addr, class Traits = dtraits::RwStreamOpen>
     using RwStreamOpenDetour = modloader::basic_file_detour<Traits,
