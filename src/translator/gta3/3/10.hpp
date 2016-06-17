@@ -216,6 +216,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5BCFFB] = 0x4F388F;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
         map[0x5BB890] = 0x4EF580;   // _ZN9CPedStats12LoadPedStatsEv
         //map[0x5BB89F] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedStats::LoadPedStats //check 4EF5B4
+        map[0x5BB89F] = 0x4EF5B4;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi             ; @CPedStats::LoadPedStats
         map[0x5B5360] = 0x4BC0E0;   // _ZN11CObjectData10InitialiseEPcb
         //map[0x5B5444] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise // check 4BC10C
         map[0x5B5444] = 0x4BC10C;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi          ; @CObjectData::Initialise

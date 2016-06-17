@@ -266,6 +266,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5BCFFB] = 0x53E9DF;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopulation::LoadPedGroups
         map[0x5BB890] = 0x530020;   // _ZN9CPedStats12LoadPedStatsEv
         //map[0x5BB89F] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPedStats::LoadPedStats //check 530054
+        map[0x5BB89F] = 0x530054;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi             ; @CPedStats::LoadPedStats
         map[0x5B5360] = 0x4E4560;   // _ZN11CObjectData10InitialiseEPcb
         //map[0x5B5444] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CObjectData::Initialise // check 4E476D
         map[0x5B5444] = 0x4E476D;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi          ; @CObjectData::Initialise
