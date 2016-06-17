@@ -318,6 +318,8 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x4D0614)] = 0x4D0614; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi ; "timecyc.dat"
         map[xVc(0x4CE8A0)] = 0x4CE8A0; // _ZN13CSurfaceTable10InitialiseEPc
         map[0x55D100] = 0x4CE8CC; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
+        map[xVc(0x565B2E)] = 0x565B2E; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
+        map[xVc(0x565940)] = 0x565940; // _ZN9CParticle12ReloadConfigEv
     }
 
     // traits
