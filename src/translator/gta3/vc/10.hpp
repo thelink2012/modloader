@@ -320,6 +320,8 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x55D100] = 0x4CE8CC; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
         map[xVc(0x565B2E)] = 0x565B2E; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
         map[xVc(0x565940)] = 0x565940; // _ZN9CParticle12ReloadConfigEv
+        map[xVc(0x527590)] = 0x527590; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
+        map[xVc(0x527570)] = 0x527570; // _ZN4CPed13LoadFightDataEv
     }
 
     // traits

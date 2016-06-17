@@ -271,6 +271,8 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x55D100] = 0x4AB91C;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
         map[xVc(0x565B2E)] = 0x50FE1E; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
         map[xVc(0x565940)] = 0x50C430; // _ZN9CParticle12ReloadConfigEv
+        map[xVc(0x527590)] = 0x4E9890; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi
+        map[xVc(0x527570)] = 0x4E9870; // _ZN4CPed13LoadFightDataEv
     }
 
     // traits
