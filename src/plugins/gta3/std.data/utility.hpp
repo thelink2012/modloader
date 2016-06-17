@@ -391,6 +391,8 @@ template<typename T>
 using VC3Only = only_game<GAMEFLAG_III|GAMEFLAG_VC, T>;
 template<typename T>
 using VCOnly = only_game<GAMEFLAG_VC, T>;
+template<typename T>
+using IIIOnly = only_game<GAMEFLAG_III, T>;
 
 namespace datalib {
 

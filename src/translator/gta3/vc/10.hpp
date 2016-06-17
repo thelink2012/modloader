@@ -250,6 +250,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         //map[0x5DD3D1] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPlantSurfPropMgr::LoadPlantsDat //doesn't exist?
         map[0x5BF750] = 0x5D5750;   // _ZN11CWeaponInfo10InitialiseEv
         //map[0x5BE68A] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CWeaponInfo::Initialise // check 5D527B
+        map[0x5BE68A] = 0x5D527B; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi             ; @CWeaponInfo::Initialise
         //map[0x5BC090] = 0x;   // _ZN9CPopCycle10InitialiseEv //doesn't exist?
         //map[0x5BC0AE] = 0x;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CPopCycle::Initialise //doesn't exist?
         map[0x5BBAC0] = 0x4D05E0;   // _ZN10CTimeCycle10InitialiseEb

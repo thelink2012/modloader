@@ -326,7 +326,6 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
     // Readme Reader for CARS entries (vehicles.ide)
     plugin_ptr->AddReader<ide_store>([](const std::string& line) -> maybe_readable<ide_store>
     {
-        // TODO III|VC check the new/nonexistent mtruck... and richfamily... on those games.
         static auto regex_vehicles = make_fregex(
                             "^%d %s %s"
                             " %{car|mtruck|quad|heli|f_heli|plane|f_plane|boat|train|bike|bmx|trailer}"
