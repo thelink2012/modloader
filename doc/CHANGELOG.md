@@ -1,3 +1,30 @@
+v0.3.2 (Jun 17 2016)
+------------------------
+ * Support for III/VC data files
+    + gta.dat, IDEs, IPLs
+	+ carcols.dat
+	+ cullzones.dat
+	+ fistfite.dat
+	+ handling.cfg
+	+ object.dat
+	+ particle.cfg
+	+ ped.dat
+	+ pedgrp.dat
+	+ pedstats.dat
+	+ surface.dat
+	+ timecyc.dat
+	+ waterpro.dat
+	+ weapon.dat
+ * Support for loading III/VC CLEO scripts inside the modloader directory.
+
+v0.3.1 (Jun 13 2016)
+------------------------
+ * First GTA III public release.
+
+v0.3.0 (Jun 12 2016)
+------------------------
+ * First GTA Vice City public release.
+
 v0.2.5 (Aug 15 2015)
 ------------------------
  * Support for UTF-8, UTF-16 and UTF-32 readme files.

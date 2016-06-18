@@ -227,6 +227,13 @@ solution "modloader"
         buildoptions { "/arch:IA32" }           -- disable the use of SSE/SSE2 instructions (old game, old computers)
         buildoptions { "/Zm250", "/bigobj" }    -- gta3.std.data is a monster
 
+    configuration "vs2012"
+        toolset "v110_xp"
+    configuration "vs2013"
+        toolset "v120_xp"
+    configuration "vs2015"
+        toolset "v140_xp"
+
     project "docs"
         dummyproject()
         files { "doc/**" }
@@ -278,7 +285,7 @@ solution "modloader"
         "std.bank",
         "std.stream",
         "std.asi",
-        --"std.data"
+        "std.data"
     }
 
     project "build_gta3"

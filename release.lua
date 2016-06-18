@@ -62,7 +62,8 @@ function main()
     print "Building..."
     if build == "msbuild" then
     
-        execute("msbuild build_temp/modloader.sln /p:configuration=Release /p:platform=Win32")
+         -- also use 'set CL=/MP' at release.bat
+        execute("msbuild build_temp/modloader.sln /p:configuration=Release /p:platform=Win32 /m")
 
         -- Install THEN move pdbs
         install()
