@@ -309,17 +309,32 @@ namespace datalib {
     }
 }
 
+template<uintptr_t addr>
+using detour_type = modloader::OpenFileDetour<addr, gtadat_traits::dtraits>;
+
 // Level File Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    if((gvm.IsIII() || gvm.IsVC() || gvm.IsSA()) == false)
-        return;
-
     const char* maindat = gtadat_traits::dtraits::datafile();
 
-    // Mergers for gta.dat and default.dat
-    plugin_ptr->AddMerger<gtadat_store>(maindat, true, true, false, no_reinstall);
-    plugin_ptr->AddMerger<gtadat_store>("default.dat", true, true, false, no_reinstall);
+    if(!gvm.IsIII())
+    {
+        // Mergers for gta.dat and default.dat
+        plugin_ptr->AddMerger<gtadat_store>(maindat, true, true, false, no_reinstall);
+        plugin_ptr->AddMerger<gtadat_store>("default.dat", true, true, false, no_reinstall);
+    }
+    else
+    {
+        auto GetMergedData = plugin_ptr->BindGetMergedData<gtadat_store>(maindat, true, true, false);
+
+        plugin_ptr->AddMerger<gtadat_store>(maindat, tag_detour, no_reinstall,
+                    std::forward_as_tuple(
+                        detour_type<0x5B905E>(GetMergedData),      // @CFileLoader::LoadLevel
+                        detour_type<xIII(0x476534)>(GetMergedData) // @CFileLoader::LoadCollisionFile1
+                        ));
+
+        plugin_ptr->AddMerger<gtadat_store>("default.dat", true, true, false, no_reinstall);
+    }
 
     // Readme reader for gta.dat
     plugin_ptr->AddReader<gtadat_store>([](const std::string& line) -> maybe_readable<gtadat_store>

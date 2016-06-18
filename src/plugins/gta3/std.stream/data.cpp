@@ -31,13 +31,17 @@ void CAbstractStreaming::DataPatch()
         if(true)
         {
             using hcolfile  = function_hooker<0x5B9188, void*(const char*, int)>;
+            using hcolfile2 = function_hooker<xIII(0x476589), void*(const char*, int)>;
             using hclump    = function_hooker<0x5B91DB, void*(const char*)>;
 
-            make_static_hook<hcolfile>([](hcolfile::func_type load, const char* filepath, int id)
+            auto fn_hcolfile = [](hcolfile::func_type load, const char* filepath, int id)
             {
                 // NOTE: on III `id` is not a parameter, but since this is __cdecl, we don't have a problem.
                 return LoadNonStreamedRes(std::bind(load, _1, id), filepath, NonStreamedType::ColFile);
-            });
+            };
+
+            make_static_hook<hcolfile>(fn_hcolfile);
+            if(gvm.IsIII()) make_static_hook<hcolfile2>(fn_hcolfile);
 
             make_static_hook<hclump>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::ClumpFile));
         }
@@ -74,10 +78,10 @@ void CAbstractStreaming::DataPatch()
  */
 std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath, NonStreamedType type)
 {
+    auto filename = NormalizePath(filepath.substr(GetLastPathComponent(filepath)));
+
     if(!this->bHasInitializedStreaming)
     {
-        auto filename = NormalizePath(filepath.substr(GetLastPathComponent(filepath)));
-
         auto it = this->raw_models.find(filename);
         if(it != this->raw_models.end())
         {
@@ -87,12 +91,23 @@ std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath,
                 throw std::runtime_error("std.stream: TryLoadNonStreamedResource: Repeated resource!");
 
             // Register into non_stream and unregister from raw_models
-            this->non_stream.emplace(it->second->hash, type);
+            this->non_stream.emplace(it->second->hash, std::make_pair(it->second, type));
             std::string fullpath = it->second->fullpath();
             this->raw_models.erase(it);
             return fullpath;
         }
     }
+
+    if(true)
+    {
+        size_t filename_hash = modloader::hash(filename);
+        auto it = this->non_stream.find(filename_hash);
+        if(it != this->non_stream.end())
+        {
+            return it->second.first->fullpath();
+        }
+    }
+
     return std::string();
 }
 

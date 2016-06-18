@@ -142,7 +142,7 @@ class CAbstractStreaming
         using hash_t    = uint32_t;
 
         //
-        using NonStreamedInfo_t = NonStreamedType;
+        using NonStreamedInfo_t = std::pair<const modloader::file*, NonStreamedType>;
 
         // Temporary cd directory for basic information extracting, used during initialization
         using TempCdDir_t = std::list<std::pair<int, std::deque<DirectoryInfo>>>;
