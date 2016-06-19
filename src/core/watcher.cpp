@@ -10,6 +10,7 @@
 using namespace modloader;
 using time_point = std::chrono::steady_clock::time_point;
 
+
 /*
  *  This file contains some pretty sad win32 code
  *  Watches the filesystem for changes and then sends it to UpdateFromJournal (another .cpp)
@@ -164,7 +165,7 @@ static DWORD __stdcall WatcherThread(void*)
                 case (WAIT_OBJECT_0 + 0):   // hCancelEvent
                 {
                     CancelIo(hDirectory);
-                    InterlockedOr(&kill_watcher, TRUE);
+                    _InterlockedOr(&kill_watcher, TRUE);
                     break;
                 }
 
@@ -294,7 +295,7 @@ static void RegisterError()
 static void NotifyJournalChange()
 {
     last_change = std::chrono::steady_clock::now();
-    InterlockedOr(&has_changes, TRUE);
+    _InterlockedOr(&has_changes, TRUE);
 }
 
 /*
