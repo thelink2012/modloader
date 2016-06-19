@@ -11,8 +11,6 @@
 #include <regex/regex.hpp>
 using namespace modloader;
 
-// TODO on III/VC the sprite is in the models/ dir not models/txd/!!! WHAT DO WE DO NOW!!
-
 /*
  *  The plugin object
  */
@@ -55,7 +53,8 @@ const ScriptSpritesPlugin::info& ScriptSpritesPlugin::GetInfo()
  */
 bool ScriptSpritesPlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    // Although III/VC uses "models/", we'll keep the "models/txd" pattern.
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         typedef function_hooker<0x48418A, int(int, const char*)> hooker;
         
