@@ -97,6 +97,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     if(true)
     {
 		map[0x836F3B] = 0x5AB904;   // SetCurrentDirectory return pointer for _chdir
+        map[0x748CFB] = 0x582E6C;   // call    _Z14InitialiseGamev
     }
 
     // std.stream

@@ -83,62 +83,101 @@ void ThePlugin::LocateCleo()
     if(!bDidIt) { bDidIt = true; }
     else return;
 
-    // Find CLEO.asi module
-    HMODULE hCleo = LoadLibraryA("CLEO.asi");
-    if(!hCleo && gvm.IsIII()) hCleo = LoadLibraryA("III.CLEO.asi");
-    if(!hCleo && gvm.IsVC()) hCleo = LoadLibraryA("VC.CLEO.asi");
+    static const char* cleoAsiList[] = {
+        "CLEO.asi", "III.CLEO.asi", "VC.CLEO.asi",
+    };
 
-    // We need CLEO.asi module for cleo script injection
-    if(hCleo)
+    auto EffectivelyLocateCleo = [this]()
     {
-        char buffer[MAX_PATH];
-        if(GetModuleFileNameA(hCleo, buffer, sizeof(buffer)))
-        {
-            if(const char* p = path_translator_base::CallInfo::GetCurrentDir(buffer, this->loader->gamepath, -1))
-            {
-                // Find the library version
-                auto CLEO_GetVersion = (int (__stdcall*)()) GetProcAddress(hCleo, "_CLEO_GetVersion@0");
-                if(!CLEO_GetVersion)
-                {
-                    // not a stdcall, but will work as void(void)  
-                    CLEO_GetVersion = (int(__stdcall*)()) GetProcAddress(hCleo, "?CLEO_GetVersion@@YAIXZ");
-                }
+        scoped_gdir xdir("");
 
-                this->iCleoVersion = CLEO_GetVersion? CLEO_GetVersion() : 0;
-                
-                Log("CLEO library version %X found at \"%s\"", iCleoVersion, p);
-                if(this->bHasNoCleoFolder = !IsPath((std::string(loader->gamepath) + "./CLEO/").c_str()))
-                    Log("Warning: No CLEO folder found, may cause problems");
-                
-                this->asiList.emplace_back(p, nullptr, hCleo);
-                this->asiList.back().PatchImports();
-            }
+        HMODULE hCleo = NULL;
+
+        // Find CLEO.asi module
+        for(auto& asiName : cleoAsiList)
+        {
+            if(hCleo = LoadLibraryA(asiName))
+                break;
         }
-        else
-            hCleo = NULL;
-    }
 
-    // Find all the already loaded cleo plugins
-    if(hCleo)
-    {
-        ModulesWalk(GetCurrentProcessId(), [this](const MODULEENTRY32& entry)
+        // We need CLEO.asi module for cleo script injection
+        if(hCleo)
         {
-            // Find the extension for this module
-            if(const char* p = strrchr(entry.szModule, '.'))
+            char buffer[MAX_PATH];
+            if(GetModuleFileNameA(hCleo, buffer, sizeof(buffer)))
             {
-                // Is it a .cleo plugin?
-                if(!strcmp(p+1, "cleo", false))
+                if(const char* p = path_translator_base::CallInfo::GetCurrentDir(buffer, this->loader->gamepath, -1))
                 {
-                    // Yep, take the relative path and push it to the asi list
-                    if(p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->loader->gamepath, -1))
+                    // Find the library version
+                    auto CLEO_GetVersion = (int (__stdcall*)()) GetProcAddress(hCleo, "_CLEO_GetVersion@0");
+                    if(!CLEO_GetVersion)
                     {
-                        this->asiList.emplace_back(p, nullptr, entry.hModule);
-                        this->asiList.back().PatchImports();
+                        // not a stdcall, but will work as void(void)  
+                        CLEO_GetVersion = (int(__stdcall*)()) GetProcAddress(hCleo, "?CLEO_GetVersion@@YAIXZ");
+                    }
+
+                    this->iCleoVersion = CLEO_GetVersion? CLEO_GetVersion() : 0;
+                
+                    Log("CLEO library version %X found at \"%s\"", iCleoVersion, p);
+                    if(this->bHasNoCleoFolder = !IsPath((std::string(loader->gamepath) + "./CLEO/").c_str()))
+                        Log("Warning: No CLEO folder found, may cause problems");
+                
+                    this->asiList.emplace_back(p, nullptr, hCleo);
+                    this->asiList.back().PatchImports();
+                }
+            }
+            else
+                hCleo = NULL;
+        }
+
+        // Find all the already loaded cleo plugins
+        if(hCleo)
+        {
+            ModulesWalk(GetCurrentProcessId(), [this](const MODULEENTRY32& entry)
+            {
+                // Find the extension for this module
+                if(const char* p = strrchr(entry.szModule, '.'))
+                {
+                    // Is it a .cleo plugin?
+                    if(!strcmp(p+1, "cleo", false))
+                    {
+                        // Yep, take the relative path and push it to the asi list
+                        if(p = path_translator_base::CallInfo::GetCurrentDir(entry.szExePath, this->loader->gamepath, -1))
+                        {
+                            this->asiList.emplace_back(p, nullptr, entry.hModule);
+                            this->asiList.back().PatchImports();
+                        }
                     }
                 }
-            }
 
-            return true;
+                return true;
+            });
+        }
+    };
+
+    auto IsCleoAvailable = []()
+    {
+        for(auto& asiName : cleoAsiList)
+        {
+            if(GetModuleHandleA(asiName))
+                return true;
+        }
+        return false;
+    };
+
+    
+    if(IsCleoAvailable())
+    {
+        EffectivelyLocateCleo();
+    }
+    else
+    {
+        using lazycleo_hook = function_hooker<0x748CFB, char()>;
+        make_static_hook<lazycleo_hook>([=](lazycleo_hook::func_type Initialise)
+        {
+            char result = Initialise();
+            if(IsCleoAvailable()) EffectivelyLocateCleo();
+            return result;
         });
     }
 }
