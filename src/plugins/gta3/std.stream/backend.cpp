@@ -234,6 +234,44 @@ const char* CAbstractStreaming::GetCdStreamPath(const char* filepath_)
     return modloader::szNullFile;
 }
 
+/*
+ *  CAbstractStreaming::GetCdDirectoryPath
+ *      "MODELS/GTA3.DIR" -> ...
+ *
+ *      WARNING: The returned path buffer is very temporary.
+*/
+const char* CAbstractStreaming::GetCdDirectoryPath(const char* filepath_)
+{
+    if(gvm.IsSA()) // on SA the directory is on the header of the stream.
+    {
+        return GetCdStreamPath(filepath_);
+    }
+
+    if(filepath_)
+    {
+        // Very dirty, I cannot afford the time to implement something better.
+
+        static std::string temp_dirpath;
+        size_t pos;
+
+        temp_dirpath = filepath_;
+        if((pos = temp_dirpath.rfind('.')) != std::string::npos)
+            temp_dirpath.replace(pos+1, 3, "img");
+
+        const char* imgpath = GetCdStreamPath(temp_dirpath.c_str());
+
+        temp_dirpath = imgpath;
+        if((pos = temp_dirpath.rfind('.')) != std::string::npos)
+            temp_dirpath.replace(pos+1, 3, "dir");
+
+        filepath_ = temp_dirpath.c_str();
+        return filepath_;
+    }
+
+    // It's abstract, ignore name but actually have a valid openable name
+    return modloader::szNullFile;
+}
+
 
 /*
  *  CAbstractStreaming::TryOpenAbstractHandle
@@ -586,30 +624,45 @@ void CAbstractStreaming::Patch()
 
 
     // CdStream path overiding
-    if(gvm.IsSA())  // TODO VC III
+    if(true)
     {
         static void*(*OpenFile)(const char*, const char*);
         static void*(*RwStreamOpen)(int, int, const char*);
 
-        static auto OpenFileHook = [](const char* filename, const char* mode)
+        auto OpenFileCdStreamHook = [](const char* filename, const char* mode)
         {
             return OpenFile(streaming->GetCdStreamPath(filename), mode);
         };
 
-        static auto RwStreamOpenHook = [](int a, int b, const char* filename)
+        auto OpenFileCdDirectoryHook = [](const char* filename, const char* mode)
+        {
+            return OpenFile(streaming->GetCdDirectoryPath(filename), mode);
+        };
+
+        auto RwStreamOpenCdStreamHook = [](int a, int b, const char* filename)
         {
             return RwStreamOpen(a, b, streaming->GetCdStreamPath(filename));
         };
 
+        auto RwStreamOpenCdDirectoryHook = [](int a, int b, const char* filename)
+        {
+            return RwStreamOpen(a, b, streaming->GetCdDirectoryPath(filename));
+        };
+
         // Resolve the cd stream filenames by ourselves on the following calls
         {
-            auto pOpenFile     = raw_ptr((decltype(OpenFile))(OpenFileHook));
-            OpenFile = MakeCALL(0x5B6183, pOpenFile).get();
-            MakeCALL(0x532361, pOpenFile);
-            MakeCALL(0x5AFC9D, pOpenFile);
-            auto pRwStreamOpen = raw_ptr((decltype(RwStreamOpen))(RwStreamOpenHook));
-            RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpen).get();
-            MakeCALL(0x5B07E9, pRwStreamOpen);
+            auto pOpenFileCdStream     = raw_ptr((decltype(OpenFile))(OpenFileCdStreamHook));
+            auto pOpenFileCdDirectory  = raw_ptr((decltype(OpenFile))(OpenFileCdDirectoryHook));
+
+            OpenFile = MakeCALL(0x5B6183, pOpenFileCdDirectory).get();
+            MakeCALL(0x532361, pOpenFileCdDirectory);
+            MakeCALL(0x5AFC9D, pOpenFileCdStream);
+            if(gvm.IsIII() || gvm.IsVC()) MakeCALL(xVc(0x627D79), pOpenFileCdDirectory);
+
+            auto pRwStreamOpenCdStream = raw_ptr((decltype(RwStreamOpen))(RwStreamOpenCdStreamHook));
+            RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpenCdStream).get(); // <- different context on III but works
+            if(gvm.IsSA()) MakeCALL(0x5B07E9, pRwStreamOpenCdStream);
+            if(gvm.IsIII()) MakeCALL(xIII(0x4BA6F6), pRwStreamOpenCdStream);
         }
 
         // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
@@ -630,7 +683,9 @@ void CAbstractStreaming::Patch()
             injector::WriteMemory(p, &SRXorCreateFileForCdStream, true);
         }
         else
+        {
             injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
+        }
     }
 
     // Some fixes to allow the refreshing process to happen

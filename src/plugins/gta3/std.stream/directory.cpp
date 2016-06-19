@@ -167,7 +167,7 @@ void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, std::function<v
 void CAbstractStreaming::FetchCdDirectory(TempCdDir_t& cd_dir, const char*& filename_, int id)
 {
     static bool isSAMP = gvm.IsSA() && GetModuleHandleA("samp");
-    auto filename = GetCdStreamPath(filename_);
+    auto filename = GetCdDirectoryPath(filename_);
     auto fopen  = std::fopen;
     auto fread  = std::fread;
     auto fclose = std::fclose;

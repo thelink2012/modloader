@@ -341,7 +341,7 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
     {
         // To match a gta.dat line we need the section specifier followed by a single space
         // then a DIRECTORY/ followed by anything until the extension, which should be a valid one.
-        static auto regex = make_regex(R"___(^(?:IDE|IPL|IMG|COLFILE \d|TEXDICTION|MODELFILE|HIERFILE) \w+[\\/].*\.(?:IDE|IPL|ZON|IMG|COL|TXD|DFF)\s*$)___", 
+        static auto regex = make_regex(R"___(^(?:IDE|IPL|IMG|CDIMAGE|COLFILE \d|TEXDICTION|MODELFILE|HIERFILE) \w+[\\/].*\.(?:IDE|IPL|ZON|IMG|COL|TXD|DFF)\s*$)___", 
                                         sregex::ECMAScript|sregex::optimize|sregex::icase); // case insensitive because of the file extension
 
         if(regex_match(line, regex))

@@ -287,6 +287,7 @@ class CAbstractStreaming
 
         // Misc (used by hooks)
         const char* GetCdStreamPath(const char* filepath);
+        const char* GetCdDirectoryPath(const char* filepath);
         bool DoesModelNeedsFallback(id_t id);
         static HANDLE TryOpenAbstractHandle(int index, HANDLE hFile);
 
