@@ -90,7 +90,8 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // std.sprites
     if(true)
     {
-		map[0x48418A] = 0x44D6E9;   // call    _ZN9CTxdStore7LoadTxdEiPKc
+		map[0x48418A] = 0x44D6E9;   // call    _ZN9CTxdStore7LoadTxdEiPKc    ; @CRunningScript
+        map[xVc(0x4A6F4E)] = 0x48D61E;// call    _ZN9CTxdStore7LoadTxdEiPKc  ; @LoadSplash
     }
 
     // std.asi
