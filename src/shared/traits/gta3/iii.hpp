@@ -71,12 +71,14 @@ struct TraitsIII : TraitsGTA
     static void*& GetPedIntelligence(void* entity)
     {
         DoesNotExistInThisGame();
+		return ReadOffset<void*>(entity, 0); // to be able to compile in VS2013
     }
 
     // Gets the ped task manaager pointer from a ped entity
     static void* GetPedTaskManager(void* entity)
     {
         DoesNotExistInThisGame();
+		return ReadOffset<void*>(entity, 0); // to be able to compile in VS2013
     }
     
     // Gets the type of a CVehicle entity.

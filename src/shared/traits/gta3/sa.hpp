@@ -85,6 +85,7 @@ struct TraitsSA : TraitsGTA
     {
         DoesNotExistInThisGame();
         // TODO actually exist, but meh, too lazy to implement atm.
+		return VehicleType::Automobile; // to be able to compile in VS2013
     }
 
 
