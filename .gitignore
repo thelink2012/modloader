@@ -1,12 +1,12 @@
-bin/
-build/
-build_temp/
-msvc/
-msvc-gta3/
-msvc-gtavc/
-msvc-gtasa/
-nbproject/
-release/
+/bin/
+/build/
+/build_temp/
+/msvc/
+/msvc-gta3/
+/msvc-gtavc/
+/msvc-gtasa/
+/nbproject/
+/release/
 
 
 
