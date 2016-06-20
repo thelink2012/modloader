@@ -391,8 +391,6 @@ void CAbstractStreaming::Patch()
     // See data.cpp
     this->DataPatch();
 
-    // TODO CHECK THIS ms_imageOffsets THING IN VC (@ CStreaming::LoadCdDirectory)
-
     // Initialise the streaming
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
@@ -408,7 +406,7 @@ void CAbstractStreaming::Patch()
         this->BuildPrevOnCdMap();
         tmp_cd_dir.clear();
 
-        // Do custom setup TODO FIX
+        // Do custom setup
         this->BuildClothesMap();                                // Find out clothing hashes and remove clothes from raw_models
         this->LoadAbstractCdDirectory(refs_mapped(raw_models)); // Load abstract directory, our custom files
 

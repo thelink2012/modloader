@@ -73,6 +73,7 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53ECBD] = 0x4A5BE0;   // call    _Z4IdlePv
         map[0x53ECCB] = 0x4A5BF2;   // call    _Z12FrontendIdlePv
         map[0xC8D4C0] = 0x9B5F08;   // int gGameState
+        map[0xC920E8] = 0x974B74;   // int RwInitialized
     }
  
     // std.fx
@@ -193,9 +194,9 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B61E1] = 0x40FBE9;   // call    _ZN8CFileMgr4ReadEiPci                   ; @CStreaming::LoadCdDirectory  ; read entry @up
         map[xVc(0x40FDD9)] = 0x40FDD9;// call    _ZN8CFileMgr4ReadEiPci             ; @CStreaming::LoadCdDirectory ; read entry @up
         map[0x5B627A] = 0x40FC9D;   // call    _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE ; @CStreaming::LoadCdDirectory
-        map[xVc(0x40FD82)] = 0x40FD82;  // TODO ASM
-        map[xVc(0x40FD9A)] = 0x40FD9A;  // TODO ASM
-        map[xVc(0x40FDA0)] = 0x40FDA0;  // TODO ASM
+        map[xVc(0x40FD82)] = 0x40FD82;  // test    al, al                           ; @CStreaming::LoadCdDirectory -- (begin_inject)
+        map[xVc(0x40FD9A)] = 0x40FD9A;  // or      esi, 0FFFFFFFFh                  ; @CStreaming::LoadCdDirectory -- (end_inject)
+        map[xVc(0x40FDA0)] = 0x40FDA0;  // mov     eax, [esp+40h+var_3C]            ; @CStreaming::LoadCdDirectory -- (^ related to above)
         map[0x5B630B] = 0x40FD0D;   // call    _ZN9CColStore10AddColSlotEPKc
         map[0x4D565A] = 0x4055EA;   // call    _RwStreamOpen    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
         map[0x40E2C5] = 0x40C086;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii

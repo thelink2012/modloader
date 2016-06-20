@@ -147,7 +147,6 @@ struct CStreamingInfo
 
     uint8_t GetImgId()
     {
-        // TODO ensure VC has no img_id thing -> it doesn't, the img id is determined by a offset base
         switch(modloader::gvm.GetGame())
         {
             case '3': return 0;

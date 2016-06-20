@@ -25,6 +25,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53ECBD] = 0x53ECBD;   // call    _Z4IdlePv
         map[0x53ECCB] = 0x53ECCB;   // call    _Z12FrontendIdlePv
         map[0xC8D4C0] = 0xC8D4C0;   // int gGameState
+        map[0xC920E8] = 0xC920E8;   // int RwInitialized
     }
 
     // std.fx
@@ -353,19 +354,6 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B63F1] = 0x5B63F1;   // -> DWORD 649Bh   ; RRR Start Index
         map[0x5B641F] = 0x5B641F;   // -> DWORD 6676h   ; SCM Start Index
         map[0x408897] = 0x408897;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
-
-        /*
-        TODO VTBL (>> MORE, SEARCH AGAIN)
-
-        Find all "::vtbl", Subfolders, Find Results 1, "Entire Solution ( Including External Items )", ""
-          C:\Projects\modloader\src\traits\gta3\sa.hpp(84):        return ModelType(injector::thiscall<uint8_t(void*)>::vtbl<4>(m));
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(382):        injector::thiscall<void(void*, int)>::vtbl<5>(entity, GetEntityModel(entity));  // CEntity::SetModelIndex
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(388):        injector::thiscall<void(void*)>::vtbl<8>(entity);   // CEntity::DeleteRwObject
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(420):                injector::thiscall<void(CTask*, void*, int, int)>::vtbl<6>(task, entity, 2, 0); // CTask::MakeAbortable
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(433):            injector::thiscall<void(void*)>::vtbl<48>(entity);  // CVehicle::SetupSuspensionLines
-          Matching lines: 5    Matching files: 2    Total files searched: 342
-
-        */
     }
 
 

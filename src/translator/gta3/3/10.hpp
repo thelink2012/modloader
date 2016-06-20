@@ -29,6 +29,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53ECBD] = 0x48E8FD;   // call    _Z4IdlePv
         map[0x53ECCB] = 0x48E90F;   // call    _Z12FrontendIdlePv
         map[0xC8D4C0] = 0x8F5838;   // int gGameState
+        map[0xC920E8] = 0x885B88;   // int RwInitialized
     }
 
     // std.fx

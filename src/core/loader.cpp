@@ -12,9 +12,6 @@ using namespace modloader;
 #include <debugger.hpp>
 #endif
 
-// TODO VC build system should move modloader.asi to the scripts folder
-// This is not related to the .cpp code, probably the .lua installer.
-
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
 #define USE_TEST 0
@@ -30,34 +27,19 @@ Loader loader;
 extern "C"
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
-    if(fdwReason == DLL_PROCESS_ATTACH) loader.Patch();
+    if(fdwReason == DLL_PROCESS_ATTACH)
+    {
+        if(!loader.Patch())
+            return FALSE;
+    }
     return TRUE;
 }
-
-
-#ifndef NDEBUG // TODO REMOVE ME!!!!
-#include <cstdarg>
-static void VCLog(const char* msg, ...) // (msg, ...)
-{
-    if(!strcmp(msg, "FAILED\n"))
-    {
-        //__debugbreak();
-    }
-
-    va_list va;
-    va_start(va, msg);
-    loader.vLog(msg, va);
-    va_end(va);
-}
-#else
-//#error TODO remove me
-#endif
 
 /*
  *  Loader::Patch
  *      Patches the game code to run the loader
  */
-void Loader::Patch()
+bool Loader::Patch()
 {
     typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
     typedef function_hooker<0x53ECBD, void(int)> ridle_hook;
@@ -69,6 +51,15 @@ void Loader::Patch()
     // Check if we have WinMain proc address, otherwise this game isn't supported
     if(try_address(winmain_hook::addr))
     {
+        if(injector::ReadMemory<int>(0xC920E8)) // RwInitialized -- should enter only when using the mss32 loader on III/VC
+        {
+            const char* buf = "You installed Mod Loader wrongly!\n\n"
+                              "You need Ultimate ASI Loader, and modloader.asi must be in the 'scripts/' directory.\n\n"
+                              "Please refer to the 'Readme.txt' or 'Leia-me.txt' for more information.";
+            this->Error(buf);
+            return false;
+        }
+
         // Hook WinMain to run mod loader
         injector::make_static_hook<winmain_hook>([this](winmain_hook::func_type WinMain,
                                                     HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -78,7 +69,7 @@ void Loader::Patch()
             if(bRan) return WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             bRan = true;
             
-#ifndef NDEBUG // TODO REMOVE ME!!!!
+#ifndef NDEBUG
             auto& gvm = injector::address_manager::singleton();
             if(!gvm.IsSA())
             {
@@ -90,22 +81,14 @@ void Loader::Patch()
                 else if(gvm.IsVC())
                     MakeNOP(raw_ptr(0x601B3B), 10);
 
-                // Remove internal exception handler
-                //MakeRangedNOP(raw_ptr(0x667BFF), raw_ptr(0x667C12));
-
-                /*WriteMemory<uint8_t>(raw_ptr(0x677E40), 0xB8, true);
-                WriteMemory<uint32_t>(raw_ptr(0x677E40+1), EXCEPTION_CONTINUE_SEARCH, true);
-                WriteMemory<uint32_t>(raw_ptr(0x677E40+1+4), 0xC3, true);*/
-
                 if(gvm.IsIII())
-                    MakeJMP(raw_ptr(0x405DB0), &VCLog);
+                    MakeJMP(raw_ptr(0x405DB0), &Loader::Log);
                 else if(gvm.IsVC())
-                    MakeJMP(raw_ptr(0x401000), &VCLog);
+                    MakeJMP(raw_ptr(0x401000), &Loader::Log);
 
+                // Debugger does not attach properly in III/VC DxWnd, so we need to do it manually.
                 LaunchDebugger();
             }
-#else
-//            #error TODO Remove me
 #endif
 
             // Install exception filter to log crashes
@@ -138,11 +121,14 @@ void Loader::Patch()
             return result;
             }
         });
+
+        return true;
     }
     else
     {
         char buf[128];
         this->Error("This game is not supported\nGame Info:\n%s", gvm.GetVersionText(buf));
+        return false;
     }
 }
 

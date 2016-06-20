@@ -76,7 +76,6 @@ void __declspec(naked) HOOK_RegisterNextModelRead_VC()
     _asm
     {
         pushad
-        mov ebx, ebx // TODO remove
         xor edx, edx
         mov eax, ecx
         mov ecx, 0x14  // sizeof CStreamingInfo on VC
@@ -112,7 +111,7 @@ void __declspec(naked) HOOK_NewFile()
 }
 
 /*
-    TODO VC DESCRIPTION
+    
 */
 void __declspec(naked) HOOK_NewFile_3VC()
 {

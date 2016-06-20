@@ -314,7 +314,7 @@ static std::function<void()> MakeIdeReloader();
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
     // IDE Merger
-    if(gvm.IsSA()) // TODO III VC
+    if(gvm.IsSA())
     {
         plugin_ptr->AddMerger<ide_store>(ide_merger_name, false, false, true, reinstall_since_load, MakeIdeReloader());
     }

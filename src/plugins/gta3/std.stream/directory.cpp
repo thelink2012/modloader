@@ -143,7 +143,6 @@ static void PerformDirectoryRead(size_t size,
 
         return Run();
     }
-    // TODO VC III
 }
 
 
