@@ -1,3 +1,12 @@
+v0.3.3 (In Dev)
+------------------------
+ * Support for III/VC splash sprites.
+ * Support for III/VC script sprites (but uses SA directory structure, not III/VC one).
+ * Support for overloading and loading cdstreams on III/VC.
+ * Fixed a problem with the CLEO injector.
+ * Fixed III crashing with collision mods.
+ * Fixed Vice City crashing with map mods containing collision left overs.
+
 v0.3.2 (Jun 17 2016)
 ------------------------
  * Support for III/VC data files

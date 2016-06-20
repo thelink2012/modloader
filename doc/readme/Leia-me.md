@@ -10,9 +10,17 @@ A utilização é simples: você só precisa criar uma ou mais pastas dentro do 
 
 ## Instalando o Mod Loader
 
-Mod Loader requer um [ASI Loader](http://www.gtagarage.com/mods/show.php?id=21709), tenha certeza de que você tenha um.
+### Instalando no GTA San Andreas
 
-Em seguida, extraia o *modloader.asi* e a pasta *modloader* para o diretório de seu jogo.
+  Mod Loader requer um [ASI Loader](http://www.gtagarage.com/mods/show.php?id=21709), tenha certeza de que você tenha um.
+
+  Em seguida, extraia o *modloader.asi* e a pasta *modloader* para o diretório de seu jogo.
+
+### Instalando no GTA Vice City ou GTA III:
+
+  Mod Loader requer o [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases), tenha certeza de que você tenha um.
+
+  Em seguida, extraia o *modloader.asi* para pasta *scripts/* e a pasta *modloader* para o diretório de seu jogo.
 
 ## Instalando Mods no Mod Loader
 
@@ -66,8 +74,10 @@ Ao reportar um bug, **POR FAVOR**, forneça o arquivo *modloader/modloader.log* 
 
 Nem todos os executáveis são suportados no momento. Os suportados são:
 
- + 1.0 US *(todas as versões)*
- + 1.0 EU *(todas as versões)*
+ + GTA III 1.0
+ + GTA VC 1.0
+ + GTA SA 1.0 US
+ + GTA SA 1.0 EU
 
 ## Download
 
