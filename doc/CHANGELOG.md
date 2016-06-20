@@ -1,4 +1,4 @@
-v0.3.3 (In Dev)
+v0.3.3 (Jun 19 2016)
 ------------------------
  * Support for III/VC splash sprites.
  * Support for III/VC script sprites (but uses SA directory structure, not III/VC one).
