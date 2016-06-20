@@ -280,6 +280,10 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x565B2E)] = 0x565B2E; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi     ; @cParticleSystemMgr::LoadParticleData
         map[xVc(0x527570)] = 0x527570; // _ZN4CPed13LoadFightDataEv
         map[xVc(0x527590)] = 0x527590; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi     ; @CPed::LoadFightData
+
+        map[xVc(0x5B220A)] = 0x5B220A; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight.dat"
+        map[xVc(0x5B2475)] = 0x5B2475; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight2.dat"
+        map[xVc(0x5B24AE)] = 0x5B24AE; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight3.dat"
     }
 
     // traits

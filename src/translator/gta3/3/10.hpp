@@ -235,13 +235,17 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x527590)] = 0x4E9890; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi     ; @CPed::LoadFightData
         map[xIII(0x524EDA)] = 0x524EDA;  // call    _ZN8CFileMgr8OpenFileEPKcS1_        ; "data/cullzone.dat"
 
+        map[xVc(0x5B220A)] = 0x54B84E; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight.dat"
+        map[xVc(0x5B2475)] = 0x54BB0A; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight2.dat"
+        map[xVc(0x5B24AE)] = 0x54BB43; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight3.dat"
+        map[xIII(0x54BB7C)] = 0x54BB7C;// call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight4.dat"
     }
 
     // traits
     if(true)
     {
-        map[0x5B62CF] = 0x40702D;   // -> DWORD 4E20h   ; TXD Start Index+
-        map[0x408897] = 0x407F11;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE+
+        map[0x5B62CF] = 0x40702D;   // -> DWORD 4E20h   ; TXD Start Index
+        map[0x408897] = 0x407F11;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
     }
 
     // AbstractFrontend | TheMenu

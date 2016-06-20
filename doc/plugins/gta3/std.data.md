@@ -53,6 +53,10 @@ The following data files are currently supported:
 | fistfite.dat   |    X     |   X   |        |
 | particle.cfg   |    X     |   X   |        |
 | waterpro.dat   |    X     |       |        |
+| flight.dat     |    X     |       |        |
+| flight2.dat    |    X     |       |        |
+| flight3.dat    |    X     |       |        |
+| flight4.dat    |    X     |       |        |
 
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_

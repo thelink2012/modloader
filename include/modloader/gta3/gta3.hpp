@@ -74,8 +74,8 @@ namespace modloader
 
     template<uintptr_t addr, class Traits = dtraits::ReadAndInterpretTrackFile>
     using ReadAndInterpretTrackFileDetour = modloader::basic_file_detour<Traits,
-                                                injector::function_hooker<addr, int(const char*, void**, int*, float*, int)>,
-                                                                                int, const char*, void**, int*, float*, int>; 
+                                                injector::function_hooker<addr, int(const char*, void**, int*, float*, /* III only -> */ int, int, int, int, int)>,
+                                                                                int, const char*, void**, int*, float*,/* III only -> */ int, int, int, int, int>;
 
     template<uintptr_t addr, class Traits = dtraits::WinCreateFileA>
     using WinCreateFileA = modloader::basic_file_detour<Traits,

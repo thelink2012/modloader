@@ -20,12 +20,12 @@ using OpenTracksDetour = modloader::ReadAndInterpretTrackFileDetour<addr, tracks
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    if(gvm.IsSA())
+    if(gvm.IsSA() || gvm.IsIII())
     {
         //auto ReloadTracks = injector::cstd<void()>::call<0x6F7440>;
         plugin_ptr->AddDetour("tracks.dat", no_reinstall, OpenTracksDetour<0x6F7470>());
         plugin_ptr->AddDetour("tracks2.dat", no_reinstall, OpenTracksDetour<0x6F74BC>());
-        plugin_ptr->AddDetour("tracks3.dat", no_reinstall, OpenTracksDetour<0x6F7496>());
-        plugin_ptr->AddDetour("tracks4.dat", no_reinstall, OpenTracksDetour<0x6F74E2>());
+        if(gvm.IsSA()) plugin_ptr->AddDetour("tracks3.dat", no_reinstall, OpenTracksDetour<0x6F7496>());
+        if(gvm.IsSA()) plugin_ptr->AddDetour("tracks4.dat", no_reinstall, OpenTracksDetour<0x6F74E2>());
     }
 });
