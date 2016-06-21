@@ -12,12 +12,12 @@ struct surface_traits : public data_traits
     static const bool has_sections      = false;
     static const bool per_line_section  = false;
 
-    struct dtraits : modloader::dtraits::OpenFile
+    struct dtraits : modloader::dtraits::SaOpenOr3VcLoadFileDetour
     {
         static const char* what() { return "surface adhesion limits"; }
     };
     
-    using detour_type = modloader::OpenFileDetour<0x55D100, dtraits>;
+    using detour_type = modloader::SaOpenOr3VcLoadFileDetour<0x55D100, dtraits>;
 
     // The first string from the line doesn't matter, it's just a helper to the human reader.
     // The following values are real numbers, '---' like values or nothing
@@ -43,6 +43,14 @@ using surface_store = gta3::data_store<surface_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadSurfaceInfo = std::bind(injector::thiscall<void(void*)>::call<0x55F420>, mem_ptr(0xB79538).get<void>());
-    plugin_ptr->AddMerger<surface_store>("surface.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceInfo));
+    if(gvm.IsSA())
+    {
+        auto ReloadSurfaceInfo = std::bind(injector::thiscall<void(void*)>::call<0x55F420>, mem_ptr(0xB79538).get<void>());
+        plugin_ptr->AddMerger<surface_store>("surface.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceInfo));
+    }
+    else if(gvm.IsIII() || gvm.IsVC())
+    {
+        auto ReloadSurfaceTable = std::bind(injector::cstd<void(const char*)>::call<xVc(0x4CE8A0)>, "data/surface.dat");
+        plugin_ptr->AddMerger<surface_store>("surface.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceTable));
+    }
 });

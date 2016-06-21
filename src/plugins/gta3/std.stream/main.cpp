@@ -8,6 +8,9 @@
 #include "streaming.hpp"
 //using namespace modloader;
 
+static const size_t ped_ifp = modloader::hash("ped.ifp");
+
+static bool ShouldIgnoreFile(const modloader::file&);
 
 /*
  *  The plugin object
@@ -26,7 +29,7 @@ class ThePlugin : public modloader::basic_plugin
         bool ReinstallFile(const modloader::file&);
         bool UninstallFile(const modloader::file&);
         void Update();
-        
+
 } plugin;
 REGISTER_ML_PLUGIN(::plugin);
 
@@ -52,15 +55,24 @@ const ThePlugin::info& ThePlugin::GetInfo()
  */
 bool ThePlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         // Setup abstract streaming
-        streaming.Patch();
-        streaming.InitRefreshInterface();
+        streaming = new CAbstractStreaming();
+        streaming->Patch();
+        streaming->InitRefreshInterface(); // TODO move to ctor?
 
         // Setup ped.ifp overrider
-        ov_ped_ifp.SetParams(file_overrider::params(nullptr));
-        ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());
+        if(gvm.IsIII())
+        {
+            ov_ped_ifp.SetParams(file_overrider::params(nullptr));
+            ov_ped_ifp.SetFileDetour(Gta3LoadIfpDetour<xIII(0x4038FC)>());
+        }
+        else
+        {
+            ov_ped_ifp.SetParams(file_overrider::params(nullptr));
+            ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());
+        }
 
         return true;
     }
@@ -73,7 +85,12 @@ bool ThePlugin::OnStartup()
  */
 bool ThePlugin::OnShutdown()
 {
-    streaming.ShutRefreshInterface();
+    if(streaming)
+    {
+        streaming->ShutRefreshInterface(); // TODO move to dtor?
+        delete streaming;
+        streaming = nullptr;
+    }
     return true;
 }
 
@@ -84,10 +101,21 @@ bool ThePlugin::OnShutdown()
  */
 int ThePlugin::GetBehaviour(modloader::file& file)
 {
+    if(ShouldIgnoreFile(file))
+    {
+        plugin_ptr->Log("Ignoring file \"%s\" because it's a freaking Rockstar left over.", file.filedir());
+        return MODLOADER_BEHAVIOUR_NO;
+    }
+
     if(!file.is_dir() && file.is_ext("img"))
     {
         // This is a image file
         file.behaviour = file.hash | is_img_file_mask;
+        return MODLOADER_BEHAVIOUR_YES;
+    }
+    else if(!file.is_dir() && file.hash == ped_ifp)
+    {
+        file.behaviour = file.hash | is_pedifp_mask;
         return MODLOADER_BEHAVIOUR_YES;
     }
     else if(!file.is_dir())
@@ -112,18 +140,6 @@ int ThePlugin::GetBehaviour(modloader::file& file)
                 {
                     // Disabled, may conflict with nodes from data folder, use .img folder instead
                     return MODLOADER_BEHAVIOUR_NO;
-                }
-
-                case ResType::AnimFile:
-                {
-                    // Make sure it isn't the special ifp file ped.ifp
-                    static const auto ped_ifp = modloader::hash("ped.ifp");
-                    if(file.hash == ped_ifp)
-                    {
-                        file.behaviour = file.hash | is_pedifp_mask;
-                        return MODLOADER_BEHAVIOUR_YES;
-                    }
-                    break;
                 }
 
                 case ResType::StreamedScene:
@@ -166,9 +182,9 @@ int ThePlugin::GetBehaviour(modloader::file& file)
  */
 bool ThePlugin::InstallFile(const modloader::file& file)
 {
-    if(file.behaviour & is_item_mask) return streaming.InstallFile(file);
+    if(file.behaviour & is_item_mask) return streaming->InstallFile(file);
     if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.InstallFile(file);
-    if(file.behaviour & is_img_file_mask) return streaming.AddImgFile(file);
+    if(file.behaviour & is_img_file_mask) return streaming->AddImgFile(file);
     return false;
 }
 
@@ -178,7 +194,7 @@ bool ThePlugin::InstallFile(const modloader::file& file)
  */
 bool ThePlugin::ReinstallFile(const modloader::file& file)
 {
-    if(file.behaviour & is_item_mask) return streaming.ReinstallFile(file);
+    if(file.behaviour & is_item_mask) return streaming->ReinstallFile(file);
     if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.ReinstallFile();
     if(file.behaviour & is_img_file_mask) return true;
     return false;
@@ -190,9 +206,9 @@ bool ThePlugin::ReinstallFile(const modloader::file& file)
  */
 bool ThePlugin::UninstallFile(const modloader::file& file)
 {
-    if(file.behaviour & is_item_mask) return streaming.UninstallFile(file);
+    if(file.behaviour & is_item_mask) return streaming->UninstallFile(file);
     if(file.behaviour & is_pedifp_mask) return ov_ped_ifp.UninstallFile();
-    if(file.behaviour & is_img_file_mask) return streaming.RemImgFile(file);
+    if(file.behaviour & is_img_file_mask) return streaming->RemImgFile(file);
     return false;
 }
 
@@ -202,5 +218,71 @@ bool ThePlugin::UninstallFile(const modloader::file& file)
  */
 void ThePlugin::Update()
 {
-    streaming.Update();
+    streaming->Update();
+}
+
+
+
+/*
+*  ShouldIgnoreFile
+*      So there's a few Rockstar left overs that are too hard to handle (or I don't want to think how to handle).
+*      I'm just going to do a hard coded ignore then.
+*/
+bool ShouldIgnoreFile(const modloader::file& file)
+{
+    // All this bullshit happens only in VC.
+    if(!gvm.IsVC())
+        return false;
+
+    if(file.is_dir())
+        return false;
+
+    static const size_t generic_txd = modloader::hash("generic.txd");
+
+    static const size_t unused_cols[] = {
+        modloader::hash("airport.col"),
+        modloader::hash("airportn.col"),
+        modloader::hash("bank.col"),
+        modloader::hash("bridge.col"),
+        modloader::hash("cisland.col"),
+        modloader::hash("club.col"),
+        modloader::hash("concerth.col"),
+        modloader::hash("docks.col"),
+        modloader::hash("downtown.col"),
+        modloader::hash("downtows.col"),
+        modloader::hash("golf.col"),
+        modloader::hash("haiti.col"),
+        modloader::hash("haitin.col"),
+        modloader::hash("hotel.col"),
+        modloader::hash("islandsf.col"),
+        modloader::hash("lawyers.col"),
+        modloader::hash("littleha.col"),
+        modloader::hash("mall.col"),
+        modloader::hash("mansion.col"),
+        modloader::hash("nbeach.col"),
+        modloader::hash("nbeachbt.col"),
+        modloader::hash("nbeachw.col"),
+        modloader::hash("oceandn.col"),
+        modloader::hash("oceandrv.col"),
+        modloader::hash("stadint.col"),
+        modloader::hash("starisl.col"),
+        modloader::hash("stripclb.col"),
+        modloader::hash("washintn.col"),
+        modloader::hash("washints.col"),
+        modloader::hash("yacht.col"),
+    };
+
+    if(file.hash == generic_txd && IsFileInsideFolder(file.filedir(), true, "gta3.img"))
+    {
+        return true;
+    }
+
+    if(file.is_ext("col")
+    && std::find(std::begin(unused_cols), std::end(unused_cols), file.hash) != std::end(unused_cols)
+    && IsFileInsideFolder(file.filedir(), false, "maps"))
+    {
+        return true;
+    }
+
+    return false;
 }

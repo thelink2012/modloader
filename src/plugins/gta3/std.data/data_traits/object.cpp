@@ -7,6 +7,7 @@
 #include "../data_traits.hpp"
 using namespace modloader;
 using std::string;
+using std::tuple;
 
 struct object_traits : public data_traits
 {
@@ -16,18 +17,20 @@ struct object_traits : public data_traits
     static const bool has_eof_string = true;
     static const char* eof_string() { return "*"; }
 
-    struct dtraits : modloader::dtraits::OpenFile
+    struct dtraits : modloader::dtraits::SaOpenOr3VcLoadFileDetour
     {
         static const char* what()       { return "object data"; }
         static const char* datafile()   { return "object.dat"; }
     };
     
-    using detour_type = modloader::OpenFileDetour<0x5B5444, dtraits>;
+    using detour_type = modloader::SaOpenOr3VcLoadFileDetour<0x5B5444, dtraits>;
 
     using key_type      = std::size_t;
     using value_type    = data_slice<modelname,
-                                real_t, real_t, real_t, real_t, real_t, real_t, real_t, int16_t, int16_t, char, char, char, delimopt,
-                                vec3, insen<string>, real_t, vec3, real_t, char, char>;
+                                real_t, real_t, real_t, real_t, real_t, real_t, real_t, int16_t, int16_t, char,
+                                SAOnly<tuple<char, char>>,
+                                delimopt,
+                                SAOnly<tuple<vec3, insen<string>, real_t, vec3, real_t, char, char>>>;
 
     key_type key_from_value(const value_type& value)
     {

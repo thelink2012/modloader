@@ -550,7 +550,7 @@ class Loader : public modloader_t
         {}
         
         // Patches the game code to run this core
-        void Patch();
+        bool Patch();
         
         // Start or Shutdown the loader
         void Startup();

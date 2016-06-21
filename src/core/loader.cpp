@@ -8,6 +8,10 @@
 #include <unicode.hpp>
 using namespace modloader;
 
+#ifndef NDEBUG
+#include <debugger.hpp>
+#endif
+
 extern int InstallExceptionCatcher(void (*cb)(const char* buffer));
 
 #define USE_TEST 0
@@ -23,16 +27,19 @@ Loader loader;
 extern "C"
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
-    if(fdwReason == DLL_PROCESS_ATTACH) loader.Patch();
+    if(fdwReason == DLL_PROCESS_ATTACH)
+    {
+        if(!loader.Patch())
+            return FALSE;
+    }
     return TRUE;
 }
-
 
 /*
  *  Loader::Patch
  *      Patches the game code to run the loader
  */
-void Loader::Patch()
+bool Loader::Patch()
 {
     typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
     typedef function_hooker<0x53ECBD, void(int)> ridle_hook;
@@ -44,6 +51,15 @@ void Loader::Patch()
     // Check if we have WinMain proc address, otherwise this game isn't supported
     if(try_address(winmain_hook::addr))
     {
+        if(injector::ReadMemory<int>(0xC920E8)) // RwInitialized -- should enter only when using the mss32 loader on III/VC
+        {
+            const char* buf = "You installed Mod Loader wrongly!\n\n"
+                              "You need Ultimate ASI Loader, and modloader.asi must be in the 'scripts/' directory.\n\n"
+                              "Please refer to the 'Readme.txt' or 'Leia-me.txt' for more information.";
+            this->Error(buf);
+            return false;
+        }
+
         // Hook WinMain to run mod loader
         injector::make_static_hook<winmain_hook>([this](winmain_hook::func_type WinMain,
                                                     HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -52,6 +68,28 @@ void Loader::Patch()
             static bool bRan = false;
             if(bRan) return WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             bRan = true;
+            
+#ifndef NDEBUG
+            auto& gvm = injector::address_manager::singleton();
+            if(!gvm.IsSA())
+            {
+                static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
+
+                gGameState = 5; // skip intro
+                if(gvm.IsIII())
+                    MakeNOP(raw_ptr(0x5811F8), 10);
+                else if(gvm.IsVC())
+                    MakeNOP(raw_ptr(0x601B3B), 10);
+
+                if(gvm.IsIII())
+                    MakeJMP(raw_ptr(0x405DB0), &Loader::Log);
+                else if(gvm.IsVC())
+                    MakeJMP(raw_ptr(0x401000), &Loader::Log);
+
+                // Debugger does not attach properly in III/VC DxWnd, so we need to do it manually.
+                LaunchDebugger();
+            }
+#endif
 
             // Install exception filter to log crashes
             InstallExceptionCatcher([](const char* buffer)
@@ -83,11 +121,14 @@ void Loader::Patch()
             return result;
             }
         });
+
+        return true;
     }
     else
     {
         char buf[128];
         this->Error("This game is not supported\nGame Info:\n%s", gvm.GetVersionText(buf));
+        return false;
     }
 }
 
@@ -152,8 +193,33 @@ void Loader::Startup()
         || !MakeSureDirectoryExistA(pluginPath.c_str())
         || !MakeSureDirectoryExistA(commonAppDataPath.c_str())
         || !MakeSureDirectoryExistA(localAppDataPath.c_str()))
-            Log("Warning: Mod Loader important directories could not be created.");
-        
+        {
+            Log("Warning: Mod Loader important directories could not be created (1).");
+        }
+        else
+        {
+            char hash_as_string[128];
+            std::string normal_path = NormalizePath(this->gamePath);
+
+            static_assert(sizeof(size_t) == 4, "%.8x not correct");
+            sprintf(hash_as_string, "%.8x", modloader::hash(normal_path));
+
+            std::string unique_id;
+            unique_id += "10"; // version of the hashing method, increase if it changes
+            unique_id += hash_as_string;
+
+            this->localAppDataPath += unique_id;
+            this->commonAppDataPath += unique_id;
+
+            MakeSureStringIsDirectory(this->localAppDataPath);
+            MakeSureStringIsDirectory(this->commonAppDataPath);
+            if(!MakeSureDirectoryExistA(localAppDataPath.c_str())
+            || !MakeSureDirectoryExistA(commonAppDataPath.c_str()))
+            {
+                Log("Warning: Mod Loader important directories could not be created (2).");
+            }
+        }
+
         // Before loading inis, we should update from the old ini format to the new ini format (ofc only if the ini format is old)
         this->UpdateOldConfig();
 

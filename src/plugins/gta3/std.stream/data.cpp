@@ -22,25 +22,52 @@ static void* LoadNonStreamedRes(std::function<void*(const char*)> load, const ch
  */
 void CAbstractStreaming::DataPatch()
 {
-    if(gvm.IsSA())
-        FixColFile(); // Fix broken COLFILE in GTA SA
-
+    // Fix broken COLFILE in GTA SA
+    FixColFile();
 
     // Detouring of non streamed resources loaded by gta.dat/default.dat
     if(true)
     {
-        using hcolfile  = function_hooker<0x5B9188, void*(const char*, int)>;
-        using hatomic   = function_hooker<0x5B91B0, void*(const char*)>;
-        using hclump    = function_hooker<0x5B91DB, void*(const char*)>;
-        using htexdict  = function_hooker<0x5B910A, void*(const char*)>;
-
-        make_static_hook<hatomic>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::AtomicFile));
-        make_static_hook<hclump>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::ClumpFile));
-        make_static_hook<htexdict>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::TexDictionary));
-        make_static_hook<hcolfile>([](hcolfile::func_type load, const char* filepath, int id)
+        if(true)
         {
-            return LoadNonStreamedRes(std::bind(load, _1, id), filepath, NonStreamedType::ColFile);
-        });
+            using hcolfile  = function_hooker<0x5B9188, void*(const char*, int)>;
+            using hcolfile2 = function_hooker<xIII(0x476589), void*(const char*, int)>;
+            using hclump    = function_hooker<0x5B91DB, void*(const char*)>;
+
+            auto fn_hcolfile = [](hcolfile::func_type load, const char* filepath, int id)
+            {
+                // NOTE: on III `id` is not a parameter, but since this is __cdecl, we don't have a problem.
+                return LoadNonStreamedRes(std::bind(load, _1, id), filepath, NonStreamedType::ColFile);
+            };
+
+            make_static_hook<hcolfile>(fn_hcolfile);
+            if(gvm.IsIII()) make_static_hook<hcolfile2>(fn_hcolfile);
+
+            make_static_hook<hclump>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::ClumpFile));
+        }
+
+        if(gvm.IsIII() || gvm.IsSA())
+        {
+            using hatomic = function_hooker<0x5B91B0, void*(const char*)>;
+            using htexdict = function_hooker<0x5B910A, void*(const char*)>;
+            make_static_hook<hatomic>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::AtomicFile));
+            make_static_hook<htexdict>(std::bind(LoadNonStreamedRes, _1, _2, NonStreamedType::TexDictionary));
+        }
+        else if(gvm.IsVC())
+        {
+            using hatomic = function_hooker<xVc(0x48DB7B), void*(int, int, const char*)>;
+            using htexdict = function_hooker<xVc(0x48DA46), void*(int, int, const char*)>;
+
+            make_static_hook<hatomic>([](hatomic::func_type load, int a, int b, const char* filepath)
+            {
+                return LoadNonStreamedRes(std::bind(load, a, b, _1), filepath, NonStreamedType::AtomicFile);
+            });
+
+            make_static_hook<htexdict>([](htexdict::func_type load, int a, int b, const char* filepath)
+            {
+                return LoadNonStreamedRes(std::bind(load, a, b, _1), filepath, NonStreamedType::TexDictionary);
+            });
+        }
     }
 }
 
@@ -51,10 +78,10 @@ void CAbstractStreaming::DataPatch()
  */
 std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath, NonStreamedType type)
 {
+    auto filename = NormalizePath(filepath.substr(GetLastPathComponent(filepath)));
+
     if(!this->bHasInitializedStreaming)
     {
-        auto filename = NormalizePath(filepath.substr(GetLastPathComponent(filepath)));
-
         auto it = this->raw_models.find(filename);
         if(it != this->raw_models.end())
         {
@@ -70,8 +97,35 @@ std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath,
             return fullpath;
         }
     }
+
+    if(true)
+    {
+        size_t filename_hash = modloader::hash(filename);
+        auto it = this->non_stream.find(filename_hash);
+        if(it != this->non_stream.end())
+        {
+            return it->second.first->fullpath();
+        }
+    }
+
     return std::string();
 }
+
+void CAbstractStreaming::RemoveNonStreamedFromRawModels()
+{
+    // This is only needed for III because of non-streamed .col/.ifp
+    if(!gvm.IsIII())
+        return;
+
+    for(auto it = this->raw_models.begin(); it != this->raw_models.end(); )
+    {
+        if(IsNonStreamed(it->second))
+            it = this->raw_models.erase(it);
+        else
+            ++it;
+    }
+}
+
 
 /*
  *  LoadNonStreamedRes
@@ -79,17 +133,20 @@ std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath,
  */
 void* LoadNonStreamedRes(std::function<void*(const char*)> load, const char* filepath, NonStreamedType type)
 {
-    auto newfilepath = streaming.TryLoadNonStreamedResource(filepath, type);
+    auto newfilepath = streaming->TryLoadNonStreamedResource(filepath, type);
     return load(newfilepath.size()? newfilepath.data() : filepath);
 }
 
 
 /*
  *  FixColFile
- *      Fixes the COLFILE from gta.dat not working properly, crashing the game.
+ *      Fixes the COLFILE from gta.dat not working properly, crashing the game (GTA SA only).
  */
 void FixColFile()
 {
+    if(!gvm.IsSA())
+        return;
+
     static bool using_colbuf;           // Is using colbuf or original buffer?
     static bool empty_colmodel;         // Is this a empty colmodel?
     static std::vector<char> colbuf;    // Buffer for reading col file into

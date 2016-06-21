@@ -2,6 +2,7 @@ gta3.std.data
 =========================================================================
  + __Author__:   LINK/2012 (<dma_2012@hotmail.com>)
  + __Priority__: 50
+ + __Game__: III, Vice City, San Andreas
 
 *************************************************************************
 
@@ -48,6 +49,15 @@ The following data files are currently supported:
 | weapon.dat     |    X     |   X   |   X    |
 | procobj.dat    |    X     |   X   |        |
 | stream.ini     |    X     |   X   |        |
+| cullzone.dat   |    X     |       |        |
+| fistfite.dat   |    X     |   X   |        |
+| particle.cfg   |    X     |   X   |        |
+| waterpro.dat   |    X     |       |        |
+| flight.dat     |    X     |       |        |
+| flight2.dat    |    X     |       |        |
+| flight3.dat    |    X     |       |        |
+| flight4.dat    |    X     |       |        |
+
 
  + ¹ reading ide lines from readmes is supported for *cars*, *peds* and tunning parts in *objs* section _(i.e. vehicles.ide, peds.ide, veh_mods.ide)_
     

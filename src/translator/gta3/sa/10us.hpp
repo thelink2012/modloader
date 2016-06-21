@@ -25,6 +25,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53ECBD] = 0x53ECBD;   // call    _Z4IdlePv
         map[0x53ECCB] = 0x53ECCB;   // call    _Z12FrontendIdlePv
         map[0xC8D4C0] = 0xC8D4C0;   // int gGameState
+        map[0xC920E8] = 0xC920E8;   // int RwInitialized
     }
 
     // std.fx
@@ -67,6 +68,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x57326E] = 0x57326E;   // jz      loc_573313                    ; Check for some menu stuff to avoid reloading text
         map[0xBA6748] = 0xBA6748;   // CMenuManager FrontEndMenuManager
         map[0x573260] = 0x573260;   // _ZN12CMenuManager33InitialiseChangedLanguageSettingsEv
+        map[0x6A0050] = 0x6A0050;   // _ZN5CText3GetEPKc
     }
 
     // std.movies
@@ -93,6 +95,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     if(true)
     {
         map[0x836F3B] = 0x836F3B;   // SetCurrentDirectory return pointer for _chdir
+        map[0x748CFB] = 0x748CFB;   // call    _Z14InitialiseGamev
     }
 
     // std.stream
@@ -112,6 +115,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x72F4F0] = 0x72F4F0;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x532310;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
         map[0x532450] = 0x532450;   // _ZN10CDirectory8FindItemEPKc
+        map[0x5324A0] = 0x5324A0;   // _ZN10CDirectory8FindItemEPKcRjS2_
 
         map[0x406560] = 0x406560;   // _Z14CdStreamThreadPv
         map[0x5B8E1B] = 0x5B8E1B;   // call    _ZN10CStreaming15LoadCdDirectoryEv       ; @CStreaming::Init
@@ -282,7 +286,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x53BC95] = 0x53BC95;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- default.dat
         map[0x53BC9B] = 0x53BC9B;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
         map[0x4C5940] = 0x4C5940;   // _ZN10CModelInfo12GetModelInfoEPKcPi
-        map[0x5B922F] = 0x5B922F;   // call    _Z20MatchAllModelStringsv                ; @CFileLoader::LoadLevel
+        map[0x5B925F] = 0x5B925F;   // call    _ZN11CObjectData10InitialiseEPc          ; @CFileLoader::LoadLevel
 
         // Refreshing IDEs
         map[0x5B9206] = 0x5B9206;   // call    _ZN11CFileLoader15LoadObjectTypesEPKc
@@ -350,19 +354,6 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B63F1] = 0x5B63F1;   // -> DWORD 649Bh   ; RRR Start Index
         map[0x5B641F] = 0x5B641F;   // -> DWORD 6676h   ; SCM Start Index
         map[0x408897] = 0x408897;   // -> offset _ZN10CModelInfo16ms_modelInfoPtrsE
-
-        /*
-        TODO VTBL (>> MORE, SEARCH AGAIN)
-
-        Find all "::vtbl", Subfolders, Find Results 1, "Entire Solution ( Including External Items )", ""
-          C:\Projects\modloader\src\traits\gta3\sa.hpp(84):        return ModelType(injector::thiscall<uint8_t(void*)>::vtbl<4>(m));
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(382):        injector::thiscall<void(void*, int)>::vtbl<5>(entity, GetEntityModel(entity));  // CEntity::SetModelIndex
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(388):        injector::thiscall<void(void*)>::vtbl<8>(entity);   // CEntity::DeleteRwObject
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(420):                injector::thiscall<void(CTask*, void*, int, int)>::vtbl<6>(task, entity, 2, 0); // CTask::MakeAbortable
-          C:\Projects\modloader\src\plugins\gta3\std.stream\refresh.cpp(433):            injector::thiscall<void(void*)>::vtbl<48>(entity);  // CVehicle::SetupSuspensionLines
-          Matching lines: 5    Matching files: 2    Total files searched: 342
-
-        */
     }
 
 

@@ -38,7 +38,7 @@ namespace modloader
     };
 
     // Proper fxt manager object
-    typedef injector::basic_fxt_manager<std::map<size_t, std::string>, fxt_hash_functor>    fxt_manager;
+    typedef injector::basic_fxt_manager<std::map<size_t, std::vector<char>>, fxt_hash_functor>    fxt_manager;
 }
 
 #endif

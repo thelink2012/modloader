@@ -37,6 +37,9 @@ using procobj_store = gta3::data_store<procobj_traits, linear_map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadProcObjs = []{};//std::bind(injector::thiscall<void(void*)>::call<0x5A3EA0>, mem_ptr(0xBB7CB0).get<void>());
-    plugin_ptr->AddMerger<procobj_store>("procobj.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadProcObjs));
+    if(gvm.IsSA())
+    {
+        auto ReloadProcObjs = []{};//std::bind(injector::thiscall<void(void*)>::call<0x5A3EA0>, mem_ptr(0xBB7CB0).get<void>());
+        plugin_ptr->AddMerger<procobj_store>("procobj.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadProcObjs));
+    }
 });

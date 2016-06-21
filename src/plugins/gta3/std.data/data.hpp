@@ -768,6 +768,7 @@ class initializer
  *
  *          [optional] has_eof_string           -> When set to true, whenever the eof_string() is found the following content is ignored.
  *                                                 Note when this is set to true you need to add a this->eof and serializer for the derived class.
+ *                                                 Additionally, the eof_string() is stored at the end of the merged file.
  *          [optional] eof_string()             -> Returns a string (const char*) which contains the eof string.
  *                                                 When the eof string is found at the beggining of the line, all the content after this line is ignored.
  *

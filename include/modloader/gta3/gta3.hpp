@@ -35,10 +35,13 @@ namespace modloader
 
         using LoadTxd = base<2>;
         using OpenFile = base<1>;
+        using LoadFile = base<1>;
+        using SaOpenOr3VcLoadFileDetour = base<1>;
         using RwStreamOpen = base<3>;
         using CreateVideoPlayer = base<2>;
         using ReadAndInterpretTrackFile = base<1>;
         using WinCreateFileA = base<1>;
+        using LoadAtomic2Return = base<1>;
     };
 
     template<uintptr_t addr, class Traits = dtraits::LoadTxd>
@@ -50,6 +53,14 @@ namespace modloader
     using OpenFileDetour = modloader::basic_file_detour<Traits,
                                             injector::function_hooker<addr, void*(const char*, const char*)>,
                                                                             void*, const char*, const char*>;
+
+    template<uintptr_t addr, class Traits = dtraits::LoadFile>
+    using LoadFileDetour = modloader::basic_file_detour<Traits,
+                                            injector::function_hooker<addr, int(const char*, void*, int, const char*)>,
+                                                                            int, const char*, void*, int, const char*>;
+
+    template<uintptr_t addr, class Traits = dtraits::SaOpenOr3VcLoadFileDetour>
+    using SaOpenOr3VcLoadFileDetour = LoadFileDetour<addr, Traits>;
 
     template<uintptr_t addr, class Traits = dtraits::RwStreamOpen>
     using RwStreamOpenDetour = modloader::basic_file_detour<Traits,
@@ -63,15 +74,23 @@ namespace modloader
 
     template<uintptr_t addr, class Traits = dtraits::ReadAndInterpretTrackFile>
     using ReadAndInterpretTrackFileDetour = modloader::basic_file_detour<Traits,
-                                                injector::function_hooker<addr, int(const char*, void**, int*, float*, int)>,
-                                                                                int, const char*, void**, int*, float*, int>; 
+                                                injector::function_hooker<addr, int(const char*, void**, int*, float*, /* III only -> */ int, int, int, int, int)>,
+                                                                                int, const char*, void**, int*, float*,/* III only -> */ int, int, int, int, int>;
+
     template<uintptr_t addr, class Traits = dtraits::WinCreateFileA>
     using WinCreateFileA = modloader::basic_file_detour<Traits,
                                                 injector::function_hooker_stdcall<addr, HANDLE(LPCTSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>,
                                                                                         HANDLE, LPCTSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE>;
 
 
-  
+    template<uintptr_t addr, class Traits = dtraits::LoadAtomic2Return>
+    using LoadAtomic2ReturnDetour = modloader::basic_file_detour<Traits,
+                                                injector::function_hooker<addr, void*(const char*)>,
+                                                                                void*, const char*>; 
+
+    // function prototype is the same, too lazy to copy and paste more stuff :)
+    template<uintptr_t addr>
+    using Gta3LoadIfpDetour = LoadAtomic2ReturnDetour<addr>;
 }
 
 

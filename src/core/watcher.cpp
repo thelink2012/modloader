@@ -10,6 +10,7 @@
 using namespace modloader;
 using time_point = std::chrono::steady_clock::time_point;
 
+
 /*
  *  This file contains some pretty sad win32 code
  *  Watches the filesystem for changes and then sends it to UpdateFromJournal (another .cpp)
@@ -24,9 +25,8 @@ static HANDLE hDirectory;       // Handle to modloader/ directory, which we'll b
 static OVERLAPPED overlapped;   // Watches using async I/O  
 static HANDLE hCancelEvent;     // Cancels the I/O operation
 static CRITICAL_SECTION mutex;  // Used to avoid data races to 'last_change' and 'journal' variables
-static ULONGLONG has_changes = FALSE;// Used to determine if anything changed in the journal (and last_change) (should use atomic operations to set)
-static ULONGLONG kill_watcher;       // Should the watcher thread be killed? (should use atomic operations to set)
-// ^ use ULONGLONG instead of LONG or something else because of compatibility with mingw-w64
+static LONG has_changes = FALSE;// Used to determine if anything changed in the journal (and last_change) (should use atomic operations to set)
+static LONG kill_watcher;       // Should the watcher thread be killed? (should use atomic operations to set)
 
 // Journaling changes
 static time_point last_change;  // Last time something changed in the filesystem
@@ -151,7 +151,7 @@ static DWORD __stdcall WatcherThread(void*)
     memset(&overlapped, 0, sizeof(overlapped));
     overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-    while(InterlockedAnd(&kill_watcher, TRUE) == FALSE)
+    while(_InterlockedAnd(&kill_watcher, TRUE) == FALSE)
     {
         // Watch the next changes in the modloader directory
         if(ReadDirectoryChangesW(hDirectory, notifies, notifies_bufsize, TRUE,
@@ -165,7 +165,7 @@ static DWORD __stdcall WatcherThread(void*)
                 case (WAIT_OBJECT_0 + 0):   // hCancelEvent
                 {
                     CancelIo(hDirectory);
-                    InterlockedOr(&kill_watcher, TRUE);
+                    _InterlockedOr(&kill_watcher, TRUE);
                     break;
                 }
 
@@ -211,12 +211,12 @@ static DWORD __stdcall WatcherThread(void*)
  */
 static Loader::Journal CheckoutJournal()
 {
-    if(InterlockedAnd(&has_changes, TRUE))
+    if(_InterlockedAnd(&has_changes, TRUE))
     {
         scoped_lock xlock(mutex);   // lock for accessing last_change and the journal
         if((std::chrono::steady_clock::now() - last_change) >= refresh_delay)
         {
-            InterlockedAnd(&has_changes, FALSE);
+            _InterlockedAnd(&has_changes, FALSE);
             return Loader::Journal(std::move(journal));
         }
     }
@@ -295,7 +295,7 @@ static void RegisterError()
 static void NotifyJournalChange()
 {
     last_change = std::chrono::steady_clock::now();
-    InterlockedOr(&has_changes, TRUE);
+    _InterlockedOr(&has_changes, TRUE);
 }
 
 /*

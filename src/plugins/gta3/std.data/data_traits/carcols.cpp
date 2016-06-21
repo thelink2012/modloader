@@ -140,9 +140,17 @@ static auto xinit = initializer([](DataPlugin* plugin_ptr)
                 if(match.size() == 4 && MatchModelString(match[1])) // matches vehicle model?
                 {
                     carcols_store store;
-                    if(match[2].length()) store.insert<carcols_traits::car_type>(line);
-                    else if(match[3].length()) store.insert<carcols_traits::car4_type>(line);
-                    return store;
+                    if(match[2].length())
+                    {
+                        store.insert<carcols_traits::car_type>(line);
+                        return store;
+                    }
+                    else if(gvm.IsSA() && match[3].length())
+                    {
+                        store.insert<carcols_traits::car4_type>(line);
+                        return store;
+                    }
+                    return nothing;
                 }
             }
             else // We're still not able to tell if this is a carcol line, we need the models names! But maybe...

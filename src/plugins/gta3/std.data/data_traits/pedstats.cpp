@@ -13,15 +13,15 @@ struct pedstats_traits : public data_traits
     static const bool has_sections      = false;
     static const bool per_line_section  = false;
 
-    struct dtraits : modloader::dtraits::OpenFile
+    struct dtraits : modloader::dtraits::SaOpenOr3VcLoadFileDetour
     {
         static const char* what() { return "ped stats"; }
     };
     
-    using detour_type = modloader::OpenFileDetour<0x5BB89F, dtraits>;
+    using detour_type = modloader::SaOpenOr3VcLoadFileDetour<0x5BB89F, dtraits>;
 
     using key_type      = int;
-    using value_type    = data_slice<string, real_t, real_t, pack<int16_t, 4>, real_t, real_t, int16_t, int16_t>;
+    using value_type    = data_slice<string, real_t, real_t, pack<int16_t, 4>, real_t, real_t, int16_t, SAOnly<int16_t>>;
 
     key_type key_from_value(const value_type&)
     {

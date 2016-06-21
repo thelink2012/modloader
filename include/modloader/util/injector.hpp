@@ -26,6 +26,21 @@
 #include <injector/calling.hpp>
 #include <injector/utility.hpp>
 
+extern bool trying_address;
+
+
+//
+//  We usually use GTA SA addresses as base for stuff, but in the case any III/VC address is used as base
+//  please use the xVc and x3d macros.
+//
+
+static const uintptr_t vc_addr_begin   = 0x04000000;
+static const uintptr_t gta3_addr_begin = 0x06000000;
+
+#define xVc(addr)  ((addr) + vc_addr_begin)
+#define xIII(addr)  ((addr) + gta3_addr_begin)
+#define xSa(addr)  ((addr)) // not necessary to use
+
 namespace modloader
 {
     using namespace injector;
@@ -44,8 +59,9 @@ namespace modloader
         auto Log = modloader::plugin_ptr? modloader::plugin_ptr->Log : nullptr;
 
         if(Log) Log("Trying to get optional address 0x%p...", addr.get_raw<void>());
+        trying_address = true;
         void* x = addr.get(); 
-        //if(!x && Log) Log("Ignore the warning above");
+        trying_address = false;
 
         return auto_pointer(x);
     }

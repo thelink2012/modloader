@@ -37,6 +37,9 @@ using surfaud_store = gta3::data_store<surfaud_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadSurfaceInfo = std::bind(injector::thiscall<void(void*)>::call<0x55F420>, mem_ptr(0xB79538).get<void>());
-    plugin_ptr->AddMerger<surfaud_store>("surfaud.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceInfo));
+    if(gvm.IsSA())
+    {
+        auto ReloadSurfaceInfo = std::bind(injector::thiscall<void(void*)>::call<0x55F420>, mem_ptr(0xB79538).get<void>());
+        plugin_ptr->AddMerger<surfaud_store>("surfaud.dat", true, false, false, reinstall_since_start, gdir_refresh(ReloadSurfaceInfo));
+    }
 });

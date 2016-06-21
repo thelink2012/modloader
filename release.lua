@@ -21,6 +21,7 @@ newoption {
     description = "The toolset used to compile the release build",
     allowed     = {
         { "vs2013", "Microsoft Visual Studio 2013"  },
+        { "vs2015", "Microsoft Visual Studio 2015"  },
         { "gcc",    "GNU Compiler Collection"       }
     }
 }
@@ -61,7 +62,8 @@ function main()
     print "Building..."
     if build == "msbuild" then
     
-        execute("msbuild build_temp/modloader.sln /p:configuration=Release /p:platform=Win32")
+         -- also use 'set CL=/MP' at release.bat
+        execute("msbuild build_temp/modloader.sln /p:configuration=Release /p:platform=Win32 /m")
 
         -- Install THEN move pdbs
         install()

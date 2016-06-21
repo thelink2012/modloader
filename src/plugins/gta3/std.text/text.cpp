@@ -22,6 +22,7 @@ class TextPlugin : public modloader::basic_plugin
         std::map<uint32_t, const modloader::file*> gxt; // GXT Files Map<hash, file>
         modloader::fxt_manager fxt;                     // FXT Files Manager
 
+        LoadFileDetour<0x6A0228> gxt_d1_gta3;           // CText::Load detour for GTA III
         OpenFileDetour<0x6A0228> gxt_d1;                // CText::Load detour
         OpenFileDetour<0x69FD5A> gxt_d2;                // CText::LoadMissionText detour
 
@@ -58,7 +59,7 @@ const TextPlugin::info& TextPlugin::GetInfo()
  */
 bool TextPlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         this->fxt.make_samp_compatible();
 
@@ -70,10 +71,18 @@ bool TextPlugin::OnStartup()
         };
         
         // Patch the game with detours
-        gxt_d1.make_call();
-        gxt_d2.make_call();
-        gxt_d1.OnTransform(transformer);
-        gxt_d2.OnTransform(transformer);
+        if(gvm.IsIII())
+        {
+            gxt_d1_gta3.make_call();
+            gxt_d1_gta3.OnTransform(transformer);
+        }
+        else
+        {
+            gxt_d1.make_call();
+            gxt_d1.OnTransform(transformer);
+            gxt_d2.make_call();
+            gxt_d2.OnTransform(transformer);
+        }
         return true;
     }
     return false;
@@ -178,8 +187,11 @@ void TextPlugin::ReloadGXT()
     if(loader->has_game_started)    // Only if game has started up...
     {
         injector::scoped_nop<10> nop_check;
-        nop_check.make_nop(0x57326E, 6);                                        // NOP some menu field check that avoids reloading of text
+        nop_check.make_nop(0x57326E, gvm.IsIII()? 2 : 6);                       // NOP some menu field check that avoids reloading of text
         void* menumgr = lazy_pointer<0xBA6748>().get();                         // FrontEndManager
-        injector::thiscall<void(void*, bool)>::call<0x573260>(menumgr, false);  // CMenuManager::InitialiseChangedLanguageSettings
+        if(gvm.IsSA())
+            injector::thiscall<void(void*, bool)>::call<0x573260>(menumgr, false);  // CMenuManager::InitialiseChangedLanguageSettings
+        else
+            injector::thiscall<void(void*)>::call<0x573260>(menumgr);  // CMenuManager::InitialiseChangedLanguageSettings (?)
     }
 }

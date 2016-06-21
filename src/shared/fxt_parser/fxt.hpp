@@ -14,8 +14,9 @@
  *
  */
 #pragma once
-#include <injector/hooking.hpp>
+#include <modloader/util/injector.hpp>
 #include <map>
+#include <vector>
 
 namespace injector
 {
@@ -48,6 +49,7 @@ namespace injector
             typedef const char* (__fastcall *GetType)(void*, int, const char*);
             typedef typename TextMap::key_type hash_type;  
             typedef std::map<hash_type, TextMap> TableMap;
+            using string_container = typename TextMap::value_type::second_type;
 
         private:
             struct static_data {
@@ -70,12 +72,35 @@ namespace injector
         public:
 
             /*
+             *  Used on III/VC to get a wchar string
+             */
+            static string_container to_wchar(const char* value)
+            {
+                string_container str; str.reserve((strlen(value) + 1) * 2);
+                for(auto p = value; *p; ++p)
+                {
+                    str.emplace_back(*p); str.emplace_back('\0');   // character
+                }
+                str.emplace_back('\0'); str.emplace_back('\0'); // null terminator
+                return str;
+            }
+
+            /*
+             *  Used on SA to get a char string
+             */
+            static string_container to_char(const char* value)
+            {
+                string_container str(value, value + strlen(value) + 1); //+1 for terminator
+                return str;
+            }
+
+            /*
              *  Adds a GXT @key - @value pair to the text map for use in our GxtHook 
              */
             static void add(const char* key, const char* value, hash_type table = 0)
             {
                 if(data().can_patch) patch();
-                data().tmap[table][GetHash(key)] = value;
+                data().tmap[table][GetHash(key)] = gvm.IsIII() || gvm.IsVC()? to_wchar(value) : to_char(value);
             }
 
             /*
@@ -114,7 +139,7 @@ namespace injector
                     if(it_key != it_table->second.end())
                         return it_key->second.c_str();
                 }
-                return "";
+                return "\0\0\0\0";  // works from utf-8 to utf-32
             }
 
 
@@ -213,7 +238,8 @@ namespace injector
                 for(auto t = tables.begin(); t != tables.end(); ++t)
                 {
                     auto it = t->second.find(key_hash);
-                    if(it != t->second.end()) return it->second.c_str();
+                    if(it != t->second.end())
+                        return it->second.data();
                 }
                 return nullptr;
             }

@@ -40,7 +40,15 @@ struct TraitsSA : TraitsGTA
         Weapon = 4, Clump = 5, Vehicle = 6, Ped = 7, LodAtomic = 8
     };
 
+    // Type of a CVehicle
+    enum class VehicleType : uint8_t
+    {
+        Automobile = 0xFE, Bike = 0xFF, // TODO (not needed, but still)
+    };
 
+    // VTables
+    static const size_t vmt_SetModelIndex = 5;
+    static const size_t vmt_DeleteRwObject = 8;
 
     // Gets the entity model id
     static id_t GetEntityModel(void* entity)
@@ -72,6 +80,13 @@ struct TraitsSA : TraitsGTA
         return (char*)(GetPedIntelligence(entity)) + 0x4;
     }
 
+    // Gets the type of a CVehicle entity.
+    static VehicleType GetVehicleType(void* entity)
+    {
+        DoesNotExistInThisGame();
+        // TODO actually exist, but meh, too lazy to implement atm.
+		return VehicleType::Automobile; // to be able to compile in VS2013
+    }
 
 
     // Gets the model information structure from it's id

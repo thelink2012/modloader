@@ -19,6 +19,9 @@ using OpenFontsDetour = modloader::OpenFileDetour<0x7187DB, fonts_traits::dtrait
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     auto ReloadFonts = injector::cstd<void()>::call<0x7187C0>;
     plugin_ptr->AddDetour("fonts.dat", reinstall_since_start, OpenFontsDetour(), gdir_refresh(ReloadFonts));
 });

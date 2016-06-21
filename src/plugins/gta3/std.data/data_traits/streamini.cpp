@@ -36,6 +36,9 @@ using streamini_store = gta3::data_store<streamini_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    plugin_ptr->AddMerger<streamini_store>("stream.ini", true, false, false, no_reinstall);
+    if(gvm.IsSA())
+    {
+        plugin_ptr->AddMerger<streamini_store>("stream.ini", true, false, false, no_reinstall);
+    }
 });
 

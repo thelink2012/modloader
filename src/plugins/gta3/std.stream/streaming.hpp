@@ -17,6 +17,8 @@
 #include "CStreamingInfo.h"
 
 #include <traits/gta3/sa.hpp>
+#include <traits/gta3/vc.hpp>
+#include <traits/gta3/iii.hpp>
 
 using namespace modloader;
 
@@ -71,16 +73,19 @@ inline ResType GetResTypeFromExtension(const char* ext)
 {
     if(ext && ext[0])   // Make sure we have ext, we're allowed to send a null string
     {
-        if(!_stricmp(ext, "dff"))         return ResType::Model;
-        else if(!_stricmp(ext, "txd"))    return ResType::TexDictionary;
-        else if(!_stricmp(ext, "col"))    return ResType::Collision;
-        else if(!_stricmp(ext, "ifp"))    return ResType::AnimFile;
-        else if(gvm.IsSA()) // The following files are present only in GTA SA
+        if(!_stricmp(ext, "dff")) return ResType::Model;
+        if(!_stricmp(ext, "txd")) return ResType::TexDictionary;
+        if(!_stricmp(ext, "col")) return ResType::Collision; // although not streamed on III
+        if(!_stricmp(ext, "ifp")) return ResType::AnimFile;  // although not streamed on III
+        if(gvm.IsVC() || gvm.IsSA())
         {
-            if(!_stricmp(ext, "scm"))         return ResType::StreamedScript;
-            else if(!_stricmp(ext, "ipl"))    return ResType::StreamedScene;
-            else if(!_stricmp(ext, "dat"))    return ResType::Nodes;
-            else if(!_stricmp(ext, "rrr"))    return ResType::VehRecording;
+            if(gvm.IsSA())
+            {
+                if(!_stricmp(ext, "scm")) return ResType::StreamedScript;
+                if(!_stricmp(ext, "ipl")) return ResType::StreamedScene;
+                if(!_stricmp(ext, "dat")) return ResType::Nodes;
+                if(!_stricmp(ext, "rrr")) return ResType::VehRecording;
+            }
         }
     }
     return ResType::None;
@@ -115,7 +120,7 @@ inline void FillDirectoryEntry(DirectoryInfo& entry, const char* filename, uint3
 
 /*
  *  CAbstractStreaming
- *      Abstraction around the game's streaming.
+ *      Abstraction around the game's streaming->
  *      This system is capable of loading files from disk and refreshing them.
  */
 class CAbstractStreaming
@@ -130,8 +135,6 @@ class CAbstractStreaming
         CRITICAL_SECTION cs;                        // This must be used together with imported files list for thread-safety
         std::string fbuffer;                        // File buffer to avoid a dynamic allocation everytime we open a model
         std::list<const modloader::file*> imgFiles; // List of img files imported with Mod Loader
-
-        TraitsSA traits;                            // Game specific info
 
     public:
         // Basic types
@@ -284,6 +287,7 @@ class CAbstractStreaming
 
         // Misc (used by hooks)
         const char* GetCdStreamPath(const char* filepath);
+        const char* GetCdDirectoryPath(const char* filepath);
         bool DoesModelNeedsFallback(id_t id);
         static HANDLE TryOpenAbstractHandle(int index, HANDLE hFile);
 
@@ -359,8 +363,26 @@ class CAbstractStreaming
     public://protected:
 
         std::string TryLoadNonStreamedResource(std::string filepath, NonStreamedType type);
+
+        void RemoveNonStreamedFromRawModels();
+
+        // Checks if a file is not part of the streaming engine.
         bool IsNonStreamed(const modloader::file* file)
-        { return (this->non_stream.count(file->hash) > 0); }
+        {
+            if(gvm.IsIII())
+            {
+                switch(GetResType(*file))
+                {
+                    // GetResTypeFromExtension accepts giving those types on III, but they're not
+                    // streamed in this game, only static loaded and such.
+                    case ResType::Collision:
+                    case ResType::AnimFile:
+                        return true;
+                }
+            }
+
+            return (this->non_stream.count(file->hash) > 0);
+        }
 
         // Makes a previosly imported file use the stock resource info instead the one on disk.
         // The force parameter may only be true from an call before info setup in CStreaming::RequestModelStream, otherwise it's undefined behaviour.
@@ -492,12 +514,14 @@ class CAbstractStreaming
 };
 
 
-extern CAbstractStreaming streaming;
+extern CAbstractStreaming* streaming;
 extern "C" int iNextModelBeingLoaded;
 extern "C" int iModelBeingLoaded;
 extern "C" struct CStreamingInfo* ms_aInfoForModel;
 extern "C" struct CDirectory* clothesDirectory;;
-
-
+extern "C" DWORD *pStreamCreateFlags;
+extern "C" void** pStreamingBuffer;
+extern "C" uint32_t* streamingBufferSize;
+extern "C" void(*LoadCdDirectory2)(const char*, int);
 
 #endif

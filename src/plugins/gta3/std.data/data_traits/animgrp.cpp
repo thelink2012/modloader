@@ -140,6 +140,9 @@ using animgrp_store = gta3::data_store<animgrp_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    plugin_ptr->AddMerger<animgrp_store>("animgrp.dat", true, false, false, no_reinstall);
+    if(gvm.IsSA())
+    {
+        plugin_ptr->AddMerger<animgrp_store>("animgrp.dat", true, false, false, no_reinstall);
+    }
 });
 

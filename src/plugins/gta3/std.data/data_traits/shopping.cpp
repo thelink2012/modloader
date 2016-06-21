@@ -306,6 +306,9 @@ using detour_type = modloader::OpenFileDetour<addr, shopping_traits::dtraits>;
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     //  Even the initializer is different from the other data traits since we have to hook many calls for the same file!!!!!!
 
     auto ReloadShopping = []

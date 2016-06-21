@@ -8,7 +8,7 @@
 #include "streaming.hpp"
 using namespace modloader;
 
-CAbstractStreaming streaming;
+CAbstractStreaming* streaming;
 
 
 /*
@@ -206,6 +206,9 @@ bool CAbstractStreaming::UninstallFile(const modloader::file& file)
     // Ahhh, see the comments at InstallFile.....
     if(!this->bHasInitializedStreaming)
     {
+        if(IsNonStreamed(&file))
+            return false;
+
         // Streaming hasn't initialized, just remove it from our raw list
         raw_models.erase(file.filename());
         return true;

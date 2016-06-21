@@ -86,7 +86,11 @@ using water_store = gta3::data_store<water_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadWater = injector::cstd<void()>::call<0x6EAE80>;
-    plugin_ptr->AddMerger<water_store>("water.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadWater));
+    // water.dat is unused in III/VC
+    if(gvm.IsSA())
+    {
+        auto ReloadWater = injector::cstd<void()>::call<0x6EAE80>;
+        plugin_ptr->AddMerger<water_store>("water.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadWater));
+    }
 });
 

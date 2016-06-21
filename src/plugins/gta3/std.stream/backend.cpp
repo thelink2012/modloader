@@ -13,6 +13,8 @@ extern "C"
     // Assembly hooks at "asm/" folder
     extern void HOOK_RegisterNextModelRead();
     extern void HOOK_NewFile();
+    extern void HOOK_RegisterNextModelRead_VC();
+    extern void HOOK_NewFile_3VC();
     extern void HOOK_FixBikeSuspLines();
 
     // Next model read registers. It's important to have those two vars! Don't leave only one!
@@ -21,26 +23,33 @@ extern "C"
 
     // Note: Don't perform pointer arithimetic, or indexing, with this pointer! This have a sizeof = 0 (4 actually).
     // Use the InfoForModel(id) and InfoForModelIndex(info) functions!!!
-    CStreamingInfo* ms_aInfoForModel = injector::ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+    CStreamingInfo* ms_aInfoForModel;
 
-    //
-    DWORD *pStreamCreateFlags        = memory_pointer(0x8E3FE0).get();
+    DWORD *pStreamCreateFlags;
+
+    void** pStreamingBuffer;
+
+    uint32_t* streamingBufferSize;
+
+    void(*LoadCdDirectory2)(const char*, int);
+
+    CDirectory* clothesDirectory;
 
     // Returns the file handle to be used for iModelBeingLoaded (called from Assembly)
     HANDLE CallGetAbstractHandle(HANDLE hFile)
     {
         if(iModelBeingLoaded == -1) return hFile;
-        return streaming.TryOpenAbstractHandle(iModelBeingLoaded, hFile);
+        return streaming->TryOpenAbstractHandle(iModelBeingLoaded, hFile);
     }
 
     // Registers the next model to be loaded (called from Assembly)
     void RegisterNextModelRead(int id)
     {
         iNextModelBeingLoaded = id;
-        if(streaming.DoesModelNeedsFallback(id))    // <- make sure the resource hasn't been deleted from disk
+        if(streaming->DoesModelNeedsFallback(id))    // <- make sure the resource hasn't been deleted from disk
         {
             plugin_ptr->Log("Resource id %d has been deleted from disk, falling back to stock model.", id);
-            streaming.FallbackResource(id, true);   // forceful but safe since we are before info setup in RequestModelStream
+            streaming->FallbackResource(id, true);   // forceful but safe since we are before info setup in RequestModelStream
         }
     }
 
@@ -49,7 +58,7 @@ extern "C"
         LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
         DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
     {
-        LPCSTR lpActualFileName = streaming.GetCdStreamPath(lpFileName);
+        LPCSTR lpActualFileName = streaming->GetCdStreamPath(lpFileName);
         plugin_ptr->Log("Opening file for streaming \"%s\"", lpActualFileName);
         return CreateFileA(
             lpActualFileName, dwDesiredAccess, dwShareMode,
@@ -88,11 +97,11 @@ int __stdcall CdStreamThread()
         pQueue = &cdinfo.queue;
         ppStreams = &cdinfo.pStreams;
     }
-    else
+    else if(gvm.IsVC() || gvm.IsIII())
     {
-        auto message = "Warning: Failed to initialise CdStreamThread; This should never happen.";
-        plugin_ptr->Log(message);
-        throw std::runtime_error(message);
+        pSemaphore = memory_pointer(xVc(0x6F76F4)).get<HANDLE>();
+        pQueue = memory_pointer(xVc(0x6F7700)).get<Queue>();
+        ppStreams = memory_pointer(xVc(0x6F76FC)).get<CdStream*>();
     }
 
     // Loop in search of things to load in the queue
@@ -123,9 +132,9 @@ int __stdcall CdStreamThread()
             // Try to find abstract file from hFile
             if(true)
             {
-                scoped_lock xlock(streaming.cs);
-                auto it = std::find(streaming.stm_files.begin(), streaming.stm_files.end(), hFile);
-                if(it != streaming.stm_files.end())
+                scoped_lock xlock(streaming->cs);
+                auto it = std::find(streaming->stm_files.begin(), streaming->stm_files.end(), hFile);
+                if(it != streaming->stm_files.end())
                 {
                     bIsAbstract = true;
                     
@@ -177,7 +186,7 @@ int __stdcall CdStreamThread()
         RemoveFirstInQueue(pQueue);
         
         // Cleanup
-        if(bIsAbstract) streaming.CloseModel(sfile);
+        if(bIsAbstract) streaming->CloseModel(sfile);
         cd->nSectorsToRead = 0;
         if(cd->bLocked) ReleaseSemaphore(cd->semaphore, 1, 0);
         cd->bInUse = false;
@@ -225,6 +234,44 @@ const char* CAbstractStreaming::GetCdStreamPath(const char* filepath_)
     return modloader::szNullFile;
 }
 
+/*
+ *  CAbstractStreaming::GetCdDirectoryPath
+ *      "MODELS/GTA3.DIR" -> ...
+ *
+ *      WARNING: The returned path buffer is very temporary.
+*/
+const char* CAbstractStreaming::GetCdDirectoryPath(const char* filepath_)
+{
+    if(gvm.IsSA()) // on SA the directory is on the header of the stream.
+    {
+        return GetCdStreamPath(filepath_);
+    }
+
+    if(filepath_)
+    {
+        // Very dirty, I cannot afford the time to implement something better.
+
+        static std::string temp_dirpath;
+        size_t pos;
+
+        temp_dirpath = filepath_;
+        if((pos = temp_dirpath.rfind('.')) != std::string::npos)
+            temp_dirpath.replace(pos+1, 3, "img");
+
+        const char* imgpath = GetCdStreamPath(temp_dirpath.c_str());
+
+        temp_dirpath = imgpath;
+        if((pos = temp_dirpath.rfind('.')) != std::string::npos)
+            temp_dirpath.replace(pos+1, 3, "dir");
+
+        filepath_ = temp_dirpath.c_str();
+        return filepath_;
+    }
+
+    // It's abstract, ignore name but actually have a valid openable name
+    return modloader::szNullFile;
+}
+
 
 /*
  *  CAbstractStreaming::TryOpenAbstractHandle
@@ -235,12 +282,12 @@ HANDLE CAbstractStreaming::TryOpenAbstractHandle(int index, HANDLE hFile)
     CAbstractStreaming::AbctFileHandle* f = nullptr;
     
     // Try to find the object index in the import list
-    auto it = streaming.imports.find(index);
-    if(it != streaming.imports.end())
+    auto it = streaming->imports.find(index);
+    if(it != streaming->imports.end())
     {
          // Don't use our custom model if we're falling back to the original file because of an error
         if(it->second.isFallingBack == false)
-            f = streaming.OpenModel(it->second, it->first);
+            f = streaming->OpenModel(it->second, it->first);
     }
     
     // Returns the file from the abstract streaming if available
@@ -332,7 +379,15 @@ void CAbstractStreaming::BuildPrevOnCdMap()
 void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
-    
+
+    // Pointers
+    ms_aInfoForModel    = ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+    pStreamCreateFlags  = memory_pointer(0x8E3FE0).get();
+    pStreamingBuffer    = memory_pointer(0x8E4CAC).get<void*>();
+    streamingBufferSize = memory_pointer(0x8E4CA8).get<uint32_t>();
+    LoadCdDirectory2    = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
+    clothesDirectory    = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
+
     // See data.cpp
     this->DataPatch();
 
@@ -340,6 +395,9 @@ void CAbstractStreaming::Patch()
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
         plugin_ptr->Log("Initializing the streaming...");
+
+        // Remove non-streamed resources that are still puliting the raw_models list.
+        this->RemoveNonStreamedFromRawModels();
 
         // Load standard cd directories.....
         TempCdDir_t tmp_cd_dir;
@@ -360,31 +418,77 @@ void CAbstractStreaming::Patch()
     // Standard models
     if(true)
     {
-        using cdread_hook = function_hooker<0x40CF34, int(int, void*, int, int)>;
-
         // Making our our code for the stream thread would make things so much better
         MakeJMP(0x406560, raw_ptr(CdStreamThread));
 
         // We need to know the next model to be read before the CdStreamRead call happens
-        MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
-        MakeNOP(0x40CCA6 + 5, 2);
+        if(gvm.IsSA())
+        {
+            MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
+            MakeNOP(0x40CCA6 + 5, 2);
+        }
+        else if(gvm.IsVC())
+        {
+            MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead_VC));
+            MakeCALL(xVc(0x40B738), raw_ptr(HOOK_RegisterNextModelRead_VC));
+            MakeNOP(0x40CCA6 + 5, 1);
+            MakeNOP(xVc(0x40B738) + 5, 1);
+        }
+        else if(gvm.IsIII())
+        {
+            using xcd_hook1 = function_hooker_thiscall<xIII(0x40A128), char(CStreamingInfo*, int*, int*)>;
+            using xcd_hook2 = function_hooker_thiscall<xIII(0x40A4F3), char(CStreamingInfo*, int*, int*)>;
+
+            auto fn_register = [this](xcd_hook1::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+            {
+                RegisterNextModelRead(this->InfoForModelIndex(*model));
+                return GetCdPosnAndSize(model, pOffset, pSize);
+            };
+
+            make_static_hook<xcd_hook1>(fn_register);
+            make_static_hook<xcd_hook2>(fn_register);
+        }
 
         // We need to return a new hFile if the file is on disk
-        MakeCALL(0x406A5B, raw_ptr(HOOK_NewFile));
-        MakeNOP(0x406A5B + 5, 1);
-
-        // We need to know the model index that will pass throught CallGetAbstractHandle
-        make_static_hook<cdread_hook>([](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
+        if(gvm.IsSA())
         {
-            iModelBeingLoaded = iNextModelBeingLoaded;
-            auto result = CdStreamRead(streamNum, buf, sectorOffset, sectorCount);
-            iModelBeingLoaded = iNextModelBeingLoaded = -1;
-            return result;
-        });
+            MakeCALL(0x406A5B, raw_ptr(HOOK_NewFile));
+            MakeNOP(0x406A5B + 5, 1);
+        }
+        else if(gvm.IsVC() || gvm.IsIII())
+        {
+            MakeCALL(xVc(0x408521), raw_ptr(HOOK_NewFile_3VC));
+        }
+
+        if(true)
+        {
+            using cdread_hook = function_hooker<0x40CF34, int(int, void*, int, int)>;
+            using cdread_hook2 = function_hooker<xVc(0x40B76A), int(int, void*, int, int)>;
+            using cdread_hook3 = function_hooker<xVc(0x40B780), int(int, void*, int, int)>;
+
+            // TODO III VC see unhandled call to CdStreamRead at gta-vc:0x627D50
+
+            // We need to know the model index that will pass throught CallGetAbstractHandle
+            auto f = [](cdread_hook::func_type CdStreamRead, int& streamNum, void*& buf, int& sectorOffset, int& sectorCount)
+            {
+                iModelBeingLoaded = iNextModelBeingLoaded;
+                auto result = CdStreamRead(streamNum, buf, sectorOffset, sectorCount);
+                iModelBeingLoaded = iNextModelBeingLoaded = -1;
+                return result;
+            };
+
+            make_static_hook<cdread_hook>(f);
+
+            if(gvm.IsVC() || gvm.IsIII())
+            {
+                make_static_hook<cdread_hook2>(f);
+                make_static_hook<cdread_hook3>(f);
+            }
+        }
     }
 
     // Special models
-    if(true)
+    if(gvm.IsSA() || gvm.IsVC() || gvm.IsIII())
     {
         static DirectoryInfo* pRQSpecialEntry;    // Stores the special entry we're working with
         using findspecial_hook  = function_hooker_thiscall<0x409F76, char(void*, const char*, unsigned int&, unsigned int&)>;
@@ -402,10 +506,23 @@ void CAbstractStreaming::Patch()
         {
             // Before this being called the game built the InfoForModel entry for this index based on the stock entry pRQSpecialEntry
             // Register stock entry, so it can be restored during gameplay if necessary
-            DirectoryInfo entry  = *pRQSpecialEntry;                   // Make copy to do proper processing
-            auto img_id          = pRQSpecialEntry->m_dwFileOffset >> 24;       // Extract img id from file offset
-            entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset & 0xFFFFFF;  // Extract actual file offset
-            this->RegisterStockEntry(strcat(entry.m_szFileName, ".dff"), entry, index, img_id);
+            {
+                DirectoryInfo entry  = *pRQSpecialEntry;                   // Make copy to do proper processing
+                uint32_t img_id;
+
+                if(gvm.IsSA())
+                {
+                    img_id               = pRQSpecialEntry->m_dwFileOffset >> 24;
+                    entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset & 0xFFFFFF; 
+                }
+                else
+                {
+                    img_id               = 0; // on III/VC there's no img_id, it's based on m_dwFileOffset itself.
+                    entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset;
+                }
+
+                this->RegisterStockEntry(strcat(entry.m_szFileName, ".dff"), entry, index, img_id);
+            }
 
             // Try to find abstract special entry related to this request....
             // If it's possible, quickly import our entry into this special index
@@ -472,23 +589,31 @@ void CAbstractStreaming::Patch()
         using addr3_hook  = function_hooker<0x5B63E8, id_t(const char*)>;
         using addscm_hook = function_hooker_thiscall<0x5B6419, id_t(void*, const char*)>;
 
-        // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
-        make_static_hook<addcol_hook>([this](addcol_hook::func_type AddColSlot, const char*& name)
+        // Although streamed COLs exist in Vice too, they are checked, so we don't need to check ourselves
+        if(gvm.IsSA())
         {
-            return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
-        });
+            TraitsSA traits; // see comment above
+
+            // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
+            make_static_hook<addcol_hook>([this, traits](addcol_hook::func_type AddColSlot, const char*& name)
+            {
+                return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
+            });
+        }
 
         // The following files are in SA only
         if(gvm.IsSA())
         {
+            TraitsSA traits;
+
             // CVehicleRecording do not care about duplicates, but we should
-            make_static_hook<addr3_hook>([this](addr3_hook::func_type RegisterRecordingFile, const char*& name)
+            make_static_hook<addr3_hook>([this, traits](addr3_hook::func_type RegisterRecordingFile, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "rrr", traits.rrr_start, RegisterRecordingFile, name);
             });
             
             // CStreamedScripts do not care about duplicates but we should
-            make_static_hook<addscm_hook>([this](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
+            make_static_hook<addscm_hook>([this, traits](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "scm", traits.scm_start, RegisterScript, self, name);
             });
@@ -502,25 +627,40 @@ void CAbstractStreaming::Patch()
         static void*(*OpenFile)(const char*, const char*);
         static void*(*RwStreamOpen)(int, int, const char*);
 
-        static auto OpenFileHook = [](const char* filename, const char* mode)
+        auto OpenFileCdStreamHook = [](const char* filename, const char* mode)
         {
-            return OpenFile(streaming.GetCdStreamPath(filename), mode);
+            return OpenFile(streaming->GetCdStreamPath(filename), mode);
         };
 
-        static auto RwStreamOpenHook = [](int a, int b, const char* filename)
+        auto OpenFileCdDirectoryHook = [](const char* filename, const char* mode)
         {
-            return RwStreamOpen(a, b, streaming.GetCdStreamPath(filename));
+            return OpenFile(streaming->GetCdDirectoryPath(filename), mode);
+        };
+
+        auto RwStreamOpenCdStreamHook = [](int a, int b, const char* filename)
+        {
+            return RwStreamOpen(a, b, streaming->GetCdStreamPath(filename));
+        };
+
+        auto RwStreamOpenCdDirectoryHook = [](int a, int b, const char* filename)
+        {
+            return RwStreamOpen(a, b, streaming->GetCdDirectoryPath(filename));
         };
 
         // Resolve the cd stream filenames by ourselves on the following calls
         {
-            auto pOpenFile     = raw_ptr((decltype(OpenFile))(OpenFileHook));
-            OpenFile = MakeCALL(0x5B6183, pOpenFile).get();
-            MakeCALL(0x532361, pOpenFile);
-            MakeCALL(0x5AFC9D, pOpenFile);
-            auto pRwStreamOpen = raw_ptr((decltype(RwStreamOpen))(RwStreamOpenHook));
-            RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpen).get();
-            MakeCALL(0x5B07E9, pRwStreamOpen);
+            auto pOpenFileCdStream     = raw_ptr((decltype(OpenFile))(OpenFileCdStreamHook));
+            auto pOpenFileCdDirectory  = raw_ptr((decltype(OpenFile))(OpenFileCdDirectoryHook));
+
+            OpenFile = MakeCALL(0x5B6183, pOpenFileCdDirectory).get();
+            MakeCALL(0x532361, pOpenFileCdDirectory);
+            MakeCALL(0x5AFC9D, pOpenFileCdStream);
+            if(gvm.IsIII() || gvm.IsVC()) MakeCALL(xVc(0x627D79), pOpenFileCdDirectory);
+
+            auto pRwStreamOpenCdStream = raw_ptr((decltype(RwStreamOpen))(RwStreamOpenCdStreamHook));
+            RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpenCdStream).get(); // <- different context on III but works
+            if(gvm.IsSA()) MakeCALL(0x5B07E9, pRwStreamOpenCdStream);
+            if(gvm.IsIII()) MakeCALL(xIII(0x4BA6F6), pRwStreamOpenCdStream);
         }
 
         // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
@@ -541,7 +681,9 @@ void CAbstractStreaming::Patch()
             injector::WriteMemory(p, &SRXorCreateFileForCdStream, true);
         }
         else
+        {
             injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
+        }
     }
 
     // Some fixes to allow the refreshing process to happen
@@ -551,6 +693,20 @@ void CAbstractStreaming::Patch()
         // we destroy it's model or something. Do just like CQuad and other does, checks if the pointer is null and then allocate it.
         MakeNOP(0x6B89CE, 6);
         MakeCALL(0x6B89CE, HOOK_FixBikeSuspLines);
+    }
+
+    // Disable txd.img / txd.dir
+    if(gvm.IsIII() || gvm.IsVC())
+    {
+        // Make the fopen that checks if txd.img exists return NULL (does not exist).
+        MakeCALL(xVc(0x410814), raw_ptr(return_value<void*, nullptr>));
+        // Do not let __CreateCacheTxdImage do anything, and return that cache wasn't created (false).
+        MakeCALL(xVc(0x41083A), raw_ptr(return_value<bool, false>));
+
+        // Do not even let the code above run!
+        // Important because when __CreateCacheTxd fails on VC, bad things seem to happen.
+        if(gvm.IsVC())
+            MakeCALL(xVc(0x410801), raw_ptr(return_value<bool, true>));
     }
 }
 

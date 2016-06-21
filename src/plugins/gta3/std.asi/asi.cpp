@@ -94,7 +94,10 @@ int ThePlugin::GetBehaviour(modloader::file& file)
             if(file.is_ext("asi"))
             {
                 // Don't load CLEO neither modloader!
-                if(!strcmp(file.filename(), "cleo.asi", false) || !strcmp(file.filename(), "modloader.asi", false))
+                if(!strcmp(file.filename(), "cleo.asi", false)
+                || !strcmp(file.filename(), "iii.cleo.asi", false)
+                || !strcmp(file.filename(), "vc.cleo.asi", false)
+                || !strcmp(file.filename(), "modloader.asi", false))
                 {
                     Log("Warning: Forbidden ASI file found \"%s\"", file.filepath());
                     return MODLOADER_BEHAVIOUR_NO;

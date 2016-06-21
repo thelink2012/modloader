@@ -133,6 +133,9 @@ namespace datalib {
 // Vehicle Upgrades Merger
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
+    if(!gvm.IsSA())
+        return;
+
     auto ReloadUpgrades = []
     {
         // Restore the amount of linked upgrades so carmods.dat can fill it again

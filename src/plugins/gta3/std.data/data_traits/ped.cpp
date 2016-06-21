@@ -11,7 +11,9 @@ using std::string;
 
 enum class PedRelationship : uint8_t
 {
-    None, Hate, Dislike, Like, Respect
+    None,
+    Hate, Dislike, Like, Respect,  // SA
+    Threat, Avoid,                 // III/VC
 };
 
 template<>
@@ -24,6 +26,8 @@ struct enum_map<PedRelationship>
             { "Like", PedRelationship::Like }, 
             { "Dislike", PedRelationship::Dislike }, 
             { "Respect", PedRelationship::Respect }, 
+            { "Threat", PedRelationship::Threat },
+            { "Avoid", PedRelationship::Avoid },
         };
         return xmap;
     }
@@ -36,15 +40,15 @@ struct ped_traits : public data_traits
     static const bool has_sections      = false;
     static const bool per_line_section  = false;
 
-    struct dtraits : modloader::dtraits::OpenFile
+    struct dtraits : modloader::dtraits::SaOpenOr3VcLoadFileDetour
     {
         static const char* what() { return "ped relationship data"; }
     };
     
-    using detour_type = modloader::OpenFileDetour<0x608B45, dtraits>;
+    using detour_type = modloader::SaOpenOr3VcLoadFileDetour<0x608B45, dtraits>;
 
     using key_type      = std::pair<size_t, PedRelationship>;
-    using value_type    = data_slice<either<std::tuple<PedRelationship, set<string>>, string>>;
+    using value_type    = data_slice<either< std::tuple<PedRelationship, set<string>>, std::tuple<string, VC3Only<pack<real_t, 5>>> >>;
 
     // key_from_value
     struct key_from_value_visitor : gta3::data_section_visitor<key_type>
@@ -57,9 +61,9 @@ struct ped_traits : public data_traits
             return key_type(traits.pedtype, get<0>(tuple));
         }
 
-        key_type operator()(const string& pedtype) const
+        key_type operator()(const std::tuple<string, VC3Only<pack<real_t, 5>>>& tuple) const
         {
-            traits.pedtype = modloader::hash(pedtype);
+            traits.pedtype = modloader::hash(get<0>(tuple));
             return key_type(traits.pedtype, PedRelationship::None); 
         }
 
@@ -87,7 +91,6 @@ using ped_store = gta3::data_store<ped_traits, std::map<
 
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    auto ReloadPedRelationship = []{}; // refreshing ped relationship during gameplay might break save game, don't do it at all
+    auto ReloadPedRelationship = [] {}; // refreshing ped relationship during gameplay might break save game, don't do it at all
     plugin_ptr->AddMerger<ped_store>("ped.dat", true, false, false, reinstall_since_load, gdir_refresh(ReloadPedRelationship));
 });
-

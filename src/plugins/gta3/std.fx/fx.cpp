@@ -10,6 +10,8 @@
 using namespace modloader;
 using namespace injector;
 
+static const size_t player_bmp = modloader::hash("player.bmp");
+
 /*
  *  grass_dff_detour  
  *      Grass cannot get detoured using the standard mod loader detourer because it is one call for all grass files
@@ -76,8 +78,9 @@ struct grass_dff_detour : RwStreamOpenDetour<addr>
 class FxPlugin : public modloader::basic_plugin
 {
     private:
-        std::map<size_t, modloader::file_overrider> ovmap;    // Map of files to be overriden, map<hash, overrider>
+        std::map<size_t, modloader::file_overrider> ovmap;      // Map of files to be overriden, map<hash, overrider>
         grass_dff_detour<0x5DD272> grass_detour;                // Grass needs a specialized detouring
+        scoped_write<4> player_bmp_detour;                      // player.bmp
 
     protected:
         // Adds a detour for the file with the specified hash to the overrider subsystem
@@ -116,6 +119,44 @@ class FxPlugin : public modloader::basic_plugin
                 grass_detour.setfile(f? f->filepath() : "", i, j);
             });
         }
+        
+        // Applies a player.bmp skin (III/VC)
+        bool ApplyPlayerBmp(const modloader::file& file)
+        {
+            static std::string player_bmp_path;
+            player_bmp_detour.write(xVc(0x627EB8+1), (player_bmp_path = file.fullpath()).data(), true);
+            RefreshPlayerBmp();
+            return true;
+        }
+
+        // Restores player.bmp skin (III/VC)
+        bool RestorePlayerBmp()
+        {
+            player_bmp_detour.restore();
+            RefreshPlayerBmp();
+            return true;
+        }
+
+        // Refreshes player bmp
+        void RefreshPlayerBmp()
+        {
+            if(this->loader->has_game_loaded)
+            {
+                // We should make the LoadPlayerSkin delete the current skin so it can reload it,
+                // otherwise it'll just skip the reloading because it's already loaded.
+                using delete_tex_hook = function_hooker<xVc(0x627E7F), void*(const char*, const char*)>; 
+                auto delete_tex = make_function_hook<delete_tex_hook>([](delete_tex_hook::func_type RwReadTexture, const char* tex, const char* mask)
+                {
+                    auto RwTextureDestroy = injector::cstd<void(void*)>::call<xSa(0x7F3820)>;
+                    if(void* pTexture = RwReadTexture(tex, mask))
+                        RwTextureDestroy(pTexture);
+                    return nullptr;
+                });
+                
+                // CPlayerInfo::LoadPlayerSkin
+                injector::thiscall<void(void*)>::call<xVc(0x4BBB30)>(mem_ptr(xVc(0x94AD28)).get<void>());
+            }
+        }
 
     public:
         // Finds overrider for the file with the specified hash, rets null if not found
@@ -148,7 +189,7 @@ REGISTER_ML_PLUGIN(::fx_plugin)
  */
 const FxPlugin::info& FxPlugin::GetInfo()
 {
-    static const char* extable[] = { "dff", "txd", "fxp", 0 };
+    static const char* extable[] = { "dff", "txd", "fxp", "bmp", 0 };
     static const info xinfo      = { "FX Loader", get_version_by_date(), "LINK/2012", 48, extable };
     return xinfo;
 }
@@ -160,7 +201,7 @@ const FxPlugin::info& FxPlugin::GetInfo()
  */
 bool FxPlugin::OnStartup()
 {
-    if(gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         // File overrider params
         const auto reinstall_since_start = file_overrider::params(true, true, true, true);
@@ -178,6 +219,8 @@ bool FxPlugin::OnStartup()
         const auto fronten1_txd      = modloader::hash("fronten1.txd");
         const auto fronten2_txd      = modloader::hash("fronten2.txd");
         const auto fronten3_txd      = modloader::hash("fronten3.txd");
+        const auto frontend_txd      = modloader::hash("frontend.txd");
+        const auto menu_txd          = modloader::hash("menu.txd");
         const auto fronten_pc_txd    = modloader::hash("fronten_pc.txd");
         const auto vehicle_txd       = modloader::hash("vehicle.txd");
         const auto plant1_txd        = modloader::hash("plant1.txd");
@@ -189,21 +232,41 @@ bool FxPlugin::OnStartup()
         const auto grass1_2_dff      = modloader::hash("grass1_2.dff");
         const auto grass1_3_dff      = modloader::hash("grass1_3.dff");
         const auto grass1_4_dff      = modloader::hash("grass1_4.dff");
+        const auto arrow_dff         = modloader::hash("arrow.dff");
+        const auto zonecylb_dff      = modloader::hash("zonecylb.dff");
 
-        // Unused (or mostly unused) files dff/txd files in the the models/ folder
-        const size_t unused_table[] =
+        std::vector<const char*> unused_table;
+        unused_table.reserve(24);
+
+        // Unused generic files, don't let std.stream receive them to consume ids
+        if(gvm.IsSA())
         {
-            modloader::hash("misc.txd"),     modloader::hash("wheels.txd"),
-            modloader::hash("wheels.dff"),   modloader::hash("zonecylb.dff"),
-            modloader::hash("hoop.dff"),     modloader::hash("arrow.dff"),
-            modloader::hash("air_vlo.dff"),  modloader::hash("plant1.dff"),
-            modloader::hash("grass2_1.dff"), modloader::hash("grass2_2.dff"),
-            modloader::hash("grass2_3.dff"), modloader::hash("grass2_4.dff"),
-            modloader::hash("grass3_1.dff"), modloader::hash("grass3_2.dff"),
-            modloader::hash("grass3_3.dff"), modloader::hash("grass3_4.dff"),
-            modloader::hash("peds.col"),     modloader::hash("vehicles.col"), 
-            modloader::hash("weapons.col"),
-        };
+            unused_table = {
+                "misc.txd",     "wheels.txd",   "wheels.dff",   "zonecylb.dff",
+                "hoop.dff",     "arrow.dff",    "air_vlo.dff",  "plant1.dff",
+                "grass2_1.dff", "grass2_2.dff", "grass2_3.dff", "grass2_4.dff",
+                "grass3_1.dff", "grass3_2.dff", "grass3_3.dff", "grass3_4.dff",
+                "peds.col",     "vehicles.col",
+            };
+        }
+        else if(gvm.IsVC())
+        {
+            unused_table = {
+                "misc.txd", "intro.txd", "peds.col",
+            };
+        }
+        else if(gvm.IsIII())
+        {
+            unused_table = {
+                "zonecyla.dff", "zonesphr.dff", "sphere.dff", "qsphere.dff", "peds.dff",
+                "peds.col", "commer.col", "indust.col", "suburb.col",
+            };
+        }
+
+
+        //
+        //
+        //
 
         auto ReloadFonts = []
         {
@@ -228,27 +291,39 @@ bool FxPlugin::OnStartup()
 
 
         // Insert unused dff/txd files in the models/ folder there, so the img plugin won't load those
-        for(auto& unused : unused_table) AddDummy(unused);
+        for(auto& unused : unused_table) AddDummy(modloader::hash(unused));
 
         // Detouring for LOADSCS
-        AddDetour(loadscs_txd, reinstall_since_start, LoadTxdDetour<0x5900D2>());
+		if (gvm.IsSA())
+		{
+			AddDetour(loadscs_txd, reinstall_since_start, LoadTxdDetour<0x5900D2>());
+		}
 
         // Detouring for HUD
         AddDetour(hud_txd, reinstall_since_load, LoadTxdDetour<0x5BA865>(), gdir_refresh(ReloadHud));
 
         // Detouring for fonts
         AddDetour(fonts_txd, reinstall_since_start, LoadTxdDetour<0x5BA6A4>(), gdir_refresh(ReloadFonts));
-        AddDetour(pcbtns_txd, reinstall_since_start, LoadTxdDetour<0x5BA7D4>(), gdir_refresh(ReloadFonts));
+        if(gvm.IsSA())   
+        {
+            AddDetour(pcbtns_txd, reinstall_since_start, LoadTxdDetour<0x5BA7D4>(), gdir_refresh(ReloadFonts));
+        }
 
         // Detouring for frontend textures
-        AddDetour(fronten1_txd, reinstall_since_start, LoadTxdDetour<0x572F1E>(), gdir_refresh(ReloadFronten));
-        AddDetour(fronten2_txd, reinstall_since_start, LoadTxdDetour<0x573040>(), gdir_refresh(ReloadFronten));
-        AddDetour(fronten_pc_txd, reinstall_since_start, LoadTxdDetour<0x572FB5>(), gdir_refresh(ReloadFronten));
-        AddDummy (fronten3_txd);
+        AddDetour(gvm.IsIII()? frontend_txd : fronten1_txd, reinstall_since_start, LoadTxdDetour<0x572F1E>(), gdir_refresh(ReloadFronten));
+        AddDetour(gvm.IsIII()? menu_txd : fronten2_txd, reinstall_since_start, LoadTxdDetour<0x573040>(), gdir_refresh(ReloadFronten));
+        if(gvm.IsSA())
+        {
+            AddDetour(fronten_pc_txd, reinstall_since_start, LoadTxdDetour<0x572FB5>(), gdir_refresh(ReloadFronten));
+            AddDummy (fronten3_txd);
+        }
 
         // Detouring for common vehicle textures
         // No reloading because too many references to the textures in clump materials, maybe in the future
-        AddDetour(vehicle_txd, no_reinstall, LoadTxdDetour<0x5B8F5E>());
+		if (gvm.IsSA())
+		{
+			AddDetour(vehicle_txd, no_reinstall, LoadTxdDetour<0x5B8F5E>());
+		}
 
         // Detouring for particle textures
         // No reloading because too many references to the particle textures in allocated objects
@@ -256,14 +331,28 @@ bool FxPlugin::OnStartup()
 
         // Detouring for particle effects
         // No reloading because reloading those barely works, it causes the game to be unstable, crashing some times
-        AddDetour(effectspc_txd, no_reinstall, LoadTxdDetour<0x5C248F>());
-        AddDetour(effects_fxp, no_reinstall, OpenFileDetour<0x5C24B1>());
+		if (gvm.IsSA())
+		{
+			AddDetour(effectspc_txd, no_reinstall, LoadTxdDetour<0x5C248F>());
+			AddDetour(effects_fxp, no_reinstall, OpenFileDetour<0x5C24B1>());
+		}
         
         // Detouring for grass
         // No reloading because leaked texture (@0xC09174) after shutdown, maybe in the future
-        AddDetour(plant1_txd, no_reinstall, LoadTxdDetour<0x5DD95F>());
-        AddGrass(0, 1); AddGrass(0, 2); AddGrass(0, 3); AddGrass(0, 4);
-        AddGrass(1, 1); AddGrass(1, 2); AddGrass(1, 3); AddGrass(1, 4);
+		if (gvm.IsSA())
+		{
+			AddDetour(plant1_txd, no_reinstall, LoadTxdDetour<0x5DD95F>());
+			AddGrass(0, 1); AddGrass(0, 2); AddGrass(0, 3); AddGrass(0, 4);
+			AddGrass(1, 1); AddGrass(1, 2); AddGrass(1, 3); AddGrass(1, 4);
+		}
+
+        // Detouring for markers
+        // No reloading because there's no native cleanup for those
+        if(gvm.IsIII() || gvm.IsVC())
+        {
+            AddDetour(zonecylb_dff, no_reinstall, LoadAtomic2ReturnDetour<xVc(0x570D8A)>());
+            AddDetour(arrow_dff, no_reinstall, LoadAtomic2ReturnDetour<xVc(0x570D7A)>());
+        }
 
         return true;
     }
@@ -287,7 +376,7 @@ int FxPlugin::GetBehaviour(modloader::file& file)
 {
     if(!file.is_dir())
     {
-        if(this->FindOverrider(file.hash))
+        if((!gvm.IsSA() && file.hash == player_bmp) || this->FindOverrider(file.hash))
         {
             file.behaviour = file.hash;
             return MODLOADER_BEHAVIOUR_YES;
@@ -302,7 +391,10 @@ int FxPlugin::GetBehaviour(modloader::file& file)
  */
 bool FxPlugin::InstallFile(const modloader::file& file)
 {
-    if(auto ov = this->FindOverrider(file.hash)) return ov->InstallFile(file);
+    if(file.hash == player_bmp)
+        return ApplyPlayerBmp(file);
+    else if(auto ov = this->FindOverrider(file.hash))
+        return ov->InstallFile(file);
     return false;
 }
 
@@ -312,7 +404,10 @@ bool FxPlugin::InstallFile(const modloader::file& file)
  */
 bool FxPlugin::ReinstallFile(const modloader::file& file)
 {
-    if(auto ov = this->FindOverrider(file.hash)) return ov->ReinstallFile();
+    if(file.hash == player_bmp)
+        return this->ApplyPlayerBmp(file);
+    else if(auto ov = this->FindOverrider(file.hash))
+        return ov->ReinstallFile();
     return false;
 }
 
@@ -322,6 +417,9 @@ bool FxPlugin::ReinstallFile(const modloader::file& file)
  */
 bool FxPlugin::UninstallFile(const modloader::file& file)
 {
-    if(auto ov = this->FindOverrider(file.hash)) return ov->UninstallFile();
+    if(file.hash == player_bmp)
+        return this->RestorePlayerBmp();
+    else if(auto ov = this->FindOverrider(file.hash))
+        return ov->UninstallFile();
     return false;
 }
