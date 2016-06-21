@@ -595,7 +595,7 @@ void CAbstractStreaming::Patch()
             TraitsSA traits; // see comment above
 
             // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
-            make_static_hook<addcol_hook>([&](addcol_hook::func_type AddColSlot, const char*& name)
+            make_static_hook<addcol_hook>([this, traits](addcol_hook::func_type AddColSlot, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
             });
@@ -607,13 +607,13 @@ void CAbstractStreaming::Patch()
             TraitsSA traits;
 
             // CVehicleRecording do not care about duplicates, but we should
-            make_static_hook<addr3_hook>([&](addr3_hook::func_type RegisterRecordingFile, const char*& name)
+            make_static_hook<addr3_hook>([this, traits](addr3_hook::func_type RegisterRecordingFile, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "rrr", traits.rrr_start, RegisterRecordingFile, name);
             });
             
             // CStreamedScripts do not care about duplicates but we should
-            make_static_hook<addscm_hook>([&](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
+            make_static_hook<addscm_hook>([this, traits](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
             {
                 return this->FindOrRegisterResource(name, "scm", traits.scm_start, RegisterScript, self, name);
             });

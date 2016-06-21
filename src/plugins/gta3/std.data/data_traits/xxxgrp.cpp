@@ -88,10 +88,9 @@ struct xxxgrp_traits : public data_traits
     template<class StoreType, class MergedList, class FuncDoWrite>
     static bool prewrite(MergedList list, FuncDoWrite dowrite)
     {
+        std::map<key_type, value_type> grp_content; // must be outside the if (because of std::ref)
         if(gvm.IsSA())
         {
-            std::map<key_type, value_type> grp_content;
-
             std::for_each(list.begin(), list.end(), [&](MergedList::value_type& pair)
             {
                 auto& model = get(*get<udata<modelname>>(&pair.second.get().get<0>()));

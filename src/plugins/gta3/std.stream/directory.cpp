@@ -32,14 +32,12 @@ static void PerformDirectoryRead(size_t size,
     using rf_hook = function_hooker<0x5B61E1, size_t(void*, void*, size_t)>;
     using rf2_hook = function_hooker<xVc(0x40FDD9), size_t(void*, void*, size_t)>;
     using sf_hook = function_hooker_thiscall<0x5B627A, void(CDirectory*, DirectoryInfo* entry)>;
-    //using gf_hook = function_hooker_thiscall<0x5B6449, char(CStreamingInfo*, int*, int*)>;
 
     nf_hook nf;   // Open Null File
     cf_hook cf;   // Entry Count
     rf_hook rf;   // Read Entry
     rf2_hook rf2; // Read Entry
     sf_hook sf;   // Register Special Entry
-    //gf_hook gf;   // Register Entry
 
     // Open a null but valid file handle, so it can be closed (fclose) without any problem
     nf = make_function_hook<nf_hook>([](nf_hook::func_type OpenFile, const char*&, const char*& mode)
@@ -69,7 +67,8 @@ static void PerformDirectoryRead(size_t size,
         return sizeof(buf);
     };
     rf  = make_function_hook<rf_hook>(rf_cb);
-    rf2 = make_function_hook<rf2_hook>(rf_cb);
+    if(gvm.IsIII() || gvm.IsVC())
+        rf2 = make_function_hook<rf2_hook>(rf_cb);
 
     // Registers a special entry
     sf = make_function_hook<sf_hook>([&RegisterSpecialEntry](sf_hook::func_type AddItem, CDirectory*& dir, DirectoryInfo*& entry)

@@ -266,9 +266,9 @@ class data_section
 
         // CXX14 HELP-ME
         template<class Visitor>
-        auto apply_visitor(Visitor& visitor) const -> decltype(::apply_visitor(std::declval<Visitor>(), std::declval<either_type>()))
+        auto apply_visitor(Visitor& visitor) const -> decltype(datalib::apply_visitor(std::declval<Visitor>(), std::declval<either_type>()))
         {
-            return ::apply_visitor(visitor, const_cast<either_type&>(this->data));
+            return datalib::apply_visitor(visitor, const_cast<either_type&>(this->data));
         }
 
         template<class Section>
@@ -388,14 +388,14 @@ class data_section
         struct get_nth_visitor_p : either_static_visitor<Type*>
         {
             template<class T>
-            typename std::enable_if<std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T&>()))>>::value, Type*>::type
+            typename std::enable_if<std::is_same<Type, std::decay_t<decltype(::get<I>(std::declval<T&>()))>>::value, Type*>::type
             /* Type* */ operator()(T& slice) const 
             {
                 return &(::get<I>(slice));
             }
 
             template<class T>
-            typename std::enable_if<!std::is_same<Type, std::decay_t<decltype(::<get<I>(std::declval<T&>()))>>::value, Type*>::type
+            typename std::enable_if<!std::is_same<Type, std::decay_t<decltype(::get<I>(std::declval<T&>()))>>::value, Type*>::type
             /* Type* */ operator()(T& slice) const 
             {
                 return nullptr;

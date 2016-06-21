@@ -246,7 +246,7 @@ bool FxPlugin::OnStartup()
                 "hoop.dff",     "arrow.dff",    "air_vlo.dff",  "plant1.dff",
                 "grass2_1.dff", "grass2_2.dff", "grass2_3.dff", "grass2_4.dff",
                 "grass3_1.dff", "grass3_2.dff", "grass3_3.dff", "grass3_4.dff",
-                "peds.col",
+                "peds.col",     "vehicles.col",
             };
         }
         else if(gvm.IsVC())
