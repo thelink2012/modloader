@@ -233,6 +233,7 @@ solution "modloader"
         toolset "v120_xp"
     configuration "vs2015"
         toolset "v140_xp"
+        buildoptions { "/Zc:threadSafeInit-" }
 
     project "docs"
         dummyproject()

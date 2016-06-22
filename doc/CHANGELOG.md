@@ -1,3 +1,8 @@
+v0.3.4 (Jun 22 2016)
+------------------------
+ * Support for GTA III, Vice City and San Andreas.
+ * Support for Fastman92 Limit Adjuster 32 bit id limits.
+
 v0.3.3 (Jun 19 2016)
 ------------------------
  * Support for III/VC splash sprites.
