@@ -114,10 +114,6 @@ inline void FillDirectoryEntry(DirectoryInfo& entry, const char* filename, uint3
     entry.m_usSize          = GetSizeInBlocks(size_in_bytes);
 }
 
-
-
-
-
 /*
  *  CAbstractStreaming
  *      Abstraction around the game's streaming->
@@ -130,6 +126,7 @@ class CAbstractStreaming
         friend int __stdcall CdStreamThread();
 
     private:
+        LibF92LA f92la;                             //
         bool bHasInitializedStreaming   = false;    // Has the streaming initialized?
         bool bIsUpdating                = false;    // Is updating the streaming (for a future refresh)?
         CRITICAL_SECTION cs;                        // This must be used together with imported files list for thread-safety
@@ -241,6 +238,8 @@ class CAbstractStreaming
     public:
         CAbstractStreaming();
         ~CAbstractStreaming();
+        void InitialiseStructAbstraction();
+        const LibF92LA& GetF92LA();
         void Patch();
         void DataPatch();
         void InitRefreshInterface();
@@ -255,6 +254,7 @@ class CAbstractStreaming
         bool IsModelOnStreaming(id_t id);
         bool IsModelAvailable(id_t id);
         CStreamingInfo* InfoForModel(id_t id);
+        id_t InfoForModelIndex(const CStreamingInfo& model);
 
         // Checks if file is clothing item
         bool IsClothes(const modloader::file* file);
@@ -414,8 +414,6 @@ class CAbstractStreaming
 
         template<class T>
         friend void PerformStandardRefresh(CAbstractStreaming& s);
-
-        id_t InfoForModelIndex(const CStreamingInfo& model);
 
         // Finds resource index from it's filename hash, returns -1 if none
         id_t FindModelFromHash(hash_t hash)

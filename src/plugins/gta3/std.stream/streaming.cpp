@@ -16,13 +16,38 @@ CAbstractStreaming* streaming;
  */
 CAbstractStreaming::CAbstractStreaming()
 {
-    this->sizeof_CStreamingInfo = CStreamingInfo::GetSizeof();
     InitializeCriticalSection(&cs);
 }
 
 CAbstractStreaming::~CAbstractStreaming()
 {
     DeleteCriticalSection(&cs);
+    Fastman92LimitAdjusterDestroy(this->f92la);
+}
+
+void CAbstractStreaming::InitialiseStructAbstraction()
+{
+    this->sizeof_CStreamingInfo = CStreamingInfo::GetSizeof();
+    this->f92la                 = Fastman92LimitAdjusterCreate();
+
+    if(this->f92la.hLib)
+        plugin_ptr->Log("Using fastman92limitadjuster (%p).", f92la.hLib);
+}
+
+const LibF92LA& CAbstractStreaming::GetF92LA()
+{
+    return this->f92la;
+}
+
+const LibF92LA* CStreamingInfo::GetF92LA()
+{
+    auto& f92la = streaming->GetF92LA();
+    return f92la.hLib? &f92la : nullptr;
+}
+
+int32_t CStreamingInfo::AsF92LA()
+{
+    return streaming->InfoForModelIndex(*this);
 }
 
 
@@ -32,18 +57,18 @@ CAbstractStreaming::~CAbstractStreaming()
  */
 CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
 {
-    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the indexing manually
-    // with sizeof_CStreamingInfo!!
-    using max_InfoForModel = lazy_object<0x5B8AFC, CStreamingInfo*>;
-    CStreamingInfo* info = (CStreamingInfo*)( (uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo) );
-    return (info < max_InfoForModel::get()? info : nullptr);
+    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the indexing manually with sizeof_CStreamingInfo!!
+    static CStreamingInfo* max_InfoForModel = this->f92la.hLib?
+                                                (CStreamingInfo*)((uint8_t*)(ms_aInfoForModel) + (f92la.GetNumberOfFileIDs() * sizeof_CStreamingInfo)) :
+                                                lazy_object<0x5B8AFC, CStreamingInfo*>::get();
+    CStreamingInfo* info = (CStreamingInfo*)((uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo));
+    return (info < max_InfoForModel? info : nullptr);
 }
 
 // Returns the resource index from it's model info structure
 auto CAbstractStreaming::InfoForModelIndex(const CStreamingInfo& model) -> id_t
 {
-    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the substraction manually
-    // with sizeof_CStreamingInfo!!
+    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the substraction manually with sizeof_CStreamingInfo!!
     return (id_t)( ((uint8_t*)(&model) - (uint8_t*)(InfoForModel(0))) / sizeof_CStreamingInfo );
 }
 

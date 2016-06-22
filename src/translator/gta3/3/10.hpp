@@ -107,11 +107,11 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     {
         static void* gta3emu_pMaxInfoForModel;
 
-        map[0x5B8AE8] = 0x40A4AD;               // -> offset ms_aInfoForModel //doublecheck
+        map[0x40D014] = 0x4089C9;               // -> offset ms_aInfoForModel //doublecheck
         map[xVc(0x4102B2)] = 0x40664B;          // -> DWORD MAX_RES ; max resources
         map[0x5B8AFC] = &gta3emu_pMaxInfoForModel;// -> &ms_aInfoForModel[MAX_INFO_FOR_MODEL]
         // DONT CHANGE THE FOLLOWING LINE, CHANGE THE MAPPING ABOVE INSTEAD!!! Maybe change the 0x14 sizeof /////////////
-        gta3emu_pMaxInfoForModel = *mem_ptr(0x5B8AE8).get<char*>() + (0x14 * *mem_ptr(xVc(0x4102B2)).get<uint32_t>());
+        gta3emu_pMaxInfoForModel = *mem_ptr(0x40D014).get<char*>() + (0x14 * *mem_ptr(xVc(0x4102B2)).get<uint32_t>());
         ///////////////////////////////////
 
         map[0x8E3FE0] = 0x6212C4;   // DWORD StreamCreateFlags

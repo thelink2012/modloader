@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <stdinc/gta3/stdinc.hpp>
+#include <f92la/f92la.h>
 #include "CdStreamInfo.h"
 #include "CDirectory.h"
 #include "CPool.h"

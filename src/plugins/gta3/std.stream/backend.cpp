@@ -148,7 +148,12 @@ int __stdcall CdStreamThread()
                 }
             }
             
-            
+#if !defined(NDEBUG) && 0
+            plugin_ptr->Log("$$$$$$$$$ CdStreamThread streaming (%u) model %u offset %llu size %u", bIsAbstract,   
+                                                                                ReadMemory<uint32_t>(raw_ptr(0x8E4A60 + (i * 38 * 4)/*(i * 0xB480)*/)),
+                                                                                offset, size);                                                       
+#endif
+
             // Setup overlapped structure
             LARGE_INTEGER offset_li;
             DWORD nBytesReaden;
@@ -380,13 +385,10 @@ void CAbstractStreaming::Patch()
 {
     using sinit_hook  = function_hooker<0x5B8E1B, void()>;
 
-    // Pointers
-    ms_aInfoForModel    = ReadMemory<CStreamingInfo*>(0x5B8AE8, true);
+    // Pointers that we should have before streaming initialization.
     pStreamCreateFlags  = memory_pointer(0x8E3FE0).get();
     pStreamingBuffer    = memory_pointer(0x8E4CAC).get<void*>();
     streamingBufferSize = memory_pointer(0x8E4CA8).get<uint32_t>();
-    LoadCdDirectory2    = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
-    clothesDirectory    = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
 
     // See data.cpp
     this->DataPatch();
@@ -395,6 +397,14 @@ void CAbstractStreaming::Patch()
     make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
     {
         plugin_ptr->Log("Initializing the streaming...");
+
+        // Pointers
+        ms_aInfoForModel = ReadMemory<CStreamingInfo*>(0x40D014, true);
+        LoadCdDirectory2 = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
+        clothesDirectory = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
+
+        //
+        this->InitialiseStructAbstraction();
 
         // Remove non-streamed resources that are still puliting the raw_models list.
         this->RemoveNonStreamedFromRawModels();
