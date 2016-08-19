@@ -457,11 +457,11 @@ struct path_translator_basic : public path_translator_base
         
         if(LibName == aKernel32)
         {
-            bGetModuleFileName = (Symbol == aGetModuleFileNameA);
-            bSetCurrentDirectory=(Symbol == aSetCurrentDirectoryA);
-            bCreateFile        = (Symbol == aCreateFileA);
-            bFindFirstFile     = (Symbol == aFindFirstFileA);
-            bFindNextFile      = (Symbol == aFindNextFileA);
+            bGetModuleFileName = (Symbol == aGetModuleFileNameA) || (Symbol == aGetModuleFileNameW);
+            bSetCurrentDirectory=(Symbol == aSetCurrentDirectoryA) || (Symbol == aSetCurrentDirectoryW);
+            bCreateFile        = (Symbol == aCreateFileA) || (Symbol == aCreateFileW);
+            bFindFirstFile     = (Symbol == aFindFirstFileA) || (Symbol == aFindFirstFileW);
+            bFindNextFile      = (Symbol == aFindNextFileA) || (Symbol == aFindNextFileW);
             bFindClose         = (Symbol == aFindClose);
             bIniOperations     = false;
         }

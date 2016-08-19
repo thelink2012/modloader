@@ -19,6 +19,12 @@ extern const char aFindFirstFileA[];
 extern const char aFindNextFileA[];
 extern const char aFindClose[];
 
+extern const char aCreateFileW[];
+extern const char aSetCurrentDirectoryW[];
+extern const char aGetModuleFileNameW[];
+extern const char aFindFirstFileW[];
+extern const char aFindNextFileW[];
+
 // Argument type
 enum eArgsType
 {

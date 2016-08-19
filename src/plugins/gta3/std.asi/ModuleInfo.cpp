@@ -518,56 +518,107 @@ extern const char aWritePrivateProfileStructA[] = "WritePrivateProfileStructA";
 extern const char aGetFileAttributesA[] = "GetFileAttributesA";
 extern const char aGetFileAttributesExA[] = "GetFileAttributesExA";
 
+extern const char aCreateFileW[] = "CreateFileW";
+extern const char aLoadLibraryW[] = "LoadLibraryW";
+extern const char aLoadLibraryExW[] = "LoadLibraryExW";
+extern const char aGetModuleFileNameW[] = "GetModuleFileNameW";
+extern const char aFindFirstFileW[] = "FindFirstFileW";
+extern const char aFindNextFileW[] = "FindNextFileW";
+extern const char aSetCurrentDirectoryW[] = "SetCurrentDirectoryW";
+extern const char aGetPrivateProfileIntW[] = "GetPrivateProfileIntW";
+extern const char aGetPrivateProfileSectionW[] = "GetPrivateProfileSectionW";
+extern const char aGetPrivateProfileSectionNamesW[] = "GetPrivateProfileSectionNamesW";
+extern const char aGetPrivateProfileStringW[] = "GetPrivateProfileStringW";
+extern const char aGetPrivateProfileStructW[] = "GetPrivateProfileStructW";
+extern const char aWritePrivateProfileSectionW[] = "WritePrivateProfileSectionW";
+extern const char aWritePrivateProfileStringW[] = "WritePrivateProfileStringW";
+extern const char aWritePrivateProfileStructW[] = "WritePrivateProfileStructW";
+extern const char aGetFileAttributesW[] = "GetFileAttributesW";
+extern const char aGetFileAttributesExW[] = "GetFileAttributesExW";
+
 
 // Operations
-static path_translator_stdcall<aCreateFileA, aKernel32, HANDLE(LPCTSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
+static path_translator_stdcall<aCreateFileA, aKernel32, HANDLE(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
         psCreateFileA(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
-static path_translator_stdcall<aSetCurrentDirectoryA, aKernel32, BOOL(LPCTSTR)>
+static path_translator_stdcall<aSetCurrentDirectoryA, aKernel32, BOOL(LPCSTR)>
         psSetCurrentDirectoryA(0, AR_PATH_INE);           // Do not work properly!! Don't use!!!
-
+static path_translator_stdcall<aCreateFileW, aKernel32, HANDLE(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
+        psCreateFileW(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
+static path_translator_stdcall<aSetCurrentDirectoryW, aKernel32, BOOL(LPCWSTR)>
+       psSetCurrentDirectoryW(0, AR_PATH_INE);           // Do not work properly!! Don't use!!!
 
 // File finding (used mostly to hack CLEO.asi)
-static path_translator_stdcall<aFindFirstFileA, aKernel32, HANDLE(LPCTSTR, LPWIN32_FIND_DATAA)>
+static path_translator_stdcall<aFindFirstFileA, aKernel32, HANDLE(LPCSTR, LPWIN32_FIND_DATAA)>
         psFindFirstFileA(0, AR_PATH_INEB, 0);
 static path_translator_stdcall<aFindNextFileA, aKernel32, BOOL(HANDLE, LPWIN32_FIND_DATAA)>  // Hack CLEO.asi
         psFindNextFileA(0, 0, 0);
+static path_translator_stdcall<aFindFirstFileW, aKernel32, HANDLE(LPCWSTR, LPWIN32_FIND_DATAW)>
+        psFindFirstFileW(0, AR_PATH_INEB, 0);
+static path_translator_stdcall<aFindNextFileW, aKernel32, BOOL(HANDLE, LPWIN32_FIND_DATAW)>  // Hack CLEO.asi
+        psFindNextFileW(0, 0, 0);
 static path_translator_stdcall<aFindClose, aKernel32, BOOL(HANDLE)>                          // Hack CLEO.asi
         psFindClose(0, 0);
 
 
 // Library routines
-static path_translator_stdcall<aGetModuleFileNameA, aKernel32, DWORD(HMODULE, LPTSTR, DWORD)>
+static path_translator_stdcall<aGetModuleFileNameA, aKernel32, DWORD(HMODULE, LPSTR, DWORD)>
         psGetModuleFileNameA(0, 0, 0, 0); // I'll need to intercept this routine for some Ryosuke's plugins compatibility
-static path_translator_stdcall<aLoadLibraryA, aKernel32, HMODULE(LPCTSTR)>
+static path_translator_stdcall<aLoadLibraryA, aKernel32, HMODULE(LPCSTR)>
         psLoadLibraryA(0, AR_PATH_INE);
-static path_translator_stdcall<aLoadLibraryExA, aKernel32, HMODULE(LPCTSTR, HANDLE, DWORD)>
+static path_translator_stdcall<aLoadLibraryExA, aKernel32, HMODULE(LPCSTR, HANDLE, DWORD)>
         psLoadLibraryExA(0, AR_PATH_INE, 0, 0);
+static path_translator_stdcall<aGetModuleFileNameW, aKernel32, DWORD(HMODULE, LPWSTR, DWORD)>
+        psGetModuleFileNameW(0, 0, 0, 0); // I'll need to intercept this routine for some Ryosuke's plugins compatibility
+static path_translator_stdcall<aLoadLibraryW, aKernel32, HMODULE(LPCWSTR)>
+        psLoadLibraryW(0, AR_PATH_INE);
+static path_translator_stdcall<aLoadLibraryExW, aKernel32, HMODULE(LPCWSTR, HANDLE, DWORD)>
+        psLoadLibraryExW(0, AR_PATH_INE, 0, 0);
 
 // Get from INI
-static path_translator_stdcall<aGetPrivateProfileIntA, aKernel32, UINT(LPCTSTR, LPCTSTR, INT, LPCTSTR)>
+static path_translator_stdcall<aGetPrivateProfileIntA, aKernel32, UINT(LPCSTR, LPCSTR, INT, LPCSTR)>
         psGetPrivateProfileIntA(0, 0, 0, 0, AR_PATH_INE);
-static path_translator_stdcall<aGetPrivateProfileSectionA, aKernel32, DWORD(LPCTSTR, LPCTSTR, DWORD, LPCTSTR)>
+static path_translator_stdcall<aGetPrivateProfileSectionA, aKernel32, DWORD(LPCSTR, LPCSTR, DWORD, LPCSTR)>
         psGetPrivateProfileSectionA(0, 0, 0, 0, AR_PATH_INE);
-static path_translator_stdcall<aGetPrivateProfileSectionNamesA, aKernel32, DWORD(LPCTSTR, DWORD, LPCTSTR)>
+static path_translator_stdcall<aGetPrivateProfileSectionNamesA, aKernel32, DWORD(LPCSTR, DWORD, LPCSTR)>
         psGetPrivateProfileSectionNamesA(0, 0, 0, AR_PATH_INE);
-static path_translator_stdcall<aGetPrivateProfileStringA, aKernel32, DWORD(LPCTSTR, LPCTSTR, LPCTSTR, LPTSTR, DWORD, LPCTSTR)>
+static path_translator_stdcall<aGetPrivateProfileStringA, aKernel32, DWORD(LPCSTR, LPCSTR, LPCSTR, LPSTR, DWORD, LPCSTR)>
         psGetPrivateProfileStringA(0, 0, 0, 0, 0, 0, AR_PATH_INE);
-static path_translator_stdcall<aGetPrivateProfileStructA, aKernel32, DWORD(LPCTSTR, LPCTSTR, LPVOID, UINT, LPTSTR)>
+static path_translator_stdcall<aGetPrivateProfileStructA, aKernel32, DWORD(LPCSTR, LPCSTR, LPVOID, UINT, LPSTR)>
         psGetPrivateProfileStructA(0, 0, 0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aGetPrivateProfileIntW, aKernel32, UINT(LPCWSTR, LPCWSTR, INT, LPCWSTR)>
+        psGetPrivateProfileIntW(0, 0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aGetPrivateProfileSectionW, aKernel32, DWORD(LPCWSTR, LPCWSTR, DWORD, LPCWSTR)>
+        psGetPrivateProfileSectionW(0, 0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aGetPrivateProfileSectionNamesW, aKernel32, DWORD(LPCWSTR, DWORD, LPCWSTR)>
+        psGetPrivateProfileSectionNamesW(0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aGetPrivateProfileStringW, aKernel32, DWORD(LPCWSTR, LPCWSTR, LPCWSTR, LPWSTR, DWORD, LPCWSTR)>
+        psGetPrivateProfileStringW(0, 0, 0, 0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aGetPrivateProfileStructW, aKernel32, DWORD(LPCWSTR, LPCWSTR, LPVOID, UINT, LPWSTR)>
+        psGetPrivateProfileStructW(0, 0, 0, 0, 0, AR_PATH_INE);
 
 // Write to INI
-static path_translator_stdcall<aWritePrivateProfileSectionA, aKernel32, BOOL(LPCTSTR, LPCTSTR, LPCTSTR)>
+static path_translator_stdcall<aWritePrivateProfileSectionA, aKernel32, BOOL(LPCSTR, LPCSTR, LPCSTR)>
         psWritePrivateProfileSectionA(0, 0, 0, AR_PATH_INE);
-static path_translator_stdcall<aWritePrivateProfileStringA, aKernel32, BOOL(LPCTSTR, LPCTSTR, LPCTSTR, LPCTSTR)>
+static path_translator_stdcall<aWritePrivateProfileStringA, aKernel32, BOOL(LPCSTR, LPCSTR, LPCSTR, LPCSTR)>
         psWritePrivateProfileStringA(0, 0, 0, 0, AR_PATH_INE);
-static path_translator_stdcall<aWritePrivateProfileStructA, aKernel32, BOOL(LPCTSTR, LPCTSTR, LPVOID, UINT, LPCTSTR)>
+static path_translator_stdcall<aWritePrivateProfileStructA, aKernel32, BOOL(LPCSTR, LPCSTR, LPVOID, UINT, LPCSTR)>
         psWritePrivateProfileStructA(0, 0, 0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aWritePrivateProfileSectionW, aKernel32, BOOL(LPCWSTR, LPCWSTR, LPCWSTR)>
+        psWritePrivateProfileSectionW(0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aWritePrivateProfileStringW, aKernel32, BOOL(LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR)>
+        psWritePrivateProfileStringW(0, 0, 0, 0, AR_PATH_INE);
+static path_translator_stdcall<aWritePrivateProfileStructW, aKernel32, BOOL(LPCWSTR, LPCWSTR, LPVOID, UINT, LPCWSTR)>
+        psWritePrivateProfileStructW(0, 0, 0, 0, 0, AR_PATH_INE);
 
 // Something
-static path_translator_stdcall<aGetFileAttributesA, aKernel32, DWORD(LPCTSTR)>
+static path_translator_stdcall<aGetFileAttributesA, aKernel32, DWORD(LPCSTR)>
         psGetFileAttributesA(0, AR_PATH_INE);
-static path_translator_stdcall<aGetFileAttributesExA, aKernel32, DWORD(LPCTSTR, GET_FILEEX_INFO_LEVELS, LPVOID)>
+static path_translator_stdcall<aGetFileAttributesExA, aKernel32, DWORD(LPCSTR, GET_FILEEX_INFO_LEVELS, LPVOID)>
         psGetFileAttributesExA(0, AR_PATH_INE, 0, 0);
+static path_translator_stdcall<aGetFileAttributesW, aKernel32, DWORD(LPCWSTR)>
+        psGetFileAttributesW(0, AR_PATH_INE);
+static path_translator_stdcall<aGetFileAttributesExW, aKernel32, DWORD(LPCWSTR, GET_FILEEX_INFO_LEVELS, LPVOID)>
+        psGetFileAttributesExW(0, AR_PATH_INE, 0, 0);
 
 
 
@@ -586,6 +637,11 @@ extern const char afreopen[]    = "freopen";
 extern const char arename[]     = "rename";
 extern const char aremove[]     = "remove";
 
+extern const char awfopen[]      = "_wfopen";
+extern const char awfreopen[]    = "_wfreopen";
+extern const char awrename[]     = "_wrename";
+extern const char awremove[]     = "_wremove";
+
 // Translators for STDC
 static path_translator_cdecl<afopen, aSTDC, void*(const char*, const char*)>
         psfopen(0, AR_PATH_INE, 0);
@@ -595,6 +651,15 @@ static path_translator_cdecl<arename, aSTDC, int(const char*, const char*)>
         psrename(0, AR_PATH_INE, AR_PATH_IN);
 static path_translator_cdecl<aremove, aSTDC, void*(const char*)>
         psremove(0, AR_PATH_INE);
+
+static path_translator_cdecl<awfopen, aSTDC, void*(const wchar_t*, const wchar_t*)>
+        pswfopen(0, AR_PATH_INE, 0);
+static path_translator_cdecl<awfreopen, aSTDC, void*(const wchar_t*, const wchar_t*, void*)>
+        pswfreopen(0, AR_PATH_INE, 0, 0);
+static path_translator_cdecl<awrename, aSTDC, int(const wchar_t*, const wchar_t*)>
+        pswrename(0, AR_PATH_INE, AR_PATH_IN);
+static path_translator_cdecl<awremove, aSTDC, void*(const wchar_t*)>
+        pswremove(0, AR_PATH_INE);
 
 
 
@@ -612,7 +677,14 @@ extern const char aD3DXLoadMeshFromXA[] = "D3DXLoadMeshFromXA";
 extern const char aD3DXCreateEffectFromFileA[] = "D3DXCreateEffectFromFileA";
 extern const char aD3DXSaveSurfaceToFileA[] = "D3DXSaveSurfaceToFileA";
 
+extern const char aD3DXCreateTextureFromFileW[] = "D3DXCreateTextureFromFileW";
+extern const char aD3DXCompileShaderFromFileW[] = "D3DXCompileShaderFromFileW";
+extern const char aD3DXAssembleShaderFromFileW[] = "D3DXAssembleShaderFromFileW";
+extern const char aD3DXCreateVolumeTextureFromFileW[] = "D3DXCreateVolumeTextureFromFileW";
+extern const char aD3DXCreateCubeTextureFromFileW[] = "D3DXCreateCubeTextureFromFileW";
+extern const char aD3DXLoadMeshFromXW[] = "D3DXLoadMeshFromXW";
 extern const char aD3DXCreateEffectFromFileW[] = "D3DXCreateEffectFromFileW";
+extern const char aD3DXSaveSurfaceToFileW[] = "D3DXSaveSurfaceToFileW";
 
 
 
@@ -635,8 +707,23 @@ static path_translator_stdcall<aD3DXCreateEffectFromFileA, aD3DX, HRESULT(void*,
 static path_translator_stdcall<aD3DXSaveSurfaceToFileA, aD3DX, HRESULT(const char*, DWORD, void*, void*, void*)>
         psD3DXSaveSurfaceToFileA(0, AR_PATH_IN, 0, 0, 0, 0);
 
+static path_translator_stdcall<aD3DXCreateTextureFromFileW, aD3DX, HRESULT(void*, const wchar_t*, void*)>
+        psD3DXCreateTextureFromFileW(0, 0, AR_PATH_INE, 0);
+static path_translator_stdcall<aD3DXCompileShaderFromFileW, aD3DX, HRESULT(const wchar_t*, const void*, void*, void*, void*, DWORD, void*, void*, void*)>
+        psD3DXCompileShaderFromFileW(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0, 0, 0);
+static path_translator_stdcall<aD3DXAssembleShaderFromFileW, aD3DX, HRESULT(const wchar_t*, void*, void*, DWORD, void*, void*)>
+        psD3DXAssembleShaderFromFileW(0, AR_PATH_INE, 0, 0, 0, 0, 0);
+
+static path_translator_stdcall<aD3DXCreateVolumeTextureFromFileW, aD3DX, HRESULT(void*, const wchar_t*, void*)>
+        psD3DXCreateVolumeTextureFromFileW(0, 0, AR_PATH_INE, 0);
+static path_translator_stdcall<aD3DXCreateCubeTextureFromFileW, aD3DX, HRESULT(void*, const wchar_t*, void*)>
+        psD3DXCreateCubeTextureFromFileW(0, 0, AR_PATH_INE, 0);
+static path_translator_stdcall<aD3DXLoadMeshFromXW, aD3DX, HRESULT(const wchar_t*, DWORD, void*, void*, void*, void*, void*, void*)>
+        psD3DXLoadMeshFromXW(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0, 0);
 static path_translator_stdcall<aD3DXCreateEffectFromFileW, aD3DX, HRESULT(void*, const wchar_t*, void*, void*, DWORD, void*, void*, void*)>
         psD3DXCreateEffectFromFileW(0, 0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
+static path_translator_stdcall<aD3DXSaveSurfaceToFileW, aD3DX, HRESULT(const wchar_t*, DWORD, void*, void*, void*)>
+        psD3DXSaveSurfaceToFileW(0, AR_PATH_IN, 0, 0, 0, 0);
 
 
 
