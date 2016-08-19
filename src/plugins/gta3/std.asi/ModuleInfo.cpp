@@ -634,11 +634,15 @@ static path_translator_stdcall<aGetFileAttributesExW, aKernel32, DWORD(LPCWSTR, 
 extern const char aSTDC[]       = "";           // Well, the standard library could be any dll...
 extern const char afopen[]      = "fopen";
 extern const char afreopen[]    = "freopen";
+extern const char afopens[]      = "fopen_s";
+extern const char afreopens[]    = "freopen_s";
 extern const char arename[]     = "rename";
 extern const char aremove[]     = "remove";
 
 extern const char awfopen[]      = "_wfopen";
 extern const char awfreopen[]    = "_wfreopen";
+extern const char awfopens[]      = "_wfopen_s";
+extern const char awfreopens[]    = "_wfreopen_s";
 extern const char awrename[]     = "_wrename";
 extern const char awremove[]     = "_wremove";
 
@@ -647,6 +651,10 @@ static path_translator_cdecl<afopen, aSTDC, void*(const char*, const char*)>
         psfopen(0, AR_PATH_INE, 0);
 static path_translator_cdecl<afreopen, aSTDC, void*(const char*, const char*, void*)>
         psfreopen(0, AR_PATH_INE, 0, 0);
+static path_translator_cdecl<afopens, aSTDC, int(void**, const char*, const char*)>
+        psfopens(0, 0, AR_PATH_INE, 0);
+static path_translator_cdecl<afreopens, aSTDC, int(void**, const char*, const char*, void*)>
+        psfreopens(0, 0, AR_PATH_INE, 0, 0);
 static path_translator_cdecl<arename, aSTDC, int(const char*, const char*)>
         psrename(0, AR_PATH_INE, AR_PATH_IN);
 static path_translator_cdecl<aremove, aSTDC, void*(const char*)>
@@ -656,6 +664,10 @@ static path_translator_cdecl<awfopen, aSTDC, void*(const wchar_t*, const wchar_t
         pswfopen(0, AR_PATH_INE, 0);
 static path_translator_cdecl<awfreopen, aSTDC, void*(const wchar_t*, const wchar_t*, void*)>
         pswfreopen(0, AR_PATH_INE, 0, 0);
+static path_translator_cdecl<awfopens, aSTDC, int(void**, const wchar_t*, const wchar_t*)>
+        pswfopens(0, 0, AR_PATH_INE, 0);
+static path_translator_cdecl<awfreopens, aSTDC, int(void**, const wchar_t*, const wchar_t*, void*)>
+        pswfreopens(0, 0, AR_PATH_INE, 0, 0);
 static path_translator_cdecl<awrename, aSTDC, int(const wchar_t*, const wchar_t*)>
         pswrename(0, AR_PATH_INE, AR_PATH_IN);
 static path_translator_cdecl<awremove, aSTDC, void*(const wchar_t*)>
