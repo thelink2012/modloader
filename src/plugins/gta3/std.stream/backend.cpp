@@ -432,7 +432,7 @@ void CAbstractStreaming::Patch()
         this->bHasInitializedStreaming = true;
         
 		// We can discard it in SA but we still need it in III and VC
-		if(!gvm.IsSA())
+		if(gvm.IsSA())
 			this->raw_models.clear();
     });
 
