@@ -26,18 +26,15 @@ struct LibF92LA
 inline LibF92LA Fastman92LimitAdjusterCreate()
 {
 	LibF92LA f92la;
-    if(GetModuleHandle("$fastman92limitAdjuster.asi"))
+    if(GetModuleHandleEx(0, "$fastman92limitAdjuster.asi", &f92la.hLib))
     {
-        if(f92la.hLib = LoadLibraryA("$fastman92limitAdjuster.asi"))
-        {
-            f92la.GetNumberOfFileIDs        = (decltype(f92la.GetNumberOfFileIDs)) GetProcAddress(f92la.hLib, "GetNumberOfFileIDs");
-            f92la.GetFileInfoPrevFileID     = (decltype(f92la.GetFileInfoPrevFileID)) GetProcAddress(f92la.hLib, "GetFileInfoPrevFileID");
-            f92la.GetFileInfoNextFileID     = (decltype(f92la.GetFileInfoNextFileID)) GetProcAddress(f92la.hLib, "GetFileInfoNextFileID");
-            f92la.GetFileInfoNextOnCDfileID = (decltype(f92la.GetFileInfoNextOnCDfileID)) GetProcAddress(f92la.hLib, "GetFileInfoNextOnCDfileID");
-            f92la.SetFileInfoPrevFileID     = (decltype(f92la.SetFileInfoPrevFileID)) GetProcAddress(f92la.hLib, "SetFileInfoPrevFileID");
-            f92la.SetFileInfoNextFileID     = (decltype(f92la.SetFileInfoNextFileID)) GetProcAddress(f92la.hLib, "SetFileInfoNextFileID");
-            f92la.SetFileInfoNextOnCDfileID = (decltype(f92la.SetFileInfoNextOnCDfileID)) GetProcAddress(f92la.hLib, "SetFileInfoNextOnCDfileID");
-        }
+        f92la.GetNumberOfFileIDs        = (decltype(f92la.GetNumberOfFileIDs)) GetProcAddress(f92la.hLib, "GetNumberOfFileIDs");
+        f92la.GetFileInfoPrevFileID     = (decltype(f92la.GetFileInfoPrevFileID)) GetProcAddress(f92la.hLib, "GetFileInfoPrevFileID");
+        f92la.GetFileInfoNextFileID     = (decltype(f92la.GetFileInfoNextFileID)) GetProcAddress(f92la.hLib, "GetFileInfoNextFileID");
+        f92la.GetFileInfoNextOnCDfileID = (decltype(f92la.GetFileInfoNextOnCDfileID)) GetProcAddress(f92la.hLib, "GetFileInfoNextOnCDfileID");
+        f92la.SetFileInfoPrevFileID     = (decltype(f92la.SetFileInfoPrevFileID)) GetProcAddress(f92la.hLib, "SetFileInfoPrevFileID");
+        f92la.SetFileInfoNextFileID     = (decltype(f92la.SetFileInfoNextFileID)) GetProcAddress(f92la.hLib, "SetFileInfoNextFileID");
+        f92la.SetFileInfoNextOnCDfileID = (decltype(f92la.SetFileInfoNextOnCDfileID)) GetProcAddress(f92la.hLib, "SetFileInfoNextOnCDfileID");
     }
 	return f92la;
 }
