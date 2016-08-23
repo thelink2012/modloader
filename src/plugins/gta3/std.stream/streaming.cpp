@@ -27,6 +27,9 @@ CAbstractStreaming::~CAbstractStreaming()
 
 void CAbstractStreaming::InitialiseStructAbstraction()
 {
+	if(this->bIsFirstLaunched)
+		return;		// We already init this once, no need to do again
+
     this->sizeof_CStreamingInfo = CStreamingInfo::GetSizeof();
     this->f92la                 = Fastman92LimitAdjusterCreate();
 

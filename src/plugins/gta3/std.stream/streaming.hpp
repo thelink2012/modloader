@@ -127,7 +127,8 @@ class CAbstractStreaming
 
     private:
         LibF92LA f92la;                             //
-        bool bHasInitializedStreaming   = false;    // Has the streaming initialized?
+        bool bIsFirstLaunched			= false;	// Required for III/VC which reinitialize streaming every load
+		bool bHasInitializedStreaming   = false;    // Has the streaming initialized?
         bool bIsUpdating                = false;    // Is updating the streaming (for a future refresh)?
         CRITICAL_SECTION cs;                        // This must be used together with imported files list for thread-safety
         std::string fbuffer;                        // File buffer to avoid a dynamic allocation everytime we open a model

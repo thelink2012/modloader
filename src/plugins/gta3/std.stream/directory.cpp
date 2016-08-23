@@ -301,7 +301,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
     StreamingBufferUpdater bufup;
 
     // Streaming bus must be empty before this operation
-    if(this->bHasInitializedStreaming)
+    if(this->bIsFirstLaunched)
         this->FlushChannels();
 
     // Fill entry buffer and advance iterator
