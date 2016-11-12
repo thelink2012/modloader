@@ -1,3 +1,8 @@
+v0.3.5 (Nov 12 2016)
+------------------------
+ * Fixed III/VC streaming corrupting on 2nd/3rd new game.
+ * Support for path translation in ASIs compiled in VS2015+.
+
 v0.3.4 (Jun 22 2016)
 ------------------------
  * Support for GTA III, Vice City and San Andreas.
