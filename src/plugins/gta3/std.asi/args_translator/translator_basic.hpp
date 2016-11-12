@@ -288,29 +288,37 @@ struct path_translator_base
                 static const bool bIsWideChar = std::is_same<decayed_type, wchar_t>::value;
                 
                 // Character independent strings
-                static const T a1[] = { '%', 's', '\0' };                   // "%s"
-                static const T a2[] = { '%', 's', '\\', '%', 's', '\0' };   // "%s\\%s"
-                static const T a3[] = { '%', 's', '\\', '%', 's', '\\',     // "%s\\%s\\%s" or "%s\\%s\\%ls"
-                                        '%', bIsWideChar? 'l' : 's', bIsWideChar? 's' : '\0',
+				// This got broken badly for wchar_t overload with Visual Studio 2015!
+				// swprintf %s will expect wchar_t* once again so we need to force char* by passing %hs
+				// See here:
+				// https://blogs.msdn.microsoft.com/vcblog/2014/06/18/c-runtime-crt-features-fixes-and-breaking-changes-in-visual-studio-14-ctp1/
+                static const T a1[] = { '%', 'h', 's', '\0' };                   // "%hs"
+                static const T a2[] = { '%', 'h', 's', '\\', '%', 'h', 's', '\0' };   // "%hs\\%hs"
+                static const T a3[] = { '%', 'h', 's', '\\', '%', 'h', 's', '\\',     // "%hs\\%hs\\%hs" or "%hs\\%hs\\%ls"
+                                        '%', bIsWideChar? 'l' : 'h', 's',
                                         '\0' };
-                static const T a0[] = { '%', 's', '\\',                     // "%s\\%s" or "%s\\%ls"
-                                        '%', bIsWideChar? 'l' : 's', bIsWideChar? 's' : '\0',
+                static const T a0[] = { '%', 'h', 's', '\\',                     // "%hs\\%hs" or "%hs\\%ls"
+                                        '%', bIsWideChar? 'l' : 'h', 's',
                                         '\0' };
+
+				#ifndef _MSC_VER 
+				#error Please check if printf formats in TranslatePathChar are compatible on this compiler!
+				#endif
                 
                 // Build output string based on received prefixes / suffixes / whatever
                 if(currdir)
                 {
                     if(suffix)
-                        sprintf(out, a3, prefix, currdir, suffix);  // "%s\\%s\\%s" or "%s\\%s\\%ls"
+                        sprintf(out, a3, prefix, currdir, suffix);  // "%hs\\%hs\\%hs" or "%hs\\%hs\\%ls"
                     else
-                        sprintf(out, a2, prefix, currdir);          // "%s\\%s"
+                        sprintf(out, a2, prefix, currdir);          // "%hs\\%hs"
                 }
                 else
                 {
                     if(suffix)
-                        sprintf(out, a0, prefix, suffix);   // "%s\\%s" or "%s\\%ls"
+                        sprintf(out, a0, prefix, suffix);   // "%hs\\%hs" or "%hs\\%ls"
                     else
-                        sprintf(out, a1, prefix);           // "%s"
+                        sprintf(out, a1, prefix);           // "%hs"
                 }
                 
                 // Done
@@ -449,11 +457,11 @@ struct path_translator_basic : public path_translator_base
         
         if(LibName == aKernel32)
         {
-            bGetModuleFileName = (Symbol == aGetModuleFileNameA);
-            bSetCurrentDirectory=(Symbol == aSetCurrentDirectoryA);
-            bCreateFile        = (Symbol == aCreateFileA);
-            bFindFirstFile     = (Symbol == aFindFirstFileA);
-            bFindNextFile      = (Symbol == aFindNextFileA);
+            bGetModuleFileName = (Symbol == aGetModuleFileNameA) || (Symbol == aGetModuleFileNameW);
+            bSetCurrentDirectory=(Symbol == aSetCurrentDirectoryA) || (Symbol == aSetCurrentDirectoryW);
+            bCreateFile        = (Symbol == aCreateFileA) || (Symbol == aCreateFileW);
+            bFindFirstFile     = (Symbol == aFindFirstFileA) || (Symbol == aFindFirstFileW);
+            bFindNextFile      = (Symbol == aFindNextFileA) || (Symbol == aFindNextFileW);
             bFindClose         = (Symbol == aFindClose);
             bIniOperations     = false;
         }

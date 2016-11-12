@@ -398,6 +398,10 @@ void CAbstractStreaming::Patch()
     {
         plugin_ptr->Log("Initializing the streaming...");
 
+		// III/VC reinitialize streaming on reloading
+		if(!gvm.IsSA())
+			this->bHasInitializedStreaming = false;
+
         // Pointers
         ms_aInfoForModel = ReadMemory<CStreamingInfo*>(0x40D014, true);
         LoadCdDirectory2 = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
@@ -416,13 +420,20 @@ void CAbstractStreaming::Patch()
         this->BuildPrevOnCdMap();
         tmp_cd_dir.clear();
 
+		// Clear imports in case this is not the first launch
+		this->imports.clear();
+
         // Do custom setup
         this->BuildClothesMap();                                // Find out clothing hashes and remove clothes from raw_models
         this->LoadAbstractCdDirectory(refs_mapped(raw_models)); // Load abstract directory, our custom files
 
         // Mark streaming as initialized
+		this->bIsFirstLaunched = true;
         this->bHasInitializedStreaming = true;
-        this->raw_models.clear();
+        
+		// We can discard it in SA but we still need it in III and VC
+		if(gvm.IsSA())
+			this->raw_models.clear();
     });
 
     // Standard models
