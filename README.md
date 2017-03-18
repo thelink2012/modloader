@@ -1,52 +1,27 @@
-Mod Loader
-=============================
+# Mod Loader
 
-Mod Loader is an ASI Plugin for Rockstar's Grand Theft Auto San Andreas that adds an extremely user-friendly and easy way to install and uninstall your modifications, without even messing around anything in your game installation.
+Mod Loader is a plugin for Grand Theft Auto III, Vice City and San Andreas that adds an easy and user-friendly way to install and uninstall modifications into the game, as if the game had official modding support. No changes are **ever** made to the original game files, everything is injected on the fly, at runtime!
 
-### Introduction
+The usage is as simple as inserting the mod files into the *modloader/* directory. Uninstalling is as easy as that too, delete the mod files and you are done. Hot swapping mods while the game is running? By using Mod Loader you can!
 
-Modifications are very popular in the Grand Theft Auto community, specially in Grand Theft Auto San Andreas, but everything is just too difficult to install since modding is not officially supported. People gets scared of how hard it is to install modifications.
+Still not sure? Check out [this](https://www.youtube.com/watch?v=TvRpQa8dJ7E) nice video from Ivey. For more, check out our [GTAForums](http://gtaforums.com/topic/669520-mod-loader/) thread and our [GTAGarage](http://www.gtagarage.com/mods/show.php?id=25377) page.
 
-This modification aims to provide a extremely simple way to install modifications as seen in games with official modding support, you just place the modification in the modloader folder and look, it is installed! Easier than that is impossible. Uninstalling is that simple too, just remove the modification from the modloader folder.
+### Building and Installing
 
-An important note is that modloader **DO NOT** touch **ANY** file from your game installation, so no risks.
+Requirements:
 
-It may be very helpful for people with two or more game installations for different kind of modifications (e.g. one install clean, one install to play multiplayer, one install for mods, one install for a total conversion...).
-
-It certainlly is very helpful for developers, they don't have to be messing with *.img* files, rebuilding them everytime. And even better, you can reload the mods without getting out of the game!
-
-This is a open source project, so, feel free to learn and contribute!
-
-
-### Compiling and Installing
-
-If you are building from the source code, it is very simple to compile. You'll need the following:
-
-+ [Premake](http://industriousone.com/premake/download) 5 *(pre-built executable available in this repository root)*
++ [Premake 5](http://industriousone.com/premake/download) *(pre-built executable available in this repository root)*
 + [Visual Studio](http://www.visualstudio.com/downloads) 2013 or greater.
 
-Then, in a command-line shell go into the repository root directory and run the command:
+Run the following command in the root of this directory to generate the project files:
 
-        premake5 vs2013
+    premake5 vs2013
 
-    then you can compile the generated project in the build directory.
-
-After such, you can install the generated binaries into your game directory by running
+You can install the generated binaries into your game directory by running:
 
     premake5 install "C:/Program Files (x86)/Rockstar Games/GTA San Andreas"
 
-  ...replacing the path with your game directory.
-
-If you are up to work with the project files you might want the files to be automatically installed everytime you build the solution, to accomplish that you should specify the *--idir=DESTDIR* option to premake5.
-For example:
+Or, you might want the files to be automatically installed everytime you build the solution:
  
     premake5 vs2013 "--idir=C:/Program Files (x86)/Rockstar Games/GTA San Andreas"
 
-Use *premake5 --help* for more command line options.
-
-### License
-
-The source code is licensed under the MIT License, giving you all the freedom you possibly want, see LICENSE for details.
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Grand Theft Auto and all related trademarks are © Rockstar North 1997-2014.
