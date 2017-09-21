@@ -2,7 +2,6 @@
 #include <windows.h>
 #include "Queue.h"
 
-#pragma pack(push, 1)
 struct CdStream	// sizeof = 0x30
 {
 	DWORD nSectorOffset;
@@ -17,9 +16,7 @@ struct CdStream	// sizeof = 0x30
 	HANDLE hFile;
 	OVERLAPPED overlapped;
 };
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 struct CdStreamInfoSA	// sizeof = 0x8C0
 {
 	Queue queue;
@@ -38,7 +35,6 @@ struct CdStreamInfoSA	// sizeof = 0x8C0
 	DWORD gtaint_id;
 	DWORD gta3_id;
 };
-#pragma pack(pop)
 
 static_assert(sizeof(CdStreamInfoSA) == 0x8C0, "Incorrect struct size: CdStreamInfoSA");
 static_assert(sizeof(CdStream) == 0x30, "Incorrect struct size: CdStream");
