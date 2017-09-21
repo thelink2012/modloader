@@ -311,9 +311,9 @@ namespace modloader
      *      WinAPI-like function to check if a directory exists
      *      @szPath: Directory to check
      */
-    inline BOOL IsDirectoryA(LPCTSTR szPath)
+    inline BOOL IsDirectoryA(LPCSTR szPath)
     {
-      DWORD dwAttrib = GetFileAttributes(szPath);
+      DWORD dwAttrib = GetFileAttributesA(szPath);
       return (dwAttrib != INVALID_FILE_ATTRIBUTES && 
              (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
     }
@@ -323,7 +323,7 @@ namespace modloader
      *      WinAPI-like function to check if a file or directory exists
      *      @szPath: Directory to check
      */
-    inline BOOL IsPathA(LPCTSTR szPath)
+    inline BOOL IsPathA(LPCSTR szPath)
     {
       DWORD dwAttrib = GetFileAttributesA(szPath);
       return (dwAttrib != INVALID_FILE_ATTRIBUTES);
@@ -352,7 +352,7 @@ namespace modloader
      *      WinAPI-like function to make sure a directory exists, if not, create it
      *      @szPath: Directory to check
      */
-    inline BOOL MakeSureDirectoryExistA(LPCTSTR szPath)
+    inline BOOL MakeSureDirectoryExistA(LPCSTR szPath)
     {
         if(!IsDirectoryA(szPath))
         {
@@ -371,7 +371,7 @@ namespace modloader
      *      WinAPI-like function that copies the full directory @szFrom to @szTo
      *      If @szTo doesn't exist, it is created
      */
-    inline BOOL CopyDirectoryA(LPCTSTR szFrom, LPCTSTR szTo)
+    inline BOOL CopyDirectoryA(LPCSTR szFrom, LPCSTR szTo)
     {
         if(CreateDirectoryA(szTo, NULL))
         {
@@ -403,7 +403,7 @@ namespace modloader
      *  DestroyDirectoryA
      *      WinAPI-like function that deletes the path @szPath fully
      */
-    inline BOOL DestroyDirectoryA(LPCTSTR szPath)
+    inline BOOL DestroyDirectoryA(LPCSTR szPath)
     {
         FilesWalk(szPath, "*.*", false, [&szPath](FileWalkInfo& file)
         {
@@ -429,7 +429,7 @@ namespace modloader
      *  GetFileSize
      *      WinAPI-like function that gets the file size of @szPath
      */
-    inline LONGLONG GetFileSize(LPCTSTR szPath)
+    inline LONGLONG GetFileSize(LPCSTR szPath)
     {
         WIN32_FILE_ATTRIBUTE_DATA fad;
         return GetFileAttributesExA(szPath, GetFileExInfoStandard, &fad)?
@@ -471,7 +471,8 @@ namespace modloader
 
         /* Enter on ctor, Leave on dtor */
         scoped_lock(CRITICAL_SECTION& cs)
-        { c = &cs; EnterCriticalSection(&cs); }
+			: c(&cs)
+		{ EnterCriticalSection(&cs); }
         ~scoped_lock()
         { LeaveCriticalSection(c); }
     };

@@ -79,8 +79,8 @@ namespace modloader
 
     template<uintptr_t addr, class Traits = dtraits::WinCreateFileA>
     using WinCreateFileA = modloader::basic_file_detour<Traits,
-                                                injector::function_hooker_stdcall<addr, HANDLE(LPCTSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>,
-                                                                                        HANDLE, LPCTSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE>;
+                                                injector::function_hooker_stdcall<addr, HANDLE(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>,
+                                                                                        HANDLE, LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE>;
 
 
     template<uintptr_t addr, class Traits = dtraits::LoadAtomic2Return>
