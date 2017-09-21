@@ -17,8 +17,11 @@ struct CdStream	// sizeof = 0x30
 	OVERLAPPED overlapped;
 };
 
-struct CdStreamInfoSA	// sizeof = 0x8C0
+struct CdStreamInfoSA	// sizeof = 0x8CC
 {
+	DWORD streamCreateFlags;
+	BOOL streamingInitialized;
+	BOOL overlappedIO;
 	Queue queue;
 	CdStream* pStreams;
 	DWORD thread_id;
@@ -36,6 +39,6 @@ struct CdStreamInfoSA	// sizeof = 0x8C0
 	DWORD gta3_id;
 };
 
-static_assert(sizeof(CdStreamInfoSA) == 0x8C0, "Incorrect struct size: CdStreamInfoSA");
+static_assert(sizeof(CdStreamInfoSA) == 0x8CC, "Incorrect struct size: CdStreamInfoSA");
 static_assert(sizeof(CdStream) == 0x30, "Incorrect struct size: CdStream");
 

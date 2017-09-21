@@ -92,7 +92,7 @@ int __stdcall CdStreamThread()
     // Get reference to the addresses we'll use.
     if(gvm.IsSA())
     {
-        auto& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfoSA>();
+        auto& cdinfo = *memory_pointer(0x8E3FE0).get<CdStreamInfoSA>();
         pSemaphore = &cdinfo.semaphore;
         pQueue = &cdinfo.queue;
         ppStreams = &cdinfo.pStreams;

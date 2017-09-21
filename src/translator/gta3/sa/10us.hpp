@@ -105,8 +105,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5A419B] = 0x5A419B;   // -> offset clothesDirectory
         map[0x5B8AFC] = 0x5B8AFC;   // -> &ms_aInfoForModel[MAX_INFO_FOR_MODEL]
 
-        map[0x8E3FE0] = 0x8E3FE0;   // DWORD StreamCreateFlags
-        map[0x8E3FEC] = 0x8E3FEC;   // CdStreamInfo cdinfo
+        map[0x8E3FE0] = 0x8E3FE0;   // DWORD StreamCreateFlags and CdStreamInfo cdinfo
         map[0x8E4CAC] = 0x8E4CAC;   // void* CStreaming::ms_pStreamingBuffer[2]
         map[0x8E4CA8] = 0x8E4CA8;   // unsigned int CStreaming::ms_streamingBufferSize
 
