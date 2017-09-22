@@ -78,6 +78,51 @@ extern "C"
 };
 
 
+void __stdcall CdStreamShutdownSync_Stub( CdStream* stream, size_t idx )
+{
+	streaming->cdStreamSyncFuncs.Shutdown( &stream[idx] );
+}
+
+uint32_t CdStreamSync( int32_t streamID )
+{
+	static bool bInitFields = false;
+	static CdStream** ppStreams;
+	static BOOL* streamingInitialized;
+	static BOOL* overlappedIO;
+
+	if ( !bInitFields )
+	{
+		if( gvm.IsSA() )
+		{
+			auto& cdinfo = *memory_pointer(0x8E3FE0).get<CdStreamInfoSA>();
+			ppStreams = &cdinfo.pStreams;
+			streamingInitialized = &cdinfo.streamingInitialized;
+			overlappedIO = &cdinfo.overlappedIO;
+		}
+		else if( gvm.IsVC() || gvm.IsIII() )
+		{
+
+		}
+	
+		bInitFields = true;
+	}
+
+	CdStream* stream = &((*ppStreams)[streamID]);
+	if ( *streamingInitialized )
+	{
+		scoped_lock lock( streaming->cdStreamSyncLock );
+		streaming->cdStreamSyncFuncs.SleepCS( stream, &streaming->cdStreamSyncLock );
+		stream->bInUse = 0;
+		return stream->status;
+	}
+
+	if ( *overlappedIO && stream->hFile != nullptr )
+	{
+		DWORD numBytesRead;
+		return GetOverlappedResult( stream->hFile, &stream->overlapped, &numBytesRead, TRUE ) != 0 ? 0 : 254;
+	}
+	return 0;
+}
 
 /*
  *  Streaming thread
@@ -192,9 +237,14 @@ int __stdcall CdStreamThread()
         
         // Cleanup
         if(bIsAbstract) streaming->CloseModel(sfile);
-        cd->nSectorsToRead = 0;
-        if(cd->bLocked) ReleaseSemaphore(cd->semaphore, 1, 0);
-        cd->bInUse = false;
+		{
+			// This critical section fixes a deadlock with CdStreamThread present in original code
+			scoped_lock xlock(streaming->cdStreamSyncLock);
+
+			cd->nSectorsToRead = 0;
+			streaming->cdStreamSyncFuncs.Wake(cd);
+			cd->bInUse = false;
+		}
     }
     return 0;
 }
@@ -441,6 +491,21 @@ void CAbstractStreaming::Patch()
     {
         // Making our our code for the stream thread would make things so much better
         MakeJMP(0x406560, raw_ptr(CdStreamThread));
+
+		// These are required so we can fix CdStream race condition
+		MakeJMP( 0x406460, raw_ptr(CdStreamSync) );
+		{
+			const uint8_t mem[] = { 0xFF, 0x15 };
+			WriteMemoryRaw( 0x406910, mem, sizeof(mem), true );
+			WriteMemory( 0x406910 + 2, &streaming->cdStreamSyncFuncs.Initialize, true );
+			MakeNOP( 0x406910 + 6, 4 );
+			MakeNOP( 0x406910 + 0x16, 2 );
+		}
+		{
+			const uint8_t mem[] = { 0x56, 0x50 };
+			WriteMemoryRaw( 0x4063B5, mem, sizeof(mem), true );
+			MakeCALL( 0x4063B5 + 2, raw_ptr(CdStreamShutdownSync_Stub), true );
+		}
 
         // We need to know the next model to be read before the CdStreamRead call happens
         if(gvm.IsSA())

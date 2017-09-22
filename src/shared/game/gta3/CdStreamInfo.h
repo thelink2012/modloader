@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include "Queue.h"
+#include "cdstreamsync.hpp"
 
 struct CdStream	// sizeof = 0x30
 {
@@ -12,7 +13,7 @@ struct CdStream	// sizeof = 0x30
 	BYTE bInUse;
 	BYTE field_F;
 	DWORD status;
-	HANDLE semaphore;
+	CdStreamSyncFix::SyncObj sync;
 	HANDLE hFile;
 	OVERLAPPED overlapped;
 };
@@ -41,4 +42,3 @@ struct CdStreamInfoSA	// sizeof = 0x8CC
 
 static_assert(sizeof(CdStreamInfoSA) == 0x8CC, "Incorrect struct size: CdStreamInfoSA");
 static_assert(sizeof(CdStream) == 0x30, "Incorrect struct size: CdStream");
-
