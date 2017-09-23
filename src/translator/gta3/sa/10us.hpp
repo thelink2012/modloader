@@ -141,7 +141,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x40E2C5] = 0x40E2C5;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii
         map[0x40E1BE] = 0x40E1BE;   // call    _ZN10CStreaming22FinishLoadingLargeFileEPci
         map[0x406910] = 0x406910;	// loc_406910
-        map[0x406926] = 0x406926;	// jz      short loc_406995
+        map[0x406910 + 0x16] = 0x406910 + 0x16;	// jz      short loc_406995
         map[0x4063B5] = 0x4063B5;	// loc_4063B0
         map[0x406460] = 0x406460;	// _Z12CdStreamSynci
 

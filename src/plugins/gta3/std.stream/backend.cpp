@@ -101,7 +101,9 @@ uint32_t CdStreamSync( int32_t streamID )
 		}
 		else if( gvm.IsVC() || gvm.IsIII() )
 		{
-
+			ppStreams = memory_pointer(xVc(0x6F76FC)).get<CdStream*>();
+			streamingInitialized = memory_pointer(xVc(0x6F7718)).get<BOOL>();
+			overlappedIO = memory_pointer(xVc(0x6F7714)).get<BOOL>();
 		}
 	
 		bInitFields = true;
@@ -494,6 +496,7 @@ void CAbstractStreaming::Patch()
 
 		// These are required so we can fix CdStream race condition
 		MakeJMP( 0x406460, raw_ptr(CdStreamSync) );
+		if( gvm.IsSA() )
 		{
 			const uint8_t mem[] = { 0xFF, 0x15 };
 			WriteMemoryRaw( 0x406910, mem, sizeof(mem), true );
@@ -501,10 +504,24 @@ void CAbstractStreaming::Patch()
 			MakeNOP( 0x406910 + 6, 4 );
 			MakeNOP( 0x406910 + 0x16, 2 );
 		}
+		else if( gvm.IsVC() || gvm.IsIII() )
+		{
+			MakeNOP( xVc(0x4088F7), 8 );
+			WriteMemory( xVc(0x4088F7) + 10, &streaming->cdStreamSyncFuncs.Initialize, true );
+			WriteMemory( xVc(0x408919), uint8_t(0xEB), true );
+		}
+
+		if( gvm.IsSA() )
 		{
 			const uint8_t mem[] = { 0x56, 0x50 };
 			WriteMemoryRaw( 0x4063B5, mem, sizeof(mem), true );
 			MakeCALL( 0x4063B5 + 2, raw_ptr(CdStreamShutdownSync_Stub), true );
+		}
+		else if( gvm.IsVC() || gvm.IsIII() )
+		{
+			const uint8_t mem[] = { 0x8D, 0x04, 0x29, 0x90 };
+			WriteMemoryRaw( xVc(0x4086B6), mem, sizeof(mem), true );
+			WriteMemory( xVc(0x4086B6) + 5 + 2, &streaming->cdStreamSyncFuncs.Shutdown, true );
 		}
 
         // We need to know the next model to be read before the CdStreamRead call happens

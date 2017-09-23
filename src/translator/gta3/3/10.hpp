@@ -118,6 +118,8 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x6F76F4)] = 0x62129C; // HANDLE hCdSemaphore
         map[xVc(0x6F7700)] = 0x6212A8; // Queue CdQueue;
         map[xVc(0x6F76FC)] = 0x6212A4; // CdStream* channelFile
+        map[xVc(0x6F7718)] = 0x6212C0; // BOOL streamingInitialized
+        map[xVc(0x6F7714)] = 0x6212BC; // BOOL overlappedIO
         map[0x8E4CAC] = 0x87F818;   // void* CStreaming::ms_pStreamingBuffer[2]
         map[0x8E4CA8] = 0x942FB0;   // unsigned int CStreaming::ms_streamingBufferSize
 
@@ -154,6 +156,11 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xIII(0x4038FC)] = 0x4038FC;   // call    __loadIfp    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
         map[0x40E2C5] = 0x40A571;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii
         map[0x40E1BE] = 0x40A585;   // call    _ZN10CStreaming22FinishLoadingLargeFileEPci
+        map[xVc(0x4088F7)] = 0x405B67;	// loc_4088F7
+        map[xVc(0x4088F7) + 10] = 0x405B67 + 10;  // call    ds:CreateSemaphoreA
+        map[xVc(0x4088F7) + 0x22] = 0x405B67 + 0x22;	// jnz     short loc_408930
+        map[xVc(0x4086B6)] = 0x405E16;	// mov     eax, [ecx+ebp+14h]
+        map[0x406460] = 0x406010;	// _Z12CdStreamSynci
 
         map[0xB74490] = 0x8F2C60;   // CPool<> *CPools::ms_pPedPool
         map[0xB74494] = 0x9430DC;   // CPool<> *CPools::ms_pVehiclePool
