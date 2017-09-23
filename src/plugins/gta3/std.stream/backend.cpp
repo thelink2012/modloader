@@ -796,3 +796,12 @@ void CAbstractStreaming::Patch()
     }
 }
 
+/*
+*  Export for SilentPatch so it knows that this ML version patches the race condition
+*/
+extern "C" __declspec(dllexport)
+uint32_t CdStreamRaceConditionAware()
+{
+	return 1;
+}
+
