@@ -78,6 +78,53 @@ extern "C"
 };
 
 
+void __stdcall CdStreamShutdownSync_Stub( CdStream* stream, size_t idx )
+{
+	streaming->cdStreamSyncFuncs.Shutdown( &stream[idx] );
+}
+
+uint32_t CdStreamSync( int32_t streamID )
+{
+	static bool bInitFields = false;
+	static CdStream** ppStreams;
+	static BOOL* streamingInitialized;
+	static BOOL* overlappedIO;
+
+	if ( !bInitFields )
+	{
+		if( gvm.IsSA() )
+		{
+			auto& cdinfo = *memory_pointer(0x8E3FE0).get<CdStreamInfoSA>();
+			ppStreams = &cdinfo.pStreams;
+			streamingInitialized = &cdinfo.streamingInitialized;
+			overlappedIO = &cdinfo.overlappedIO;
+		}
+		else if( gvm.IsVC() || gvm.IsIII() )
+		{
+			ppStreams = memory_pointer(xVc(0x6F76FC)).get<CdStream*>();
+			streamingInitialized = memory_pointer(xVc(0x6F7718)).get<BOOL>();
+			overlappedIO = memory_pointer(xVc(0x6F7714)).get<BOOL>();
+		}
+	
+		bInitFields = true;
+	}
+
+	CdStream* stream = &((*ppStreams)[streamID]);
+	if ( *streamingInitialized )
+	{
+		scoped_lock lock( streaming->cdStreamSyncLock );
+		streaming->cdStreamSyncFuncs.SleepCS( stream, &streaming->cdStreamSyncLock );
+		stream->bInUse = 0;
+		return stream->status;
+	}
+
+	if ( *overlappedIO && stream->hFile != nullptr )
+	{
+		DWORD numBytesRead;
+		return GetOverlappedResult( stream->hFile, &stream->overlapped, &numBytesRead, TRUE ) != 0 ? 0 : 254;
+	}
+	return 0;
+}
 
 /*
  *  Streaming thread
@@ -92,7 +139,7 @@ int __stdcall CdStreamThread()
     // Get reference to the addresses we'll use.
     if(gvm.IsSA())
     {
-        auto& cdinfo = *memory_pointer(0x8E3FEC).get<CdStreamInfoSA>();
+        auto& cdinfo = *memory_pointer(0x8E3FE0).get<CdStreamInfoSA>();
         pSemaphore = &cdinfo.semaphore;
         pQueue = &cdinfo.queue;
         ppStreams = &cdinfo.pStreams;
@@ -192,9 +239,14 @@ int __stdcall CdStreamThread()
         
         // Cleanup
         if(bIsAbstract) streaming->CloseModel(sfile);
-        cd->nSectorsToRead = 0;
-        if(cd->bLocked) ReleaseSemaphore(cd->semaphore, 1, 0);
-        cd->bInUse = false;
+		{
+			// This critical section fixes a deadlock with CdStreamThread present in original code
+			scoped_lock xlock(streaming->cdStreamSyncLock);
+
+			cd->nSectorsToRead = 0;
+			streaming->cdStreamSyncFuncs.Wake(cd);
+			cd->bInUse = false;
+		}
     }
     return 0;
 }
@@ -441,6 +493,36 @@ void CAbstractStreaming::Patch()
     {
         // Making our our code for the stream thread would make things so much better
         MakeJMP(0x406560, raw_ptr(CdStreamThread));
+
+		// These are required so we can fix CdStream race condition
+		MakeJMP( 0x406460, raw_ptr(CdStreamSync) );
+		if( gvm.IsSA() )
+		{
+			const uint8_t mem[] = { 0xFF, 0x15 };
+			WriteMemoryRaw( 0x406910, mem, sizeof(mem), true );
+			WriteMemory( 0x406910 + 2, &streaming->cdStreamSyncFuncs.Initialize, true );
+			MakeNOP( 0x406910 + 6, 4 );
+			MakeNOP( 0x406910 + 0x16, 2 );
+		}
+		else if( gvm.IsVC() || gvm.IsIII() )
+		{
+			MakeNOP( xVc(0x4088F7), 8 );
+			WriteMemory( xVc(0x4088F7) + 10, &streaming->cdStreamSyncFuncs.Initialize, true );
+			WriteMemory( xVc(0x408919), uint8_t(0xEB), true );
+		}
+
+		if( gvm.IsSA() )
+		{
+			const uint8_t mem[] = { 0x56, 0x50 };
+			WriteMemoryRaw( 0x4063B5, mem, sizeof(mem), true );
+			MakeCALL( 0x4063B5 + 2, raw_ptr(CdStreamShutdownSync_Stub), true );
+		}
+		else if( gvm.IsVC() || gvm.IsIII() )
+		{
+			const uint8_t mem[] = { 0x8D, 0x04, 0x29, 0x90 };
+			WriteMemoryRaw( xVc(0x4086B6), mem, sizeof(mem), true );
+			WriteMemory( xVc(0x4086B6) + 5 + 2, &streaming->cdStreamSyncFuncs.Shutdown, true );
+		}
 
         // We need to know the next model to be read before the CdStreamRead call happens
         if(gvm.IsSA())
@@ -729,5 +811,14 @@ void CAbstractStreaming::Patch()
         if(gvm.IsVC())
             MakeCALL(xVc(0x410801), raw_ptr(return_value<bool, true>));
     }
+}
+
+/*
+*  Export for SilentPatch so it knows that this ML version patches the race condition
+*/
+extern "C" __declspec(dllexport)
+uint32_t CdStreamRaceConditionAware()
+{
+	return 1;
 }
 

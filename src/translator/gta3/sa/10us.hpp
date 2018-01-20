@@ -105,8 +105,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5A419B] = 0x5A419B;   // -> offset clothesDirectory
         map[0x5B8AFC] = 0x5B8AFC;   // -> &ms_aInfoForModel[MAX_INFO_FOR_MODEL]
 
-        map[0x8E3FE0] = 0x8E3FE0;   // DWORD StreamCreateFlags
-        map[0x8E3FEC] = 0x8E3FEC;   // CdStreamInfo cdinfo
+        map[0x8E3FE0] = 0x8E3FE0;   // DWORD StreamCreateFlags and CdStreamInfo cdinfo
         map[0x8E4CAC] = 0x8E4CAC;   // void* CStreaming::ms_pStreamingBuffer[2]
         map[0x8E4CA8] = 0x8E4CA8;   // unsigned int CStreaming::ms_streamingBufferSize
 
@@ -141,6 +140,10 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x4D565A] = 0x4D565A;   // call    _RwStreamOpen    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
         map[0x40E2C5] = 0x40E2C5;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii
         map[0x40E1BE] = 0x40E1BE;   // call    _ZN10CStreaming22FinishLoadingLargeFileEPci
+        map[0x406910] = 0x406910;	// loc_406910
+        map[0x406910 + 0x16] = 0x406910 + 0x16;	// jz      short loc_406995
+        map[0x4063B5] = 0x4063B5;	// loc_4063B0
+        map[0x406460] = 0x406460;	// _Z12CdStreamSynci
 
         map[0xB74490] = 0xB74490;   // CPool<> *CPools::ms_pPedPool
         map[0xB74494] = 0xB74494;   // CPool<> *CPools::ms_pVehiclePool

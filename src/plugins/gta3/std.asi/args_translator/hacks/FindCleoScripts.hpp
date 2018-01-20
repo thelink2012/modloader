@@ -247,7 +247,7 @@ namespace hacks
      *  Hacked FindFirstFileA
      */
     template<>
-    bool FindCleoScripts::Finder<aFindFirstFileA>(HANDLE& result, LPCTSTR& lpFileName, LPWIN32_FIND_DATAA& lpFindFileData)
+    bool FindCleoScripts::Finder<aFindFirstFileA>(HANDLE& result, LPCSTR& lpFileName, LPWIN32_FIND_DATAA& lpFindFileData)
     {
         char version;
         

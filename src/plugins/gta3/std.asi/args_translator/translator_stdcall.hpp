@@ -72,7 +72,21 @@ struct path_translator_stdcall<Symbol, LibName, Ret(Args...)> : public path_tran
             }
             
             if(!bDetoured)
-                info.TranslateForCall(a...); // Translate the paths
+			{
+				if(info.base->bLoadLibrary)
+				{
+					auto f = (func_type) info.base->fun;
+					result = f(a...);
+					if(result != NULL)
+					{
+						// If DLL loaded without translating the path, abort translation and don't try to call it again
+						bDetoured = true;
+					}
+
+				}
+				if(!bDetoured)
+					info.TranslateForCall(a...); // Translate the paths
+			}
         }
         
         if(!bDetoured)

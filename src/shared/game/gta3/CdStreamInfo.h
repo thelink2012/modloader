@@ -1,8 +1,8 @@
 #pragma once
 #include <windows.h>
 #include "Queue.h"
+#include "cdstreamsync.hpp"
 
-#pragma pack(push, 1)
 struct CdStream	// sizeof = 0x30
 {
 	DWORD nSectorOffset;
@@ -13,15 +13,16 @@ struct CdStream	// sizeof = 0x30
 	BYTE bInUse;
 	BYTE field_F;
 	DWORD status;
-	HANDLE semaphore;
+	CdStreamSyncFix::SyncObj sync;
 	HANDLE hFile;
 	OVERLAPPED overlapped;
 };
-#pragma pack(pop)
 
-#pragma pack(push, 1)
-struct CdStreamInfoSA	// sizeof = 0x8C0
+struct CdStreamInfoSA	// sizeof = 0x8CC
 {
+	DWORD streamCreateFlags;
+	BOOL streamingInitialized;
+	BOOL overlappedIO;
 	Queue queue;
 	CdStream* pStreams;
 	DWORD thread_id;
@@ -38,8 +39,6 @@ struct CdStreamInfoSA	// sizeof = 0x8C0
 	DWORD gtaint_id;
 	DWORD gta3_id;
 };
-#pragma pack(pop)
 
-static_assert(sizeof(CdStreamInfoSA) == 0x8C0, "Incorrect struct size: CdStreamInfoSA");
+static_assert(sizeof(CdStreamInfoSA) == 0x8CC, "Incorrect struct size: CdStreamInfoSA");
 static_assert(sizeof(CdStream) == 0x30, "Incorrect struct size: CdStream");
-

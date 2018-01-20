@@ -77,6 +77,7 @@ struct path_translator_base
     bool bFindFirstFile;            // ^
     bool bFindNextFile;             // ^
     bool bFindClose;                // ^
+    bool bLoadLibrary;              // ^
     bool bDoBassHack;               // ^
     
     // Almost static vars (he), the value is always the same in all objects
@@ -463,6 +464,7 @@ struct path_translator_basic : public path_translator_base
             bFindFirstFile     = (Symbol == aFindFirstFileA) || (Symbol == aFindFirstFileW);
             bFindNextFile      = (Symbol == aFindNextFileA) || (Symbol == aFindNextFileW);
             bFindClose         = (Symbol == aFindClose);
+            bLoadLibrary	   = (Symbol == aLoadLibraryA) || (Symbol == aLoadLibraryW) || (Symbol == aLoadLibraryExA) || (Symbol == aLoadLibraryExW);
             bIniOperations     = false;
         }
     }

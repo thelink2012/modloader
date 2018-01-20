@@ -20,6 +20,8 @@
 #include <traits/gta3/vc.hpp>
 #include <traits/gta3/iii.hpp>
 
+#include "cdstreamsync.hpp"
+
 using namespace modloader;
 
 // Streaming file type
@@ -124,6 +126,8 @@ class CAbstractStreaming
     public: // Friends
         template<class T> friend class Refresher;
         friend int __stdcall CdStreamThread();
+		friend void __stdcall CdStreamShutdownSync_Stub( CdStream* stream, size_t idx );
+		friend uint32_t CdStreamSync( int32_t streamID );
 
     private:
         LibF92LA f92la;                             //
@@ -133,6 +137,9 @@ class CAbstractStreaming
         CRITICAL_SECTION cs;                        // This must be used together with imported files list for thread-safety
         std::string fbuffer;                        // File buffer to avoid a dynamic allocation everytime we open a model
         std::list<const modloader::file*> imgFiles; // List of img files imported with Mod Loader
+
+        CRITICAL_SECTION cdStreamSyncLock;			// Used to bugfix a deadlock in CdStream
+		CdStreamSyncFix::SyncFuncs cdStreamSyncFuncs;	// Initialize/Finalize/Sleep/Wake functions for CdStream synchronization
 
     public:
         // Basic types

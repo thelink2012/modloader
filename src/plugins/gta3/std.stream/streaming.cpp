@@ -6,6 +6,7 @@
  */
 #include <stdinc.hpp>
 #include "streaming.hpp"
+#include "cdstreamsync.inl"
 using namespace modloader;
 
 CAbstractStreaming* streaming;
@@ -17,10 +18,13 @@ CAbstractStreaming* streaming;
 CAbstractStreaming::CAbstractStreaming()
 {
     InitializeCriticalSection(&cs);
+    InitializeCriticalSectionAndSpinCount(&cdStreamSyncLock, 10);
+	cdStreamSyncFuncs = CdStreamSyncFix::InitializeSyncFuncs();
 }
 
 CAbstractStreaming::~CAbstractStreaming()
 {
+    DeleteCriticalSection(&cdStreamSyncLock);
     DeleteCriticalSection(&cs);
     Fastman92LimitAdjusterDestroy(this->f92la);
 }
