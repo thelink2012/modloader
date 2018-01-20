@@ -102,5 +102,5 @@ Finally, let's go to the credits.
 #### Special Thanks To
   * ArtututuVidor$, Andryo, Junior_Djjr, JNRois12 for alpha-testing
   * Gramps and TJGM for emotional support.
-  * SilentPL for additional support
+  * SilentPL for A LOT of fixes and help with the development of Mod Loader.
   * ThirteenAG for giving me lots of pointers (literally) for the GTA III / Vice City version.

@@ -101,6 +101,6 @@ Finalmente, créditos.
 #### Muito Obrigado à
   * ArtututuVidor$, Andryo, Junior_Djjr e JNRois12 por alpha-testarem
   * Gramps e TJGM pelo suporte emocional.
-  * SilentPL pelo suporte adicional
+  * SilentPL por muitos fixes e ajudas no desenvolvimento do projeto.
   * ThirteenAG por me fornecer varios ponteiros (literalmente) para a versão do GTA III / Vice City.
 

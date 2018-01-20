@@ -1,3 +1,8 @@
+v0.3.7 (Jan 20 2018)
+-----------------------
+ * Fixed an original game bug causing CdStreamSync to deadlock randomly (included an export for other mods to check if this std.stream build is aware of this bug and fixes it).
+ * Fixed path translation heuristics for LoadLibrary, so explicitly loading system DLLs does not fail anymore.
+
 v0.3.5 (Nov 12 2016)
 ------------------------
  * Fixed III/VC streaming corrupting on 2nd/3rd new game.
