@@ -8,6 +8,48 @@
 #include <stdinc.hpp>
 using namespace modloader;
 
+
+class Test : public injector::scoped_base
+{
+public:
+    //using func_type = std::function<Ret(Args...)>;
+    using func_type = std::function<void(int, const char*)>;
+    //using functor_type = std::function<Ret(func_type, Args&...)>;
+    using functor_type = std::function<void(func_type, int&, const char*&)>;
+
+    functor_type functor;
+
+    Test() = default;
+    Test(const Test&) = delete;
+    Test(Test&& rhs) : functor(std::move(rhs.functor)) {}
+    Test& operator=(const Test&) = delete;
+    Test& operator=(Test&& rhs) { functor = std::move(rhs.functor); }
+
+    virtual ~Test()
+    {
+        plugin_ptr->loader->Log(">>>>>>>>>>>>>dtor");
+        restore();
+    }
+
+    void make_call(functor_type functor)
+    {
+        plugin_ptr->loader->Log(">>>>>>>>>>>>>make_call");
+        this->functor = std::move(functor);
+    }
+
+    bool has_hooked() const
+    {
+        plugin_ptr->loader->Log(">>>>>>>>>>>>>has_hooked");
+        return !!functor;
+    }
+
+    void restore() override
+    {
+        this->functor = nullptr;
+        plugin_ptr->loader->Log(">>>>>>>>>>>>>restore");
+    }
+};
+
 /*
  *  The plugin object
  */
@@ -20,6 +62,11 @@ class MediaPlugin : public modloader::basic_plugin
 
         file_overrider logo_detour;
         file_overrider titles_detour;
+
+        modloader_re3_t* modloader_re3{};
+
+        static void RE3Detour_PlayMovieInWindow_Logo(int, const char*);
+        static void RE3Detour_PlayMovieInWindow_GTAtitles(int, const char*);
 
     public:
         const info& GetInfo();
@@ -46,7 +93,41 @@ const MediaPlugin::info& MediaPlugin::GetInfo()
 }
 
 
+using CreateVideoPlayerDetourRE3 = modloader::basic_file_detour<dtraits::CreateVideoPlayer,
+    Test,
+    void, int, const char*>;
 
+void MediaPlugin::RE3Detour_PlayMovieInWindow_Logo(int cmdshow, const char* filename)
+{
+    const auto& modloader_re3 = *mpg_plugin.modloader_re3;
+    const auto PlayMovieInWindow = modloader_re3.re3_addr_table->PlayMovieInWindow;
+
+    auto& logo_detour = mpg_plugin.logo_detour;
+    if(logo_detour.NumInjections() == 1)
+    {
+        const auto& test = static_cast<Test&>(logo_detour.GetInjection(0));
+        if(test.has_hooked())
+            return test.functor(PlayMovieInWindow, cmdshow, filename);
+    }
+
+    return PlayMovieInWindow(cmdshow, filename);
+}
+
+void MediaPlugin::RE3Detour_PlayMovieInWindow_GTAtitles(int cmdshow, const char* filename)
+{
+    const auto& modloader_re3 = *mpg_plugin.modloader_re3;
+    const auto PlayMovieInWindow = modloader_re3.re3_addr_table->PlayMovieInWindow;
+    
+    auto& titles_detour = mpg_plugin.titles_detour;
+    if(titles_detour.NumInjections() == 1)
+    {
+        const auto& test = static_cast<Test&>(titles_detour.GetInjection(0));
+        if(test.has_hooked())
+            return test.functor(PlayMovieInWindow, cmdshow, filename);
+    }
+
+    return PlayMovieInWindow(cmdshow, filename);
+}
 
 
 /*
@@ -55,15 +136,32 @@ const MediaPlugin::info& MediaPlugin::GetInfo()
  */
 bool MediaPlugin::OnStartup()
 {
-    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA() || loader->game_id == MODLOADER_GAME_RE3)
     {
         this->logo          = modloader::hash("logo.mpg");
         this->GTAtitles     = modloader::hash("gtatitles.mpg");
         this->GTAtitlesGER  = modloader::hash("gtatitlesger.mpg");
 
         auto params = file_overrider::params(true, true, false, false);
-        logo_detour.SetParams(params).SetFileDetour(CreateVideoPlayerDetour<0x748B00>());
-        titles_detour.SetParams(params).SetFileDetour(CreateVideoPlayerDetour<0x748BF9>());
+        logo_detour.SetParams(params);
+        titles_detour.SetParams(params);
+        
+        if(loader->game_id == MODLOADER_GAME_RE3)
+        {
+            this->modloader_re3 = (modloader_re3_t*) loader->FindSharedData("MODLOADER_RE3")->p;
+
+            modloader_re3->callback_table->PlayMovieInWindow_Logo = RE3Detour_PlayMovieInWindow_Logo;
+            logo_detour.SetFileDetour(CreateVideoPlayerDetourRE3());
+
+            modloader_re3->callback_table->PlayMovieInWindow_GTAtitles = RE3Detour_PlayMovieInWindow_GTAtitles;
+            titles_detour.SetFileDetour(CreateVideoPlayerDetourRE3());
+        }
+        else
+        {
+            logo_detour.SetFileDetour(CreateVideoPlayerDetour<0x748B00>());
+            titles_detour.SetFileDetour(CreateVideoPlayerDetour<0x748BF9>());
+        }
+
         return true;
     }
     return false;

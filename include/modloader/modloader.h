@@ -29,7 +29,7 @@ extern "C" {
 /* Version */
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         3
-#define MODLOADER_VERSION_REVISION      7
+#define MODLOADER_VERSION_REVISION      9
 #ifdef NDEBUG
 #define MODLOADER_VERSION_ISDEV         0
 #else
@@ -151,6 +151,13 @@ typedef void (*modloader_fvLog)(const char* msg, va_list va);
  */
 typedef void (*modloader_fError)(const char* errmsg, ...);
 
+/* Game Identifier */
+#define MODLOADER_GAME_REBIT 0x80 
+#define MODLOADER_GAME_UNK   0
+#define MODLOADER_GAME_III   1
+#define MODLOADER_GAME_VC    2
+#define MODLOADER_GAME_SA    3
+#define MODLOADER_GAME_RE3   (MODLOADER_GAME_III | MODLOADER_GAME_REBIT)
 
 /* ---- Interface ---- */
 typedef struct modloader_t
@@ -164,7 +171,7 @@ typedef struct modloader_t
     uint32_t   _rsv1[4];        /* Reserved */
     uint8_t    has_game_started;
     uint8_t    has_game_loaded;
-    uint8_t    _rsv3;           /* Reserved */
+    uint8_t    game_id;         /* see MODLOADER_GAME_* constants */
     uint8_t    _rsv4;           /* Reserved */
 
     /* Interface */

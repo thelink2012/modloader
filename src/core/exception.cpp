@@ -562,8 +562,8 @@ static const char* FindModuleName(HMODULE module, char* output, size_t maxsize)
 static HMODULE GetModuleFromAddress(LPVOID address)
 {
     HMODULE module;
-    if(GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                        (char*)address, &module))
+    if(GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                         (char*)address, &module))
         return module;
     return nullptr;
 }

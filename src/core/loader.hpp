@@ -543,6 +543,9 @@ class Loader : public modloader_t
         void BeforeFirstScan();
         void Tick();
 
+    private:
+        int* p_gGameState{};
+
     public:
         
         // Constructor
@@ -553,7 +556,8 @@ class Loader : public modloader_t
         bool Patch();
         
         // Start or Shutdown the loader
-        void Startup();
+        bool InitFromRE3(struct modloader_re3_t*);
+        void Startup(uint8_t game_id);
         void Shutdown();
         
         // Logging functions

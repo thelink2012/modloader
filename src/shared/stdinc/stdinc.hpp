@@ -29,6 +29,7 @@
 #include <functional>
 #include <type_traits>
 #include <iterator>
+#include <stdexcept>
 
 // Mod Loader stuff
 #include <modloader/modloader.hpp>

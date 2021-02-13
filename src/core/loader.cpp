@@ -5,6 +5,7 @@
  */
 #include <stdinc.hpp>
 #include "loader.hpp"
+#include <modloader/modloader_re3.h>
 #include <unicode.hpp>
 using namespace modloader;
 
@@ -29,10 +30,66 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     if(fdwReason == DLL_PROCESS_ATTACH)
     {
-        if(!loader.Patch())
-            return FALSE;
+        char szEnvVarBuffer[8];
+        const auto dwEnvVarLength = GetEnvironmentVariableA("MODLOADER_RE3", szEnvVarBuffer, sizeof(szEnvVarBuffer));
+        if(dwEnvVarLength != 0 && dwEnvVarLength < sizeof(szEnvVarBuffer) && !strcmp(szEnvVarBuffer, "1"))
+        {
+            // Just wait for modloader_InitFromRE3 to be called
+        }
+        else
+        {
+            if(!loader.Patch())
+                return FALSE;
+        }
     }
     return TRUE;
+}
+
+extern "C" int __declspec(dllexport) modloader_InitFromRE3(modloader_re3_t* modloader_re3_share)
+{
+    return loader.InitFromRE3(modloader_re3_share) != 0;
+}
+
+bool Loader::InitFromRE3(modloader_re3_t* modloader_re3_share)
+{
+    // TODO check modloader_re3_share->size and substructs size
+    // TODO check modloader_re3_share->re3_version?
+
+    assert(modloader_re3_share != nullptr);
+
+    auto& gvm = injector::address_manager::singleton();
+    gvm.set_name("Mod Loader");
+
+    // TODO InstallExceptionCatcher? maybe unecessary?
+
+    // TODO non-static
+    static modloader_re3_callback_table_t callback_table;
+    callback_table.size = sizeof(callback_table);
+
+    modloader_re3_share->modloader = &loader;
+    modloader_re3_share->callback_table = &callback_table;
+    assert(modloader_re3_share->re3_addr_table != nullptr);
+
+    modloader_re3_share->Tick = +[](modloader_re3_t* modloader_re3_share) {
+        static_cast<Loader*>(modloader_re3_share->modloader)->Tick();
+    };
+
+    modloader_re3_share->Shutdown = +[](modloader_re3_t* modloader_re3_share) {
+        static_cast<Loader*>(modloader_re3_share->modloader)->Shutdown();
+    };
+
+    // TODO I don't think creating the shared data before startup is a good idea
+    // but we need that before the plugins start patching stuff
+    modloader_shdata_t* plugin_shdata = this->CreateSharedData("MODLOADER_RE3");
+    plugin_shdata->type = MODLOADER_SHDATA_POINTER;
+    plugin_shdata->p = modloader_re3_share;
+
+    // TODO this should probably go somewhere else too
+    this->p_gGameState = modloader_re3_share->re3_addr_table->p_gGameState;
+    
+    this->Startup(MODLOADER_GAME_RE3);
+
+    return true;
 }
 
 /*
@@ -47,7 +104,7 @@ bool Loader::Patch()
 
     auto& gvm = injector::address_manager::singleton();
     gvm.set_name("Mod Loader");
-    
+  
     // Check if we have WinMain proc address, otherwise this game isn't supported
     if(try_address(winmain_hook::addr))
     {
@@ -68,6 +125,18 @@ bool Loader::Patch()
             static bool bRan = false;
             if(bRan) return WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             bRan = true;
+
+            const auto game_id = []() -> uint8_t {
+                auto& gvm = injector::address_manager::singleton();
+                if(gvm.IsSA())
+                    return MODLOADER_GAME_SA;
+                else if(gvm.IsVC())
+                    return MODLOADER_GAME_VC;
+                else if(gvm.IsIII())
+                    return MODLOADER_GAME_III;
+                else
+                    return MODLOADER_GAME_UNK;
+            }();
             
 #ifndef NDEBUG
             auto& gvm = injector::address_manager::singleton();
@@ -114,7 +183,8 @@ bool Loader::Patch()
             // Startup the loader and call WinMain, Shutdown the loader after WinMain.
             // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
             {
-            this->Startup();
+            this->p_gGameState = mem_ptr(0xC8D4C0).get<int>();
+            this->Startup(game_id);
             auto WinMain = (winmain_hook::func_type_raw) ReadRelativeOffset(winmain_hook::addr + 1).get();
             auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             this->Shutdown();
@@ -136,7 +206,7 @@ bool Loader::Patch()
  *  Loader::Startup
  *      Starts the loader
  */
-void Loader::Startup()
+void Loader::Startup(uint8_t game_id)
 {
     char rootPath[MAX_PATH];
     char appDataPath[MAX_PATH];
@@ -157,7 +227,8 @@ void Loader::Startup()
         this->maxBytesInLog  = 5242880;     // 5 MiB
         this->currentModId   = 0;
         this->currentFileId  = 0x8000000000000000;  // File id should have the hibit set
-        
+        this->game_id = game_id;
+
         // Open the log file
         OpenLog();
         LogGameVersion();
@@ -294,9 +365,8 @@ void Loader::Shutdown()
  */
 void Loader::Tick()
 {
-    static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
-    this->has_game_started = (gGameState >= 7);
-    this->has_game_loaded  = (gGameState >= 9);
+    this->has_game_started = (*p_gGameState >= 7);
+    this->has_game_loaded  = (*p_gGameState >= 9);
     this->CheckWatcher();   // updates from changes in the filesystem
     this->TestHotkeys();
 }

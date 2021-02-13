@@ -288,7 +288,7 @@ namespace modloader
                     break;
             }
         }
-        while(FindNextFile(hSearch, &fd));   // Next...
+        while(FindNextFileA(hSearch, &fd));   // Next...
 
         // Done
         FindClose(hSearch);  
