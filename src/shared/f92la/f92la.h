@@ -26,7 +26,7 @@ struct LibF92LA
 inline LibF92LA Fastman92LimitAdjusterCreate()
 {
 	LibF92LA f92la;
-    if(GetModuleHandleEx(0, "$fastman92limitAdjuster.asi", &f92la.hLib))
+    if(GetModuleHandleExA(0, "$fastman92limitAdjuster.asi", &f92la.hLib))
     {
         f92la.GetNumberOfFileIDs        = (decltype(f92la.GetNumberOfFileIDs)) GetProcAddress(f92la.hLib, "GetNumberOfFileIDs");
         f92la.GetFileInfoPrevFileID     = (decltype(f92la.GetFileInfoPrevFileID)) GetProcAddress(f92la.hLib, "GetFileInfoPrevFileID");

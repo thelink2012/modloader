@@ -1,5 +1,6 @@
 #pragma once
 #include <windows.h>
+#include <modloader/modloader.hpp> // TODO agh stop including this here
 #include <modloader/util/injector.hpp>
 #include <f92la/f92la.h>
 
@@ -71,6 +72,8 @@ struct CStreamingInfo
 
     static size_t GetSizeof()
     {
+        if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+            return sizeof(CStreamingInfoIII);
         switch(modloader::gvm.GetGame())
         {
             case '3': return sizeof(CStreamingInfoIII);
@@ -83,6 +86,10 @@ struct CStreamingInfo
 
     void SetStreamData(uint32_t offset, uint32_t blocks)
     {
+        if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        {
+            this->AsIII().uiBlockOffset = offset; this->AsIII().uiBlockCount = blocks; return;
+        }
         switch(modloader::gvm.GetGame())
         {
             case '3': this->AsIII().uiBlockOffset = offset; this->AsIII().uiBlockCount = blocks; return;
@@ -102,6 +109,10 @@ struct CStreamingInfo
         }
         else
         {
+            if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+            {
+                this->AsIII().usNextOnCd = nextOnCd; return;
+            }
             switch(modloader::gvm.GetGame())
             {
                 case '3': this->AsIII().usNextOnCd = nextOnCd; return;
@@ -114,6 +125,10 @@ struct CStreamingInfo
 
     void ClearStreamFlags()
     {
+        if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        {
+            this->AsIII().ucFlags = 0; return;
+        }
         switch(modloader::gvm.GetGame())
         {
             case '3': this->AsIII().ucFlags = 0; return;
@@ -125,6 +140,10 @@ struct CStreamingInfo
 
     uint8_t GetStreamFlags()
     {
+        if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        {
+            return this->AsIII().ucFlags;
+        }
         switch(modloader::gvm.GetGame())
         {
             case '3': return this->AsIII().ucFlags;
@@ -137,6 +156,10 @@ struct CStreamingInfo
 
     uint8_t GetLoadStatus()
     {
+        if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        {
+            return this->AsIII().ucLoadState;
+        }
         switch(modloader::gvm.GetGame())
         {
             case '3': return this->AsIII().ucLoadState;
@@ -155,6 +178,10 @@ struct CStreamingInfo
         }
         else
         {
+            if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+            {
+                return this->AsIII().usNextOnCd;
+            }
             switch(modloader::gvm.GetGame())
             {
                 case '3': return this->AsIII().usNextOnCd;
@@ -168,6 +195,10 @@ struct CStreamingInfo
 
     uint32_t GetOffset()
     {
+        if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        {
+            return this->AsIII().uiBlockOffset;
+        }
         switch(modloader::gvm.GetGame())
         {
             case '3': return this->AsIII().uiBlockOffset;
@@ -180,6 +211,10 @@ struct CStreamingInfo
 
     uint8_t GetImgId()
     {
+        if(modloader::plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        {
+            return 0;
+        }
         switch(modloader::gvm.GetGame())
         {
             case '3': return 0;

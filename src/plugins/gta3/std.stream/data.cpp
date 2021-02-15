@@ -114,7 +114,7 @@ std::string CAbstractStreaming::TryLoadNonStreamedResource(std::string filepath,
 void CAbstractStreaming::RemoveNonStreamedFromRawModels()
 {
     // This is only needed for III because of non-streamed .col/.ifp
-    if(!gvm.IsIII())
+    if(!gvm.IsIII() && plugin_ptr->loader->game_id != MODLOADER_GAME_RE3)
         return;
 
     for(auto it = this->raw_models.begin(); it != this->raw_models.end(); )

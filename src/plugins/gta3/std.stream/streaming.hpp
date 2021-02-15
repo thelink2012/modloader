@@ -10,6 +10,7 @@
 #include <map>
 
 #include <modloader/modloader.hpp>
+#include <modloader/modloader_re3.h>
 #include <modloader/util/hash.hpp>
 #include <modloader/util/injector.hpp>
 #include <modloader/util/container.hpp>
@@ -299,8 +300,12 @@ class CAbstractStreaming
         bool DoesModelNeedsFallback(id_t id);
         static HANDLE TryOpenAbstractHandle(int index, HANDLE hFile);
 
+    public:
+        // FIXME TEMPORARY HACK FOR RE3 INTEGRATION
+        TempCdDir_t* fetch_to_cd_dir{};
     private:
         // Fetching and loading of cd directories
+        void LoadCdDirectory(std::function<void()> OriginalLoadCdDirectory);
         void FetchCdDirectory(TempCdDir_t& cd_dir, const char*& filename, int id);
         void FetchCdDirectories(TempCdDir_t& cd_dir, std::function<void()> LoadCdDirectories);
         void LoadCdDirectories(TempCdDir_t& cd_dir);
@@ -377,7 +382,7 @@ class CAbstractStreaming
         // Checks if a file is not part of the streaming engine.
         bool IsNonStreamed(const modloader::file* file)
         {
-            if(gvm.IsIII())
+            if(gvm.IsIII() || plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
             {
                 switch(GetResType(*file))
                 {
@@ -529,5 +534,6 @@ extern "C" DWORD *pStreamCreateFlags;
 extern "C" void** pStreamingBuffer;
 extern "C" uint32_t* streamingBufferSize;
 extern "C" void(*LoadCdDirectory2)(const char*, int);
+extern modloader_re3_t* modloader_re3;
 
 #endif

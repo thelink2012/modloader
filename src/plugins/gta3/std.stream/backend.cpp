@@ -35,6 +35,8 @@ extern "C"
 
     CDirectory* clothesDirectory;
 
+    modloader_re3_t* modloader_re3{};
+
     // Returns the file handle to be used for iModelBeingLoaded (called from Assembly)
     HANDLE CallGetAbstractHandle(HANDLE hFile)
     {
@@ -43,7 +45,7 @@ extern "C"
     }
 
     // Registers the next model to be loaded (called from Assembly)
-    void RegisterNextModelRead(int id)
+    void RegisterNextModelRead(uint32_t id)
     {
         iNextModelBeingLoaded = id;
         if(streaming->DoesModelNeedsFallback(id))    // <- make sure the resource hasn't been deleted from disk
@@ -144,7 +146,7 @@ int __stdcall CdStreamThread()
         pQueue = &cdinfo.queue;
         ppStreams = &cdinfo.pStreams;
     }
-    else if(gvm.IsVC() || gvm.IsIII())
+    else if(gvm.IsVC() || gvm.IsIII() || plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
     {
         pSemaphore = memory_pointer(xVc(0x6F76F4)).get<HANDLE>();
         pQueue = memory_pointer(xVc(0x6F7700)).get<Queue>();
@@ -239,6 +241,15 @@ int __stdcall CdStreamThread()
         
         // Cleanup
         if(bIsAbstract) streaming->CloseModel(sfile);
+
+        if(plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        {
+            // no CdStream sync fix for RE3
+            cd->nSectorsToRead = 0;
+            if(cd->bLocked) ReleaseSemaphore(cd->sync.semaphore, 1, 0);
+            cd->bInUse = false;
+        }
+        else
 		{
 			// This critical section fixes a deadlock with CdStreamThread present in original code
 			scoped_lock xlock(streaming->cdStreamSyncLock);
@@ -427,7 +438,57 @@ void CAbstractStreaming::BuildPrevOnCdMap()
     }
 }
 
+// TODO comment and/or move to another file
+void CAbstractStreaming::LoadCdDirectory(std::function<void()> OriginalLoadCdDirectory)
+{
+    plugin_ptr->Log("Initializing the streaming...");
 
+    // III/VC reinitialize streaming on reloading
+    if(!gvm.IsSA())
+        this->bHasInitializedStreaming = false;
+
+    // Those two pointers are acquired here because a limit adjuster mightn't have produced
+    // its patches during our Patch()
+    ms_aInfoForModel = ReadMemory<CStreamingInfo*>(0x40D014, true);
+    clothesDirectory = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
+
+    // TODO should this be on Patch();
+    if(plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+        LoadCdDirectory2 = modloader_re3->re3_addr_table->CStreaming__LoadCdDirectory2;
+    else
+        LoadCdDirectory2 = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
+
+
+    //
+    this->InitialiseStructAbstraction();
+
+    // Remove non-streamed resources that are still puliting the raw_models list.
+    this->RemoveNonStreamedFromRawModels();
+
+    // Load standard cd directories.....
+    TempCdDir_t tmp_cd_dir;
+    this->fetch_to_cd_dir = &tmp_cd_dir;
+    this->FetchCdDirectories(tmp_cd_dir, OriginalLoadCdDirectory);
+    this->LoadCdDirectories(tmp_cd_dir);
+    this->BuildPrevOnCdMap();
+    tmp_cd_dir.clear();
+    this->fetch_to_cd_dir = nullptr;
+
+    // Clear imports in case this is not the first launch
+    this->imports.clear();
+
+    // Do custom setup
+    this->BuildClothesMap();                                // Find out clothing hashes and remove clothes from raw_models
+    this->LoadAbstractCdDirectory(refs_mapped(raw_models)); // Load abstract directory, our custom files
+
+    // Mark streaming as initialized
+    this->bIsFirstLaunched = true;
+    this->bHasInitializedStreaming = true;
+
+    // We can discard it in SA but we still need it in III and VC
+    if(gvm.IsSA())
+        this->raw_models.clear();
+}
 
 /*
  *  CAbstractStreaming::Patch
@@ -435,7 +496,18 @@ void CAbstractStreaming::BuildPrevOnCdMap()
  */
 void CAbstractStreaming::Patch()
 {
-    using sinit_hook  = function_hooker<0x5B8E1B, void()>;
+    using namespace std::placeholders;
+
+    const auto game_id = plugin_ptr->loader->game_id;
+
+    if(game_id == MODLOADER_GAME_RE3)
+    {
+        const auto* modloader_re3_shdata = plugin_ptr->loader->FindSharedData("MODLOADER_RE3");
+        assert(modloader_re3_shdata != nullptr);
+        assert(modloader_re3_shdata->type == MODLOADER_SHDATA_POINTER);
+        modloader_re3 = (modloader_re3_t*) modloader_re3_shdata->p;
+        assert(modloader_re3 != nullptr);
+    }
 
     // Pointers that we should have before streaming initialization.
     pStreamCreateFlags  = memory_pointer(0x8E3FE0).get();
@@ -443,86 +515,35 @@ void CAbstractStreaming::Patch()
     streamingBufferSize = memory_pointer(0x8E4CA8).get<uint32_t>();
 
     // See data.cpp
-    this->DataPatch();
+    if(game_id != MODLOADER_GAME_RE3)
+        this->DataPatch();
 
-    // Initialise the streaming
-    make_static_hook<sinit_hook>([this](sinit_hook::func_type LoadCdDirectory1)
+    // Hook at the initialization of the streaming
+    if(game_id == MODLOADER_GAME_RE3)
     {
-        plugin_ptr->Log("Initializing the streaming...");
+        modloader_re3->callback_table->LoadCdDirectory0 = +[] {
+            streaming->LoadCdDirectory(modloader_re3->re3_addr_table->CStreaming__LoadCdDirectory0);
+        };
 
-		// III/VC reinitialize streaming on reloading
-		if(!gvm.IsSA())
-			this->bHasInitializedStreaming = false;
-
-        // Pointers
-        ms_aInfoForModel = ReadMemory<CStreamingInfo*>(0x40D014, true);
-        LoadCdDirectory2 = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
-        clothesDirectory = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
-
-        //
-        this->InitialiseStructAbstraction();
-
-        // Remove non-streamed resources that are still puliting the raw_models list.
-        this->RemoveNonStreamedFromRawModels();
-
-        // Load standard cd directories.....
-        TempCdDir_t tmp_cd_dir;
-        this->FetchCdDirectories(tmp_cd_dir, LoadCdDirectory1);
-        this->LoadCdDirectories(tmp_cd_dir);
-        this->BuildPrevOnCdMap();
-        tmp_cd_dir.clear();
-
-		// Clear imports in case this is not the first launch
-		this->imports.clear();
-
-        // Do custom setup
-        this->BuildClothesMap();                                // Find out clothing hashes and remove clothes from raw_models
-        this->LoadAbstractCdDirectory(refs_mapped(raw_models)); // Load abstract directory, our custom files
-
-        // Mark streaming as initialized
-		this->bIsFirstLaunched = true;
-        this->bHasInitializedStreaming = true;
-        
-		// We can discard it in SA but we still need it in III and VC
-		if(gvm.IsSA())
-			this->raw_models.clear();
-    });
+        modloader_re3->callback_table->FetchCdDirectory = +[](const char* filename, int id) {
+            assert(streaming->fetch_to_cd_dir != nullptr);
+            return streaming->FetchCdDirectory(*streaming->fetch_to_cd_dir, filename, id);
+        };
+    }
+    else
+    {
+        using sinit_hook = function_hooker<0x5B8E1B, void()>;
+        make_static_hook<sinit_hook>(std::bind(&CAbstractStreaming::LoadCdDirectory, this, _1));
+    }
 
     // Standard models
     if(true)
     {
         // Making our our code for the stream thread would make things so much better
-        MakeJMP(0x406560, raw_ptr(CdStreamThread));
-
-		// These are required so we can fix CdStream race condition
-		MakeJMP( 0x406460, raw_ptr(CdStreamSync) );
-		if( gvm.IsSA() )
-		{
-			const uint8_t mem[] = { 0xFF, 0x15 };
-			WriteMemoryRaw( 0x406910, mem, sizeof(mem), true );
-			WriteMemory( 0x406910 + 2, &streaming->cdStreamSyncFuncs.Initialize, true );
-			MakeNOP( 0x406910 + 6, 4 );
-			MakeNOP( 0x406910 + 0x16, 2 );
-		}
-		else if( gvm.IsVC() || gvm.IsIII() )
-		{
-			MakeNOP( xVc(0x4088F7), 8 );
-			WriteMemory( xVc(0x4088F7) + 10, &streaming->cdStreamSyncFuncs.Initialize, true );
-			WriteMemory( xVc(0x408919), uint8_t(0xEB), true );
-		}
-
-		if( gvm.IsSA() )
-		{
-			const uint8_t mem[] = { 0x56, 0x50 };
-			WriteMemoryRaw( 0x4063B5, mem, sizeof(mem), true );
-			MakeCALL( 0x4063B5 + 2, raw_ptr(CdStreamShutdownSync_Stub), true );
-		}
-		else if( gvm.IsVC() || gvm.IsIII() )
-		{
-			const uint8_t mem[] = { 0x8D, 0x04, 0x29, 0x90 };
-			WriteMemoryRaw( xVc(0x4086B6), mem, sizeof(mem), true );
-			WriteMemory( xVc(0x4086B6) + 5 + 2, &streaming->cdStreamSyncFuncs.Shutdown, true );
-		}
+        if(game_id == MODLOADER_GAME_RE3)
+            modloader_re3->callback_table->CdStreamThread = +[] { CdStreamThread(); };
+        else
+            MakeJMP(0x406560, raw_ptr(CdStreamThread));
 
         // We need to know the next model to be read before the CdStreamRead call happens
         if(gvm.IsSA())
@@ -551,6 +572,10 @@ void CAbstractStreaming::Patch()
             make_static_hook<xcd_hook1>(fn_register);
             make_static_hook<xcd_hook2>(fn_register);
         }
+        else if(game_id == MODLOADER_GAME_RE3)
+        {
+            modloader_re3->callback_table->RegisterNextModelRead = RegisterNextModelRead;
+        }
 
         // We need to return a new hFile if the file is on disk
         if(gvm.IsSA())
@@ -562,8 +587,14 @@ void CAbstractStreaming::Patch()
         {
             MakeCALL(xVc(0x408521), raw_ptr(HOOK_NewFile_3VC));
         }
+        else if(game_id == MODLOADER_GAME_RE3)
+        {
+            modloader_re3->callback_table->AcquireNextModelFileHandle = +[] {
+                return CallGetAbstractHandle(INVALID_HANDLE_VALUE);
+            };
+        }
 
-        if(true)
+        if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
         {
             using cdread_hook = function_hooker<0x40CF34, int(int, void*, int, int)>;
             using cdread_hook2 = function_hooker<xVc(0x40B76A), int(int, void*, int, int)>;
@@ -588,7 +619,21 @@ void CAbstractStreaming::Patch()
                 make_static_hook<cdread_hook3>(f);
             }
         }
+        else if(game_id == MODLOADER_GAME_RE3)
+        {
+            // TODO this hook can be simplified in RE3. Perhaps we just need a callback after CdStreamRead.
+            modloader_re3->callback_table->CdStreamRead = +[](int32_t channel, void* buf, uint32_t sectorOffset, uint32_t sectorCount) {
+                iModelBeingLoaded = iNextModelBeingLoaded;
+                auto result = modloader_re3->re3_addr_table->CdStreamRead(channel, buf, sectorOffset, sectorCount);
+                iModelBeingLoaded = iNextModelBeingLoaded = -1;
+                return result;
+            };
+        }
     }
+
+    // unfinished stuff
+    if(game_id == MODLOADER_GAME_RE3)
+        return;
 
     // Special models
     if(gvm.IsSA() || gvm.IsVC() || gvm.IsIII())
@@ -810,6 +855,40 @@ void CAbstractStreaming::Patch()
         // Important because when __CreateCacheTxd fails on VC, bad things seem to happen.
         if(gvm.IsVC())
             MakeCALL(xVc(0x410801), raw_ptr(return_value<bool, true>));
+    }
+
+    // CdStream race condition fix
+    if(game_id != MODLOADER_GAME_RE3)
+    {
+        // These are required so we can fix CdStream race condition
+        MakeJMP(0x406460, raw_ptr(CdStreamSync));
+        if(gvm.IsSA())
+        {
+            const uint8_t mem[] = { 0xFF, 0x15 };
+            WriteMemoryRaw(0x406910, mem, sizeof(mem), true);
+            WriteMemory(0x406910 + 2, &streaming->cdStreamSyncFuncs.Initialize, true);
+            MakeNOP(0x406910 + 6, 4);
+            MakeNOP(0x406910 + 0x16, 2);
+        }
+        else if(gvm.IsVC() || gvm.IsIII())
+        {
+            MakeNOP(xVc(0x4088F7), 8);
+            WriteMemory(xVc(0x4088F7) + 10, &streaming->cdStreamSyncFuncs.Initialize, true);
+            WriteMemory(xVc(0x408919), uint8_t(0xEB), true);
+        }
+
+        if(gvm.IsSA())
+        {
+            const uint8_t mem[] = { 0x56, 0x50 };
+            WriteMemoryRaw(0x4063B5, mem, sizeof(mem), true);
+            MakeCALL(0x4063B5 + 2, raw_ptr(CdStreamShutdownSync_Stub), true);
+        }
+        else if(gvm.IsVC() || gvm.IsIII())
+        {
+            const uint8_t mem[] = { 0x8D, 0x04, 0x29, 0x90 };
+            WriteMemoryRaw(xVc(0x4086B6), mem, sizeof(mem), true);
+            WriteMemory(xVc(0x4086B6) + 5 + 2, &streaming->cdStreamSyncFuncs.Shutdown, true);
+        }
     }
 }
 

@@ -55,7 +55,7 @@ const ThePlugin::info& ThePlugin::GetInfo()
  */
 bool ThePlugin::OnStartup()
 {
-    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA() || loader->game_id == MODLOADER_GAME_RE3)
     {
         // Setup abstract streaming
         streaming = new CAbstractStreaming();
@@ -68,7 +68,7 @@ bool ThePlugin::OnStartup()
             ov_ped_ifp.SetParams(file_overrider::params(nullptr));
             ov_ped_ifp.SetFileDetour(Gta3LoadIfpDetour<xIII(0x4038FC)>());
         }
-        else
+        else if(gvm.IsVC() || gvm.IsSA())
         {
             ov_ped_ifp.SetParams(file_overrider::params(nullptr));
             ov_ped_ifp.SetFileDetour(RwStreamOpenDetour<0x4D565A>());

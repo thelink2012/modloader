@@ -1,8 +1,17 @@
 #pragma once
+#include <modloader/modloader.hpp>
+#include <modloader/modloader_re3.h>
 
 // GTA 3 RE3 table
 static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
 {
+    modloader_re3_t* modloader_re3{};
+    const auto* modloader_re3_shdata = modloader::plugin_ptr->loader->FindSharedData("MODLOADER_RE3");
+    assert(modloader_re3_shdata != nullptr);
+    assert(modloader_re3_shdata->type == MODLOADER_SHDATA_POINTER);
+    modloader_re3 = (modloader_re3_t*)modloader_re3_shdata->p;
+    assert(modloader_re3 != nullptr);
+
     //
     // (Notice '->' means "exactly pointing to"!!!!!)
     //
@@ -69,36 +78,40 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     {
 		map[0x836F3B] = 0x5AB904;   // SetCurrentDirectory return pointer for _chdir
         map[0x748CFB] = 0x582E6C;   // call    _Z14InitialiseGamev
-    }
+    }*/
 
     // std.stream
     if(true)
     {
         static void* gta3emu_pMaxInfoForModel;
+        static DWORD uMaxResources = modloader_re3->re3_addr_table->uMaxResources;
 
-        map[0x40D014] = 0x4089C9;               // -> offset ms_aInfoForModel //doublecheck
-        map[xVc(0x4102B2)] = 0x40664B;          // -> DWORD MAX_RES ; max resources
+        map[0x40D014] = &modloader_re3->re3_addr_table->ms_aInfoForModel;               // -> offset ms_aInfoForModel //doublecheck
+        map[xVc(0x4102B2)] = &uMaxResources;          // -> DWORD MAX_RES ; max resources
         map[0x5B8AFC] = &gta3emu_pMaxInfoForModel;// -> &ms_aInfoForModel[MAX_INFO_FOR_MODEL]
         // DONT CHANGE THE FOLLOWING LINE, CHANGE THE MAPPING ABOVE INSTEAD!!! Maybe change the 0x14 sizeof /////////////
         gta3emu_pMaxInfoForModel = *mem_ptr(0x40D014).get<char*>() + (0x14 * *mem_ptr(xVc(0x4102B2)).get<uint32_t>());
         ///////////////////////////////////
 
-        map[0x8E3FE0] = 0x6212C4;   // DWORD StreamCreateFlags
-        map[xVc(0x6F76F4)] = 0x62129C; // HANDLE hCdSemaphore
-        map[xVc(0x6F7700)] = 0x6212A8; // Queue CdQueue;
-        map[xVc(0x6F76FC)] = 0x6212A4; // CdStream* channelFile
-        map[xVc(0x6F7718)] = 0x6212C0; // BOOL streamingInitialized
-        map[xVc(0x6F7714)] = 0x6212BC; // BOOL overlappedIO
-        map[0x8E4CAC] = 0x87F818;   // void* CStreaming::ms_pStreamingBuffer[2]
-        map[0x8E4CA8] = 0x942FB0;   // unsigned int CStreaming::ms_streamingBufferSize
-
+        map[0x8E3FE0] = modloader_re3->re3_addr_table->p_gCdStreamFlags;   // DWORD StreamCreateFlags
+        map[xVc(0x6F76F4)] = modloader_re3->re3_addr_table->p_gCdStreamSema; // HANDLE hCdSemaphore
+        map[xVc(0x6F7700)] = modloader_re3->re3_addr_table->p_gChannelRequestQ; // Queue CdQueue;
+        map[xVc(0x6F76FC)] = modloader_re3->re3_addr_table->p_gpReadInfo; // CdStream* channelFile
+        map[xVc(0x6F7718)] = modloader_re3->re3_addr_table->p_gbCdStreamAsync; // BOOL streamingInitialized
+        map[xVc(0x6F7714)] = modloader_re3->re3_addr_table->p_gbCdStreamOverlapped; // BOOL overlappedIO
+        map[0x8E4CAC] = modloader_re3->re3_addr_table->p_ms_pStreamingBuffer;   // void* CStreaming::ms_pStreamingBuffer[2]
+        map[0x8E4CA8] = modloader_re3->re3_addr_table->p_ms_streamingBufferSize;   // unsigned int CStreaming::ms_streamingBufferSize
+        
+        /*
         map[0x72F420] = nullptr;    // _ZN10CMemoryMgr6MallocEj // Doesn't exist!!? Doesn't matter. Used by us only in SA.
         map[0x72F4C0] = 0x526FD0;   // _ZN10CMemoryMgr11MallocAlignEjj
         map[0x72F4F0] = 0x527000;   // _ZN10CMemoryMgr9FreeAlignEPv
         map[0x532310] = 0x473600;   // _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE
         map[0x532450] = gta3emu_CDirectory_FindItem2; // _ZN10CDirectory8FindItemEPKc
-        map[0x5324A0] = 0x4736E0;   // _ZN10CDirectory8FindItemEPKcRjS2_
+        */
+        map[0x5324A0] = modloader_re3->re3_addr_table->CDirectory__FindItem4;   // _ZN10CDirectory8FindItemEPKcRjS2_
 
+        /*
         map[0x406560] = 0x406140;   // _Z14CdStreamThreadPv
         map[0x5B8E1B] = 0x406A13;   // call    _ZN10CStreaming15LoadCdDirectoryEv       ; @CStreaming::Init //not found, check 405C80 
         map[0x40CF34] = 0x40A321;   // call    _Z12CdStreamReadiPvjj                    ; @CStreaming::RequestModelStream
@@ -107,29 +120,29 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xIII(0x40A128)] = 0x40A128; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_ ; @CStreaming::RequestModelStream
         map[xIII(0x40A4F3)] = 0x40A4F3; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_ ; @CStreaming::LoadAllRequestedModels
         map[xVc(0x408521)] = 0x405E71;// add     esi, edi    ; @CdStreamRead
-        map[0x409F76] = 0x40A997;   // call    _ZN10CDirectory8FindItemEPKcRjS2_        ; @CStreaming::RequestSpecialModel
-        map[0x409FD9] = 0x40A9E5;   // call    _ZN10CStreaming12RequestModelEii         ; @CStreaming::RequestSpecialModel
+        @@map[0x409F76] = 0x40A997;   // call    _ZN10CDirectory8FindItemEPKcRjS2_        ; @CStreaming::RequestSpecialModel
+        @@map[0x409FD9] = 0x40A9E5;   // call    _ZN10CStreaming12RequestModelEii         ; @CStreaming::RequestSpecialModel
         map[0x5B6183] = 0x406DB3;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStreaming::LoadCdDirectory
-        map[0x532361] = 0x473641;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDirectory::ReadDirFile
-        map[0x5AFC9D] = 0x4046BF;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CCutsceneMgr::LoadCutsceneData_postload
-        map[0x5AFBEF] = 0x4BA6F6;   // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_postload
-        map[xVc(0x627D79)] = 0x59BB39;// call    _ZN8CFileMgr8OpenFileEPKcS1_           ; @LoadPlayerDff ; "models/gta3.dir"
-        map[xIII(0x4BA6F6)] = 0x4BA6F6;// call    RwStreamOpen                          ; @CCutsceneHead::PlayAnimation ; "anim/cuts.img"
-        map[0x40685E] = 0x406296;   // call    ds:__imp_CreateFileA                     ; @CdStreamOpen  //doesnt exist?
+        @@map[0x532361] = 0x473641;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDirectory::ReadDirFile
+        @@map[0x5AFC9D] = 0x4046BF;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CCutsceneMgr::LoadCutsceneData_postload
+        @@map[0x5AFBEF] = 0x4BA6F6;   // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_postload
+        @@map[xVc(0x627D79)] = 0x59BB39;// call    _ZN8CFileMgr8OpenFileEPKcS1_           ; @LoadPlayerDff ; "models/gta3.dir"
+        @@map[xIII(0x4BA6F6)] = 0x4BA6F6;// call    RwStreamOpen                          ; @CCutsceneHead::PlayAnimation ; "anim/cuts.img"
+        @@map[0x40685E] = 0x406296;   // call    ds:__imp_CreateFileA                     ; @CdStreamOpen  //doesnt exist?
         map[0x5B8310] = 0x406D6A;   // call    _ZN10CStreaming15LoadCdDirectoryEPKci    ; @CStreaming::LoadCdDirectory
         map[0x5B61E1] = 0x406DC9;   // call    _ZN8CFileMgr4ReadEiPci                   ; @CStreaming::LoadCdDirectory  ; read entry @up
         map[xVc(0x40FDD9)] = 0x407043;// call    _ZN8CFileMgr4ReadEiPci             ; @CStreaming::LoadCdDirectory ; read entry @up
         map[0x5B627A] = 0x406F2B;   // call    _ZN10CDirectory7AddItemERKNS_13DirectoryInfoE ; @CStreaming::LoadCdDirectory
         map[xIII(0x406EB0)] = 0x406EB0; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_  ; dff
         map[xIII(0x406FD9)] = 0x406FD9; // call    _ZN14CStreamingInfo16GetCdPosnAndSizeERjS0_  ; txd
-        map[xIII(0x4038FC)] = 0x4038FC;   // call    __loadIfp    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
-        map[0x40E2C5] = 0x40A571;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii
-        map[0x40E1BE] = 0x40A585;   // call    _ZN10CStreaming22FinishLoadingLargeFileEPci
-        map[xVc(0x4088F7)] = 0x405B67;	// loc_4088F7
-        map[xVc(0x4088F7) + 10] = 0x405B67 + 10;  // call    ds:CreateSemaphoreA
-        map[xVc(0x4088F7) + 0x22] = 0x405B67 + 0x22;	// jnz     short loc_408930
-        map[xVc(0x4086B6)] = 0x405E16;	// mov     eax, [ecx+ebp+14h]
-        map[0x406460] = 0x406010;	// _Z12CdStreamSynci
+        @@map[xIII(0x4038FC)] = 0x4038FC;   // call    __loadIfp    ; @CAnimManager::LoadAnimFiles "anim/ped.ifp"
+        ??map[0x40E2C5] = 0x40A571;   // call    _ZN10CStreaming21ConvertBufferToObjectEPcii
+        ??map[0x40E1BE] = 0x40A585;   // call    _ZN10CStreaming22FinishLoadingLargeFileEPci
+        DEADLOCK_FIX map[xVc(0x4088F7)] = 0x405B67;	// loc_4088F7
+        DEADLOCK_FIX map[xVc(0x4088F7) + 10] = 0x405B67 + 10;  // call    ds:CreateSemaphoreA
+        DEADLOCK_FIX map[xVc(0x4088F7) + 0x22] = 0x405B67 + 0x22;	// jnz     short loc_408930
+        DEADLOCK_FIX map[xVc(0x4086B6)] = 0x405E16;	// mov     eax, [ecx+ebp+14h]
+        DEADLOCK_FIX map[0x406460] = 0x406010;	// _Z12CdStreamSynci
 
         map[0xB74490] = 0x8F2C60;   // CPool<> *CPools::ms_pPedPool
         map[0xB74494] = 0x9430DC;   // CPool<> *CPools::ms_pVehiclePool
@@ -155,12 +168,16 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B910A] = 0x476358;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc
         map[xIII(0x476589)] = 0x476589; // call    _ZN11CFileLoader17LoadCollisionFileEPKch
         map[xIII(0x476534)] = 0x476534; // call    _ZN8CFileMgr8OpenFileEPKcS1_
+        */
 
-        // Removal of txd.img / txd.dir
+        // Removed in RE3 source code if built for Mod Loader
+        /*
         map[xVc(0x410814)] = 0x48C108; // call    _ZN8CFileMgr8OpenFileEPKcS1_; "models/txd.img"
         map[xVc(0x41083A)] = 0x48C12E; // call    __CreateCacheTxdImage
+        */
     }
 
+    /*
     // std.data
     if(true)
     {

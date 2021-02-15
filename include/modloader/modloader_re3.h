@@ -10,6 +10,24 @@ typedef struct {
 
     void (*PlayMovieInWindow)(int, const char*);
 
+    void* ms_aInfoForModel;
+    uint32_t uMaxResources;
+    DWORD* p_gCdStreamFlags;
+    HANDLE* p_gCdStreamSema;
+    void* p_gChannelRequestQ;
+    void** p_gpReadInfo;
+    BOOL* p_gbCdStreamOverlapped;
+    BOOL* p_gbCdStreamAsync;
+    void** p_ms_pStreamingBuffer;
+    uint32_t* p_ms_streamingBufferSize;
+    bool (*CDirectory__FindItem4)(void*, const char*, uint32_t*, uint32_t*);
+    void (*CStreaming__LoadCdDirectory0)();
+    void (*CStreaming__LoadCdDirectory2)(const char* filename, int cd_index);
+    int32_t(*CdStreamRead)(int32_t channel, void* buffer, uint32_t offset, uint32_t size);
+
+    void (*LoadCdDirectoryUsingCallbacks)(void* pUserData, int n, bool (*ReadEntry)(void*, void*, uint32_t),
+        bool (*RegisterEntry)(void*, void*, bool), void (*RegisterSpecialEntry)(void*, void*));
+
 } modloader_re3_addr_table_t;
 
 typedef struct {
@@ -18,6 +36,13 @@ typedef struct {
 
     void (*PlayMovieInWindow_Logo)(int, const char*);
     void (*PlayMovieInWindow_GTAtitles)(int, const char*);
+
+    void (*CdStreamThread)();
+    void (*LoadCdDirectory0)();
+    void (*RegisterNextModelRead)(uint32_t);
+    HANDLE (*AcquireNextModelFileHandle)();
+    void (*FetchCdDirectory)(const char*, int);
+    int32_t (*CdStreamRead)(int32_t channel, void* buffer, uint32_t offset, uint32_t size);
 
 } modloader_re3_callback_table_t;
 

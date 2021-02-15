@@ -21,12 +21,42 @@ using namespace modloader;
         @Run                    Callback to run the directory reader after hooks have been placed
  */
 static void PerformDirectoryRead(size_t size,
-    std::function<void()> Run,
+    int cd_index,
     std::function<bool(DirectoryInfo&)> ReadEntry,
     std::function<void(DirectoryInfo&)> RegisterSpecialEntry  = nullptr,
     std::function<bool(CStreamingInfo&, bool)> RegisterEntry    = nullptr
     )
 {
+    if(plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+    {
+        struct Context
+        {
+            std::function<bool(DirectoryInfo&)> ReadEntry;
+            std::function<void(DirectoryInfo&)> RegisterSpecialEntry;
+            std::function<bool(CStreamingInfo&, bool)> RegisterEntry;
+        } context;
+        context.ReadEntry = std::move(ReadEntry);
+        context.RegisterSpecialEntry = std::move(RegisterSpecialEntry);
+        context.RegisterEntry = std::move(RegisterEntry);
+
+        auto ReadEntryProxy = +[](void* context, void* di, uint32_t) {
+            return reinterpret_cast<Context*>(context)->ReadEntry(*(DirectoryInfo*)di);
+        };
+        if(!context.ReadEntry) ReadEntryProxy = nullptr;
+
+        auto RegisterEntryProxy = +[](void* context, void* ci, bool had) {
+            return reinterpret_cast<Context*>(context)->RegisterEntry(*(CStreamingInfo*)ci, had);
+        };
+        if(!context.RegisterEntry) RegisterEntryProxy = nullptr;
+
+        auto RegisterSpecialEntryProxy = +[](void* context, void* di) {
+            return reinterpret_cast<Context*>(context)->RegisterSpecialEntry(*(DirectoryInfo*)di);
+        };
+        if(!context.RegisterSpecialEntry) RegisterSpecialEntryProxy = nullptr;
+
+        return modloader_re3->re3_addr_table->LoadCdDirectoryUsingCallbacks(&context, cd_index, ReadEntryProxy, RegisterEntryProxy, RegisterSpecialEntryProxy);
+    }
+
     using nf_hook = function_hooker<0x5B6183, void*(const char*, const char*)>;
     using cf_hook = function_hooker<0x5B61B8, size_t(void*, void*, size_t)>;
     using rf_hook = function_hooker<0x5B61E1, size_t(void*, void*, size_t)>;
@@ -100,13 +130,13 @@ static void PerformDirectoryRead(size_t size,
         if(gvm.IsSA())
         {
             auto gf = make_function_hook<gfsa_hook>(fn_hook);
-            return Run();
+            return LoadCdDirectory2(nullptr, cd_index);
         }
         else if(gvm.IsIII())
         {
             auto gf1 = make_function_hook<gf3_hook_dff>(fn_hook);
             auto gf2 = make_function_hook<gf3_hook_txd>(fn_hook);
-            return Run();
+            return LoadCdDirectory2(nullptr, cd_index);
         }
     }
     else if(gvm.IsVC())
@@ -140,7 +170,7 @@ static void PerformDirectoryRead(size_t size,
             return r;
         });
 
-        return Run();
+        return LoadCdDirectory2(nullptr, cd_index);
     }
 }
 
@@ -151,10 +181,18 @@ static void PerformDirectoryRead(size_t size,
  */
 void CAbstractStreaming::FetchCdDirectories(TempCdDir_t& cd_dir, std::function<void()> LoadCdDirectories)
 {
-    using namespace std::placeholders;
-    typedef function_hooker<0x5B8310, void(const char*, int)> fetchcd_hook;
-    auto fetcher = make_function_hook<fetchcd_hook>(std::bind(&CAbstractStreaming::FetchCdDirectory, this, std::ref(cd_dir), _2, _3));
-    return LoadCdDirectories();
+    if(plugin_ptr->loader->game_id != MODLOADER_GAME_RE3)
+    {
+        using namespace std::placeholders;
+        typedef function_hooker<0x5B8310, void(const char*, int)> fetchcd_hook;
+        auto fetcher = make_function_hook<fetchcd_hook>(std::bind(&CAbstractStreaming::FetchCdDirectory, this, std::ref(cd_dir), _2, _3));
+        return LoadCdDirectories();
+    }
+    else
+    {
+        // FetchCdDirectory will be called from a RE3 callback.
+        return LoadCdDirectories();
+    }
 }
 
 
@@ -280,7 +318,7 @@ void CAbstractStreaming::LoadCdDirectories(TempCdDir_t& cd_dir)
         };
 
         // Read this cd directory using the above callbacks
-        PerformDirectoryRead(cd.second.size(), std::bind(LoadCdDirectory2, nullptr, id), ReadEntry, nullptr, RegisterEntry);
+        PerformDirectoryRead(cd.second.size(), id, ReadEntry, nullptr, RegisterEntry);
     }
 }
 
@@ -336,7 +374,7 @@ void CAbstractStreaming::LoadAbstractCdDirectory(ref_list<const modloader::file*
     };
 
     // Read the custom cd directory
-    PerformDirectoryRead(files.size(), std::bind(LoadCdDirectory2, nullptr, 0), ReadEntry, RegisterSpecialEntry, RegisterEntry);
+    PerformDirectoryRead(files.size(), 0, ReadEntry, RegisterSpecialEntry, RegisterEntry);
     plugin_ptr->Log("Abstract cd directory has been loaded.");
 
     // StreamingBufferUpdater will reallocating the streaming on destruction
