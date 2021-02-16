@@ -28,6 +28,7 @@ typedef struct {
     void (*LoadCdDirectoryUsingCallbacks)(void* pUserData, int n, bool (*ReadEntry)(void*, void*, uint32_t),
         bool (*RegisterEntry)(void*, void*, bool), void (*RegisterSpecialEntry)(void*, void*));
 
+
 } modloader_re3_addr_table_t;
 
 typedef struct {
@@ -43,6 +44,8 @@ typedef struct {
     HANDLE (*AcquireNextModelFileHandle)();
     void (*FetchCdDirectory)(const char*, int);
     int32_t (*CdStreamRead)(int32_t channel, void* buffer, uint32_t offset, uint32_t size);
+
+    void(*OnRequestSpecialModel)(uint32_t model_id, const char* model_name, uint32_t pos, uint32_t size);
 
 } modloader_re3_callback_table_t;
 

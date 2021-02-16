@@ -254,6 +254,8 @@ class CAbstractStreaming
         void InitRefreshInterface();
         void ShutRefreshInterface();
 
+        void OnRequestSpecialModel(id_t model_id, const char* model_name, uint32_t pos, uint32_t size);
+
         // Some analogues to the game CStreaming (may perform some additional work)
         void RequestModel(id_t id, uint32_t flags);
         void RemoveModel(id_t id);

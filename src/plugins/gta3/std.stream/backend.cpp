@@ -490,6 +490,35 @@ void CAbstractStreaming::LoadCdDirectory(std::function<void()> OriginalLoadCdDir
         this->raw_models.clear();
 }
 
+void CAbstractStreaming::OnRequestSpecialModel(id_t model_id, const char* model_name, uint32_t pos, uint32_t size)
+{
+    // Before this being called the game built the InfoForModel entry for this index based on the stock entry pRQSpecialEntry
+    // Register stock entry, so it can be restored during gameplay if necessary
+    {
+        DirectoryInfo entry;
+        uint32_t img_id;
+
+        strncpy(entry.m_szFileName, model_name, sizeof(entry.m_szFileName));
+        entry.m_szFileName[sizeof(entry.m_szFileName) - 1] = 0;
+        entry.m_usCompressedSize__ = 0;
+        entry.m_usSize = size; // FIXME for RE3 this is only compatible in little-endian
+        entry.m_dwFileOffset = pos & 0xFFFFFF;
+        img_id = pos >> 24;
+
+        // FIXME m_szFileName can overflow with the following strcat!
+        this->RegisterStockEntry(strcat(entry.m_szFileName, ".dff"), entry, model_id, img_id);
+    }
+
+    // Try to find abstract special entry related to this request....
+    // If it's possible, quickly import our entry into this special index
+    // otherwise quickly remove our previous entry at this special index if any there
+    auto it = this->special.find(mhash(model_name));
+    if(it != this->special.end())
+        this->QuickImport(model_id, it->second, true);
+    else
+        this->QuickUnimport(model_id);
+}
+
 /*
  *  CAbstractStreaming::Patch
  *      Patches the default game streaming pipeline to have our awesome hooks.
@@ -631,10 +660,6 @@ void CAbstractStreaming::Patch()
         }
     }
 
-    // unfinished stuff
-    if(game_id == MODLOADER_GAME_RE3)
-        return;
-
     // Special models
     if(gvm.IsSA() || gvm.IsVC() || gvm.IsIII())
     {
@@ -652,38 +677,16 @@ void CAbstractStreaming::Patch()
         // Hook call to CStreaming::RequestModel and do special processing if the entry is related to the abstract streaming
         make_static_hook<rqspecial_hook>([this](rqspecial_hook::func_type RequestModel, int& index, int& flags)
         {
-            // Before this being called the game built the InfoForModel entry for this index based on the stock entry pRQSpecialEntry
-            // Register stock entry, so it can be restored during gameplay if necessary
-            {
-                DirectoryInfo entry  = *pRQSpecialEntry;                   // Make copy to do proper processing
-                uint32_t img_id;
-
-                if(gvm.IsSA())
-                {
-                    img_id               = pRQSpecialEntry->m_dwFileOffset >> 24;
-                    entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset & 0xFFFFFF; 
-                }
-                else
-                {
-                    img_id               = 0; // on III/VC there's no img_id, it's based on m_dwFileOffset itself.
-                    entry.m_dwFileOffset = pRQSpecialEntry->m_dwFileOffset;
-                }
-
-                this->RegisterStockEntry(strcat(entry.m_szFileName, ".dff"), entry, index, img_id);
-            }
-
-            // Try to find abstract special entry related to this request....
-            // If it's possible, quickly import our entry into this special index
-            // otherwise quickly remove our previous entry at this special index if any there
-            auto it = this->special.find(mhash(pRQSpecialEntry->m_szFileName));
-            if(it != this->special.end())
-                this->QuickImport(index, it->second, true);
-            else
-                this->QuickUnimport(index);
-
-            // Ahhhhh!! finally do the actual request :)
+            OnRequestSpecialModel(index, pRQSpecialEntry->m_szFileName, pRQSpecialEntry->m_dwFileOffset, pRQSpecialEntry->m_usSize);
             return RequestModel(index, flags);
         });
+    }
+    else if(game_id == MODLOADER_GAME_RE3)
+    {
+        modloader_re3->callback_table->OnRequestSpecialModel = +[](id_t model_id, const char* model_name, uint32_t pos, uint32_t size)
+        {
+            return streaming->OnRequestSpecialModel(model_id, model_name, pos, size);
+        };
     }
 
     // Clothes
@@ -768,6 +771,9 @@ void CAbstractStreaming::Patch()
         }
     }
 
+    // unfinished stuff
+    if(game_id == MODLOADER_GAME_RE3)
+        return;
 
     // CdStream path overiding
     if(true)
@@ -858,7 +864,7 @@ void CAbstractStreaming::Patch()
     }
 
     // CdStream race condition fix
-    if(game_id != MODLOADER_GAME_RE3)
+    if(gvm.IsSA() || gvm.IsVC() || gvm.IsIII())
     {
         // These are required so we can fix CdStream race condition
         MakeJMP(0x406460, raw_ptr(CdStreamSync));
