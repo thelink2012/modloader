@@ -771,12 +771,8 @@ void CAbstractStreaming::Patch()
         }
     }
 
-    // unfinished stuff
-    if(game_id == MODLOADER_GAME_RE3)
-        return;
-
     // CdStream path overiding
-    if(true)
+    if(gvm.IsSA() || gvm.IsVC() || gvm.IsIII())
     {
         static void*(*OpenFile)(const char*, const char*);
         static void*(*RwStreamOpen)(int, int, const char*);
@@ -812,9 +808,9 @@ void CAbstractStreaming::Patch()
             if(gvm.IsIII() || gvm.IsVC()) MakeCALL(xVc(0x627D79), pOpenFileCdDirectory);
 
             auto pRwStreamOpenCdStream = raw_ptr((decltype(RwStreamOpen))(RwStreamOpenCdStreamHook));
-            RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpenCdStream).get(); // <- different context on III but works
+            if(!gvm.IsIII()) RwStreamOpen = MakeCALL(0x5AFBEF, pRwStreamOpenCdStream).get();
             if(gvm.IsSA()) MakeCALL(0x5B07E9, pRwStreamOpenCdStream);
-            if(gvm.IsIII()) MakeCALL(xIII(0x4BA6F6), pRwStreamOpenCdStream);
+            if(gvm.IsIII()) RwStreamOpen = MakeCALL(xIII(0x4BA6F6), pRwStreamOpenCdStream).get();
         }
 
         // Pointers to archieve the ds:[CreateFileA] overriding, we also have to deal with SecuROM obfuscation there!
@@ -838,6 +834,16 @@ void CAbstractStreaming::Patch()
         {
             injector::WriteMemory(0x40685E + 2, &pCreateFileForCdStream, true);
         }
+    }
+    else if(game_id == MODLOADER_GAME_RE3)
+    {
+        modloader_re3->callback_table->GetCdDirectoryPath_Unsafe = +[](const char* filepath) {
+            return streaming->GetCdDirectoryPath(filepath);
+        };
+
+        modloader_re3->callback_table->GetCdStreamPath_Unsafe = +[](const char* filepath) {
+            return streaming->GetCdStreamPath(filepath);
+        };
     }
 
     // Some fixes to allow the refreshing process to happen

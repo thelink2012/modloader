@@ -123,12 +123,11 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x409F76] = 0x40A997;   // call    _ZN10CDirectory8FindItemEPKcRjS2_        ; @CStreaming::RequestSpecialModel
         map[0x409FD9] = 0x40A9E5;   // call    _ZN10CStreaming12RequestModelEii         ; @CStreaming::RequestSpecialModel
         map[0x5B6183] = 0x406DB3;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CStreaming::LoadCdDirectory
-        @@map[0x532361] = 0x473641;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDirectory::ReadDirFile
-        @@map[0x5AFC9D] = 0x4046BF;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CCutsceneMgr::LoadCutsceneData_postload
-        @@map[0x5AFBEF] = 0x4BA6F6;   // call    _RwStreamOpen                            ; @CCutsceneMgr::LoadCutsceneData_postload
-        @@map[xVc(0x627D79)] = 0x59BB39;// call    _ZN8CFileMgr8OpenFileEPKcS1_           ; @LoadPlayerDff ; "models/gta3.dir"
-        @@map[xIII(0x4BA6F6)] = 0x4BA6F6;// call    RwStreamOpen                          ; @CCutsceneHead::PlayAnimation ; "anim/cuts.img"
-        @@map[0x40685E] = 0x406296;   // call    ds:__imp_CreateFileA                     ; @CdStreamOpen  //doesnt exist?
+        map[0x532361] = 0x473641;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CDirectory::ReadDirFile
+        map[0x5AFC9D] = 0x4046BF;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CCutsceneMgr::LoadCutsceneData_postload
+        map[xVc(0x627D79)] = 0x59BB39;// call    _ZN8CFileMgr8OpenFileEPKcS1_           ; @FindPlayerDff ; "models/gta3.dir"
+        map[xIII(0x4BA6F6)] = 0x4BA6F6;// call    RwStreamOpen                          ; @CCutsceneHead::PlayAnimation ; "anim/cuts.img"
+        map[0x40685E] = 0x406296;   // call    ds:__imp_CreateFileA                     ; @CdStreamAddImage
         map[0x5B8310] = 0x406D6A;   // call    _ZN10CStreaming15LoadCdDirectoryEPKci    ; @CStreaming::LoadCdDirectory
         map[0x5B61E1] = 0x406DC9;   // call    _ZN8CFileMgr4ReadEiPci                   ; @CStreaming::LoadCdDirectory  ; read entry @up
         map[xVc(0x40FDD9)] = 0x407043;// call    _ZN8CFileMgr4ReadEiPci             ; @CStreaming::LoadCdDirectory ; read entry @up

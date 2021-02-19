@@ -47,6 +47,9 @@ typedef struct {
 
     void(*OnRequestSpecialModel)(uint32_t model_id, const char* model_name, uint32_t pos, uint32_t size);
 
+    const char* (*GetCdDirectoryPath_Unsafe)(const char* filepath);
+    const char* (*GetCdStreamPath_Unsafe)(const char* filepath);
+
 } modloader_re3_callback_table_t;
 
 typedef struct modloader_re3_t {
