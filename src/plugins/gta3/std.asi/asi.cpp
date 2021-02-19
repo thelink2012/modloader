@@ -45,6 +45,10 @@ const ThePlugin::info& ThePlugin::GetInfo()
  */
 bool ThePlugin::OnStartup()
 {
+    // ASI plugins aren't available in re3.
+    if(!gvm.IsIII() && !gvm.IsVC() && !gvm.IsSA())
+        return false;
+
     // Register GTA module for some arg translation
     this->asiList.emplace_front("gta", nullptr, GetModuleHandleA(0));
     this->asiList.front().PatchImports();

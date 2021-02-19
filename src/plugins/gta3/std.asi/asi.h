@@ -104,7 +104,7 @@ class ThePlugin : public modloader::basic_plugin
         {
             // Find HMODULE by @addr
             HMODULE hModule;
-            if(GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            if(GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                            (char*)addr, &hModule))
             {
                 // Find the ModuleInfo in our list of modules

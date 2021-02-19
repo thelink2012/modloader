@@ -14,6 +14,8 @@
 
 #include "hacks/FindCleoScripts.hpp"
 
+#include <intrin.h>
+
 
 /*
  *  Path translator for stdcall functions (WINAPI functions)

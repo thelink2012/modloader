@@ -230,7 +230,7 @@ void ThePlugin::ModuleInfo::Free()
             FreeLibrary(module);
         
         // Test if module has been freed or is still referenced by someone else...
-        if(GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        if(GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             (char*)this->module,
                             &hMod))
         {

@@ -73,13 +73,6 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x4A6F4E)] = 0x48D61E;// call    _ZN9CTxdStore7LoadTxdEiPKc  ; @LoadSplash
     }
 
-    // std.asi
-    if(true)
-    {
-		map[0x836F3B] = 0x5AB904;   // SetCurrentDirectory return pointer for _chdir
-        map[0x748CFB] = 0x582E6C;   // call    _Z14InitialiseGamev
-    }*/
-
     // std.stream
     if(true)
     {
@@ -143,22 +136,22 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         DEADLOCK_FIX map[xVc(0x4086B6)] = 0x405E16;	// mov     eax, [ecx+ebp+14h]
         DEADLOCK_FIX map[0x406460] = 0x406010;	// _Z12CdStreamSynci
 
-        map[0xB74490] = 0x8F2C60;   // CPool<> *CPools::ms_pPedPool
-        map[0xB74494] = 0x9430DC;   // CPool<> *CPools::ms_pVehiclePool
-        map[0xB74498] = 0x8F2C04;   // CPool<> *CPools::ms_pBuildingPool
-        map[0xB7449C] = 0x880E28;   // CPool<> *CPools::ms_pObjectPool
+        @@map[0xB74490] = 0x8F2C60;   // CPool<> *CPools::ms_pPedPool
+        @@map[0xB74494] = 0x9430DC;   // CPool<> *CPools::ms_pVehiclePool
+        @@map[0xB74498] = 0x8F2C04;   // CPool<> *CPools::ms_pBuildingPool
+        @@map[0xB7449C] = 0x880E28;   // CPool<> *CPools::ms_pObjectPool
         // TODO X refresh.cpp map[0x4D6C30] = ;   // _Z32RpAnimBlendClumpGiveAssociationsP7RpClumpP21CAnimBlendAssociation //doesn't exist?
         // TODO X refresh.cpp map[0x4D6BE0] = ;   // _Z35RpAnimBlendClumpExtractAssociationsP7RpClump //doesn't exist?
         // TODO X refresh.cpp map[0x681810] = ;   // _ZNK12CTaskManager16GetTaskSecondaryEi //doesn't exist?
-        map[0x561A00] = 0x4AD370;   // _ZN6CTimer6ResumeEv
-        map[0x5619D0] = 0x4AD310;   // _ZN6CTimer7SuspendEv
-        map[0x4087E0] = 0x407EA0;   // _ZN10CStreaming12RequestModelEii
-        map[0x4089A0] = 0x408830;   // _ZN10CStreaming11RemoveModelEi
-        map[0x40EA10] = 0x40A440;   // _ZN10CStreaming22LoadAllRequestedModelsEb
-        map[0x40E460] = 0x40A610;   // _ZN10CStreaming13FlushChannelsEv
-        map[0x40CF80] = 0x408940;   // _ZN10CStreaming21RemoveAllUnusedModelsEv
-        map[0x40CFD0] = 0x4089B0;   // _ZN10CStreaming20RemoveLeastUsedModelEj
-        map[xVc(0x59E2B0)] = 0x52D210; // _ZN11CAutomobile20SetupSuspensionLinesEv
+        @@map[0x561A00] = 0x4AD370;   // _ZN6CTimer6ResumeEv
+        @@map[0x5619D0] = 0x4AD310;   // _ZN6CTimer7SuspendEv
+        @@map[0x4087E0] = 0x407EA0;   // _ZN10CStreaming12RequestModelEii
+        @@map[0x4089A0] = 0x408830;   // _ZN10CStreaming11RemoveModelEi
+        @@map[0x40EA10] = 0x40A440;   // _ZN10CStreaming22LoadAllRequestedModelsEb
+        @@map[0x40E460] = 0x40A610;   // _ZN10CStreaming13FlushChannelsEv
+        @@map[0x40CF80] = 0x408940;   // _ZN10CStreaming21RemoveAllUnusedModelsEv
+        @@map[0x40CFD0] = 0x4089B0;   // _ZN10CStreaming20RemoveLeastUsedModelEj
+        @@map[xVc(0x59E2B0)] = 0x52D210; // _ZN11CAutomobile20SetupSuspensionLinesEv
 
         // Non streamed resources
         map[0x5B9188] = 0x4763B2 ;  // call    _ZN11CFileLoader17LoadCollisionFileEPKch
@@ -166,7 +159,6 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B91DB] = 0x47640F;   // call    _ZN11CFileLoader13LoadClumpFileEPKc
         map[0x5B910A] = 0x476358;   // call    _ZN11CFileLoader17LoadTexDictionaryEPKc
         map[xIII(0x476589)] = 0x476589; // call    _ZN11CFileLoader17LoadCollisionFileEPKch
-        map[xIII(0x476534)] = 0x476534; // call    _ZN8CFileMgr8OpenFileEPKcS1_
         */
 
         // Removed in RE3 source code if built for Mod Loader
@@ -215,6 +207,7 @@ static void III_RE3(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B92F9] = 0x47650B;   // call    _ZN8CFileMgr9CloseFileEi                 ; @CFileLoader::LoadLevel
         map[0x53BC95] = 0x48C038;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- default.dat
         map[0x53BC9B] = 0x48C03F;   // call    _ZN11CFileLoader9LoadLevelEPKc           ; @CGame::Initialise -- gta.dat
+        map[xIII(0x476534)] = 0x476534; // call    _ZN8CFileMgr8OpenFileEPKcS1_         ; @CFileLoader::LoadCollisionFromDatFile -- gta.dat
         map[0x4C5940] = 0x50B860;   // _ZN10CModelInfo12GetModelInfoEPKcPi
         map[0x5B925F] = 0x476472;   // call    _ZN11CObjectData10InitialiseEPc          ; @CFileLoader::LoadLevel
 
