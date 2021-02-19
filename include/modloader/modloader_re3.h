@@ -50,6 +50,11 @@ typedef struct {
     const char* (*GetCdDirectoryPath_Unsafe)(const char* filepath);
     const char* (*GetCdStreamPath_Unsafe)(const char* filepath);
 
+    const char* (*RegisterAndGetAtomicFile_Unsafe)(const char* filepath);
+    const char* (*RegisterAndGetClumpFile_Unsafe)(const char* filepath);
+    const char* (*RegisterAndGetTexDiction_Unsafe)(const char* filepath);
+    const char* (*RegisterAndGetColFile_Unsafe)(const char* filepath);
+
 } modloader_re3_callback_table_t;
 
 typedef struct modloader_re3_t {

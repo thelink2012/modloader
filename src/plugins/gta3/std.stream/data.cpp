@@ -16,6 +16,7 @@ extern "C"
 
 static void FixColFile();
 static void* LoadNonStreamedRes(std::function<void*(const char*)> load, const char* filepath, NonStreamedType type);
+static const char* RegisterAndGetNonStreamedResPath(const char* filepath, NonStreamedType type);
 
 /*
  *  gta.dat / default.dat related stuff
@@ -26,7 +27,7 @@ void CAbstractStreaming::DataPatch()
     FixColFile();
 
     // Detouring of non streamed resources loaded by gta.dat/default.dat
-    if(true)
+    if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
         if(true)
         {
@@ -37,7 +38,7 @@ void CAbstractStreaming::DataPatch()
             auto fn_hcolfile = [](hcolfile::func_type load, const char* filepath, int id)
             {
                 // NOTE: on III `id` is not a parameter, but since this is __cdecl, we don't have a problem.
-                return LoadNonStreamedRes(std::bind(load, _1, id), filepath, NonStreamedType::ColFile);
+                return load(RegisterAndGetNonStreamedResPath(filepath, NonStreamedType::ColFile), id);
             };
 
             make_static_hook<hcolfile>(fn_hcolfile);
@@ -60,14 +61,32 @@ void CAbstractStreaming::DataPatch()
 
             make_static_hook<hatomic>([](hatomic::func_type load, int a, int b, const char* filepath)
             {
-                return LoadNonStreamedRes(std::bind(load, a, b, _1), filepath, NonStreamedType::AtomicFile);
+                return load(a, b, RegisterAndGetNonStreamedResPath(filepath, NonStreamedType::AtomicFile));
             });
 
             make_static_hook<htexdict>([](htexdict::func_type load, int a, int b, const char* filepath)
             {
-                return LoadNonStreamedRes(std::bind(load, a, b, _1), filepath, NonStreamedType::TexDictionary);
+                return load(a, b, RegisterAndGetNonStreamedResPath(filepath, NonStreamedType::TexDictionary));
             });
         }
+    }
+    else if(plugin_ptr->loader->game_id == MODLOADER_GAME_RE3)
+    {
+        modloader_re3->callback_table->RegisterAndGetAtomicFile_Unsafe = +[](const char* filepath) {
+            return RegisterAndGetNonStreamedResPath(filepath, NonStreamedType::AtomicFile);
+        };
+
+        modloader_re3->callback_table->RegisterAndGetClumpFile_Unsafe = +[](const char* filepath) {
+            return RegisterAndGetNonStreamedResPath(filepath, NonStreamedType::ClumpFile);
+        };
+
+        modloader_re3->callback_table->RegisterAndGetTexDiction_Unsafe = +[](const char* filepath) {
+            return RegisterAndGetNonStreamedResPath(filepath, NonStreamedType::TexDictionary);
+        };
+
+        modloader_re3->callback_table->RegisterAndGetColFile_Unsafe = +[](const char* filepath) {
+            return RegisterAndGetNonStreamedResPath(filepath, NonStreamedType::ColFile);
+        };
     }
 }
 
@@ -126,15 +145,16 @@ void CAbstractStreaming::RemoveNonStreamedFromRawModels()
     }
 }
 
-
-/*
- *  LoadNonStreamedRes
- *      Direct wrapper between the game calls and CAbstractStreaming::TryLoadNonStreamedResource 
- */
-void* LoadNonStreamedRes(std::function<void*(const char*)> load, const char* filepath, NonStreamedType type)
+const char* RegisterAndGetNonStreamedResPath(const char* filepath, NonStreamedType type)
 {
-    auto newfilepath = streaming->TryLoadNonStreamedResource(filepath, type);
-    return load(newfilepath.size()? newfilepath.data() : filepath);
+    static std::string static_result;
+    static_result = streaming->TryLoadNonStreamedResource(filepath, type);
+    return static_result.empty()? filepath : static_result.c_str();
+}
+
+void* LoadNonStreamedRes(std::function<void* (const char*)> load, const char* filepath, NonStreamedType type)
+{
+    return load(RegisterAndGetNonStreamedResPath(filepath, type));
 }
 
 

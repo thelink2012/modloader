@@ -544,8 +544,7 @@ void CAbstractStreaming::Patch()
     streamingBufferSize = memory_pointer(0x8E4CA8).get<uint32_t>();
 
     // See data.cpp
-    if(game_id != MODLOADER_GAME_RE3)
-        this->DataPatch();
+    this->DataPatch();
 
     // Hook at the initialization of the streaming
     if(game_id == MODLOADER_GAME_RE3)
