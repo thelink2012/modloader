@@ -19,10 +19,10 @@ struct TraitsSA : TraitsGTA
 
     // Indices range
     const id_t dff_start   = 0;
-    const id_t txd_start   = injector::lazy_object<0x5B62CF, unsigned int>::get();  // uint32_t not working properly on GCC here
-    const id_t col_start   = injector::lazy_object<0x5B6314, unsigned int>::get();  // Why?
-    const id_t rrr_start   = injector::lazy_object<0x5B63F1, unsigned int>::get();
-    const id_t scm_start   = injector::lazy_object<0x5B641F, unsigned int>::get();
+    const id_t txd_start   = BaseIndexForTXD();
+    const id_t col_start   = BaseIndexForCOL();
+    const id_t rrr_start   = BaseIndexForRRR();
+    const id_t scm_start   = BaseIndexForSCM();
 
     const id_t max_models  = txd_start;
     const id_t dff_end     = txd_start;
@@ -124,4 +124,33 @@ struct TraitsSA : TraitsGTA
         return 0;
     }
 
+    // Indices range
+
+    // TODO do the same in TraitsIII/VC and get rid of non-static dff_start/etc
+
+    static id_t BaseIndexForDFF()
+    {
+        return 0;
+    }
+
+    static id_t BaseIndexForTXD()
+    {
+        // XXX uint32_t not working properly on GCC here
+        return injector::lazy_object<0x5B62CF, unsigned int>::get();
+    }
+
+    static id_t BaseIndexForCOL()
+    {
+        return injector::lazy_object<0x5B6314, unsigned int>::get();
+    }
+
+    static id_t BaseIndexForRRR()
+    {
+        return injector::lazy_object<0x5B63F1, unsigned int>::get();;
+    }
+
+    static id_t BaseIndexForSCM()
+    {
+        return injector::lazy_object<0x5B641F, unsigned int>::get();
+    }
 };

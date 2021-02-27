@@ -428,6 +428,46 @@ void CAbstractStreaming::BuildPrevOnCdMap()
 }
 
 
+/*
+ *  CAbstractStreaming::Patch
+ *      Same as Patch() but called much later during game loading. This is used to
+ *      improve compatibility with certain mods that modify pointer offsets.
+ */
+void CAbstractStreaming::PatchDelayed()
+{
+    // Pointers
+    ms_aInfoForModel = ReadMemory<CStreamingInfo*>(0x40D014, true);
+    LoadCdDirectory2 = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
+    clothesDirectory = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
+
+    // Part of standard models hooks
+    if(gvm.IsSA())
+    {
+        MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
+        MakeNOP(0x40CCA6 + 5, 2);
+    }
+    else if(gvm.IsVC())
+    {
+        MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead_VC));
+        MakeCALL(xVc(0x40B738), raw_ptr(HOOK_RegisterNextModelRead_VC));
+        MakeNOP(0x40CCA6 + 5, 1);
+        MakeNOP(xVc(0x40B738) + 5, 1);
+    }
+    else if(gvm.IsIII()) // doesn't need to be delayed but keep together VC/SA hooks
+    {
+        using xcd_hook1 = function_hooker_thiscall<xIII(0x40A128), char(CStreamingInfo*, int*, int*)>;
+        using xcd_hook2 = function_hooker_thiscall<xIII(0x40A4F3), char(CStreamingInfo*, int*, int*)>;
+
+        auto fn_register = [this](xcd_hook1::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
+        {
+            RegisterNextModelRead(this->InfoForModelIndex(*model));
+            return GetCdPosnAndSize(model, pOffset, pSize);
+        };
+
+        make_static_hook<xcd_hook1>(fn_register);
+        make_static_hook<xcd_hook2>(fn_register);
+    }
+}
 
 /*
  *  CAbstractStreaming::Patch
@@ -454,10 +494,7 @@ void CAbstractStreaming::Patch()
 		if(!gvm.IsSA())
 			this->bHasInitializedStreaming = false;
 
-        // Pointers
-        ms_aInfoForModel = ReadMemory<CStreamingInfo*>(0x40D014, true);
-        LoadCdDirectory2 = ReadRelativeOffset(0x5B8310 + 1).get<void(const char*, int)>();
-        clothesDirectory = gvm.IsSA()? ReadMemory<CDirectory*>(lazy_ptr<0x5A419B>(), true) : nullptr;
+        PatchDelayed();
 
         //
         this->InitialiseStructAbstraction();
@@ -525,32 +562,7 @@ void CAbstractStreaming::Patch()
 		}
 
         // We need to know the next model to be read before the CdStreamRead call happens
-        if(gvm.IsSA())
-        {
-            MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead));
-            MakeNOP(0x40CCA6 + 5, 2);
-        }
-        else if(gvm.IsVC())
-        {
-            MakeCALL(0x40CCA6, raw_ptr(HOOK_RegisterNextModelRead_VC));
-            MakeCALL(xVc(0x40B738), raw_ptr(HOOK_RegisterNextModelRead_VC));
-            MakeNOP(0x40CCA6 + 5, 1);
-            MakeNOP(xVc(0x40B738) + 5, 1);
-        }
-        else if(gvm.IsIII())
-        {
-            using xcd_hook1 = function_hooker_thiscall<xIII(0x40A128), char(CStreamingInfo*, int*, int*)>;
-            using xcd_hook2 = function_hooker_thiscall<xIII(0x40A4F3), char(CStreamingInfo*, int*, int*)>;
-
-            auto fn_register = [this](xcd_hook1::func_type GetCdPosnAndSize, CStreamingInfo*& model, int*& pOffset, int*& pSize)
-            {
-                RegisterNextModelRead(this->InfoForModelIndex(*model));
-                return GetCdPosnAndSize(model, pOffset, pSize);
-            };
-
-            make_static_hook<xcd_hook1>(fn_register);
-            make_static_hook<xcd_hook2>(fn_register);
-        }
+        // XXX this hook has been moved to PatchDelayed!
 
         // We need to return a new hFile if the file is on disk
         if(gvm.IsSA())
@@ -695,30 +707,29 @@ void CAbstractStreaming::Patch()
         // Although streamed COLs exist in Vice too, they are checked, so we don't need to check ourselves
         if(gvm.IsSA())
         {
-            TraitsSA traits; // see comment above
-
             // CColStore finding method is dummie, so we need to avoid duplicate cols by ourselves
-            make_static_hook<addcol_hook>([this, traits](addcol_hook::func_type AddColSlot, const char*& name)
+            make_static_hook<addcol_hook>([this](addcol_hook::func_type AddColSlot, const char*& name)
             {
-                return this->FindOrRegisterResource(name, "col", traits.col_start, AddColSlot, name);
+                const auto col_start = TraitsSA::BaseIndexForCOL();
+                return this->FindOrRegisterResource(name, "col", col_start, AddColSlot, name);
             });
         }
 
         // The following files are in SA only
         if(gvm.IsSA())
         {
-            TraitsSA traits;
-
             // CVehicleRecording do not care about duplicates, but we should
-            make_static_hook<addr3_hook>([this, traits](addr3_hook::func_type RegisterRecordingFile, const char*& name)
+            make_static_hook<addr3_hook>([this](addr3_hook::func_type RegisterRecordingFile, const char*& name)
             {
-                return this->FindOrRegisterResource(name, "rrr", traits.rrr_start, RegisterRecordingFile, name);
+                const auto rrr_start = TraitsSA::BaseIndexForRRR();
+                return this->FindOrRegisterResource(name, "rrr", rrr_start, RegisterRecordingFile, name);
             });
             
             // CStreamedScripts do not care about duplicates but we should
-            make_static_hook<addscm_hook>([this, traits](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
+            make_static_hook<addscm_hook>([this](addscm_hook::func_type RegisterScript, void*& self, const char*& name)
             {
-                return this->FindOrRegisterResource(name, "scm", traits.scm_start, RegisterScript, self, name);
+                const auto scm_start = TraitsSA::BaseIndexForSCM();
+                return this->FindOrRegisterResource(name, "scm", scm_start, RegisterScript, self, name);
             });
         }
     }
