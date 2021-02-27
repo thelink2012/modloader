@@ -11,6 +11,7 @@
 #define NOMINMAX
 #undef  WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#undef UNICODE
 
 // Commonly used standard C library
 #include <cstdio>
@@ -29,6 +30,7 @@
 #include <functional>
 #include <type_traits>
 #include <iterator>
+#include <stdexcept>
 
 // Mod Loader stuff
 #include <modloader/modloader.hpp>

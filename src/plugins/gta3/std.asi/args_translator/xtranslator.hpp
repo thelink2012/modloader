@@ -40,6 +40,7 @@ enum eArgsType
 
 
 #if defined(_MSC_VER)
+#   include <intrin.h>
 #   define GetReturnAddress()      _ReturnAddress()
 #else
 #   define GetReturnAddress()      __builtin_return_address(0)
