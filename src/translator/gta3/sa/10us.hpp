@@ -21,6 +21,7 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // Core
     if(true)
     {
+        map[0x8246AC] = 0x8246AC;   // call    _cinit
         map[0x8246EC] = 0x8246EC;   // call    _WinMain
         map[0x53ECBD] = 0x53ECBD;   // call    _Z4IdlePv
         map[0x53ECCB] = 0x53ECCB;   // call    _Z12FrontendIdlePv

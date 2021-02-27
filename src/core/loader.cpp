@@ -35,6 +35,62 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
     return TRUE;
 }
 
+void Loader::InitFromEntryPoint()
+{
+    typedef function_hooker<0x53ECBD, void(int)> ridle_hook;
+    typedef function_hooker<0x53ECCB, void(int)> rfidle_hook;   // Actually void() but... meh
+
+    // This may be called more than once due to the cinit/WinMain trick at Patch().
+    static bool has_patches = false;
+    if(has_patches) return;
+    has_patches = true;
+
+    auto& gvm = injector::address_manager::singleton();
+
+#ifndef NDEBUG
+    if(!gvm.IsSA())
+    {
+        static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
+
+        gGameState = 5; // skip intro
+        if(gvm.IsIII())
+            MakeNOP(raw_ptr(0x5811F8), 10);
+        else if(gvm.IsVC())
+            MakeNOP(raw_ptr(0x601B3B), 10);
+
+        if(gvm.IsIII())
+            MakeJMP(raw_ptr(0x405DB0), &Loader::Log);
+        else if(gvm.IsVC())
+            MakeJMP(raw_ptr(0x401000), &Loader::Log);
+
+        // Debugger does not attach properly in III/VC DxWnd, so we need to do it manually.
+        LaunchDebugger();
+    }
+#endif
+
+    // Install exception filter to log crashes
+    InstallExceptionCatcher([](const char* buffer)
+    {
+        Log("\n\n");
+        LogGameVersion();
+        Log(buffer);
+        loader.Shutdown();
+    });
+
+    // To be called each frame
+    auto CallTick = [this](ridle_hook::func_type Idle, int& i)
+    {
+        this->Tick();
+        return Idle(i);
+    };
+
+    // Do tick hook only if possible
+    if(try_address(ridle_hook::addr))  make_static_hook<ridle_hook>(CallTick);
+    if(try_address(rfidle_hook::addr)) make_static_hook<rfidle_hook>(CallTick);
+
+    this->Startup();
+}
+
 /*
  *  Loader::Patch
  *      Patches the game code to run the loader
@@ -42,8 +98,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 bool Loader::Patch()
 {
     typedef function_hooker_stdcall<0x8246EC, int(HINSTANCE, HINSTANCE, LPSTR, int)> winmain_hook;
-    typedef function_hooker<0x53ECBD, void(int)> ridle_hook;
-    typedef function_hooker<0x53ECCB, void(int)> rfidle_hook;   // Actually void() but... meh
+    typedef function_hooker<0x8246AC, int()> cinit_hook;
 
     auto& gvm = injector::address_manager::singleton();
     gvm.set_name("Mod Loader");
@@ -54,73 +109,38 @@ bool Loader::Patch()
         if(injector::ReadMemory<int>(0xC920E8)) // RwInitialized -- should enter only when using the mss32 loader on III/VC
         {
             const char* buf = "You installed Mod Loader wrongly!\n\n"
-                              "You need Ultimate ASI Loader, and modloader.asi must be in the 'scripts/' directory.\n\n"
-                              "Please refer to the 'Readme.txt' or 'Leia-me.txt' for more information.";
+                "You need Ultimate ASI Loader, and modloader.asi must be in the 'scripts/' directory.\n\n"
+                "Please refer to the 'Readme.txt' or 'Leia-me.txt' for more information.";
             this->Error(buf);
             return false;
         }
 
         // Hook WinMain to run mod loader
         injector::make_static_hook<winmain_hook>([this](winmain_hook::func_type WinMain,
-                                                    HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+            HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
         {
-            // Avoind circular looping forever
+            // Avoid circular looping forever
             static bool bRan = false;
             if(bRan) return WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             bRan = true;
             
-#ifndef NDEBUG
-            auto& gvm = injector::address_manager::singleton();
-            if(!gvm.IsSA())
-            {
-                static int& gGameState = *mem_ptr(0xC8D4C0).get<int>();
-
-                gGameState = 5; // skip intro
-                if(gvm.IsIII())
-                    MakeNOP(raw_ptr(0x5811F8), 10);
-                else if(gvm.IsVC())
-                    MakeNOP(raw_ptr(0x601B3B), 10);
-
-                if(gvm.IsIII())
-                    MakeJMP(raw_ptr(0x405DB0), &Loader::Log);
-                else if(gvm.IsVC())
-                    MakeJMP(raw_ptr(0x401000), &Loader::Log);
-
-                // Debugger does not attach properly in III/VC DxWnd, so we need to do it manually.
-                LaunchDebugger();
-            }
-#endif
-
-            // Install exception filter to log crashes
-            InstallExceptionCatcher([](const char* buffer)
-            {
-                Log("\n\n");
-                LogGameVersion();
-                Log(buffer);
-                loader.Shutdown();
-            });
-
-            // To be called each frame
-            auto CallTick = [this](ridle_hook::func_type Idle, int& i)
-            {
-                this->Tick();
-                return Idle(i);
-            };
-
-            // Do tick hook only if possible
-            if(try_address(ridle_hook::addr))  make_static_hook<ridle_hook>(CallTick);
-            if(try_address(rfidle_hook::addr)) make_static_hook<rfidle_hook>(CallTick);
-
-            // Startup the loader and call WinMain, Shutdown the loader after WinMain.
-            // If any mod hooked WinMain at Startup, no conflict will happen, we're takin' care of that
-            {
-            this->Startup();
-            auto WinMain = (winmain_hook::func_type_raw) ReadRelativeOffset(winmain_hook::addr + 1).get();
-            auto result = WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+            this->InitFromEntryPoint();
+            auto WinMainNext = (winmain_hook::func_type_raw)ReadRelativeOffset(winmain_hook::addr + 1).get();
+            auto result = WinMainNext(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
             this->Shutdown();
             return result;
-            }
         });
+
+        // If possible, startup before WinMain.
+        // This is important for certain mods (e.g. FLA) that need to change offsets of
+        // functions that run pre-WinMain (e.g. global constructors).
+        if(try_address(cinit_hook::addr))
+        {
+            injector::make_static_hook<cinit_hook>([this](cinit_hook::func_type cinit) {
+                this->InitFromEntryPoint();
+                return cinit();
+            });
+        }
 
         return true;
     }
