@@ -1,5 +1,11 @@
 # Mod Loader
 
+<p align="center">
+<img alt="GitHub repo size" src="https://img.shields.io/github/repo-size/thelink2012/modloader">
+<img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/w/thelink2012/modloader">
+<img alt="GitHub contributors" src="https://img.shields.io/github/contributors/thelink2012/modloader">
+</p>
+
 Mod Loader is a plugin for Grand Theft Auto III, Vice City and San Andreas that adds an easy and user-friendly way to install and uninstall modifications into the game, as if the game had official modding support. No changes are **ever** made to the original game files, everything is injected on the fly, at runtime!
 
 The usage is as simple as inserting the mod files into the *modloader/* directory. Uninstalling is as easy as that too, delete the mod files and you are done. Hot swapping mods while the game is running? By using Mod Loader you can!
