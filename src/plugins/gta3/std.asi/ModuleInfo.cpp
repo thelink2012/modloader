@@ -499,6 +499,8 @@ static bool ModulesWalk(uint32_t pid, F functor)
  *      http://msdn.microsoft.com/en-us/library/windows/desktop/aa363950(v=vs.85).aspx
  */
 extern const char aKernel32[] = "kernel32.dll";
+extern const char aCreateDirectoryA[] = "CreateDirectoryA";
+extern const char aCreateDirectoryExA[] = "CreateDirectoryExA";
 extern const char aCreateFileA[] = "CreateFileA";
 extern const char aLoadLibraryA[] = "LoadLibraryA";
 extern const char aLoadLibraryExA[] = "LoadLibraryExA";
@@ -518,6 +520,8 @@ extern const char aWritePrivateProfileStructA[] = "WritePrivateProfileStructA";
 extern const char aGetFileAttributesA[] = "GetFileAttributesA";
 extern const char aGetFileAttributesExA[] = "GetFileAttributesExA";
 
+extern const char aCreateDirectoryW[] = "CreateDirectoryW";
+extern const char aCreateDirectoryExW[] = "CreateDirectoryExW";
 extern const char aCreateFileW[] = "CreateFileW";
 extern const char aLoadLibraryW[] = "LoadLibraryW";
 extern const char aLoadLibraryExW[] = "LoadLibraryExW";
@@ -538,10 +542,18 @@ extern const char aGetFileAttributesExW[] = "GetFileAttributesExW";
 
 
 // Operations
+static path_translator_stdcall<aCreateDirectoryA, aKernel32, BOOL(LPCSTR, LPSECURITY_ATTRIBUTES)>
+        psCreateDirectoryA(0, AR_PATH_INE, 0);
+static path_translator_stdcall<aCreateDirectoryExA, aKernel32, BOOL(LPCSTR, LPCSTR, LPSECURITY_ATTRIBUTES)>
+        psCreateDirectoryExA(0, AR_PATH_INE, AR_PATH_INE, 0);
 static path_translator_stdcall<aCreateFileA, aKernel32, HANDLE(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
         psCreateFileA(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
 static path_translator_stdcall<aSetCurrentDirectoryA, aKernel32, BOOL(LPCSTR)>
         psSetCurrentDirectoryA(0, AR_PATH_INE);           // Do not work properly!! Don't use!!!
+static path_translator_stdcall<aCreateDirectoryW, aKernel32, BOOL(LPCWSTR, LPSECURITY_ATTRIBUTES)>
+        psCreateDirectoryW(0, AR_PATH_INE, 0);
+static path_translator_stdcall<aCreateDirectoryExW, aKernel32, BOOL(LPCWSTR, LPCWSTR, LPSECURITY_ATTRIBUTES)>
+        psCreateDirectoryExW(0, AR_PATH_INE, AR_PATH_INE, 0);
 static path_translator_stdcall<aCreateFileW, aKernel32, HANDLE(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
         psCreateFileW(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
 static path_translator_stdcall<aSetCurrentDirectoryW, aKernel32, BOOL(LPCWSTR)>
