@@ -1,0 +1,149 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags:     ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Release, Debug]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # -------------------------------------------------------------------
+      # Instala o toolset v141 (VS 2017) + suporte a XP no VS 2022 presente
+      # no runner. O componente WinXP habilita o v141_xp usado pelo premake.
+      # -------------------------------------------------------------------
+      - name: Install v141_xp toolset
+        shell: cmd
+        run: |
+          "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify ^
+            --passive --norestart ^
+            --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" ^
+            --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 ^
+            --add Microsoft.VisualStudio.Component.WinXP
+        # Timeout ocasional é esperado; o step falha limpo se o installer
+        # retornar código != 0, o que torna o problema visível nos logs.
+
+      # -------------------------------------------------------------------
+      # Gera os projetos VS2015 via Premake (o .exe já está no repo).
+      # O premake define PlatformToolset=v140_xp nos .vcxproj; vamos
+      # sobrescrever isso no MSBuild mais abaixo — sem tocar no premake5.lua.
+      # -------------------------------------------------------------------
+      - name: Generate project files (vs2015)
+        shell: cmd
+        run: premake5.exe vs2015 --outdir=build_temp
+
+      # -------------------------------------------------------------------
+      # Configura o ambiente MSVC para o toolset 14.16 (VS 2017 / v141).
+      # Necessário para que o msbuild encontre o compilador correto.
+      # -------------------------------------------------------------------
+      - name: Setup MSVC environment (v141)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch:    x86
+          toolset: 14.16   # toolset do VS 2017
+
+      # -------------------------------------------------------------------
+      # Compila sobrescrevendo o PlatformToolset para v141_xp.
+      #
+      # Por que funciona sem mexer nos .vcxproj:
+      #   O MSBuild permite que qualquer propriedade definida em /p: na linha
+      #   de comando tenha precedência sobre o valor do arquivo de projeto.
+      #   "v141_xp" é exatamente o mesmo toolset que você confirmou funcionar
+      #   ao alterar manualmente pelo Visual Studio 2017.
+      #
+      # /m  → paralelismo (usa todos os núcleos do runner).
+      # /v:m → verbosidade minimal para logs legíveis.
+      # -------------------------------------------------------------------
+      - name: Build (${{ matrix.configuration }})
+        shell: cmd
+        run: |
+          msbuild build_temp\modloader.sln ^
+            /p:Configuration=${{ matrix.configuration }} ^
+            /p:Platform=Win32 ^
+            /p:PlatformToolset=v141_xp ^
+            /m /v:m
+
+      # -------------------------------------------------------------------
+      # Coleta os binários gerados.
+      # Estrutura de saída do premake: bin/ (modloader.asi) e
+      # bin/plugins/gta3/*.dll para os plugins.
+      # -------------------------------------------------------------------
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          $cfg  = "${{ matrix.configuration }}"
+          $dest = "artifacts\modloader-$cfg"
+
+          # ASI principal
+          New-Item -ItemType Directory -Force -Path "$dest" | Out-Null
+          Copy-Item "bin\modloader.asi"         "$dest\" -ErrorAction SilentlyContinue
+
+          # Plugins gta3
+          $pluginSrc = "bin\plugins\gta3"
+          if (Test-Path $pluginSrc) {
+              New-Item -ItemType Directory -Force -Path "$dest\plugins\gta3" | Out-Null
+              Copy-Item "$pluginSrc\*.dll" "$dest\plugins\gta3\" -ErrorAction SilentlyContinue
+          }
+
+          # PDBs (ficam junto aos binários no mesmo diretório)
+          Copy-Item "bin\*.pdb"                    "$dest\" -ErrorAction SilentlyContinue
+          Copy-Item "bin\plugins\gta3\*.pdb"       "$dest\plugins\gta3\" -ErrorAction SilentlyContinue
+
+          # Docs / configs de exemplo
+          Copy-Item "doc\config\*.ini.0"                "$dest\" -ErrorAction SilentlyContinue
+          Copy-Item "doc\CHANGELOG.md"                  "$dest\" -ErrorAction SilentlyContinue
+          Copy-Item "LICENSE"                           "$dest\" -ErrorAction SilentlyContinue
+
+          Write-Host "=== Artifacts ===" 
+          Get-ChildItem -Recurse $dest | Select-Object FullName
+
+      - name: Upload artifact – ${{ matrix.configuration }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: modloader-${{ matrix.configuration }}-${{ github.sha }}
+          path: artifacts\modloader-${{ matrix.configuration }}\
+          if-no-files-found: error
+          retention-days: 30
+
+  # -----------------------------------------------------------------------
+  # Job extra: cria uma Release no GitHub quando uma tag "v*.*.*" é enviada.
+  # Só roda se o job build (Release) passou.
+  # -----------------------------------------------------------------------
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: modloader-Release-${{ github.sha }}
+          path: dist/
+
+      - name: Zip release
+        run: |
+          cd dist
+          zip -r ../modloader-${{ github.ref_name }}.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: modloader-${{ github.ref_name }}.zip
+          generate_release_notes: true
