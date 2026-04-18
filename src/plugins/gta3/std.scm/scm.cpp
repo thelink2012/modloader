@@ -14,7 +14,10 @@ using namespace modloader;
 class ScmPlugin : public modloader::basic_plugin
 {
     private:
-        file_overrider overrider;
+        std::map<uint32_t, const modloader::file*> scm; // SCM Files Map<hash, file>
+
+        OpenFileDetour<0x468EC9> scm_d1;                // CTheScripts::Init detour
+        OpenFileDetour<0x489A4A> scm_d2;                // CRunningScript::ProcessCommands1000To1099 detour
 
     public:
         const info& GetInfo();
@@ -52,8 +55,17 @@ bool ScmPlugin::OnStartup()
 {
     if(gvm.IsIII() || gvm.IsVC() || gvm.IsSA())
     {
-        this->overrider.SetParams(file_overrider::params(true, true, true, true));
-        this->overrider.SetFileDetour(OpenFileDetour<0x468EC9>(), OpenFileDetour<0x489A4A>());
+        // Returns the overriden scm file path (relative to gamedir)
+        auto transformer = [this](std::string filename)
+        {
+            auto it = scm.find(modloader::hash(&filename[GetLastPathComponent(filename)], ::tolower));
+            return std::string(it != scm.end()? it->second->filepath() : "");
+        };
+
+        this->scm_d1.make_call();
+        this->scm_d1.OnTransform(transformer);
+        this->scm_d2.make_call();
+        this->scm_d2.OnTransform(transformer);
         return true;
     }
     return false;
@@ -75,8 +87,7 @@ bool ScmPlugin::OnShutdown()
  */
 int ScmPlugin::GetBehaviour(modloader::file& file)
 {
-    static const auto main_scm = modloader::hash("main.scm");
-    if(!file.is_dir() && file.hash == main_scm)
+    if(!file.is_dir() && file.is_ext("scm"))
     {
         file.behaviour = file.hash;
         return MODLOADER_BEHAVIOUR_YES;
@@ -90,7 +101,8 @@ int ScmPlugin::GetBehaviour(modloader::file& file)
  */
 bool ScmPlugin::InstallFile(const modloader::file& file)
 {
-    return overrider.InstallFile(file);
+    this->scm[file.hash] = &file;
+    return true;
 }
 
 /*
@@ -99,7 +111,7 @@ bool ScmPlugin::InstallFile(const modloader::file& file)
  */
 bool ScmPlugin::ReinstallFile(const modloader::file& file)
 {
-    return overrider.ReinstallFile();
+    return InstallFile(file);
 }
 
 /*
@@ -108,5 +120,6 @@ bool ScmPlugin::ReinstallFile(const modloader::file& file)
  */
 bool ScmPlugin::UninstallFile(const modloader::file& file)
 {
-    return overrider.UninstallFile();
+    this->scm.erase(file.hash);
+    return true;
 }
