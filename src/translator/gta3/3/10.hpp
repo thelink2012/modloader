@@ -241,6 +241,7 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x527570)] = 0x4E9870; // _ZN4CPed13LoadFightDataEv
         map[xVc(0x527590)] = 0x4E9890; // call    _ZN8CFileMgr12LoadTextFileEPKcPhi     ; @CPed::LoadFightData
         map[xIII(0x524EDA)] = 0x524EDA;  // call    _ZN8CFileMgr8OpenFileEPKcS1_        ; "data/cullzone.dat"
+        map[xIII(0x478570)] = 0x478570; // call     _ZN8CFileMgr8OpenFileEPKcS1_        ; @CFileLoader::LoadMapZones
 
         map[xVc(0x5B220A)] = 0x54B84E; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight.dat"
         map[xVc(0x5B2475)] = 0x54BB0A; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight2.dat"

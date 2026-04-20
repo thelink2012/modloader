@@ -310,7 +310,7 @@ class DataPlugin : public modloader::basic_plugin
 
             // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
             // This gets called during InstallFile/ReinstallFile/UninstallFile
-            ov.MakeCallForAllDetours();
+            ov.MakeCallForAllDetours<Detours...>();
 
             AddBehv(hash, true);
             return ov;
@@ -335,31 +335,24 @@ class DataPlugin : public modloader::basic_plugin
 
         
 
-        template<class detour_type>
+        template<class... Detours>
         modloader::file_overrider& AddIplOverrider(std::string fsfile, bool unique, bool samefile, bool complete_path,
                                               const modloader::file_overrider::params& params)
         {
             fsfile = modloader::NormalizePath(std::move(fsfile));
             auto hash = modloader::hash(fsfile);
 
+            auto on_transform = std::bind(&DataPlugin::GetIplFile, this, _1, fsfile, unique, samefile, complete_path);
             auto& ov = ovmap.emplace(std::piecewise_construct,
                 std::forward_as_tuple(hash),
-                std::forward_as_tuple(tag_detour, params, detour_type())
+                std::forward_as_tuple(tag_detour, params, std::forward_as_tuple(Detours(on_transform)...))
                 ).first->second;
-
-            for(size_t i = 0; i < ov.NumInjections(); ++i)
-            {
-                // Merges data whenever necessary to open this file. Caching can happen.
-                auto& d = static_cast<detour_type&>(ov.GetInjection(i));
-                d.OnTransform(std::bind(&DataPlugin::GetIplFile, this, _1, fsfile, unique, samefile, complete_path));
-            }
 
             // Replaces standard OnHook with this one, which just makes the call no setfile (since many files)
             // This gets called during InstallFile/ReinstallFile/UninstallFile
             ov.OnHook([&ov](const modloader::file*)
             {
-                for(size_t i = 0; i < ov.NumInjections(); ++i)
-                    static_cast<detour_type&>(ov.GetInjection(i)).make_call();
+                ov.MakeCallForAllDetours<Detours...>();
             });
 
             AddBehv(hash, true);

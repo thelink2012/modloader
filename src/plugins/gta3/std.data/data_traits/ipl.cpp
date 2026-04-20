@@ -15,10 +15,26 @@ struct ipl_traits
     };
 };
 
+struct mapzone_traits
+{
+    struct dtraits : modloader::dtraits::OpenFile
+    {
+        static const char* what() { return "mapzone"; }
+    };
+};
+
 using OpenSceneDetour = modloader::OpenFileDetour<0x5B871A, ipl_traits::dtraits>;
+using OpenMapZoneDetour = modloader::OpenFileDetour<xIII(0x478570), mapzone_traits::dtraits>;
 
 using namespace std::placeholders;
 static auto xinit = initializer([](DataPlugin* plugin_ptr)
 {
-    plugin_ptr->AddIplOverrider<OpenSceneDetour>(ipl_merger_name, false, false, true, no_reinstall);
+    if (gvm.IsIII())
+    {
+        plugin_ptr->AddIplOverrider<OpenSceneDetour, OpenMapZoneDetour>(ipl_merger_name, false, false, true, no_reinstall);
+    }
+    else
+    {
+        plugin_ptr->AddIplOverrider<OpenSceneDetour>(ipl_merger_name, false, false, true, no_reinstall);
+    }
 });
