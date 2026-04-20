@@ -23,11 +23,11 @@ static bool ModulesWalk(uint32_t pid, F functor);
  *  Constructs a ModuleInfo object
  *  It takes a rvalue for a relative path string
  */
-ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file, HMODULE mod) : file(file)
+ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file, HMODULE mod)
+    : file(file), module(mod)
 {
-    size_t last = GetLastPathComponent(path);
-    bIsMainExecutable = bIsASI = bIsD3D9 = bIsMainCleo = bIsCleo = false;
-    memset(&this->hacks, 0, sizeof(hacks));
+    const size_t last = GetLastPathComponent(path);
+    size_t lastForPath = last;
     
     const char* filename = &path[last];
     
@@ -58,7 +58,18 @@ ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file,
         }
         
         // If not a .cleo, it's an .asi plugin
-        if(!bIsCleo) bIsASI = true;
+        if(!bIsCleo)
+        {
+            bIsASI = true;
+
+            // If this ASI is inside 'scripts', 'plugins' or 'mss', we need to flag this
+            // so path translators start from the directory above it
+            const std::string dirName = GetPathComponentBack(path, 2);
+            if (!strcmp("scripts", dirName.c_str(), false) || !strcmp("plugins", dirName.c_str(), false) || !strcmp("mss", dirName.c_str(), false))
+            {
+                lastForPath = GetLastPathComponent(path, 2);
+            }
+        }
     }
     
     // Setup hacks flags
@@ -67,10 +78,10 @@ ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file,
     {
         hacks.bRyosukeModuleName = true;
     }
-    
+
     // Setup fields
-    this->module = mod;
     this->folder = path.substr(0, last);
+    this->translationPath = path.substr(0, lastForPath);
 }
 
 

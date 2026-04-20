@@ -163,18 +163,17 @@ struct path_translator_base
         // Size of each element in the character pool
         static const size_t pool_elem_size = MAX_PATH * sizeof(wchar_t);
 
-        bool bSetDir;                       // Call comming from gta_sa.exe:_chdir
-        bool bAbsolutePath;                 // Is translating a path with absolute path?       
+        bool bSetDir = false;                       // Call comming from gta_sa.exe:_chdir
+        bool bAbsolutePath = false;                 // Is translating a path with absolute path?       
         
         std::unique_ptr<char[]> path_pool;  // Character pool
         size_t path_pool_used;              // Size (not number of elements) used in the pool
         
-        path_translator_base* base;         // Translator
-        ModuleInfo* asi;                    // Pointer to Calling ASI module
+        path_translator_base* base = nullptr; // Translator
+        ModuleInfo* asi = nullptr;            // Pointer to Calling ASI module
         
         // Construct the information
-        CallInfo() : asi(0), base(0), bSetDir(false)
-        {}
+        CallInfo() = default;
         
         // Allocates a path in the pool. @size is the num characters the path will need.
         auto_pointer AllocPath(size_t size)

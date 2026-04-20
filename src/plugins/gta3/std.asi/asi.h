@@ -46,20 +46,21 @@ class ThePlugin : public modloader::basic_plugin
          */
         struct ModuleInfo
         {
-            bool bIsASI;                // Is this a ASI module?
-            bool bIsD3D9;               // Is this a D3D9.dll module?
-            bool bIsMainExecutable;     // Is this the main executable? (gta_sa.exe etc)
-            bool bIsCleo;               // Is the main CLEO.asi or any .cleo plugin
-            bool bIsMainCleo;           // Is the main CLEO.asi
+            bool bIsASI = false;                // Is this a ASI module?
+            bool bIsD3D9 = false;               // Is this a D3D9.dll module?
+            bool bIsMainExecutable = false;     // Is this the main executable? (gta_sa.exe etc)
+            bool bIsCleo = false;               // Is the main CLEO.asi or any .cleo plugin
+            bool bIsMainCleo = false;           // Is the main CLEO.asi
             
             struct      // Hacks that some ASIs will need to work properly
             {
-                bool bRyosukeModuleName;
+                bool bRyosukeModuleName = false;
                 
             } hacks;
             
-            HMODULE module;         // The module handle
-            std::string folder;     // The folder where the asi is at, like "modloader/aaa/"
+            HMODULE module = nullptr; // The module handle
+            std::string folder;          // The folder where the asi is at, like "modloader/aaa/"
+            std::string translationPath; // The path to use for path translations. Will be one directory up from the above if the module is in 'scripts'
             std::vector<path_translator_base*> translators;
 
             
@@ -75,7 +76,7 @@ class ThePlugin : public modloader::basic_plugin
             path_translator_base* FindTranslatorFrom(const char* symbol, const char* libname);
 
             private:
-                const modloader::file*  file; // The module file (may be null)
+                const modloader::file*  file = nullptr; // The module file (may be null)
         };
         
         /*
@@ -83,11 +84,11 @@ class ThePlugin : public modloader::basic_plugin
          */
         struct CsInfo
         {
-            char        iVersion;
-            bool        bIsMission;
+            char        iVersion = CLEO_VER_NONE;
+            bool        bIsMission = false;
             
-            const modloader::file* file;
-            std::string folder;     // e.g. "modloader/foo/"
+            const modloader::file* file = nullptr;
+            std::string translationPath;                // e.g. "modloader/foo/"
             
             CsInfo(const modloader::file* file);
             static bool GetVersionFromExtension(const char* ext, char& version);

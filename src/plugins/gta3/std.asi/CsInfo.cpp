@@ -16,18 +16,14 @@ using namespace modloader;
  *  This stores information about cleo scripts 
  */
 ThePlugin::CsInfo::CsInfo(const modloader::file* file) : file(file)
-{
-    // Do basic initial setup
-    this->bIsMission = false;                   
-    this->iVersion = CLEO_VER_NONE;
-    
-    std::string path = file->filepath();
+{    
+    const std::string path = file->filepath();
 
     // Get path used to search files when a script tries to open a file (fopen etc)
     if(IsFileInsideFolder(file->filedir(), true, "CLEO"))  // If inside a CLEO folder, use the path before it
-        this->folder = path.substr(0, GetLastPathComponent(path, 2));
+        this->translationPath = path.substr(0, GetLastPathComponent(path, 2));
     else                                        // Use this path
-        this->folder = path.substr(0, GetLastPathComponent(path, 1));
+        this->translationPath = path.substr(0, GetLastPathComponent(path, 1));
 
     // Get script attributes
     if(file->is_ext("cm"))

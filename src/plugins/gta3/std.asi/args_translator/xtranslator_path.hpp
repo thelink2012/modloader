@@ -22,7 +22,7 @@ template<class T, class M, class F>
 inline bool  path_translator_base::CallInfo::CxBuildPath(T* p, const M& module, const char* currdir, const T*& arg, F build_path, bool bForce)
 {
     char tmp[MAX_PATH];
-    const char* prefix = module.folder.c_str();
+    const char* prefix = module.translationPath.c_str();
 
     // We have to take care when CLEO is trying to open a new custom script, it will try to do so
     // from [chdir("CLEO")] so we need to get one level back in the directory tree
