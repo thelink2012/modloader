@@ -21,26 +21,15 @@
 template<class T, class M, class F>
 inline bool  path_translator_base::CallInfo::CxBuildPath(T* p, const M& module, const char* currdir, const T*& arg, F build_path, bool bForce)
 {
-    char tmp[MAX_PATH];
-    const char* prefix = module.translationPath.c_str();
-
-    // We have to take care when CLEO is trying to open a new custom script, it will try to do so
-    // from [chdir("CLEO")] so we need to get one level back in the directory tree
-    if(asi->bIsMainCleo && base->bCreateFile && !_stricmp(currdir, "CLEO"))
-    {
-        // Cleo is probably trying to open a new custom script
-        sprintf(tmp, "..\\%s", prefix);     // Get back in the directory tree
-        prefix = tmp;                       //
-    }
-    // In case of the need of an full path, do it on the prefix
-    else if(this->bAbsolutePath)
-    {
-        sprintf(tmp, "%s%s", plugin_ptr->loader->gamepath, prefix);
-        prefix = tmp;
-    }
+    // We always want to build an absolute translated path, even if the game only requested a relative one.
+    // Two reasons for this:
+    // 1. We have to take care when CLEO is trying to open a new custom script, it will try to do so
+    //    from [chdir("CLEO")], so using an absolute path helps us avoid "undoing" it.
+    // 2. For some data files (like main.scm), the game does a [chdir("data")] ([chdir("data\scripts")] in San Andreas)
+    //    and loads the file then. Using an absolute path, we don't need to care about this.
     
     // Build the path
-    if(auto* path = build_path(p, prefix, currdir, arg))
+    if(auto* path = build_path(p, module.translationPath.c_str(), currdir, arg))
     {
         // Check if path "prefix + currdir + arg" exists, if yes, signalyze it
         if(bForce || IsPath(path))

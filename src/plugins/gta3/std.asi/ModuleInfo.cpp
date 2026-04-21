@@ -80,8 +80,8 @@ ThePlugin::ModuleInfo::ModuleInfo(std::string path, const modloader::file* file,
     }
 
     // Setup fields
-    this->folder = path.substr(0, last);
-    this->translationPath = path.substr(0, lastForPath);
+    this->folder = plugin_ptr->loader->gamepath + path.substr(0, last);
+    this->translationPath = plugin_ptr->loader->gamepath + path.substr(0, lastForPath);
 }
 
 
@@ -202,7 +202,7 @@ bool ThePlugin::ModuleInfo::Load()
     if(!this->module)
     {
         // Chdir to the asi path, so it can do stuff on DllMain properly
-        scoped_chdir xdir((std::string(plugin_ptr->loader->gamepath) + this->folder).c_str());
+        scoped_chdir xdir(this->folder.c_str());
 
         // We need the fullpath into the module because of the way Windows load dlls
         // More info at: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682586(v=vs.85).aspx

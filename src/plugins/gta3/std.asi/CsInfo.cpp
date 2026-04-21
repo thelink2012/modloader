@@ -21,9 +21,9 @@ ThePlugin::CsInfo::CsInfo(const modloader::file* file) : file(file)
 
     // Get path used to search files when a script tries to open a file (fopen etc)
     if(IsFileInsideFolder(file->filedir(), true, "CLEO"))  // If inside a CLEO folder, use the path before it
-        this->translationPath = path.substr(0, GetLastPathComponent(path, 2));
+        this->translationPath = plugin_ptr->loader->gamepath + path.substr(0, GetLastPathComponent(path, 2));
     else                                        // Use this path
-        this->translationPath = path.substr(0, GetLastPathComponent(path, 1));
+        this->translationPath = plugin_ptr->loader->gamepath + path.substr(0, GetLastPathComponent(path, 1));
 
     // Get script attributes
     if(file->is_ext("cm"))

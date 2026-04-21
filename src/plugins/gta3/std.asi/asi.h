@@ -59,8 +59,8 @@ class ThePlugin : public modloader::basic_plugin
             } hacks;
             
             HMODULE module = nullptr; // The module handle
-            std::string folder;          // The folder where the asi is at, like "modloader/aaa/"
-            std::string translationPath; // The path to use for path translations. Will be one directory up from the above if the module is in 'scripts'
+            std::string folder;          // Absolute path to where the asi is at, like "modloader/aaa/"
+            std::string translationPath; // Absolute path to use for path translations. Will be one directory up from the above if the module is in 'scripts'
             std::vector<path_translator_base*> translators;
 
             
@@ -88,7 +88,7 @@ class ThePlugin : public modloader::basic_plugin
             bool        bIsMission = false;
             
             const modloader::file* file = nullptr;
-            std::string translationPath;                // e.g. "modloader/foo/"
+            std::string translationPath;                // e.g. "modloader/foo/". Absolute
             
             CsInfo(const modloader::file* file);
             static bool GetVersionFromExtension(const char* ext, char& version);
