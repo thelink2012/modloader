@@ -14,8 +14,7 @@ using namespace modloader;
 void Loader::FolderInformation::Clear()
 {
     mods.clear();
-    profiles.clear();
-    current_profile = nullptr;
+    RemoveProfiles();
 }
 
 /*
@@ -127,8 +126,9 @@ void Loader::FolderInformation::RemoveReferencesToProfile(Loader::Profile& rm)
  */
 void Loader::FolderInformation::RemoveProfiles()
 {
-    for(auto it = this->profiles.begin(); it != this->profiles.end(); )
-        it = this->profiles.erase(it);  // Profile destructor automatically cleans this->current_profile
+    for(auto& prof : this->profiles)
+        RemoveReferencesToProfile(prof);
+    this->profiles.clear();
 }
 
 /*

@@ -272,7 +272,6 @@ class Loader : public modloader_t
                 {}
 
                 Profile(const Profile&) = default;
-                ~Profile();
 
                 //
                 FolderInformation& Parent() const  { return this->parent; }

@@ -34,14 +34,6 @@ static bool MatchWildcards(const std::string& string, const Container& patterns)
 
 
 /*
- *  Profile::~Profile
- */
-Loader::Profile::~Profile()
-{
-    parent.RemoveReferencesToProfile(*this);
-}
-
-/*
  *  Profile::Clear
  *      Clears this object
  */
