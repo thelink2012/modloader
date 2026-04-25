@@ -16,6 +16,7 @@ void Loader::FolderInformation::Clear()
     mods.clear();
     profiles.clear();
     current_profile = nullptr;
+    priority_limit = default_priority_limit;
 }
 
 /*
@@ -374,7 +375,13 @@ void Loader::FolderInformation::LoadConfigFromINI()
 
     // First take the profiles from modloader.ini
     if(ini.load_file(loader.folderConfigFilename))
+    {
+        const auto default_limit = std::to_string(default_priority_limit);
+        const auto priority_limit = std::strtol(ini.get("Folder.Config", "PriorityLimit", default_limit).c_str(), 0, 0);
+        this->SetPriorityLimit(priority_limit);
+
         ReadProfilesFromINI(ini, "");
+    }
     else
         Log("Warning: Failed to load folder config file");
 
@@ -411,6 +418,7 @@ void Loader::FolderInformation::SaveConfigForINI()
 
     // Save current profile
     ini.set("Folder.Config", "Profile", this->Profile().GetName());
+    ini.set("Folder.Config", "PriorityLimit", std::to_string(this->GetPriorityLimit()));
 
     // Save all the profiles
     for(auto& profile : this->profiles)

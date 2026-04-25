@@ -3,6 +3,7 @@
 ;
 [Folder.Config]
 Profile = Default                 ; Profile to be used to configure mods
+PriorityLimit = 100               ; Max allowed value in Profiles.*.Priority (minimum is 1)
 
 [Profiles.Default.Config]
 IgnoreAllMods  = false            ; Ignores all mods. This essentially disables mods loading.
@@ -10,8 +11,9 @@ ExcludeAllMods = false            ; Excludes all mods from being loaded except t
 
 [Profiles.Default.Priority]
 ; Defines mods priority (which mods should go into effect if both replaces the same file)
-; The priority should be between 1 and 100, where 100 overrides 1, additionally priority 0 makes be ignored (just like IgnoreMods)
-; The default priority is 50!
+; The priority should be between 1 and PriorityLimit, where higher values override lower ones.
+; Additionally priority 0 makes the mod be ignored (just like IgnoreMods).
+; The default priority is 50.
 ;MyMod=50
 
 [Profiles.Default.IgnoreFiles]

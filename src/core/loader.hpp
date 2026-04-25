@@ -34,7 +34,7 @@ static const char* downurl = "https://github.com/thelink2012/modloader/releases"
 //
 static const char* default_profile_name = "Default";
 
-static const int priority_limit = 9999;
+static const int default_priority_limit = 100;
 
 // Functor for sorting based on priority
 template<class T>
@@ -415,6 +415,9 @@ class Loader : public modloader_t
                 
                 // Gets the path to this modfolder (relative to gamedir, normalized)
                 const std::string& GetPath() { return path; }
+
+                int GetPriorityLimit() const { return this->priority_limit; }
+                void SetPriorityLimit(int value) { this->priority_limit = std::max(value, 1); }
                 
                 // Clears all buffers from this structure
                 void Clear();
@@ -456,6 +459,7 @@ class Loader : public modloader_t
                 Loader::Profile*            current_profile;// Curretly selected profile from the 'profiles' list
                 std::unique_ptr<Loader::Profile> anon_profile;// Forced temporary profile (made by command line, conditionals, etc)
                                                                     // The .first boolean specifies whether we have a temporary profile
+                int priority_limit = default_priority_limit; // Max allowed priority for mods in this folder config
 
             protected:
                 void SetUnchanged() { if(status != Status::Removed) status = Status::Unchanged; }

@@ -256,7 +256,7 @@ void Loader::Profile::SetPriority(std::string name, int priority)
     if(priority == default_priority)
         mods_priority.erase(name);
     else
-        mods_priority[name] = std::max(std::min(priority, priority_limit), 0); // clamp to 0-priority_limit
+        mods_priority[name] = std::max(std::min(priority, this->parent.GetPriorityLimit()), 0); // clamp to 0-priorityLimit
 }
 
 /*
