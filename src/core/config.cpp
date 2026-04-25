@@ -242,7 +242,8 @@ void Loader::UpdateOldConfig_0115_021()
             for(auto& kv : newer["Priority"])
             {
                 auto pr = std::stoi(kv.second);
-                kv.second = std::to_string(pr > 0 && pr <= 100? 101 - pr : pr);
+                auto limit = this->mods.GetPriorityLimit();
+                kv.second = std::to_string(pr > 0 && pr <= limit? (limit + 1) - pr : pr);
             }
 
             newer.write_file(gamePath + "modloader/" +  folderConfigFilename);
