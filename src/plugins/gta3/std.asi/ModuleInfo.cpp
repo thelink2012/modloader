@@ -543,17 +543,17 @@ extern const char aGetFileAttributesExW[] = "GetFileAttributesExW";
 
 // Operations
 static path_translator_stdcall<aCreateDirectoryA, aKernel32, BOOL(LPCSTR, LPSECURITY_ATTRIBUTES)>
-        psCreateDirectoryA(0, AR_PATH_INE, 0);
+        psCreateDirectoryA(0, AR_PATH_IN, 0);
 static path_translator_stdcall<aCreateDirectoryExA, aKernel32, BOOL(LPCSTR, LPCSTR, LPSECURITY_ATTRIBUTES)>
-        psCreateDirectoryExA(0, AR_PATH_INE, AR_PATH_INE, 0);
+        psCreateDirectoryExA(0, AR_PATH_INE, AR_PATH_IN, 0);
 static path_translator_stdcall<aCreateFileA, aKernel32, HANDLE(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
         psCreateFileA(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
 static path_translator_stdcall<aSetCurrentDirectoryA, aKernel32, BOOL(LPCSTR)>
         psSetCurrentDirectoryA(0, AR_PATH_INE);           // Do not work properly!! Don't use!!!
 static path_translator_stdcall<aCreateDirectoryW, aKernel32, BOOL(LPCWSTR, LPSECURITY_ATTRIBUTES)>
-        psCreateDirectoryW(0, AR_PATH_INE, 0);
+        psCreateDirectoryW(0, AR_PATH_IN, 0);
 static path_translator_stdcall<aCreateDirectoryExW, aKernel32, BOOL(LPCWSTR, LPCWSTR, LPSECURITY_ATTRIBUTES)>
-        psCreateDirectoryExW(0, AR_PATH_INE, AR_PATH_INE, 0);
+        psCreateDirectoryExW(0, AR_PATH_INE, AR_PATH_IN, 0);
 static path_translator_stdcall<aCreateFileW, aKernel32, HANDLE(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)>
         psCreateFileW(0, AR_PATH_INE, 0, 0, 0, 0, 0, 0);
 static path_translator_stdcall<aSetCurrentDirectoryW, aKernel32, BOOL(LPCWSTR)>
