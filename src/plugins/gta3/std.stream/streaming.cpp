@@ -202,7 +202,7 @@ bool CAbstractStreaming::InstallFile(const modloader::file& file)
         // Just push it to this list and it will get loaded when the streaming initializes
         // At this point we don't know if this is a clothing item or an model, for that reason "raw"
         // The initializer will take care of filtering clothes and models from the list
-        this->raw_models[file.filepath()] = &file;
+        this->raw_models.insert({ file.filename(), &file });
         return true;
     }
     else
@@ -242,7 +242,13 @@ bool CAbstractStreaming::UninstallFile(const modloader::file& file)
             return false;
 
         // Streaming hasn't initialized, just remove it from our raw list
-        raw_models.erase(file.filepath());
+        const auto range = this->raw_models.equal_range(file.filename());
+        const auto it = std::find_if(range.first, range.second, [&file](const auto& p) {
+            return p.second == &file;
+        });
+        if(it != range.second)
+            this->raw_models.erase(it);
+
         return true;
     }
     else

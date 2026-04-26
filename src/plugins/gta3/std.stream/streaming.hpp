@@ -226,11 +226,11 @@ class CAbstractStreaming
         std::map<id_t, id_t> prev_on_cd;                // Original InfoForModel next on cd information, <next, prev>
 
         // Custom files
-        std::map<std::string, const modloader::file*>   raw_models; // Models installed before the streaming initialization ---- (sorted by name!!)
-        std::map<id_t, ModelInfo>                       imports;    // Imported abstract models
-        std::map<hash_t, const modloader::file*>        special;    // Abstract special models ---- (imported by me) (hashed filename has no extension)
-        std::map<uint32_t, const modloader::file*>      clothes;    // Imported abstract clothes --- (key is offset)
-        std::map<hash_t, NonStreamedInfo_t>             non_stream; // Non streamed resources (requested by default.dat/gta.dat) (.second.first may be nullptr)
+        std::multimap<std::string, const modloader::file*> raw_models; // Models installed before the streaming initialization. Sorted by name. Duplicates allowed (e.g. coach.dff which is both a streaming and a clothing item)
+        std::map<id_t, ModelInfo>                          imports;    // Imported abstract models
+        std::map<hash_t, const modloader::file*>           special;    // Abstract special models ---- (imported by me) (hashed filename has no extension)
+        std::map<uint32_t, const modloader::file*>         clothes;    // Imported abstract clothes --- (key is offset)
+        std::map<hash_t, NonStreamedInfo_t>                non_stream; // Non streamed resources (requested by default.dat/gta.dat) (.second.first may be nullptr)
 
         // Information for refreshing
         std::map<hash_t, const modloader::file*>        to_import;  // Files to be imported by the refresher --- (null pointer on mapped piece means uninstall)
