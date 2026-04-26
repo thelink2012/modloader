@@ -282,6 +282,10 @@ struct path_translator_base
         template<class T>
         void TranslatePathChar(const T*& arg, char type)
         {
+            // Optional path (e.g. CreateDirectoryEx template). NULL: leave as-is.
+            if(arg == nullptr)
+                return;
+
             // Call the path translator giving a functor that builds the output
             TranslatePath(arg, type, [](T* out, const char* prefix, const char* currdir, const T* suffix)
             {
