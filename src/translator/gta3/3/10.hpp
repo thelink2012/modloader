@@ -249,6 +249,13 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xIII(0x54BB7C)] = 0x54BB7C;// call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight4.dat"
     }
 
+    // std.dmaudio
+    if(true)
+    {
+        map[xVc(0x5D5B7B)] = 0x5682E1; // call    fopen  ; @cSampleManager::InitialiseSampleBanks (sfx.sdt)
+        map[xVc(0x5D5BC5)] = 0x568301; // call    fopen  ; @cSampleManager::InitialiseSampleBanks (sfx.raw)
+    }
+
     // traits
     if(true)
     {

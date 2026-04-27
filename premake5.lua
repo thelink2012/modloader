@@ -280,6 +280,7 @@ solution "modloader"
         "std.sprites",
         "std.fx",
         "std.text",
+        "std.dmaudio",
         "std.tracks",
         "std.bank",
         "std.stream",

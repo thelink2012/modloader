@@ -293,6 +293,13 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[xVc(0x5B24AE)] = 0x5B24AE; // call    _ZN6CPlane8LoadPathEPKcRiRfb  ; "flight3.dat"
     }
 
+    // std.dmaudio
+    if(true)
+    {
+        map[xVc(0x5D5B7B)] = 0x5D5B7B; // call    fopen  ; @cSampleManager::InitialiseSampleBanks (sfx.sdt)
+        map[xVc(0x5D5BC5)] = 0x5D5BC5; // call    fopen  ; @cSampleManager::InitialiseSampleBanks (sfx.raw)
+    }
+
     // traits
     if(true)
     {
