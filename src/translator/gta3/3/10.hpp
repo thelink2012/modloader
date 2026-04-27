@@ -254,6 +254,12 @@ static void III_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     {
         map[xVc(0x5D5B7B)] = 0x5682E1; // call    fopen  ; @cSampleManager::InitialiseSampleBanks (sfx.sdt)
         map[xVc(0x5D5BC5)] = 0x568301; // call    fopen  ; @cSampleManager::InitialiseSampleBanks (sfx.raw)
+
+        map[xVc(0x5D6339)] = 0x568066; // call    strcat ; cSampleManager::StartStreamedFile
+        map[xVc(0x5D64CD)] = 0x567CCC; // call    strcat  ; cSampleManager::PreloadStreamedFile
+        map[xVc(0x5D799B)] = 0x566A76; // call    strcat  ; cSampleManager::Initialise
+        map[xVc(0x5D7B69)] = 0x566AC6; // call    strcat  ; cSampleManager::Initialise
+        //map[xVc(0x5D71E3)] = 0x566EE9; // call    strcat  ; cSampleManager::CheckForAnAudioFileOnCD (pointless)
     }
 
     // traits

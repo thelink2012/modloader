@@ -7,6 +7,7 @@ gta3.std.dmaudio
 *************************************************************************
 
 __Description__:
- This plugin is responsible for DMAudio SFX archives, that is:
+ This plugin is responsible for DMAudio SFX archives, streamed samples, cutscenes, and radios, that is:
 
   * SFX archives  (sfx.raw/sfx.sdt)
+  * WAV/MP3/ADF files in the Audio directory
