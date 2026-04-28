@@ -42,9 +42,9 @@ inline Type GetType(uint64_t mask)
 class DMAudioPlugin : public modloader::basic_plugin
 {
     private:
-        file_overrider sfx_raw_overrider;                       // sfx.raw overrider
-        file_overrider sfx_sdt_overrider;                       // sfx.sdt overrider
-        std::map<uint32_t, const modloader::file*> streams;     // Stream (hash, file*) map
+        file_overrider sfx_raw_overrider;                        // sfx.raw overrider
+        file_overrider sfx_sdt_overrider;                        // sfx.sdt overrider
+        std::multimap<uint32_t, const modloader::file*> streams; // Stream (hash, file*) map
 
     public:
          // Standard plugin methods
@@ -138,7 +138,8 @@ int DMAudioPlugin::GetBehaviour(modloader::file& file)
         }
         else if(file.is_ext("wav") || file.is_ext("mp3") || file.is_ext("adf") || file.is_ext("vb"))
         {
-            file.behaviour = SetType(file.hash, Type::Sample);
+            // Duplicate file names are allowed
+            file.behaviour = SetType(modloader::hash(file.filepath()), Type::Sample);
         }
         else
         {
@@ -160,7 +161,7 @@ bool DMAudioPlugin::InstallFile(const modloader::file& file)
     {
         case Type::SfxRaw: return sfx_raw_overrider.InstallFile(file);
         case Type::SfxSdt: return sfx_sdt_overrider.InstallFile(file);
-        case Type::Sample: this->streams[file.hash] = &file; return true;
+        case Type::Sample: this->streams.emplace(file.hash, &file); return true;
     }
     return false;
 }
@@ -175,7 +176,7 @@ bool DMAudioPlugin::ReinstallFile(const modloader::file& file)
     {
         case Type::SfxRaw: return sfx_raw_overrider.ReinstallFile();
         case Type::SfxSdt: return sfx_sdt_overrider.ReinstallFile();
-        case Type::Sample: this->streams[file.hash] = &file; return true;
+        case Type::Sample: return true; // No need to do anything
     }
     return false;
 }
@@ -190,7 +191,19 @@ bool DMAudioPlugin::UninstallFile(const modloader::file& file)
     {
         case Type::SfxRaw: return sfx_raw_overrider.UninstallFile();
         case Type::SfxSdt: return sfx_sdt_overrider.UninstallFile();
-        case Type::Sample: this->streams.erase(file.hash); return true;
+        case Type::Sample:
+        {
+            auto range = this->streams.equal_range(file.hash);
+            for (auto it = range.first; it != range.second; ++it)
+            {
+                if (it->second == &file)
+                {
+                    this->streams.erase(it);
+                    return true;
+                }
+            }
+            break;
+        }
     }
     return false;
 }
@@ -209,14 +222,43 @@ char* DMAudioPlugin::PatchedStrcat(char* destination, const char* source)
     {
         lookupName = source;
     }
-    auto it = plugin.streams.find(modloader::hash(lookupName, ::tolower));
-    if (it != plugin.streams.end())
+    auto range = plugin.streams.equal_range(modloader::hash(lookupName, ::tolower));
+    if (range.first != range.second)
     {
+        // If we have just one match, return it. Else, find the closest common path suffix and use that.
+        auto bestMatch = range.first;
+        if (std::distance(range.first, range.second) > 1)
+        {
+            size_t bestScore = 1;
+            const std::string sourcePath = modloader::NormalizePath(source);
+            for (auto it = range.first; it != range.second; ++it)
+            {
+                const std::string modFilepath(it->second->filepath());
+
+                size_t currentScore = 2;
+                size_t sourceSuffixPos;
+                do
+                {
+                    sourceSuffixPos = GetLastPathComponent(sourcePath, currentScore);
+                    const size_t modSuffixPos = GetLastPathComponent(modFilepath, currentScore);
+                    if (sourcePath.compare(sourceSuffixPos, std::string::npos, modFilepath, modSuffixPos, std::string::npos) != 0)
+                    {
+                        break;
+                    }
+                    currentScore++;
+                }
+                while (sourceSuffixPos != 0);
+
+                if (currentScore > bestScore)
+                {
+                    bestScore = currentScore;
+                    bestMatch = it;
+                }
+            }
+        }
+
         std::string path;
-        return strcpy(destination, it->second->fullpath(path).c_str());
+        return strcpy(destination, bestMatch->second->fullpath(path).c_str());
     }
-    else
-    {
-        return strcat(destination, source);
-    }
+    return strcat(destination, source);
 }
