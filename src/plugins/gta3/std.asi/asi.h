@@ -124,16 +124,22 @@ class ThePlugin : public modloader::basic_plugin
         // CLEO.ASI version
         int iCleoVersion;
         bool bHasNoCleoFolder;
+
+        // Set to true when loading - do not translate relative paths, as we're chdir'd into modloader already
+        // Set by the DLL Load Notification
+        bool bLoadingModulesNow = false;
         
         // List of asi files need to load (or loaded)
         ModuleInfoList asiList;  // It's called asiList but it's not limited to .asi files!
         
         // List of CLEO scripts (.cs, .cs3, .cs4, .cs5, .cm)
         CsInfoList     csList;   // It's called cs but it's not limited to .cs files (e.g. cm files works)
-        
+  
         // Find all cleo plugins already loaded and push them into asi list 
         void LocateCleo();
 
+        // Try to import the DLL Load Notification functions
+        void LocateDllNotificationFuncs();
         
 };
 

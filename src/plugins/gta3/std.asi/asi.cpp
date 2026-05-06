@@ -45,8 +45,11 @@ const ThePlugin::info& ThePlugin::GetInfo()
  */
 bool ThePlugin::OnStartup()
 {
+    // Try to import the DLL Load Notification functions
+    this->LocateDllNotificationFuncs();
+
     // Register GTA module for some arg translation
-    this->asiList.emplace_front("gta", nullptr, GetModuleHandleA(0));
+    this->asiList.emplace_front("gta", nullptr, GetModuleHandle(nullptr));
     this->asiList.front().PatchImports();
     
     // Find CLEO.asi

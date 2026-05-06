@@ -178,7 +178,11 @@ inline void path_translator_base::CallInfo::TranslatePathForASI(const T*& arg, c
             bDoTranslation = true;
     }
     else
-        bDoTranslation = true;
+    {
+        // If relative, only translate if we're NOT in the process of loading modules,
+        // as we're already chdir'd to inside the mod directory otherwise.
+        bDoTranslation = !plugin_ptr->cast<ThePlugin>().bLoadingModulesNow;
+    }
     
     //----
     if(bDoTranslation)

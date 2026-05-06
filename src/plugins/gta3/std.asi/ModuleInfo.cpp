@@ -10,6 +10,7 @@
 #include "asi.h"
 #include "args_translator/translator.hpp"
 #include <tlhelp32.h>
+#include <winternl.h>   // for NTSTATUS
 
 using namespace modloader;
 
@@ -17,6 +18,118 @@ using namespace modloader;
 template<class F>
 static bool ModulesWalk(uint32_t pid, F functor);
 
+/*
+*  DLL Load Notification functions and structs from ntdll.dll
+* They are documented as "may be changed or removed without further notice" and we can only import them dynamically
+*/
+typedef struct _LDR_DLL_LOADED_NOTIFICATION_DATA
+{
+    ULONG Flags;
+    PUNICODE_STRING FullDllName;
+    PUNICODE_STRING BaseDllName;
+    PVOID DllBase;
+    ULONG SizeOfImage;
+} LDR_DLL_LOADED_NOTIFICATION_DATA, *PLDR_DLL_LOADED_NOTIFICATION_DATA;
+
+typedef struct _LDR_DLL_UNLOADED_NOTIFICATION_DATA
+{
+    ULONG Flags;
+    PCUNICODE_STRING FullDllName;
+    PCUNICODE_STRING BaseDllName;
+    PVOID DllBase;
+    ULONG SizeOfImage;
+} LDR_DLL_UNLOADED_NOTIFICATION_DATA, *PLDR_DLL_UNLOADED_NOTIFICATION_DATA;
+
+typedef union _LDR_DLL_NOTIFICATION_DATA
+{
+    LDR_DLL_LOADED_NOTIFICATION_DATA Loaded;
+    LDR_DLL_UNLOADED_NOTIFICATION_DATA Unloaded;
+} LDR_DLL_NOTIFICATION_DATA, *PLDR_DLL_NOTIFICATION_DATA;
+
+typedef const _LDR_DLL_NOTIFICATION_DATA * PCLDR_DLL_NOTIFICATION_DATA;
+
+typedef VOID (CALLBACK * PLDR_DLL_NOTIFICATION_FUNCTION)(
+    _In_      ULONG NotificationReason,
+    _In_      PCLDR_DLL_NOTIFICATION_DATA NotificationData,
+    _In_opt_  PVOID Context
+    );
+
+typedef _Function_class_(LDR_DLL_NOTIFICATION_FUNCTION)
+    VOID NTAPI LDR_DLL_NOTIFICATION_FUNCTION(
+        _In_ ULONG NotificationReason,
+        _In_ PCLDR_DLL_NOTIFICATION_DATA NotificationData,
+        _In_opt_ PVOID Context
+    );
+
+static NTSTATUS (NTAPI *pLdrRegisterDllNotification)(_In_ ULONG Flags, _In_ PLDR_DLL_NOTIFICATION_FUNCTION NotificationFunction,
+    _In_opt_ PVOID Context, _Out_ PVOID *Cookie);
+
+static NTSTATUS (NTAPI *pLdrUnregisterDllNotification)(_In_ PVOID Cookie);
+
+/*
+*  RAII for the DLL Load Notifications
+*/
+struct scoped_LdrLoadNotification
+{
+    scoped_LdrLoadNotification(ThePlugin::ModuleInfo* module, const std::string& path)
+        : module(module)
+    {
+        if (pLdrRegisterDllNotification != nullptr && pLdrRegisterDllNotification != nullptr)
+        {
+            MultiByteToWideChar(CP_ACP, 0, path.c_str(), static_cast<int>(path.size()), contextPath, MAX_PATH);
+
+            if (pLdrRegisterDllNotification(0, LdrDllNotification, this, &notificationCookie) == 0)
+            {
+                plugin_ptr->cast<ThePlugin>().bLoadingModulesNow = true;
+            }
+            else
+            {
+                notificationCookie = nullptr;
+            }
+        }
+    }
+
+    ~scoped_LdrLoadNotification()
+    {
+        if (notificationCookie != nullptr)
+        {
+            plugin_ptr->cast<ThePlugin>().bLoadingModulesNow = false;
+            pLdrUnregisterDllNotification(notificationCookie);
+        }
+    }
+
+    bool ImportsIntercepted() const { return bImportsIntercepted; }
+
+private:
+    static void CALLBACK LdrDllNotification(ULONG NotificationReason, PCLDR_DLL_NOTIFICATION_DATA NotificationData, PVOID Context)
+    {
+        static constexpr ULONG LDR_DLL_NOTIFICATION_REASON_LOADED = 1;
+
+        if (NotificationReason == LDR_DLL_NOTIFICATION_REASON_LOADED)
+        {
+            // We only care about a load of the module we are currently loading, not any transient dependencies
+            const LDR_DLL_LOADED_NOTIFICATION_DATA& notification = NotificationData->Loaded;
+
+            scoped_LdrLoadNotification* ctx = static_cast<scoped_LdrLoadNotification*>(Context);
+            const size_t dllPathLength = notification.FullDllName->Length / sizeof(notification.FullDllName->Buffer[0]);
+            if (wcsncmp(ctx->contextPath, notification.FullDllName->Buffer, dllPathLength) == 0)
+            {
+                // This will be overwritten later anyway, but we need the module registered early
+                // for the sake of path redirections from DllMain
+                ctx->module->module = static_cast<HMODULE>(notification.DllBase);
+                ctx->module->PatchImports();
+                ctx->bImportsIntercepted = true;
+            }
+        }
+    }
+
+private:
+    wchar_t contextPath[MAX_PATH];
+    ThePlugin::ModuleInfo* module;
+
+    PVOID notificationCookie = nullptr;
+    bool bImportsIntercepted = false;
+};
 
 
 /*
@@ -195,6 +308,20 @@ void ThePlugin::LocateCleo()
 
 
 /*
+*  Try to import the DLL Load Notification functions
+*/
+void ThePlugin::LocateDllNotificationFuncs()
+{
+    HMODULE ntdll = LoadLibrary(TEXT("ntdll"));
+    if (ntdll != nullptr)
+    {
+        pLdrRegisterDllNotification = reinterpret_cast<decltype(pLdrRegisterDllNotification)>(GetProcAddress(ntdll, "LdrRegisterDllNotification"));
+        pLdrUnregisterDllNotification = reinterpret_cast<decltype(pLdrUnregisterDllNotification)>(GetProcAddress(ntdll, "LdrUnregisterDllNotification"));
+    }
+}
+
+
+/*
  *  Loads the module assigned to our field path 
  */
 bool ThePlugin::ModuleInfo::Load()
@@ -218,11 +345,25 @@ bool ThePlugin::ModuleInfo::Load()
         }
 
         // Load the library module into our module field
+        scoped_LdrLoadNotification xldr(this, file->fullpath());
+
         SetLastError(0);
-        this->module = bIsMainExecutable? GetModuleHandleA(0) : LoadLibraryA(file->fullpath().c_str());
+        this->module = bIsMainExecutable? GetModuleHandle(nullptr) : LoadLibraryA(file->fullpath().c_str());
 
         // Patch the module imports to pass throught args translation.
-        if(this->module) this->PatchImports();
+        // But do it only if the DLL Load Notification didn't do it already.
+        if(this->module)
+        {
+            if(!xldr.ImportsIntercepted())
+            {
+                this->PatchImports();
+                plugin_ptr->Log("File \"%s\" imports patched via the Legacy method", file->filepath());
+            }
+            else
+            {
+                plugin_ptr->Log("File \"%s\" imports patched via the DLL Load Notification", file->filepath());
+            }
+        }
     }
     return this->module != 0;
 }
