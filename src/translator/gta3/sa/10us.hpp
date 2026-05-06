@@ -223,7 +223,8 @@ static void sa_10us(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B905E] = 0x5B905E;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadLevel
         map[0x5BD830] = 0x5BD830;   // _ZN16cHandlingDataMgr16LoadHandlingDataEv
         map[0x5BD850] = 0x5BD850;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @cHandlingDataMgr::LoadHandlingData
-        map[0xC2B9C8] = 0xC2B9C8;   // mod_HandlingManager CHandlingData
+        //map[0xC2B9C8] = 0xC2B9C8;   // mod_HandlingManager CHandlingData
+        map[0x5BFA95] = 0x5BFA95;   // mov     ecx, offset mod_HandlingManager CHandlingData
         map[0x5B8428] = 0x5B8428;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
         map[0x5B871A] = 0x5B871A;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
         map[0x5DD780] = 0x5DD780;   // _ZN9CPlantMgr12ReloadConfigEv

@@ -248,7 +248,8 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
         map[0x5B905E] = 0x48D97C;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadLevel
         map[0x5BD830] = 0x5AAE20;   // _ZN16cHandlingDataMgr16LoadHandlingDataEv
         map[0x5BD850] = 0x5AAE4E;   // call    _ZN8CFileMgr12LoadTextFileEPKcPhi        ; @cHandlingDataMgr::LoadHandlingData
-        map[0xC2B9C8] = 0x978E58;   // mod_HandlingManager CHandlingData
+        //map[0xC2B9C8] = 0x978E58;   // mod_HandlingManager CHandlingData
+        map[0x5BFA95] = 0x4A5034;   // mov     ecx, offset mod_HandlingManager CHandlingData
         map[0x5B8428] = 0x48C846;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadObjectTypes
         map[0x5B871A] = 0x48B079;   // call    _ZN8CFileMgr8OpenFileEPKcS1_             ; @CFileLoader::LoadScene
         map[0x5BF750] = 0x5D5750;   // _ZN11CWeaponInfo10InitialiseEv
