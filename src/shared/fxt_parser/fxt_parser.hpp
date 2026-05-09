@@ -65,7 +65,19 @@ namespace injector
                 }
 
                 // Adds into the text map only if found both key and value
-                if(key && value) manager.add(key, value, table);
+                if(key && value)
+                {
+                    // CLEO trims trailing whitespace from strings, we should do the same
+                    char* lastNonWhitespace = value;
+                    for(char* p = value; *p; ++p)
+                    {
+                        if(!(*p == 0x20 || (*p >= 0x09 && *p <= 0x0D))) // NOT whitespace?
+                        {
+                            lastNonWhitespace = p;
+                        }
+                    }
+                    manager.add(key, value, lastNonWhitespace - value + 1, table);
+                }
             }
 
             // Done

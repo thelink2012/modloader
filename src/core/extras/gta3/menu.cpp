@@ -119,7 +119,7 @@ class TheMenu : public AbstractFrontend
         // Writes temporary @text into the label @tmplabel and returns it's entry
         TextEntry TempTextLabel(const std::string& text, const char* tmplabel)
         {
-            fxt.set(tmplabel, text.data());
+            fxt.set(tmplabel, text.data(), text.size());
             return TextLabel(tmplabel);
         }
 
@@ -215,7 +215,7 @@ void TheMenu::LoadText()
         return ParseFXT(fxt, lang.data());
     };
 
-    this->fxt.add("ML__SM", "");    // Typed search text
+    this->fxt.add("ML__SM", "", 0);    // Typed search text
 
     // Try to load a fxt with the OS locale
     auto locale = GetUserDefaultLCID();
@@ -343,10 +343,11 @@ bool TheMenu::BuildCurrentModsPage(int inc)
             {
                 auto& modinfo = this->mMods[mCurrentModsPage * NumModsPerPage + i].get();
                 mCurrentPageMods.emplace_back(modinfo);
-                fxt.set(entry->m_szName, modinfo.GetName().c_str());
+                const std::string& modName = modinfo.GetName();
+                fxt.set(entry->m_szName, modName.c_str(), modName.size());
             }
             else
-                fxt.set(entry->m_szName, "");
+                fxt.set(entry->m_szName, "", 0);
             
         }
         return true;
@@ -359,7 +360,7 @@ bool TheMenu::BuildCurrentModsPage(int inc)
         {
             auto& entry = mPageMods.GetEntry(i)->pEntry;
             entry->m_nActionType = MENU_ACTION_SKIP;
-            fxt.set(entry->m_szName, "");
+            fxt.set(entry->m_szName, "", 0);
         }
 
         return false;
@@ -679,7 +680,8 @@ void TheMenu::ModPageEvents()
             title.resize(max_title_size - 3);
             title.append("...");
         }
-        fxt.set("ML_FYHH", modloader::toupper(title).data());
+        const std::string& titleUpper = modloader::toupper(title);
+        fxt.set("ML_FYHH", titleUpper.c_str(), titleUpper.size());
     };
 
     // Mod page builder for each entry in the Mods page

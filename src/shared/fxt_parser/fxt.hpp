@@ -74,41 +74,42 @@ namespace injector
             /*
              *  Used on III/VC to get a wchar string
              */
-            static string_container to_wchar(const char* value)
+            static string_container to_wchar(const char* value, size_t len)
             {
-                string_container str; str.reserve((strlen(value) + 1) * 2);
-                for(auto p = value; *p; ++p)
+                string_container str; str.reserve((len + 2) * 2);
+                for(size_t i = 0; i < len; ++i)
                 {
-                    str.emplace_back(*p); str.emplace_back('\0');   // character
+                    str.emplace_back(value[i]); str.emplace_back('\0');   // character
                 }
-                str.emplace_back('\0'); str.emplace_back('\0'); // null terminator
+                // GTA III and VC always over-read strings by one character, so give two null terminators
+                str.insert(str.end(), 4, '\0');
                 return str;
             }
 
             /*
              *  Used on SA to get a char string
              */
-            static string_container to_char(const char* value)
+            static string_container to_char(const char* value, size_t len)
             {
-                string_container str(value, value + strlen(value) + 1); //+1 for terminator
+                string_container str(value, value + len + 1); //+1 for terminator
                 return str;
             }
 
             /*
              *  Adds a GXT @key - @value pair to the text map for use in our GxtHook 
              */
-            static void add(const char* key, const char* value, hash_type table = 0)
+            static void add(const char* key, const char* value, size_t len, hash_type table = 0)
             {
                 if(data().can_patch) patch();
-                data().tmap[table][GetHash(key)] = gvm.IsIII() || gvm.IsVC()? to_wchar(value) : to_char(value);
+                data().tmap[table][GetHash(key)] = gvm.IsIII() || gvm.IsVC()? to_wchar(value, len) : to_char(value, len);
             }
 
             /*
              *  Overrides the specified GXT @key
              */
-            static void set(const char* key, const char* value, hash_type table = 0)
+            static void set(const char* key, const char* value, size_t len, hash_type table = 0)
             {
-                return add(key, value, table);
+                return add(key, value, len, table);
             }
 
             /*
