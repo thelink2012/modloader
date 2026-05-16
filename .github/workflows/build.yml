@@ -2,124 +2,56 @@ name: Build
 
 on:
   push:
-    branches: ["**"]
-    tags:     ["v*.*.*"]
+    branches: [master, develop]
+    tags: ["v*.*.*"]
+    paths-ignore: ["**/*.md", "doc/**"]
   pull_request:
+    paths-ignore: ["**/*.md", "doc/**"]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: windows-2022
-
-    strategy:
-      fail-fast: false
-      matrix:
-        configuration: [Release, Debug]
+    runs-on: windows-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # -------------------------------------------------------------------
-      # Install v141 (VS 2017) toolset and WinXP support on the runner.
-      # The WinXP component provides the v141_xp toolset required by premake.
-      # -------------------------------------------------------------------
+      - name: Install premake5
+        run: winget install -e --id Premake.Premake.5.Beta --accept-source-agreements --accept-package-agreements
+
       - name: Install v141_xp toolset
-        shell: cmd
         run: |
-          "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify ^
-            --passive --norestart ^
-            --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" ^
-            --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 ^
+          $vsinstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+          $vspath = & "$vsinstaller\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if (-not $vspath) { throw "Visual Studio installation not found" }
+          & "$vsinstaller\setup.exe" modify --passive --norestart --installPath "$vspath" `
+            --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 `
             --add Microsoft.VisualStudio.Component.WinXP
-        # Timeout ocasional é esperado; o step falha limpo se o installer
-        # retornar código != 0, o que torna o problema visível nos logs.
 
-      # -------------------------------------------------------------------
-      # Generate VS2015 project files using Premake (premake5.exe included
-      # in the repository).
-      # Premake sets PlatformToolset=v140_xp in the .vcxproj files; this is
-      # overridden when invoking MSBuild below without modifying premake5.lua.
-      # -------------------------------------------------------------------
-      - name: Generate project files (vs2015)
-        shell: cmd
-        run: premake5.exe vs2015 --outdir=build_temp
+      - uses: microsoft/setup-msbuild@v2
 
-      # -------------------------------------------------------------------
-      # Configure MSVC environment for toolset 14.16 (VS 2017 / v141).
-      # Required so msbuild can locate the correct compiler and toolset.
-      # -------------------------------------------------------------------
-      - name: Setup MSVC environment (v141)
-        uses: ilammy/msvc-dev-cmd@v1
+      - name: Add pdbcopy to PATH
+        run: echo "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x86" >> $env:GITHUB_PATH
+
+      - name: Build
+        env:
+          CL: /MP
+        run: premake5 --file=release.lua prepare --toolset=vs2022
+
+      - uses: actions/upload-artifact@v4
         with:
-          arch:    x86
-          toolset: 14.16   # toolset do VS 2017
-
-      # -------------------------------------------------------------------
-      # Build and override PlatformToolset to v141_xp via MSBuild.
-      # MSBuild command-line properties passed with /p: take precedence over
-      # project file values. v141_xp is the v141 toolset variant that provides
-      # WinXP support.
-      # /m    -> enable parallel build using all available cores.
-      # /v:m  -> minimal verbosity for concise logs.
-      # -------------------------------------------------------------------
-      - name: Build (${{ matrix.configuration }})
-        shell: cmd
-        run: |
-          msbuild build_temp\modloader.sln ^
-            /p:Configuration=${{ matrix.configuration }} ^
-            /p:Platform=Win32 ^
-            /p:PlatformToolset=v141_xp ^
-            /m /v:m
-
-      # -------------------------------------------------------------------
-      # Collect generated binaries.
-      # Premake output layout: bin/ (modloader.asi) and
-      # bin/plugins/gta3/*.dll for plugins.
-      # -------------------------------------------------------------------
-      - name: Collect artifacts
-        shell: pwsh
-        run: |
-          $cfg  = "${{ matrix.configuration }}"
-          $dest = "artifacts\modloader-$cfg"
-
-          # Main ASI binary
-          New-Item -ItemType Directory -Force -Path "$dest" | Out-Null
-          Copy-Item "bin\modloader.asi"         "$dest\" -ErrorAction SilentlyContinue
-
-          # GTA3 plugins
-          $pluginSrc = "bin\plugins\gta3"
-          if (Test-Path $pluginSrc) {
-              New-Item -ItemType Directory -Force -Path "$dest\plugins\gta3" | Out-Null
-              Copy-Item "$pluginSrc\*.dll" "$dest\plugins\gta3\" -ErrorAction SilentlyContinue
-          }
-
-          # PDB files (placed with binaries in the same directory)
-          Copy-Item "bin\*.pdb"                    "$dest\" -ErrorAction SilentlyContinue
-          Copy-Item "bin\plugins\gta3\*.pdb"       "$dest\plugins\gta3\" -ErrorAction SilentlyContinue
-
-          # Example docs and configuration files
-          Copy-Item "doc\config\*.ini.0"                "$dest\" -ErrorAction SilentlyContinue
-          Copy-Item "doc\CHANGELOG.md"                  "$dest\" -ErrorAction SilentlyContinue
-          Copy-Item "LICENSE"                           "$dest\" -ErrorAction SilentlyContinue
-
-          Write-Host "=== Artifacts ===" 
-          Get-ChildItem -Recurse $dest | Select-Object FullName
-
-      - name: Upload artifact – ${{ matrix.configuration }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: modloader-${{ matrix.configuration }}-${{ github.sha }}
-          path: artifacts\modloader-${{ matrix.configuration }}\
+          name: modloader-${{ github.sha }}
+          path: |
+            release/binaries
+            release/symbols
           if-no-files-found: error
           retention-days: 30
 
-  # -----------------------------------------------------------------------
-  # Extra job: create a GitHub Release when a tag matching v*.*.* is pushed.
-  # Runs only if the build (Release) job completed successfully.
-  # -----------------------------------------------------------------------
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
@@ -128,19 +60,40 @@ jobs:
       contents: write
 
     steps:
-      - name: Download Release artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
         with:
-          name: modloader-Release-${{ github.sha }}
+          name: modloader-${{ github.sha }}
           path: dist/
 
-      - name: Zip release
+      - name: Package zip files
         run: |
-          cd dist
-          zip -r ../modloader-${{ github.ref_name }}.zip .
+          cd dist/release
+          (cd binaries && zip -r ../../modloader.zip .)
+          (cd symbols && zip -r ../../pdb-symbols.zip .)
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Prepare release notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 <<'PY'
+          import os, re, sys
+          tag = os.environ["TAG"]
+          lines = open("doc/CHANGELOG.md").readlines()
+          i = next((i for i, l in enumerate(lines) if l.startswith(tag + " ")), None)
+          if i is None:
+              sys.exit(f"No changelog for {tag} in CHANGELOG.md")
+          j = next((j for j in range(i + 1, len(lines)) if re.match(r"^v\d+\.\d+", lines[j])), len(lines))
+          open("release-body.md", "w").writelines(lines[i:j])
+          PY
+
+      - uses: softprops/action-gh-release@v2
         with:
-          files: modloader-${{ github.ref_name }}.zip
-          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+          name: Mod Loader ${{ github.ref_name }}
+          body_path: release-body.md
+          files: |
+            dist/modloader.zip
+            dist/pdb-symbols.zip
+          fail_on_unmatched_files: true
