@@ -41,7 +41,10 @@ jobs:
       - name: Build
         env:
           CL: /MP
-        run: premake5 --file=release.lua prepare --toolset=vs2022
+        run: |
+          $args = @("--file=release.lua", "prepare", "--toolset=vs2022")
+          if ("${{ github.ref }}" -like "refs/tags/v*") { $args += "--final-release" }
+          & premake5 @args
 
       - uses: actions/upload-artifact@v4
         with:

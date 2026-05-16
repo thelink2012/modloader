@@ -24,6 +24,11 @@ newoption {
     description = "Post-build install directory"
 }
 
+newoption {
+    trigger     = "final-release",
+    description = "Public release build (defines MODLOADER_FINAL_RELEASE for the whole solution)"
+}
+
 newaction {
     trigger     = "clean",
     description = "Cleans the binary and build files on the directory (bin/, build_temp/)",
@@ -203,6 +208,10 @@ solution "modloader"
         "_CRT_SECURE_NO_WARNINGS",
         "_SCL_SECURE_NO_WARNINGS"
     }
+
+    if _OPTIONS["final-release"] then
+        defines { "MODLOADER_FINAL_RELEASE" }
+    end
 
     includedirs {
         "include",

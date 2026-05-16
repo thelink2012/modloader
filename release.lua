@@ -16,7 +16,13 @@ newoption {
     description = "The toolset used to compile the release build (vs20xx or gcc)",
 }
 
+newoption {
+    trigger     = "final-release",
+    description = "Public release build."
+}
+
 toolset     = _OPTIONS["toolset"]
+final_flag  = _OPTIONS["final-release"] and " --final-release" or ""
 action      = (toolset == "gcc" and "gmake" or toolset)
 compiler    = (toolset == "gcc" and "gcc" or "cl")
 build       = (toolset == "gcc" and "make" or "msbuild")
@@ -48,9 +54,9 @@ function main()
 
     print "Generating build files..."
     if toolset == "gcc" then
-        execute(string.format("premake5 %s --cc=%s --outdir=build_temp", action, compiler))
+        execute(string.format("premake5 %s --cc=%s --outdir=build_temp%s", action, compiler, final_flag))
     else
-        execute(string.format("premake5 %s --outdir=build_temp", action))
+        execute(string.format("premake5 %s --outdir=build_temp%s", action, final_flag))
     end
 
     print "Building..."
