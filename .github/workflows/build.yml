@@ -22,7 +22,14 @@ jobs:
           submodules: recursive
 
       - name: Install premake5
-        run: winget install -e --id Premake.Premake.5.Beta --accept-source-agreements --accept-package-agreements
+        run: |
+          winget install -e --id Premake.Premake.5.Beta --accept-source-agreements --accept-package-agreements --disable-interactivity
+          $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
+          $premake = Get-Command premake5 -ErrorAction Stop
+          echo (Split-Path -Parent $premake.Source) >> $env:GITHUB_PATH
+
+      - name: Verify premake5
+        run: premake5 --version
 
       - name: Install v141_xp toolset
         run: |
@@ -32,6 +39,7 @@ jobs:
           & "$vsinstaller\setup.exe" modify --passive --norestart --installPath "$vspath" `
             --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 `
             --add Microsoft.VisualStudio.Component.WinXP
+          if ($LASTEXITCODE -ne 0) { throw "VS installer modify failed (exit $LASTEXITCODE)" }
 
       - uses: microsoft/setup-msbuild@v2
 
@@ -45,6 +53,7 @@ jobs:
           $args = @("--file=release.lua", "prepare", "--toolset=vs2022")
           if ("${{ github.ref }}" -like "refs/tags/v*") { $args += "--final-release" }
           & premake5 @args
+          exit $LASTEXITCODE
 
       - uses: actions/upload-artifact@v4
         with:
