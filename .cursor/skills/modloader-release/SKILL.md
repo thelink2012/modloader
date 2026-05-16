@@ -15,7 +15,7 @@ Do **not** read code diffs for changelog text. Use commit subjects, PR metadata,
 | File | Change |
 |------|--------|
 | `doc/CHANGELOG.md` | Prepend new version section |
-| `include/modloader/modloader.h` | `MODLOADER_VERSION_*` and `MODLOADER_VERSION_ISDEV` |
+| `include/modloader/modloader.h` | `MODLOADER_VERSION_MAJOR`, `MINOR`, `REVISION` only |
 
 Do **not** edit `doc/readme/Readme.md` or `doc/readme/Leia-me.md` — credits and readme text are human-written. Only touch them if the user explicitly asks outside this workflow.
 
@@ -35,20 +35,19 @@ Tag name matches version: `v0.3.9` ↔ `0.3.9`.
 #define MODLOADER_VERSION_MAJOR         0
 #define MODLOADER_VERSION_MINOR         3
 #define MODLOADER_VERSION_REVISION      9
-#ifdef NDEBUG
-#define MODLOADER_VERSION_ISDEV         0
-#else
-#define MODLOADER_VERSION_ISDEV         1
-#endif
 ```
 
 ## Changelog format
 
 - Section header: `v0.3.9 (May 16 2026)` then a line of dashes.
 - Bullets: leading space + `* ` + one line per user-visible change.
-- Merged PR: ` * … [#135 — contributed by @login]`
-- GitHub `@login`, not display name.
-- Do not credit `@thelink2012` (project maintainer); omit “— contributed by …” for maintainer-only changes.
+- Merged PR credit block (when attributing an external contributor):
+  `[[#135](https://github.com/thelink2012/modloader/pull/135) — contributed by [@login](https://github.com/login)]`
+- **Always use markdown links** for PR numbers and `@login` handles. Bare `#135` or `@login` do not become clickable in GitHub release notes (the workflow copies this file verbatim into the release body).
+  - PR: `[#NNN](https://github.com/thelink2012/modloader/pull/NNN)`
+  - User: `[@login](https://github.com/login)` — URL has no `@`; link text keeps `@`.
+- GitHub login in link text, not display name.
+- Do not credit `@thelink2012` (project maintainer); omit “— contributed by …” for maintainer-only changes (PR link alone is fine: `[[#122](https://github.com/thelink2012/modloader/pull/122)]`).
 - Do not paste PR bodies verbatim; summarize in one line. Prefer “Fixed …” / “Added …” over implementation detail.
 
 ## Phase 1 — Collect changes (read-only)
@@ -91,7 +90,7 @@ git fetch origin master --tags
    gh pr view NNN --repo thelink2012/modloader --comments
    ```
    `comments` in JSON are issue comments on the PR. `--comments` prints the full thread (including review replies). Use both when the title/body is thin but the thread explains user-facing impact.
-   Contributor handle: `author.login` → `@login`.
+   Contributor handle: `author.login` → `[@login](https://github.com/login)` in the changelog (not bare `@login`).
 6. Commits without a PR: use the subject; attribute only external contributors (not `@thelink2012`).
 7. **Omit** from the changelog unless the user asks otherwise:
    - Pure merge commits
@@ -103,8 +102,8 @@ git fetch origin master --tags
 
 | Commit subject | Draft bullet |
 |----------------|--------------|
-| `feat: create std.dmaudio for III/VC audios (#135)` | ` * Added audio support for GTA III and Vice City [#135 — contributed by @CookiePLMonster]` |
-| `fix: improve ZMenu compatibility through CreateDirectory hook (#122)` | ` * Improved ZMenu compatibility [#122 — contributed by @TheComputerGuy96]` |
+| `feat: create std.dmaudio for III/VC audios (#135)` | ` * Added audio support for GTA III and Vice City [[#135](https://github.com/thelink2012/modloader/pull/135) — contributed by [@CookiePLMonster](https://github.com/CookiePLMonster)]` |
+| `fix: improve ZMenu compatibility through CreateDirectory hook (#122)` | ` * Improved ZMenu compatibility [[#122](https://github.com/thelink2012/modloader/pull/122) — contributed by [@TheComputerGuy96](https://github.com/TheComputerGuy96)]` |
 | `fix priority limit in menu` | ` * Fixed mod priority limit in the in-game menu` |
 | `chore: update premake5 settings` | (omit) |
 | `Fix build to VS2019` | (omit) |
@@ -118,12 +117,12 @@ Prepend this shape to `doc/CHANGELOG.md` (newest section on top; leave older sec
 ```markdown
 v0.3.9 (May 16 2026)
 -----------------------
- * Added audio support for GTA III and Vice City [#135 — contributed by @CookiePLMonster]
+ * Added audio support for GTA III and Vice City [[#135](https://github.com/thelink2012/modloader/pull/135) — contributed by [@CookiePLMonster](https://github.com/CookiePLMonster)]
  * Fixed mod priority limit in the in-game menu
 ```
 
 1. **Write** the new changelog section. Use today’s date in `Mon DD YYYY` form.
-2. **Update** `include/modloader/modloader.h` (version macros and `MODLOADER_VERSION_ISDEV` per **Version rules**).
+2. **Update** `include/modloader/modloader.h` (version macros only per **Version rules**).
 3. Tell the user both files are ready for review. Do **not** paste file contents in chat unless they ask — they review via the editor or `git diff`.
 4. State the planned version and tag (e.g. **0.3.9** / **v0.3.9**) so they can verify `modloader.h`.
 5. **Do not proceed until they confirm** changelog and version files are final (they may edit on disk).
