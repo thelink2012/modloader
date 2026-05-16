@@ -1,3 +1,9 @@
+v0.0.0 (Apr 22 1500)
+-----------------------
+ * Test1 something something @thelink2012
+ * Test2 something #133
+ * Test3 something [a](https://github.com/thelink2012/modloader/pull/133)
+
 v0.3.7 (Jan 20 2018)
 -----------------------
  * Fixed an original game bug causing CdStreamSync to deadlock randomly (included an export for other mods to check if this std.stream build is aware of this bug and fixes it).
