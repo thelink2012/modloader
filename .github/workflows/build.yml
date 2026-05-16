@@ -32,14 +32,14 @@ jobs:
         run: premake5 --version
 
       - name: Install v141_xp toolset
+        shell: cmd
         run: |
-          $vsinstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
-          $vspath = & "$vsinstaller\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
-          if (-not $vspath) { throw "Visual Studio installation not found" }
-          & "$vsinstaller\setup.exe" modify --passive --norestart --installPath "$vspath" `
-            --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 `
+          "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\setup.exe" modify ^
+            --passive --norestart ^
+            --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" ^
+            --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 ^
             --add Microsoft.VisualStudio.Component.WinXP
-          if ($LASTEXITCODE -ne 0) { throw "VS installer modify failed (exit $LASTEXITCODE)" }
+          if errorlevel 1 exit /b 1
 
       - uses: microsoft/setup-msbuild@v2
 
