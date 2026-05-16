@@ -24,12 +24,8 @@ jobs:
       - name: Install premake5
         run: |
           winget install -e --id Premake.Premake.5.Beta --accept-source-agreements --accept-package-agreements --disable-interactivity
-          $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
-          $premake = Get-Command premake5 -ErrorAction Stop
-          echo (Split-Path -Parent $premake.Source) >> $env:GITHUB_PATH
-
-      - name: Verify premake5
-        run: premake5 --version
+          $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
+          echo "$((Get-Command premake5).Path | Split-Path -Parent)" >> $env:GITHUB_PATH
 
       - name: Install v141_xp toolset
         shell: cmd
@@ -39,7 +35,6 @@ jobs:
             --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" ^
             --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 ^
             --add Microsoft.VisualStudio.Component.WinXP
-          if errorlevel 1 exit /b 1
 
       - uses: microsoft/setup-msbuild@v2
 
@@ -50,10 +45,11 @@ jobs:
         env:
           CL: /MP
         run: |
-          $args = @("--file=release.lua", "prepare", "--toolset=vs2022")
-          if ("${{ github.ref }}" -like "refs/tags/v*") { $args += "--final-release" }
-          & premake5 @args
-          exit $LASTEXITCODE
+          if ("${{ github.ref }}" -like "refs/tags/v*") {
+            premake5 --file=release.lua prepare --toolset=vs2022 --final-release
+          } else {
+            premake5 --file=release.lua prepare --toolset=vs2022
+          }
 
       - uses: actions/upload-artifact@v4
         with:
@@ -61,6 +57,7 @@ jobs:
           path: |
             release/binaries
             release/symbols
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
