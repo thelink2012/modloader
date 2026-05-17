@@ -54,9 +54,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: modloader-${{ github.sha }}
-          path: |
-            release/binaries
-            release/symbols
+          path: release
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
@@ -78,9 +76,8 @@ jobs:
 
       - name: Package zip files
         run: |
-          cd dist/release
-          (cd binaries && zip -r ../../modloader.zip .)
-          (cd symbols && zip -r ../../pdb-symbols.zip .)
+          (cd dist/binaries && zip -r ../modloader.zip .)
+          (cd dist/symbols && zip -r ../pdb-symbols.zip .)
 
       - name: Prepare release notes
         env:
