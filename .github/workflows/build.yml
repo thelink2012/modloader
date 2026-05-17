@@ -4,7 +4,6 @@ on:
   push:
     branches: [master, develop]
     tags: ["v*.*.*"]
-    paths-ignore: ["**/*.md", "doc/**"]
   pull_request:
     paths-ignore: ["**/*.md", "doc/**"]
   workflow_dispatch:
