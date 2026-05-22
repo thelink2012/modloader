@@ -420,7 +420,7 @@ void CAbstractStreaming::BuildPrevOnCdMap()
 {
     CStreamingInfo* res;
     prev_on_cd.clear();
-    for(id_t i = 0; res = InfoForModel(i); ++i)
+    for(id_t i = 0; res = std::invoke(InfoForModel, this, i); ++i)
     {
         id_t nextOnCd = res->GetNextOnCd();
         if(nextOnCd != -1) prev_on_cd.emplace(nextOnCd, i);
@@ -661,11 +661,11 @@ void CAbstractStreaming::Patch()
         {
             // Check if we have a overrider for this clothing item (based on directory offset)
             DirectoryInfo* entry;
-            auto it = this->clothes.find(InfoForModel(index)->GetOffset());
+            auto it = this->clothes.find(std::invoke(InfoForModel, this, index)->GetOffset());
             if(it != clothes.end() && (entry = this->FindClothEntry(it->second->hash)))
             {
                 // Yep, we have a overrider, save stock entry and quickly import our abstract model
-                this->RegisterStockEntry(it->second->filename(), *entry, index, InfoForModel(index)->GetImgId());
+                this->RegisterStockEntry(it->second->filename(), *entry, index, std::invoke(InfoForModel, this, index)->GetImgId());
                 this->QuickImport(index, it->second, false, true);
             }
             else

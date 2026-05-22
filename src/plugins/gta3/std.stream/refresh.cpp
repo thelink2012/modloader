@@ -453,7 +453,7 @@ template<class T> void Refresher<T>::RequestModels()
     // Do the requests
     for(auto& pair : mToRefresh)
     {
-        auto& model = *streaming.InfoForModel(pair.first);
+        auto& model = *std::invoke(streaming.InfoForModel, &streaming, pair.first);
         auto mflags = model.GetStreamFlags();
         if(mflags || pair.second.bShallLoadBack) // Has any importance to the streaming?
             streaming.RequestModel(pair.first, mflags);

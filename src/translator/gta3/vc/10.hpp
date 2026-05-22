@@ -150,14 +150,8 @@ static void vc_10(std::map<memory_pointer_raw, memory_pointer_raw>& map)
     // std.stream
     if(true)
     {
-        static void* vcemu_pMaxInfoForModel;
-
         map[0x40D014] = 0x40D5C9;               // -> offset ms_aInfoForModel
         map[xVc(0x4102B2)] = 0x4102B2;          // -> DWORD 1F07h ; max resources
-        map[0x5B8AFC] = &vcemu_pMaxInfoForModel;// -> &ms_aInfoForModel[MAX_INFO_FOR_MODEL]
-        // DONT CHANGE THE FOLLOWING LINE, CHANGE THE MAPPING ABOVE INSTEAD!!! Maybe change the 0x14 sizeof /////////////
-        vcemu_pMaxInfoForModel = *mem_ptr(0x40D014).get<char*>() + (0x14 * *mem_ptr(xVc(0x4102B2)).get<uint32_t>());
-        ///////////////////////////////////
 
         map[0x8E3FE0] = 0x6F771C;   // DWORD StreamCreateFlags
         map[xVc(0x6F76F4)] = 0x6F76F4; // HANDLE hCdSemaphore

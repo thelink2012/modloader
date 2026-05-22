@@ -8,6 +8,7 @@
 
 #include <list>
 #include <map>
+#include <utility>
 
 #include <modloader/modloader.hpp>
 #include <modloader/util/hash.hpp>
@@ -261,8 +262,9 @@ class CAbstractStreaming
         void RemoveUnusedResources();
         bool IsModelOnStreaming(id_t id);
         bool IsModelAvailable(id_t id);
-        CStreamingInfo* InfoForModel(id_t id);
         id_t InfoForModelIndex(const CStreamingInfo& model);
+
+        CStreamingInfo* (CAbstractStreaming::*InfoForModel)(id_t id) const;
 
         // Checks if file is clothing item
         bool IsClothes(const modloader::file* file);
@@ -307,6 +309,10 @@ class CAbstractStreaming
         void LoadAbstractCdDirectory(ref_list<const modloader::file*> files);
         void BuildPrevOnCdMap();
 
+        CStreamingInfo* InfoForModelInternal_SA(id_t id) const;
+        CStreamingInfo* InfoForModelInternal_VC(id_t id) const;
+        CStreamingInfo* InfoForModelInternal_FLA(id_t id) const;
+
         // Refreshing
         void ProcessRefreshes();
 
@@ -334,7 +340,7 @@ class CAbstractStreaming
         // Sets the info for model structure for the resource id
         void SetInfoForModel(id_t id, uint32_t offset, uint32_t blocks)
         {
-            auto& model = *this->InfoForModel(id);
+            auto& model = *std::invoke(InfoForModel, this, id);
             model.SetStreamData(offset, blocks);
             model.SetNextOnCd(-1);
             ClearNextOnCdPointingTo(id);
@@ -358,14 +364,14 @@ class CAbstractStreaming
         void ClearNextOnCdPointingTo(id_t id)
         {
             auto prev_pair = prev_on_cd.find(id);
-            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->SetNextOnCd(-1);
+            if(prev_pair != prev_on_cd.end()) std::invoke(InfoForModel, this, prev_pair->second)->SetNextOnCd(-1);
         }
 
         // Restore the next on cd pointing to the specified model....
         void RestoreNextOnCdPointingTo(id_t id)
         {
             auto prev_pair = prev_on_cd.find(id);
-            if(prev_pair != prev_on_cd.end()) InfoForModel(prev_pair->second)->SetNextOnCd(id);
+            if(prev_pair != prev_on_cd.end()) std::invoke(InfoForModel, this, prev_pair->second)->SetNextOnCd(id);
         }
 
     public://protected:
