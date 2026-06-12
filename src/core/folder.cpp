@@ -386,7 +386,7 @@ void Loader::FolderInformation::LoadConfigFromINI()
         Log("Warning: Failed to load folder config file");
 
     // Then from the profiles directory
-    if(MakeSureDirectoryExistA((loader.gamePath + loader.profilesPath).c_str()))
+    if(MakeSureDirectoryExistA((loader.modloaderPath + loader.profilesPath).c_str()))
     {
         ::scoped_gdir xdir(loader.profilesPath.c_str());
         for(auto& filename : FilesWalk("", "*.ini", false))
@@ -430,7 +430,7 @@ void Loader::FolderInformation::SaveConfigForINI()
             // Profile direcly in modloader.ini
             profile.SaveConfigForINI(ini);
         }
-        else if(MakeSureDirectoryExistA((loader.gamePath + loader.profilesPath).c_str()))
+        else if(MakeSureDirectoryExistA((loader.modloaderPath + loader.profilesPath).c_str()))
         {
             // This profile has it's own directory
             ::scoped_gdir xdir(loader.profilesPath.c_str());

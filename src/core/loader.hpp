@@ -468,6 +468,7 @@ class Loader : public modloader_t
     protected:
         friend struct Updating;
         friend struct scoped_gdir;
+        friend std::string GetGDirPath(const char* newdir);
         friend class  TheMenu;
 
         uint32_t       mUpdateRefCount = 0;
@@ -489,11 +490,14 @@ class Loader : public modloader_t
         
         // Directories
         std::string     gamePath;               // Full game path
-        std::string     dataPath;               // .data path
-        std::string     profilesPath;           // .profiles path
+        std::string     modulePath;             // Full path where modloader.asi is located
+        std::string     modloaderPath;          // Full path to the active modloader folder
+        std::string     modloaderRelativePath;  // Active modloader folder relative to game path when possible
+        std::string     dataPath;               // .data path, relative to modloader path
+        std::string     profilesPath;           // .profiles path, relative to modloader path
         std::string     commonAppDataPath;      // for all users AppData path
         std::string     localAppDataPath;       // for the current user AppData path
-        std::string     pluginPath;             // Plugins path (relative to game path)
+        std::string     pluginPath;             // Plugins path, relative to modloader path
 
         std::string     basicConfig;
         std::string     basicConfigDefault;     // Full path for the default basic config file
@@ -551,8 +555,10 @@ class Loader : public modloader_t
     public:
         
         // Constructor
-        Loader() : mods("modloader")
+        Loader() : mods("")
         {}
+
+        const std::string& GetModLoaderPath() const { return modloaderPath; }
         
         // Patches the game code to run this core
         bool Patch();
@@ -691,10 +697,22 @@ inline bool operator==(const Loader::PluginInformation& a, const Loader::PluginI
     return (&a == &b);
 }
 
-// Scoped chdir relative to gamedir
+inline std::string GetGDirPath(const char* newdir)
+{
+    if(!newdir[0])
+        return loader.gamePath;
+    if(modloader::IsAbsolutePath(newdir))
+        return newdir;
+    if(loader.modloaderRelativePath.size()
+    && !_strnicmp(newdir, loader.modloaderRelativePath.c_str(), loader.modloaderRelativePath.size()))
+        return loader.gamePath + newdir;
+    return loader.modloaderPath + newdir;
+}
+
+// Scoped chdir relative to active modloader dir, or gamedir for an empty path
 struct scoped_gdir : public modloader::scoped_chdir
 {
-    scoped_gdir(const char* newdir) : scoped_chdir((!newdir[0]? loader.gamePath : loader.gamePath + newdir).data())
+    scoped_gdir(const char* newdir) : scoped_chdir(GetGDirPath(newdir).data())
     { }
 };
 

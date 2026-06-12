@@ -58,7 +58,7 @@ void Loader::StartupWatcher()
             if(hCancelEvent)
             {
                 // Takes up the directory handle for modloader...
-                hDirectory = CreateFileA((this->gamePath + "modloader/").c_str(),
+                hDirectory = CreateFileA(this->modloaderPath.c_str(),
                                         FILE_LIST_DIRECTORY, (FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE),
                                         NULL, OPEN_EXISTING, (FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED), NULL);
                 if(hDirectory != INVALID_HANDLE_VALUE)
@@ -373,7 +373,7 @@ static void NotifyJournal(std::string modname, int action, bool is_root)
         {
             // Something changed in the directory itself, not inside it
 
-            bool is_existing_directory = !!IsDirectoryA(std::string(loader.gamepath).append("modloader/").append(modname).c_str());
+            bool is_existing_directory = !!IsDirectoryA((loader.GetModLoaderPath() + modname).c_str());
 
             if(action == FILE_ACTION_ADDED || action == FILE_ACTION_RENAMED_NEW_NAME)
                 AddToJournal(Loader::Status::Added);

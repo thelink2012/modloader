@@ -116,7 +116,7 @@ bool Loader::LoadPlugin(std::string filename)
 
 
     // Load the plugin module, use full path because we don't want to conflict with any other plugin with same name but different directory
-    if(module = LoadLibraryA((this->gamePath + this->pluginPath + modulename).c_str()))
+    if(module = LoadLibraryA((this->modloaderPath + this->pluginPath + modulename).c_str()))
     {
         Log("Loading plugin module \"%s\"", modulename);
         auto GetLoaderVersion = (modloader_fGetLoaderVersion) GetProcAddress(module, "GetLoaderVersion");

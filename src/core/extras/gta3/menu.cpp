@@ -211,7 +211,7 @@ void TheMenu::LoadText()
 
     auto LoadFXT = [this](uint32_t locale)
     {
-        auto lang = loader.gamePath + loader.dataPath + "/text/" + std::to_string(locale) + "/menu.fxt";
+        auto lang = loader.modloaderPath + loader.dataPath + "text/" + std::to_string(locale) + "/menu.fxt";
         return ParseFXT(fxt, lang.data());
     };
 
