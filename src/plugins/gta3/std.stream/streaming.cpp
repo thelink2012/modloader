@@ -38,7 +38,18 @@ void CAbstractStreaming::InitialiseStructAbstraction()
     this->f92la                 = Fastman92LimitAdjusterCreate();
 
     if(this->f92la.hLib)
+    {
         plugin_ptr->Log("Using fastman92limitadjuster (%p).", f92la.hLib);
+        InfoForModel = &CAbstractStreaming::InfoForModelInternal_FLA;
+    }
+    else if (gvm.IsSA())
+    {
+        InfoForModel = &CAbstractStreaming::InfoForModelInternal_SA;
+    }
+    else
+    {
+        InfoForModel = &CAbstractStreaming::InfoForModelInternal_VC;
+    }
 }
 
 const LibF92LA& CAbstractStreaming::GetF92LA()
@@ -61,22 +72,59 @@ int32_t CStreamingInfo::AsF92LA()
 /*
  *  CAbstractStreaming::InfoForModel
  *      Returns the streaming info pointer for the specified resource id
+ *      San Andreas version of the function
  */
-CStreamingInfo* CAbstractStreaming::InfoForModel(id_t id)
+CStreamingInfo* CAbstractStreaming::InfoForModelInternal_SA(id_t id) const
 {
     // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the indexing manually with sizeof_CStreamingInfo!!
-    static CStreamingInfo* max_InfoForModel = this->f92la.hLib?
-                                                (CStreamingInfo*)((uint8_t*)(ms_aInfoForModel) + (f92la.GetNumberOfFileIDs() * sizeof_CStreamingInfo)) :
-                                                lazy_object<0x5B8AFC, CStreamingInfo*>::get();
-    CStreamingInfo* info = (CStreamingInfo*)((uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo));
-    return (info < max_InfoForModel? info : nullptr);
+    static const uint32_t max_NumResources = (lazy_object<0x5B8AFC, char*>::get() - reinterpret_cast<char*>(ms_aInfoForModel)) / sizeof_CStreamingInfo;
+
+    if (id < max_NumResources)
+    {
+        return (CStreamingInfo*)((uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo));
+    }
+    return nullptr;
+}
+
+/*
+*  CAbstractStreaming::InfoForModel
+*      Returns the streaming info pointer for the specified resource id
+*      III/Vice City version of the function
+*/
+CStreamingInfo* CAbstractStreaming::InfoForModelInternal_VC(id_t id) const
+{
+    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the indexing manually with sizeof_CStreamingInfo!!
+    static const uint32_t max_NumResources = lazy_object<xVc(0x4102B2), uint32_t>::get();
+
+    if (id < max_NumResources)
+    {
+        return (CStreamingInfo*)((uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo));
+    }
+    return nullptr;
+}
+
+/*
+*  CAbstractStreaming::InfoForModel
+*      Returns the streaming info pointer for the specified resource id
+*      FLA version of the function
+*/
+CStreamingInfo* CAbstractStreaming::InfoForModelInternal_FLA(id_t id) const
+{
+    // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the indexing manually with sizeof_CStreamingInfo!!
+    static const uint32_t max_NumResources = f92la.GetNumberOfFileIDs();
+
+    if (id < max_NumResources)
+    {
+        return (CStreamingInfo*)((uint8_t*)(ms_aInfoForModel) + (id * sizeof_CStreamingInfo));
+    }
+    return nullptr;
 }
 
 // Returns the resource index from it's model info structure
 auto CAbstractStreaming::InfoForModelIndex(const CStreamingInfo& model) -> id_t
 {
     // Note: sizeof(CStreamingInfo) isn't the actual size, so we must do the substraction manually with sizeof_CStreamingInfo!!
-    return (id_t)( ((uint8_t*)(&model) - (uint8_t*)(InfoForModel(0))) / sizeof_CStreamingInfo );
+    return (id_t)( ((uint8_t*)(&model) - (uint8_t*)(ms_aInfoForModel)) / sizeof_CStreamingInfo );
 }
 
 /*
@@ -85,7 +133,7 @@ auto CAbstractStreaming::InfoForModelIndex(const CStreamingInfo& model) -> id_t
  */
 bool CAbstractStreaming::IsModelOnStreaming(id_t id)
 {
-    return InfoForModel(id)->GetLoadStatus() != 0;
+    return std::invoke(InfoForModel, this, id)->GetLoadStatus() != 0;
 }
 
 /*
@@ -94,7 +142,7 @@ bool CAbstractStreaming::IsModelOnStreaming(id_t id)
  */
 bool CAbstractStreaming::IsModelAvailable(id_t id)
 {
-    return InfoForModel(id)->GetLoadStatus() == 1;
+    return std::invoke(InfoForModel, this, id)->GetLoadStatus() == 1;
 }
 
 /*

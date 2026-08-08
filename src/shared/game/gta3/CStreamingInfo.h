@@ -96,7 +96,6 @@ struct CStreamingInfo
     {
         if(auto f92la = this->GetF92LA())
         {
-            auto i = this->AsF92LA();
             f92la->SetFileInfoNextOnCDfileID(this->AsF92LA(), nextOnCd);
             return;
         }

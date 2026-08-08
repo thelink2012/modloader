@@ -136,7 +136,7 @@ static void PerformDirectoryRead(size_t size,
         auto gf = make_function_hook<gfvc_hook>([&RegisterEntry](gfvc_hook::func_type DontCallMe, uint32_t id, char hadModel)
         {
             char r = hadModel;
-            if(RegisterEntry) r = (char) RegisterEntry(*streaming->InfoForModel(id), !!r);
+            if(RegisterEntry) r = (char) RegisterEntry(*std::invoke(streaming->InfoForModel, streaming, id), !!r);
             return r;
         });
 
