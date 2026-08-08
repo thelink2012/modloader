@@ -17,7 +17,7 @@ void Loader::LoadPlugins()
     
     if(this->bEnablePlugins)
     {
-        ::scoped_gdir xdir(this->pluginPath.c_str());
+        ::scoped_mldir xdir(this->pluginPath.c_str());
         
         // Read plugins priority
         {
@@ -62,7 +62,7 @@ void Loader::UnloadPlugins()
  */
 bool Loader::LoadPlugin(std::string filename)
 {
-    ::scoped_gdir xdir(this->pluginPath.c_str());
+    ::scoped_mldir xdir(this->pluginPath.c_str());
     
     uint8_t major, minor, revision;
     const char* modulename = filename.c_str();
@@ -116,7 +116,7 @@ bool Loader::LoadPlugin(std::string filename)
 
 
     // Load the plugin module, use full path because we don't want to conflict with any other plugin with same name but different directory
-    if(module = LoadLibraryA((this->gamePath + this->pluginPath + modulename).c_str()))
+    if(module = LoadLibraryA((this->modloaderPath + this->pluginPath + modulename).c_str()))
     {
         Log("Loading plugin module \"%s\"", modulename);
         auto GetLoaderVersion = (modloader_fGetLoaderVersion) GetProcAddress(module, "GetLoaderVersion");
@@ -170,7 +170,7 @@ bool Loader::LoadPlugin(std::string filename)
  */
 bool Loader::UnloadPlugin(PluginInformation& plugin)
 {
-    ::scoped_gdir xdir(this->pluginPath.c_str());
+    ::scoped_mldir xdir(this->pluginPath.c_str());
     
     Log("Unloading plugin \"%s\"", plugin.name);
     plugin.Shutdown();
@@ -187,7 +187,7 @@ bool Loader::UnloadPlugin(PluginInformation& plugin)
  */
 bool Loader::StartupPlugin(PluginInformation& plugin)
 {
-    ::scoped_gdir xdir(this->pluginPath.c_str());
+    ::scoped_mldir xdir(this->pluginPath.c_str());
     Log("Starting up plugin \"%s\"", plugin.name);
     if(!plugin.Startup())
     {

@@ -35,7 +35,7 @@ void Loader::OpenLog()
 void Loader::TruncateLog()
 {
     // Clears the ammount of bytes written...
-    auto path = this->gamePath + "modloader/modloader.log";
+    auto path = this->modloaderPath + "modloader.log";
     numBytesInLog = 0;
     
     if(logfile == nullptr)

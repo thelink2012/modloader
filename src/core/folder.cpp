@@ -245,7 +245,7 @@ auto Loader::FolderInformation::GetModsByName() -> ref_list<ModInformation>
  */
 void Loader::FolderInformation::Scan()
 {
-    ::scoped_gdir xdir(this->path.c_str());
+    ::scoped_mldir xdir(this->path.c_str());
     Log("\n\nScanning mods at \"%s\"...", this->path.c_str());
 
     bool fine = true;
@@ -275,7 +275,7 @@ void Loader::FolderInformation::Scan()
  */
 void Loader::FolderInformation::Scan(const Journal& journal)
 {
-    ::scoped_gdir xdir(this->path.c_str());
+    ::scoped_mldir xdir(this->path.c_str());
 
     if(this->Profile().IsIgnoring() == false)
     {
@@ -348,7 +348,7 @@ void Loader::FolderInformation::Update(ModInformation& mod)
  */
 void Loader::FolderInformation::LoadConfigFromINI()
 {
-    ::scoped_gdir xdir(this->path.c_str());
+    ::scoped_mldir xdir(this->path.c_str());
     modloader_ini ini;
     CopyFileA(loader.folderConfigDefault.c_str(), loader.folderConfigFilename.c_str(), TRUE);
     
@@ -386,9 +386,9 @@ void Loader::FolderInformation::LoadConfigFromINI()
         Log("Warning: Failed to load folder config file");
 
     // Then from the profiles directory
-    if(MakeSureDirectoryExistA((loader.gamePath + loader.profilesPath).c_str()))
+    if(MakeSureDirectoryExistA((loader.modloaderPath + loader.profilesPath).c_str()))
     {
-        ::scoped_gdir xdir(loader.profilesPath.c_str());
+        ::scoped_mldir xdir(loader.profilesPath.c_str());
         for(auto& filename : FilesWalk("", "*.ini", false))
             ReadProfilesFromINI(modloader_ini(filename.data()), filename);
     }
@@ -413,7 +413,7 @@ void Loader::FolderInformation::LoadConfigFromINI()
  */
 void Loader::FolderInformation::SaveConfigForINI()
 {
-    ::scoped_gdir xdir(this->path.c_str());
+    ::scoped_mldir xdir(this->path.c_str());
     modloader_ini ini;
 
     // Save current profile
@@ -430,10 +430,10 @@ void Loader::FolderInformation::SaveConfigForINI()
             // Profile direcly in modloader.ini
             profile.SaveConfigForINI(ini);
         }
-        else if(MakeSureDirectoryExistA((loader.gamePath + loader.profilesPath).c_str()))
+        else if(MakeSureDirectoryExistA((loader.modloaderPath + loader.profilesPath).c_str()))
         {
             // This profile has it's own directory
-            ::scoped_gdir xdir(loader.profilesPath.c_str());
+            ::scoped_mldir xdir(loader.profilesPath.c_str());
             modloader_ini prof_ini;
             profile.SaveConfigForINI(prof_ini);
             if(!prof_ini.write_file(generator))

@@ -19,6 +19,14 @@ REGISTER_ML_NULL();
 
 // Mod Loader object
 Loader loader;
+static HINSTANCE hLoaderModule = NULL;
+
+static std::string MakePathRelativeTo(const std::string& path, const std::string& base)
+{
+    if(path.size() >= base.size() && !_strnicmp(path.c_str(), base.c_str(), base.size()))
+        return path.substr(base.size());
+    return path;
+}
 
 /*
  * DllMain
@@ -29,6 +37,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
     if(fdwReason == DLL_PROCESS_ATTACH)
     {
+        hLoaderModule = hinstDLL;
         if(!loader.Patch())
             return FALSE;
     }
@@ -139,10 +148,29 @@ bool Loader::Patch()
 void Loader::Startup()
 {
     char rootPath[MAX_PATH];
+    char moduleFilename[MAX_PATH];
     char appDataPath[MAX_PATH];
 
-    // If not running yet and 'modloader' folder exists, let's start up
-    if(!this->bRunning && IsDirectoryA("modloader"))
+    GetCurrentDirectoryA(sizeof(rootPath), rootPath);
+    MakeSureStringIsDirectory(this->gamePath = rootPath);
+
+    if(hLoaderModule && GetModuleFileNameA(hLoaderModule, moduleFilename, sizeof(moduleFilename)))
+    {
+        this->modulePath = moduleFilename;
+        this->modulePath.erase(this->modulePath.find_last_of("\\/") + 1);
+        MakeSureStringIsDirectory(this->modulePath);
+    }
+    else
+        this->modulePath = this->gamePath;
+
+    std::string rootModloaderPath = this->gamePath + "modloader";
+    std::string moduleModloaderPath = this->modulePath + "modloader";
+    bool hasRootModloader = !!IsDirectoryA(rootModloaderPath.c_str());
+    bool hasModuleModloader = !!IsDirectoryA(moduleModloaderPath.c_str());
+
+    // If not running yet and a 'modloader' folder exists, let's start up.
+    // Prefer the ASI directory, then fall back to the traditional game root folder.
+    if(!this->bRunning && (hasRootModloader || hasModuleModloader))
     {
         // Cleanup the base structure
         memset(this, 0, sizeof(modloader_t));
@@ -157,14 +185,33 @@ void Loader::Startup()
         this->maxBytesInLog  = 5242880;     // 5 MiB
         this->currentModId   = 0;
         this->currentFileId  = 0x8000000000000000;  // File id should have the hibit set
-        
+
+        // Setup root path variables
+        MakeSureStringIsDirectory(this->gamePath = rootPath);
+        MakeSureStringIsDirectory(this->modulePath);
+        this->modloaderPath = hasModuleModloader? moduleModloaderPath : rootModloaderPath;
+        MakeSureStringIsDirectory(this->modloaderPath);
+        MakeSureStringIsDirectory(this->modloaderRelativePath = MakePathRelativeTo(this->modloaderPath, this->gamePath));
+        this->mods = FolderInformation(this->modloaderRelativePath);
+
         // Open the log file
         OpenLog();
         LogGameVersion();
+        Log("Using Mod Loader folder \"%s\"", this->modloaderPath.c_str());
 
-        // Setup root path variables
-        GetCurrentDirectoryA(sizeof(rootPath), rootPath);
-        MakeSureStringIsDirectory(this->gamePath = rootPath);
+        // Warn when ASI-local and game-root folders both exist (and are distinct)
+        if(hasRootModloader && hasModuleModloader
+        && _stricmp(rootModloaderPath.c_str(), moduleModloaderPath.c_str()))
+        {
+            Log("Warning: Found both \"%s\" and \"%s\"; using the ASI-local folder.",
+                moduleModloaderPath.c_str(), rootModloaderPath.c_str());
+            MessageBoxA(NULL,
+                "Mod Loader found two 'modloader' folders:\n"
+                "one next to modloader.asi and one in the game directory.\n\n"
+                "The folder next to modloader.asi will be used.\n"
+                "Move or remove the unused folder to avoid confusion.",
+                "Mod Loader", MB_ICONWARNING | MB_OK);
+        }
 
         // Setup "%ProgramData%/modloader/" variable
         if(SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA|CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, appDataPath)))
@@ -175,22 +222,22 @@ void Loader::Startup()
             MakeSureStringIsDirectory(MakeSureStringIsDirectory(this->localAppDataPath = appDataPath).append("modloader"));
 
         // Setup basic path variables
-        this->dataPath    = "modloader/.data/";
-        this->pluginPath  = "modloader/.data/plugins/";
-        this->profilesPath= "modloader/.profiles/";
+        this->dataPath    = ".data/";
+        this->pluginPath  = ".data/plugins/";
+        this->profilesPath= ".profiles/";
 
         // Setup config file names
         this->folderConfigFilename = "modloader.ini";
         this->basicConfig          = dataPath + "config.ini";
         this->pluginConfigFilename = "plugins.ini";
-        this->folderConfigDefault  = gamePath + dataPath + "modloader.ini.0";
-        this->basicConfigDefault   = gamePath + dataPath + "config.ini.0";
-        this->pluginConfigDefault  = gamePath + dataPath + "plugins.ini.0";
+        this->folderConfigDefault  = modloaderPath + dataPath + "modloader.ini.0";
+        this->basicConfigDefault   = modloaderPath + dataPath + "config.ini.0";
+        this->pluginConfigDefault  = modloaderPath + dataPath + "plugins.ini.0";
 
         // Make sure the important folders exist
-        if(!MakeSureDirectoryExistA(dataPath.c_str())
-        || !MakeSureDirectoryExistA(profilesPath.c_str())
-        || !MakeSureDirectoryExistA(pluginPath.c_str())
+        if(!MakeSureDirectoryExistA((modloaderPath + dataPath).c_str())
+        || !MakeSureDirectoryExistA((modloaderPath + profilesPath).c_str())
+        || !MakeSureDirectoryExistA((modloaderPath + pluginPath).c_str())
         || !MakeSureDirectoryExistA(commonAppDataPath.c_str())
         || !MakeSureDirectoryExistA(localAppDataPath.c_str()))
         {
@@ -224,7 +271,7 @@ void Loader::Startup()
         this->UpdateOldConfig();
 
         // Load the basic configuration file
-        CopyFileA(basicConfigDefault.c_str(), basicConfig.c_str(), TRUE);
+        CopyFileA(basicConfigDefault.c_str(), (modloaderPath + basicConfig).c_str(), TRUE);
         this->ReadBasicConfig();
         
         // Check if logging is disabled by the basic config file

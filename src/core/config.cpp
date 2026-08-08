@@ -19,7 +19,7 @@ void Loader::ReadBasicConfig()
     linb::ini data;
 
     Log("Loading basic config file %s", basicConfig.c_str());
-    if(data.load_file(gamePath + basicConfig))
+    if(data.load_file(modloaderPath + basicConfig))
     {
         // Read basic stuff from [Config] section
         for(auto& pair : data["Config"])
@@ -62,7 +62,7 @@ void Loader::ReadBasicConfig()
      config["AutoRefresh"]          = modloader::to_string(bAutoRefresh);
 
      // Log only about failure since we'll be saving every time a entry on the menu changes
-     if(!ini.write_file(gamePath + basicConfig))
+     if(!ini.write_file(modloaderPath + basicConfig))
          Log("Failed to save basic config file");
  }
 
@@ -224,7 +224,7 @@ void Loader::UpdateOldConfig_0115_021()
             newer[newsec.section] = old[oldsec.section];
     };
 
-    if(old.load_file(gamePath + "/modloader/modloader.ini"))
+    if(old.load_file(modloaderPath + folderConfigFilename))
     {
         if(old.count("CONFIG") && old.count("PRIORITY"))
         {
@@ -246,7 +246,7 @@ void Loader::UpdateOldConfig_0115_021()
                 kv.second = std::to_string(pr > 0 && pr <= limit? (limit + 1) - pr : pr);
             }
 
-            newer.write_file(gamePath + "modloader/" +  folderConfigFilename);
+            newer.write_file(modloaderPath + folderConfigFilename);
         }
     }
 }
@@ -275,7 +275,7 @@ void Loader::UpdateOldConfig_023_024()
             newer[newsec.section] = old[oldsec.section];
     };
 
-    if(old.load_file(gamePath + "modloader/modloader.ini"))
+    if(old.load_file(modloaderPath + folderConfigFilename))
     {
         if(old.count("Config") && old.count("Priority"))
         {
@@ -292,7 +292,7 @@ void Loader::UpdateOldConfig_023_024()
             newer.set("Folder.Config", "Profile", "Default");
             newer["Profiles.Default.ExclusiveMods"];
 
-            newer.write_file(gamePath + "modloader/" +  folderConfigFilename);
+            newer.write_file(modloaderPath + folderConfigFilename);
         }
     }
 }
