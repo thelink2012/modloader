@@ -40,7 +40,7 @@ struct FileInstallLog
 void Loader::ModInformation::Scan()
 {
     static auto modloader_subfolder = NormalizePath("modloader");
-    ::scoped_gdir xdir(this->path.c_str());
+    ::scoped_mldir xdir(this->path.c_str());
     
     if(this->UpdateIgnoreStatus().IsIgnored())
         Log("\nIgnoring mod at \"%s\"", this->path.c_str());

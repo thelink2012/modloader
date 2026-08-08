@@ -165,10 +165,12 @@ void Loader::Startup()
 
     std::string rootModloaderPath = this->gamePath + "modloader";
     std::string moduleModloaderPath = this->modulePath + "modloader";
+    bool hasRootModloader = !!IsDirectoryA(rootModloaderPath.c_str());
+    bool hasModuleModloader = !!IsDirectoryA(moduleModloaderPath.c_str());
 
     // If not running yet and a 'modloader' folder exists, let's start up.
     // Prefer the ASI directory, then fall back to the traditional game root folder.
-    if(!this->bRunning && (IsDirectoryA(rootModloaderPath.c_str()) || IsDirectoryA(moduleModloaderPath.c_str())))
+    if(!this->bRunning && (hasRootModloader || hasModuleModloader))
     {
         // Cleanup the base structure
         memset(this, 0, sizeof(modloader_t));
@@ -187,7 +189,7 @@ void Loader::Startup()
         // Setup root path variables
         MakeSureStringIsDirectory(this->gamePath = rootPath);
         MakeSureStringIsDirectory(this->modulePath);
-        this->modloaderPath = IsDirectoryA(moduleModloaderPath.c_str())? moduleModloaderPath : rootModloaderPath;
+        this->modloaderPath = hasModuleModloader? moduleModloaderPath : rootModloaderPath;
         MakeSureStringIsDirectory(this->modloaderPath);
         MakeSureStringIsDirectory(this->modloaderRelativePath = MakePathRelativeTo(this->modloaderPath, this->gamePath));
         this->mods = FolderInformation(this->modloaderRelativePath);
@@ -196,6 +198,20 @@ void Loader::Startup()
         OpenLog();
         LogGameVersion();
         Log("Using Mod Loader folder \"%s\"", this->modloaderPath.c_str());
+
+        // Warn when ASI-local and game-root folders both exist (and are distinct)
+        if(hasRootModloader && hasModuleModloader
+        && _stricmp(rootModloaderPath.c_str(), moduleModloaderPath.c_str()))
+        {
+            Log("Warning: Found both \"%s\" and \"%s\"; using the ASI-local folder.",
+                moduleModloaderPath.c_str(), rootModloaderPath.c_str());
+            MessageBoxA(NULL,
+                "Mod Loader found two 'modloader' folders:\n"
+                "one next to modloader.asi and one in the game directory.\n\n"
+                "The folder next to modloader.asi will be used.\n"
+                "Move or remove the unused folder to avoid confusion.",
+                "Mod Loader", MB_ICONWARNING | MB_OK);
+        }
 
         // Setup "%ProgramData%/modloader/" variable
         if(SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA|CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, appDataPath)))

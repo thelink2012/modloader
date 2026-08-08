@@ -448,7 +448,7 @@ class Loader : public modloader_t
                 Status status;                      // Folder status
                 
             private:
-                std::string path;                   // Folder relative to game dir (modloader/)
+                std::string path;                   // Active modloader folder relative to game dir when possible
                 FolderInformation* parent;          // Parent folder
                 
                 ModInformationList       mods;      // All mods on this folder
@@ -467,8 +467,8 @@ class Loader : public modloader_t
         
     protected:
         friend struct Updating;
-        friend struct scoped_gdir;
-        friend std::string GetGDirPath(const char* newdir);
+        friend struct scoped_mldir;
+        friend std::string GetMLDirPath(const char* newdir);
         friend class  TheMenu;
 
         uint32_t       mUpdateRefCount = 0;
@@ -697,7 +697,7 @@ inline bool operator==(const Loader::PluginInformation& a, const Loader::PluginI
     return (&a == &b);
 }
 
-inline std::string GetGDirPath(const char* newdir)
+inline std::string GetMLDirPath(const char* newdir)
 {
     if(!newdir[0])
         return loader.gamePath;
@@ -710,9 +710,9 @@ inline std::string GetGDirPath(const char* newdir)
 }
 
 // Scoped chdir relative to active modloader dir, or gamedir for an empty path
-struct scoped_gdir : public modloader::scoped_chdir
+struct scoped_mldir : public modloader::scoped_chdir
 {
-    scoped_gdir(const char* newdir) : scoped_chdir(GetGDirPath(newdir).data())
+    scoped_mldir(const char* newdir) : scoped_chdir(GetMLDirPath(newdir).data())
     { }
 };
 
