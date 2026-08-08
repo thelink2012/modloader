@@ -1,3 +1,8 @@
+v0.3.10 (Aug 8 2026)
+-----------------------
+ * Added support for loading the modloader folder next to the ASI (e.g. scripts/modloader/) [[#142](https://github.com/thelink2012/modloader/pull/142) — contributed by [@sndth](https://github.com/sndth)]
+ * Improved id limit adjusters compatibility [[#139](https://github.com/thelink2012/modloader/pull/139) — contributed by [@CookiePLMonster](https://github.com/CookiePLMonster)]
+
 v0.3.9 (May 16 2026)
 -----------------------
  * Added audio support for GTA III and Vice City [[#135](https://github.com/thelink2012/modloader/pull/135) — contributed by [@CookiePLMonster](https://github.com/CookiePLMonster)]
