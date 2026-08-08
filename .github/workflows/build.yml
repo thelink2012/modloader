@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - uses: actions/checkout@v4
@@ -21,10 +21,15 @@ jobs:
           submodules: recursive
 
       - name: Install premake5
+        shell: pwsh
         run: |
-          winget install -e --id Premake.Premake.5.Beta --accept-source-agreements --accept-package-agreements --disable-interactivity
-          $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
-          echo "$((Get-Command premake5).Path | Split-Path -Parent)" >> $env:GITHUB_PATH
+          $version = "5.0.0-beta8"
+          $dst = "$env:RUNNER_TEMP\premake"
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          $zip = "$dst\premake.zip"
+          Invoke-WebRequest -Uri "https://github.com/premake/premake-core/releases/download/v$version/premake-$version-windows.zip" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dst -Force
+          Add-Content -Path $env:GITHUB_PATH -Value $dst
 
       - name: Install v141_xp toolset
         shell: cmd
